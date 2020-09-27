@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Generated with glade 3.36.0 -->
+<interface>
+  <requires lib="gtk+" version="3.22" />
+  <object class="GtkApplicationWindow" id="window">
+    <property name="can_focus">False</property>
+    <property name="default_width">800</property>
+    <property name="default_height">566</property>
+    <child>
+      <placeholder />
+    </child>
+    <child type="titlebar">
+      <object class="GtkHeaderBar">
+        <property name="visible">True</property>
+        <property name="can_focus">False</property>
+        <property name="title" translatable="yes">Musicus Editor</property>
+        <property name="show_close_button">True</property>
+        <child>
+          <object class="GtkMenuButton">
+            <property name="visible">True</property>
+            <property name="can_focus">True</property>
+            <property name="focus_on_click">False</property>
+            <property name="receives_default">True</property>
+            <property name="menu_model">add_menu</property>
+            <child>
+              <object class="GtkImage">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="icon_name">list-add-symbolic</property>
+              </object>
+            </child>
+          </object>
+        </child>
+      </object>
+    </child>
+  </object>
+  <menu id="add_menu">
+    <section>
+      <item>
+        <attribute name="label" translatable="yes">Add person</attribute>
+        <attribute name="action">win.add-person</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">Add instrument</attribute>
+        <attribute name="action">win.add-instrument</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">Add work</attribute>
+        <attribute name="action">win.add-work</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">Add ensemble</attribute>
+        <attribute name="action">win.add-ensemble</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">Add recording</attribute>
+        <attribute name="action">win.add-recording</attribute>
+      </item>
+    </section>
+  </menu>
+</interface>
