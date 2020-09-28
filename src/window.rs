@@ -4,29 +4,37 @@ use gio::prelude::*;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::{action, get_widget};
+use libhandy::prelude::*;
+use libhandy::HeaderBarExt;
 use std::cell::RefCell;
 use std::convert::TryInto;
 use std::rc::Rc;
 
 pub struct Window {
-    window: gtk::ApplicationWindow,
+    window: libhandy::ApplicationWindow,
     db: Rc<Database>,
+    leaflet: libhandy::Leaflet,
     persons: RefCell<Vec<Person>>,
     person_search_entry: gtk::SearchEntry,
     person_list: gtk::ListBox,
-    works: RefCell<Vec<WorkDescription>>,
-    work_search_entry: gtk::SearchEntry,
-    work_list: gtk::ListBox,
+    header_stack: gtk::Stack,
+    header: libhandy::HeaderBar,
+    content_box: gtk::Box,
+    content: gtk::ScrolledWindow,
 }
 
 impl Window {
     pub fn new(app: &gtk::Application) -> Rc<Self> {
         let builder = gtk::Builder::from_resource("/de/johrpan/musicus_editor/ui/window.ui");
-        get_widget!(builder, gtk::ApplicationWindow, window);
+
+        get_widget!(builder, libhandy::ApplicationWindow, window);
+        get_widget!(builder, libhandy::Leaflet, leaflet);
         get_widget!(builder, gtk::SearchEntry, person_search_entry);
         get_widget!(builder, gtk::ListBox, person_list);
-        get_widget!(builder, gtk::SearchEntry, work_search_entry);
-        get_widget!(builder, gtk::ListBox, work_list);
+        get_widget!(builder, gtk::Stack, header_stack);
+        get_widget!(builder, libhandy::HeaderBar, header);
+        get_widget!(builder, gtk::Box, content_box);
+        get_widget!(builder, gtk::ScrolledWindow, content);
 
         let db = Rc::new(Database::new("test.sqlite"));
         let persons = db.get_persons();
@@ -34,12 +42,14 @@ impl Window {
         let result = Rc::new(Window {
             window: window,
             db: db,
+            leaflet: leaflet,
             persons: RefCell::new(persons),
             person_list: person_list,
             person_search_entry: person_search_entry,
-            works: RefCell::new(Vec::new()),
-            work_search_entry: work_search_entry,
-            work_list: work_list,
+            header_stack: header_stack,
+            header: header,
+            content_box: content_box,
+            content: content,
         });
 
         result
@@ -47,10 +57,8 @@ impl Window {
             .connect_row_activated(clone!(@strong result => move |_, row| {
                 let row = row.get_child().unwrap().downcast::<SelectorRow>().unwrap();
                 let index: usize = row.get_index().try_into().unwrap();
-
-                let works = result.db.get_work_descriptions(result.persons.borrow()[index].id);
-                result.works.replace(works);
-                result.show_works();
+                let person = result.persons.borrow()[index].clone();
+                result.show_person(person);
             }));
 
         result
@@ -70,32 +78,6 @@ impl Window {
             .person_search_entry
             .connect_search_changed(clone!(@strong result => move |_| {
                 result.person_list.invalidate_filter();
-            }));
-
-        // result
-        //     .work_list
-        //     .connect_row_activated(clone!(@strong result => move |_, row| {
-        //         let row = row.get_child().unwrap().downcast::<SelectorRow>().unwrap();
-        //         let index: usize = row.get_index().try_into().unwrap();
-        //     }));
-
-        result
-            .work_list
-            .set_filter_func(Some(Box::new(clone!(@strong result => move |row| {
-                let row = row.get_child().unwrap().downcast::<SelectorRow>().unwrap();
-                let index: usize = row.get_index().try_into().unwrap();
-                let search = result.work_search_entry.get_text().to_string().to_lowercase();
-
-                search.is_empty() || result.works.borrow()[index]
-                    .title
-                    .to_lowercase()
-                    .contains(&search)
-            }))));
-
-        result
-            .work_search_entry
-            .connect_search_changed(clone!(@strong result => move |_| {
-                result.work_list.invalidate_filter();
             }));
 
         action!(
@@ -168,17 +150,19 @@ impl Window {
         }
     }
 
-    fn show_works(&self) {
-        for child in self.work_list.get_children() {
-            self.work_list.remove(&child);
+    fn show_person(&self, person: Person) {
+        self.header.set_title(Some(&person.name_fl()));
+        self.header_stack.set_visible_child_name("header");
+        self.set_view(&gtk::Label::new(Some(&person.name_fl())));
+    }
+
+    fn set_view<T: IsA<gtk::Widget>>(&self, widget: &T) {
+        match self.content.get_child() {
+            Some(child) => self.content.remove(&child),
+            None => (),
         }
 
-        for (index, work) in self.works.borrow().iter().enumerate() {
-            let label = gtk::Label::new(Some(&work.title));
-            label.set_halign(gtk::Align::Start);
-            let row = SelectorRow::new(index.try_into().unwrap(), &label);
-            row.show_all();
-            self.work_list.insert(&row, -1);
-        }
+        self.content.add(widget);
+        self.leaflet.set_visible_child(&self.content_box);
     }
 }

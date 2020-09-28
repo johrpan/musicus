@@ -18,6 +18,9 @@ mod window;
 use window::Window;
 
 fn main() {
+    gtk::init().expect("Failed to initialize GTK!");
+    libhandy::init();
+
     let bytes = glib::Bytes::from(include_bytes!("../res/resources.gresource").as_ref());
     let resource = gio::Resource::from_data(&bytes).expect("Failed to load resources!");
     gio::resources_register(&resource);
