@@ -1,4 +1,5 @@
-use super::person_selector::PersonSelector;
+use super::selector_row::SelectorRow;
+use super::{InstrumentSelector, PersonSelector};
 use crate::database::*;
 use glib::clone;
 use gtk::prelude::*;
@@ -49,6 +50,7 @@ pub struct WorkEditor {
     composer: RefCell<Option<Person>>,
     composer_label: gtk::Label,
     instruments: RefCell<Vec<Instrument>>,
+    instrument_list: gtk::ListBox,
     structure: RefCell<Vec<PartOrSection>>,
 }
 
@@ -131,6 +133,7 @@ impl WorkEditor {
             composer: composer,
             composer_label: composer_label,
             instruments: instruments,
+            instrument_list: instrument_list,
             structure: structure,
         });
 
@@ -178,6 +181,17 @@ impl WorkEditor {
             })).show();
         }));
 
+        add_instrument_button.connect_clicked(clone!(@strong result => move |_| {
+            InstrumentSelector::new(result.db.clone(), &result.window, clone!(@strong result => move |instrument| {
+                {
+                    let mut instruments = result.instruments.borrow_mut();
+                    instruments.push(instrument);
+                }
+                
+                result.show_instruments();
+            })).show();
+        }));
+
         result.window.set_transient_for(Some(parent));
 
         result
@@ -185,5 +199,19 @@ impl WorkEditor {
 
     pub fn show(&self) {
         self.window.show();
+    }
+
+    fn show_instruments(&self) {
+        for child in self.instrument_list.get_children() {
+            self.instrument_list.remove(&child);
+        }
+
+        for (index, instrument) in self.instruments.borrow().iter().enumerate() {
+            let label = gtk::Label::new(Some(&instrument.name));
+            label.set_halign(gtk::Align::Start);
+            let row = SelectorRow::new(index.try_into().unwrap(), &label);
+            row.show_all();
+            self.instrument_list.insert(&row, -1);
+        }
     }
 }

@@ -4,6 +4,9 @@ pub use ensemble_editor::*;
 pub mod instrument_editor;
 pub use instrument_editor::*;
 
+pub mod instrument_selector;
+pub use instrument_selector::*;
+
 pub mod person_editor;
 pub use person_editor::*;
 
