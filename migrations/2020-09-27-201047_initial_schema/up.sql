@@ -11,7 +11,7 @@ CREATE TABLE instruments (
 
 CREATE TABLE works (
     id BIGINT NOT NULL PRIMARY KEY,
-    composer BIGINT NOT NULL REFERENCES persons(id) ON DELETE CASCADE,
+    composer BIGINT NOT NULL REFERENCES persons(id),
     title TEXT NOT NULL
 );
 
@@ -49,7 +49,7 @@ CREATE TABLE ensembles (
 
 CREATE TABLE recordings (
     id BIGINT NOT NULL PRIMARY KEY,
-    work BIGINT NOT NULL REFERENCES works(id) ON DELETE CASCADE,
+    work BIGINT NOT NULL REFERENCES works(id),
     comment TEXT NOT NULL
 );
 
