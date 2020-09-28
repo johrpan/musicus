@@ -48,9 +48,15 @@ impl Window {
             println!("TODO: Add work.");
         });
 
-        action!(result.window, "add-ensemble", |_, _| {
-            println!("TODO: Add ensemble.");
-        });
+        action!(
+            result.window,
+            "add-ensemble",
+            clone!(@strong result => move |_, _| {
+                EnsembleEditor::new(result.db.clone(), &result.window, None, |ensemble| {
+                    println!("{:?}", ensemble);
+                }).show();
+            })
+        );
 
         action!(result.window, "add-recording", |_, _| {
             println!("TODO: Add recording.");
