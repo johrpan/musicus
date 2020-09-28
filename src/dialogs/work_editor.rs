@@ -1,5 +1,5 @@
 use super::selector_row::SelectorRow;
-use super::{InstrumentSelector, PersonSelector};
+use super::{InstrumentSelector, PersonSelector, PartEditor};
 use crate::database::*;
 use glib::clone;
 use gtk::prelude::*;
@@ -39,6 +39,14 @@ impl PartOrSection {
     pub fn unwrap_section(&self) -> WorkSectionDescription {
         self.section.as_ref().unwrap().clone()
     }
+
+    pub fn get_title(&self) -> String {
+        if self.is_part() {
+            self.unwrap_part().title
+        } else {
+            self.unwrap_section().title
+        }
+    }
 }
 
 pub struct WorkEditor {
@@ -52,6 +60,7 @@ pub struct WorkEditor {
     instruments: RefCell<Vec<Instrument>>,
     instrument_list: gtk::ListBox,
     structure: RefCell<Vec<PartOrSection>>,
+    part_list: gtk::ListBox,
 }
 
 impl WorkEditor {
@@ -135,6 +144,7 @@ impl WorkEditor {
             instruments: instruments,
             instrument_list: instrument_list,
             structure: structure,
+            part_list: part_list,
         });
 
         cancel_button.connect_clicked(clone!(@strong result => move |_| {
@@ -205,6 +215,80 @@ impl WorkEditor {
             }
         }));
 
+        add_part_button.connect_clicked(clone!(@strong result => move |_| {
+            PartEditor::new(result.db.clone(), &result.window, None, clone!(@strong result => move |part| {
+                {
+                    let mut structure = result.structure.borrow_mut();
+                    structure.push(PartOrSection::part(part));
+                }
+                
+                result.show_parts();
+            })).show();
+        }));
+
+        remove_part_button.connect_clicked(clone!(@strong result => move |_| {
+            let row = result.get_selected_part_row();
+            match row {
+                Some(row) => {
+                    let index = row.get_index();
+                    let index: usize = index.try_into().unwrap();
+                    result.structure.borrow_mut().remove(index);
+                    result.show_parts();
+                }
+                None => (),
+            }
+        }));
+
+        edit_part_button.connect_clicked(clone!(@strong result => move |_| {
+            let row = result.get_selected_part_row();
+            match row {
+                Some(row) => {
+                    let index = row.get_index();
+                    let index: usize = index.try_into().unwrap();
+                    let part = &result.structure.borrow()[index];
+
+                    let editor =
+                        PartEditor::new(result.db.clone(), &result.window, Some(part.unwrap_part()), clone!(@strong result => move |part| {
+                            result.structure.borrow_mut()[index] = PartOrSection::part(part);
+                            result.show_parts();
+                        }));
+
+                    editor.show();
+                }
+                None => (),
+            }
+        }));
+
+        move_part_up_button.connect_clicked(clone!(@strong result => move |_| {
+            let row = result.get_selected_part_row();
+            match row {
+                Some(row) => {
+                    let index = row.get_index();
+                    if index > 0 {
+                        let index: usize = index.try_into().unwrap();
+                        result.structure.borrow_mut().swap(index - 1, index);
+                        result.show_parts();
+                    }
+                }
+                None => (),
+            }
+        }));
+
+        move_part_down_button.connect_clicked(clone!(@strong result => move |_| {
+            let row = result.get_selected_part_row();
+            match row {
+                Some(row) => {
+                    let index = row.get_index();
+                    let index: usize = index.try_into().unwrap();
+                    if index < result.structure.borrow().len() - 1 {
+                        result.structure.borrow_mut().swap(index, index + 1);
+                        result.show_parts();
+                    }
+                }
+                None => (),
+            }
+        }));
+
         result.window.set_transient_for(Some(parent));
 
         result
@@ -230,6 +314,30 @@ impl WorkEditor {
 
     fn get_selected_instrument_row(&self) -> Option<SelectorRow> {
         match self.instrument_list.get_selected_rows().first() {
+            Some(row) => match row.get_child() {
+                Some(child) => Some(child.downcast().unwrap()),
+                None => None,
+            },
+            None => None,
+        }
+    }
+
+    fn show_parts(&self) {
+        for child in self.part_list.get_children() {
+            self.part_list.remove(&child);
+        }
+
+        for (index, part) in self.structure.borrow().iter().enumerate() {
+            let label = gtk::Label::new(Some(&part.get_title()));
+            label.set_halign(gtk::Align::Start);
+            let row = SelectorRow::new(index.try_into().unwrap(), &label);
+            row.show_all();
+            self.part_list.insert(&row, -1);
+        }
+    }
+
+    fn get_selected_part_row(&self) -> Option<SelectorRow> {
+        match self.part_list.get_selected_rows().first() {
             Some(row) => match row.get_child() {
                 Some(child) => Some(child.downcast().unwrap()),
                 None => None,

@@ -7,6 +7,9 @@ pub use instrument_editor::*;
 pub mod instrument_selector;
 pub use instrument_selector::*;
 
+pub mod part_editor;
+pub use part_editor::*;
+
 pub mod person_editor;
 pub use person_editor::*;
 

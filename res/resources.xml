@@ -4,6 +4,7 @@
         <file preprocess="xml-stripblanks">ui/ensemble_editor.ui</file>
         <file preprocess="xml-stripblanks">ui/instrument_editor.ui</file>
         <file preprocess="xml-stripblanks">ui/instrument_selector.ui</file>
+        <file preprocess="xml-stripblanks">ui/part_editor.ui</file>
         <file preprocess="xml-stripblanks">ui/person_editor.ui</file>
         <file preprocess="xml-stripblanks">ui/person_selector.ui</file>
         <file preprocess="xml-stripblanks">ui/window.ui</file>
