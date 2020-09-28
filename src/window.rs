@@ -15,12 +15,12 @@ pub struct Window {
     db: Rc<Database>,
     leaflet: libhandy::Leaflet,
     persons: RefCell<Vec<Person>>,
+    sidebar_box: gtk::Box,
     person_search_entry: gtk::SearchEntry,
     person_list: gtk::ListBox,
-    header_stack: gtk::Stack,
+    stack: gtk::Stack,
     header: libhandy::HeaderBar,
-    content_box: gtk::Box,
-    content: gtk::ScrolledWindow,
+    header_menu_button: gtk::MenuButton,
 }
 
 impl Window {
@@ -29,12 +29,12 @@ impl Window {
 
         get_widget!(builder, libhandy::ApplicationWindow, window);
         get_widget!(builder, libhandy::Leaflet, leaflet);
+        get_widget!(builder, gtk::Box, sidebar_box);
         get_widget!(builder, gtk::SearchEntry, person_search_entry);
         get_widget!(builder, gtk::ListBox, person_list);
-        get_widget!(builder, gtk::Stack, header_stack);
+        get_widget!(builder, gtk::Stack, stack);
         get_widget!(builder, libhandy::HeaderBar, header);
-        get_widget!(builder, gtk::Box, content_box);
-        get_widget!(builder, gtk::ScrolledWindow, content);
+        get_widget!(builder, gtk::MenuButton, header_menu_button);
 
         let db = Rc::new(Database::new("test.sqlite"));
         let persons = db.get_persons();
@@ -44,12 +44,12 @@ impl Window {
             db: db,
             leaflet: leaflet,
             persons: RefCell::new(persons),
+            sidebar_box: sidebar_box,
             person_list: person_list,
             person_search_entry: person_search_entry,
-            header_stack: header_stack,
+            stack: stack,
             header: header,
-            content_box: content_box,
-            content: content,
+            header_menu_button: header_menu_button,
         });
 
         result
@@ -79,6 +79,14 @@ impl Window {
             .connect_search_changed(clone!(@strong result => move |_| {
                 result.person_list.invalidate_filter();
             }));
+
+        action!(
+            result.window,
+            "back",
+            clone!(@strong result => move |_, _| {
+                result.back();
+            })
+        );
 
         action!(
             result.window,
@@ -126,6 +134,32 @@ impl Window {
             println!("TODO: Add recording.");
         });
 
+        action!(
+            result.window,
+            "edit-person",
+            Some(glib::VariantTy::new("x").unwrap()),
+            clone!(@strong result => move |_, id| {
+                let person = result.db.get_person(id.unwrap().get().unwrap()).unwrap();
+                PersonEditor::new(result.db.clone(), &result.window, Some(person), clone!(@strong result => move |person| {
+                    result.persons.replace(result.db.get_persons());
+                    result.show_persons();
+                    result.show_person(person);
+                })).show();
+            })
+        );
+
+        action!(
+            result.window,
+            "delete-person",
+            Some(glib::VariantTy::new("x").unwrap()),
+            clone!(@strong result => move |_, id| {
+                result.db.delete_person(id.unwrap().get().unwrap());
+                result.back();
+                result.persons.replace(result.db.get_persons());
+                result.show_persons();
+            })
+        );
+
         result.window.set_application(Some(app));
         result.show_persons();
 
@@ -152,17 +186,28 @@ impl Window {
 
     fn show_person(&self, person: Person) {
         self.header.set_title(Some(&person.name_fl()));
-        self.header_stack.set_visible_child_name("header");
-        self.set_view(&gtk::Label::new(Some(&person.name_fl())));
+        let edit_menu_item = gio::MenuItem::new(Some("Edit person"), None);
+        edit_menu_item.set_action_and_target_value(
+            Some("win.edit-person"),
+            Some(&glib::Variant::from(person.id)),
+        );
+        let delete_menu_item = gio::MenuItem::new(Some("Delete person"), None);
+        delete_menu_item.set_action_and_target_value(
+            Some("win.delete-person"),
+            Some(&glib::Variant::from(person.id)),
+        );
+        let menu = gio::Menu::new();
+        menu.append_item(&edit_menu_item);
+        menu.append_item(&delete_menu_item);
+
+        self.header_menu_button.set_menu_model(Some(&menu));
+
+        self.stack.set_visible_child_name("person_screen");
+        self.leaflet.set_visible_child(&self.stack);
     }
 
-    fn set_view<T: IsA<gtk::Widget>>(&self, widget: &T) {
-        match self.content.get_child() {
-            Some(child) => self.content.remove(&child),
-            None => (),
-        }
-
-        self.content.add(widget);
-        self.leaflet.set_visible_child(&self.content_box);
+    fn back(&self) {
+        self.stack.set_visible_child_name("empty_screen");
+        self.leaflet.set_visible_child(&self.sidebar_box);
     }
 }
