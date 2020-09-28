@@ -1,5 +1,5 @@
 use super::selector_row::SelectorRow;
-use super::{InstrumentSelector, PersonSelector, PartEditor};
+use super::{InstrumentSelector, PersonSelector, PartEditor, SectionEditor};
 use crate::database::*;
 use glib::clone;
 use gtk::prelude::*;
@@ -226,17 +226,15 @@ impl WorkEditor {
             })).show();
         }));
 
-        remove_part_button.connect_clicked(clone!(@strong result => move |_| {
-            let row = result.get_selected_part_row();
-            match row {
-                Some(row) => {
-                    let index = row.get_index();
-                    let index: usize = index.try_into().unwrap();
-                    result.structure.borrow_mut().remove(index);
-                    result.show_parts();
+        add_section_button.connect_clicked(clone!(@strong result => move |_| {
+            SectionEditor::new(&result.window, None, clone!(@strong result => move |section| {
+                {
+                    let mut structure = result.structure.borrow_mut();
+                    structure.push(PartOrSection::section(section));
                 }
-                None => (),
-            }
+                
+                result.show_parts();
+            })).show();
         }));
 
         edit_part_button.connect_clicked(clone!(@strong result => move |_| {
@@ -245,15 +243,38 @@ impl WorkEditor {
                 Some(row) => {
                     let index = row.get_index();
                     let index: usize = index.try_into().unwrap();
-                    let part = &result.structure.borrow()[index];
+                    let pos = &result.structure.borrow()[index];
+    
+                    if pos.is_part() {
+                        let editor =
+                            PartEditor::new(result.db.clone(), &result.window, Some(pos.unwrap_part()), clone!(@strong result => move |part| {
+                                result.structure.borrow_mut()[index] = PartOrSection::part(part);
+                                result.show_parts();
+                            }));
 
-                    let editor =
-                        PartEditor::new(result.db.clone(), &result.window, Some(part.unwrap_part()), clone!(@strong result => move |part| {
-                            result.structure.borrow_mut()[index] = PartOrSection::part(part);
-                            result.show_parts();
-                        }));
+                        editor.show();
+                    } else {
+                        let editor =
+                            SectionEditor::new(&result.window, Some(pos.unwrap_section()), clone!(@strong result => move |section| {
+                                result.structure.borrow_mut()[index] = PartOrSection::section(section);
+                                result.show_parts();
+                            }));
 
-                    editor.show();
+                        editor.show();
+                    }
+                }
+                None => (),
+            }
+        }));
+
+        remove_part_button.connect_clicked(clone!(@strong result => move |_| {
+            let row = result.get_selected_part_row();
+            match row {
+                Some(row) => {
+                    let index = row.get_index();
+                    let index: usize = index.try_into().unwrap();
+                    result.structure.borrow_mut().remove(index);
+                    result.show_parts();
                 }
                 None => (),
             }
@@ -330,6 +351,15 @@ impl WorkEditor {
         for (index, part) in self.structure.borrow().iter().enumerate() {
             let label = gtk::Label::new(Some(&part.get_title()));
             label.set_halign(gtk::Align::Start);
+
+            if part.is_part() {
+                label.set_margin_start(6);
+            } else {
+                let attributes = pango::AttrList::new();
+                attributes.insert(pango::Attribute::new_weight(pango::Weight::Bold).unwrap());
+                label.set_attributes(Some(&attributes));
+            }
+
             let row = SelectorRow::new(index.try_into().unwrap(), &label);
             row.show_all();
             self.part_list.insert(&row, -1);

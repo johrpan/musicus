@@ -16,6 +16,9 @@ pub use person_editor::*;
 pub mod person_selector;
 pub use person_selector::*;
 
+pub mod section_editor;
+pub use section_editor::*;
+
 pub mod selector_row;
 
 pub mod work_editor;
