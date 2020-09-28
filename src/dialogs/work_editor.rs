@@ -192,6 +192,19 @@ impl WorkEditor {
             })).show();
         }));
 
+        remove_instrument_button.connect_clicked(clone!(@strong result => move |_| {
+            let row = result.get_selected_instrument_row();
+            match row {
+                Some(row) => {
+                    let index = row.get_index();
+                    let index: usize = index.try_into().unwrap();
+                    result.instruments.borrow_mut().remove(index);
+                    result.show_instruments();
+                }
+                None => (),
+            }
+        }));
+
         result.window.set_transient_for(Some(parent));
 
         result
@@ -212,6 +225,16 @@ impl WorkEditor {
             let row = SelectorRow::new(index.try_into().unwrap(), &label);
             row.show_all();
             self.instrument_list.insert(&row, -1);
+        }
+    }
+
+    fn get_selected_instrument_row(&self) -> Option<SelectorRow> {
+        match self.instrument_list.get_selected_rows().first() {
+            Some(row) => match row.get_child() {
+                Some(child) => Some(child.downcast().unwrap()),
+                None => None,
+            },
+            None => None,
         }
     }
 }
