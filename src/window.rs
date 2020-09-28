@@ -34,9 +34,15 @@ impl Window {
             })
         );
 
-        action!(result.window, "add-instrument", |_, _| {
-            println!("TODO: Add instrument.");
-        });
+        action!(
+            result.window,
+            "add-instrument",
+            clone!(@strong result => move |_, _| {
+                InstrumentEditor::new(result.db.clone(), &result.window, None, |instrument| {
+                    println!("{:?}", instrument);
+                }).show();
+            })
+        );
 
         action!(result.window, "add-work", |_, _| {
             println!("TODO: Add work.");
