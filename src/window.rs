@@ -44,9 +44,15 @@ impl Window {
             })
         );
 
-        action!(result.window, "add-work", |_, _| {
-            println!("TODO: Add work.");
-        });
+        action!(
+            result.window,
+            "add-work",
+            clone!(@strong result => move |_, _| {
+                WorkEditor::new(result.db.clone(), &result.window, None, |work| {
+                    println!("{:?}", work);
+                }).show();
+            })
+        );
 
         action!(
             result.window,
