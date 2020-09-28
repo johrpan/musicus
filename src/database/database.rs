@@ -137,13 +137,13 @@ impl Database {
             .cloned()
     }
 
-    pub fn get_work_description_for_work(&self, work: Work) -> WorkDescription {
+    pub fn get_work_description_for_work(&self, work: &Work) -> WorkDescription {
         WorkDescription {
             id: work.id,
             composer: self
                 .get_person(work.composer)
                 .expect("Could not find composer for work!"),
-            title: work.title,
+            title: work.title.clone(),
             instruments: instrumentations::table
                 .filter(instrumentations::work.eq(work.id))
                 .load::<Instrumentation>(&self.c)
@@ -195,7 +195,7 @@ impl Database {
 
     pub fn get_work_description(&self, id: i64) -> Option<WorkDescription> {
         match self.get_work(id) {
-            Some(work) => Some(self.get_work_description_for_work(work)),
+            Some(work) => Some(self.get_work_description_for_work(&work)),
             None => None,
         }
     }
@@ -211,6 +211,13 @@ impl Database {
             .filter(works::composer.eq(composer_id))
             .load::<Work>(&self.c)
             .expect("Error loading works!")
+    }
+
+    pub fn get_work_descriptions(&self, composer_id: i64) -> Vec<WorkDescription> {
+        self.get_works(composer_id)
+            .iter()
+            .map(|work| self.get_work_description_for_work(work))
+            .collect()
     }
 
     pub fn update_ensemble(&self, ensemble: Ensemble) {

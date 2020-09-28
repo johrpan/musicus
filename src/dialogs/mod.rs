@@ -20,6 +20,7 @@ pub mod section_editor;
 pub use section_editor::*;
 
 pub mod selector_row;
+pub use selector_row::*;
 
 pub mod work_editor;
 pub use work_editor::*;

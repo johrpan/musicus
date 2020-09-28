@@ -67,12 +67,12 @@ where
             .set_filter_func(Some(Box::new(clone!(@strong result => move |row| {
                 let row = row.get_child().unwrap().downcast::<SelectorRow>().unwrap();
                 let index: usize = row.get_index().try_into().unwrap();
-                let search = result.search_entry.get_text().to_string();
+                let search = result.search_entry.get_text().to_string().to_lowercase();
 
                 search.is_empty() || result.persons.borrow()[index]
                     .name_lf()
                     .to_lowercase()
-                    .contains(&result.search_entry.get_text().to_string().to_lowercase())
+                    .contains(&search)
             }))));
 
         result
