@@ -17,6 +17,8 @@ where
     window: gtk::Window,
     callback: F,
     persons: RefCell<Vec<Person>>,
+    list: gtk::ListBox,
+    search_entry: gtk::SearchEntry,
 }
 
 impl<F> PersonSelector<F>
@@ -29,7 +31,7 @@ where
 
         get_widget!(builder, gtk::Window, window);
         get_widget!(builder, gtk::Button, add_button);
-        get_widget!(builder, gtk::Entry, search_entry);
+        get_widget!(builder, gtk::SearchEntry, search_entry);
         get_widget!(builder, gtk::ListBox, list);
 
         let persons = db.get_persons();
@@ -47,20 +49,49 @@ where
             window: window,
             callback: callback,
             persons: RefCell::new(persons),
+            search_entry: search_entry,
+            list: list,
         });
 
-        list.connect_row_activated(clone!(@strong result => move |_, row| {
-            result.window.close();
-            let row = row.get_child().unwrap().downcast::<SelectorRow>().unwrap();
-            let index: usize = row.get_index().try_into().unwrap();
-            (result.callback)(result.persons.borrow()[index].clone());
-        }));
+        result
+            .list
+            .connect_row_activated(clone!(@strong result => move |_, row| {
+                result.window.close();
+                let row = row.get_child().unwrap().downcast::<SelectorRow>().unwrap();
+                let index: usize = row.get_index().try_into().unwrap();
+                (result.callback)(result.persons.borrow()[index].clone());
+            }));
+
+        result
+            .list
+            .set_filter_func(Some(Box::new(clone!(@strong result => move |row| {
+                let row = row.get_child().unwrap().downcast::<SelectorRow>().unwrap();
+                let index: usize = row.get_index().try_into().unwrap();
+                let search = result.search_entry.get_text().to_string();
+
+                search.is_empty() || result.persons.borrow()[index]
+                    .name_lf()
+                    .to_lowercase()
+                    .contains(&result.search_entry.get_text().to_string().to_lowercase())
+            }))));
+
+        result
+            .search_entry
+            .connect_search_changed(clone!(@strong result => move |_| {
+                result.list.invalidate_filter();
+            }));
 
         add_button.connect_clicked(clone!(@strong result => move |_| {
-            let editor = PersonEditor::new(result.db.clone(), &result.window, None, clone!(@strong result => move |person| {
-                result.window.close();
-                (result.callback)(person);
-            }));
+            let editor = PersonEditor::new(
+                result.db.clone(),
+                &result.window,
+                None,
+                clone!(@strong result => move |person| {
+                    result.window.close();
+                    (result.callback)(person);
+                }),
+            );
+
             editor.show();
         }));
 
