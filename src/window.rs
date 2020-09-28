@@ -15,12 +15,18 @@ pub struct Window {
     db: Rc<Database>,
     leaflet: libhandy::Leaflet,
     persons: RefCell<Vec<Person>>,
+    works: RefCell<Vec<WorkDescription>>,
+    recordings: RefCell<Vec<RecordingDescription>>,
     sidebar_box: gtk::Box,
     person_search_entry: gtk::SearchEntry,
     person_list: gtk::ListBox,
     stack: gtk::Stack,
     header: libhandy::HeaderBar,
     header_menu_button: gtk::MenuButton,
+    work_box: gtk::Box,
+    work_list: gtk::ListBox,
+    recording_box: gtk::Box,
+    recording_list: gtk::ListBox,
 }
 
 impl Window {
@@ -35,6 +41,10 @@ impl Window {
         get_widget!(builder, gtk::Stack, stack);
         get_widget!(builder, libhandy::HeaderBar, header);
         get_widget!(builder, gtk::MenuButton, header_menu_button);
+        get_widget!(builder, gtk::Box, work_box);
+        get_widget!(builder, gtk::ListBox, work_list);
+        get_widget!(builder, gtk::Box, recording_box);
+        get_widget!(builder, gtk::ListBox, recording_list);
 
         let db = Rc::new(Database::new("test.sqlite"));
         let persons = db.get_persons();
@@ -44,12 +54,18 @@ impl Window {
             db: db,
             leaflet: leaflet,
             persons: RefCell::new(persons),
+            works: RefCell::new(Vec::new()),
+            recordings: RefCell::new(Vec::new()),
             sidebar_box: sidebar_box,
             person_list: person_list,
             person_search_entry: person_search_entry,
             stack: stack,
             header: header,
             header_menu_button: header_menu_button,
+            work_box: work_box,
+            work_list: work_list,
+            recording_box: recording_box,
+            recording_list: recording_list,
         });
 
         result
@@ -202,8 +218,49 @@ impl Window {
 
         self.header_menu_button.set_menu_model(Some(&menu));
 
+        self.works.replace(self.db.get_work_descriptions(person.id));
+        self.show_works();
+
+        self.show_recordings();
+
         self.stack.set_visible_child_name("person_screen");
         self.leaflet.set_visible_child(&self.stack);
+    }
+
+    fn show_works(&self) {
+        for child in self.work_list.get_children() {
+            self.work_list.remove(&child);
+        }
+
+        let works = self.works.borrow();
+
+        if works.is_empty() {
+            self.work_box.hide();
+        } else {
+            self.work_box.show();
+        }
+
+        for (index, work) in works.iter().enumerate() {
+            let label = gtk::Label::new(Some(&work.title));
+            label.set_halign(gtk::Align::Start);
+            let row = SelectorRow::new(index.try_into().unwrap(), &label);
+            row.show_all();
+            self.work_list.insert(&row, -1);
+        }
+    }
+
+    fn show_recordings(&self) {
+        for child in self.recording_list.get_children() {
+            self.recording_list.remove(&child);
+        }
+
+        let recordings = self.recordings.borrow();
+
+        if recordings.is_empty() {
+            self.recording_box.hide();
+        } else {
+            self.recording_box.show();
+        }
     }
 
     fn back(&self) {
