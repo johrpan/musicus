@@ -1,3 +1,4 @@
+use super::person_selector::PersonSelector;
 use crate::database::*;
 use glib::clone;
 use gtk::prelude::*;
@@ -40,11 +41,13 @@ impl PartOrSection {
 }
 
 pub struct WorkEditor {
+    db: Rc<Database>,
     window: gtk::Window,
     save_button: gtk::Button,
     id: i64,
     title_entry: gtk::Entry,
     composer: RefCell<Option<Person>>,
+    composer_label: gtk::Label,
     instruments: RefCell<Vec<Instrument>>,
     structure: RefCell<Vec<PartOrSection>>,
 }
@@ -120,11 +123,13 @@ impl WorkEditor {
         });
 
         let result = Rc::new(WorkEditor {
+            db: db,
             window: window,
             save_button: save_button,
             id: id,
             title_entry: title_entry,
             composer: composer,
+            composer_label: composer_label,
             instruments: instruments,
             structure: structure,
         });
@@ -161,8 +166,16 @@ impl WorkEditor {
                 sections: sections,
             };
 
-            db.update_work(work.clone().into());
+            result.db.update_work(work.clone().into());
             callback(work);
+        }));
+
+        composer_button.connect_clicked(clone!(@strong result => move |_| {
+            PersonSelector::new(result.db.clone(), &result.window, clone!(@strong result => move |person| {
+                result.composer.replace(Some(person.clone()));
+                result.composer_label.set_text(&person.name_fl());
+                result.save_button.set_sensitive(true);
+            })).show();
         }));
 
         result.window.set_transient_for(Some(parent));

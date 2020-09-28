@@ -8,6 +8,16 @@ pub struct Person {
     pub last_name: String,
 }
 
+impl Person {
+    pub fn name_fl(&self) -> String {
+        format!("{} {}", self.first_name, self.last_name)
+    }
+
+    pub fn name_lf(&self) -> String {
+        format!("{}, {}", self.last_name, self.first_name)
+    }
+}
+
 #[derive(Insertable, Queryable, Debug, Clone)]
 pub struct Instrument {
     pub id: i64,
