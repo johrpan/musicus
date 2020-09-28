@@ -1,6 +1,16 @@
+// Required for database/schema.rs
+#[macro_use]
+extern crate diesel;
+
+// Required for embed_migrations macro in database/database.rs
+#[macro_use]
+extern crate diesel_migrations;
+
 use gio::prelude::*;
 use glib::clone;
 use std::cell::RefCell;
+
+mod database;
 
 mod window;
 use window::Window;

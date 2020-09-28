@@ -19,6 +19,23 @@ Afterwards you can compile and run the program using:
 $ cargo run
 ```
 
+This program uses [Diesel](https://diesel.rs) as its ORM. After installing
+the Diesel command line utility, you will be able to create a new schema
+migration using the following command:
+
+```
+$ diesel migration generate [change_description]
+```
+
+To update the `src/database/schema.rs` file, you should use the following
+command:
+
+```
+$ diesel migration run --database-url test.sqlite
+```
+
+This file should never be edited manually.
+
 ## License
 
 Musicus Editor is free and open source software: you can redistribute it and/or
