@@ -9,8 +9,10 @@ extern crate diesel_migrations;
 use gio::prelude::*;
 use glib::clone;
 use std::cell::RefCell;
+use std::rc::Rc;
 
 mod database;
+mod dialogs;
 
 mod window;
 use window::Window;
@@ -26,7 +28,7 @@ fn main() {
     )
     .expect("Failed to initialize GTK application!");
 
-    let window = RefCell::new(None::<Window>);
+    let window: RefCell<Option<Rc<Window>>> = RefCell::new(None);
 
     app.connect_activate(clone!(@strong app => move |_| {
         let mut window = window.borrow_mut();
