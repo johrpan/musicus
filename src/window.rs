@@ -196,6 +196,7 @@ impl Window {
 
                 for (index, person) in persons.iter().enumerate() {
                     let label = gtk::Label::new(Some(&person.name_lf()));
+                    label.set_ellipsize(pango::EllipsizeMode::End);
                     label.set_halign(gtk::Align::Start);
                     let row = SelectorRow::new(index.try_into().unwrap(), &label);
                     row.show_all();
@@ -290,6 +291,7 @@ impl Window {
 
                 for (index, work) in works.iter().enumerate() {
                     let label = gtk::Label::new(Some(&work.title));
+                    label.set_ellipsize(pango::EllipsizeMode::End);
                     label.set_halign(gtk::Align::Start);
                     let row = SelectorRow::new(index.try_into().unwrap(), &label);
                     row.show_all();
@@ -309,9 +311,11 @@ impl Window {
                         recording.work.title
                     )));
 
+                    work_label.set_ellipsize(pango::EllipsizeMode::End);
                     work_label.set_halign(gtk::Align::Start);
 
                     let performers_label = gtk::Label::new(Some(&recording.get_performers()));
+                    performers_label.set_ellipsize(pango::EllipsizeMode::End);
                     performers_label.set_opacity(0.5);
                     performers_label.set_halign(gtk::Align::Start);
 
