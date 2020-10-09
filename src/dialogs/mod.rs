@@ -13,6 +13,9 @@ pub use instrument_selector::*;
 pub mod part_editor;
 pub use part_editor::*;
 
+pub mod performance_editor;
+pub use performance_editor::*;
+
 pub mod person_editor;
 pub use person_editor::*;
 

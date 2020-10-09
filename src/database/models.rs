@@ -86,19 +86,44 @@ impl From<WorkDescription> for WorkInsertion {
 
 #[derive(Debug, Clone)]
 pub struct PerformanceDescription {
-    pub performance: Performance,
     pub person: Option<Person>,
     pub ensemble: Option<Ensemble>,
     pub role: Option<Instrument>,
 }
 
 impl PerformanceDescription {
+    pub fn get_title(&self) -> String {
+        let mut text = String::from(if self.is_person() {
+            self.unwrap_person().name_fl()
+        } else {
+            self.unwrap_ensemble().name
+        });
+
+        if self.has_role() {
+            text = text + " (" + &self.unwrap_role().name + ")";
+        }
+
+        text
+    }
+
     pub fn is_person(&self) -> bool {
         self.person.is_some()
     }
 
+    pub fn unwrap_person(&self) -> Person {
+        self.person.clone().unwrap()
+    }
+
+    pub fn unwrap_ensemble(&self) -> Ensemble {
+        self.ensemble.clone().unwrap()
+    }
+
     pub fn has_role(&self) -> bool {
-        self.role.is_some()
+        self.role.clone().is_some()
+    }
+
+    pub fn unwrap_role(&self) -> Instrument {
+        self.role.clone().unwrap()
     }
 }
 

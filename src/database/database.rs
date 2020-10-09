@@ -291,7 +291,6 @@ impl Database {
                 .expect("Failed to load performances!")
                 .iter()
                 .map(|performance| PerformanceDescription {
-                    performance: performance.clone(),
                     person: performance.person.map(|id| {
                         self.get_person(id)
                             .expect("Could not find person for performance!")
