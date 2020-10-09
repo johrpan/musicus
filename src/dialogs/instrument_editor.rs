@@ -1,18 +1,26 @@
+use crate::backend::*;
 use crate::database::*;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
 use std::rc::Rc;
 
-pub struct InstrumentEditor {
+pub struct InstrumentEditor<F>
+where
+    F: Fn(Instrument) -> () + 'static,
+{
     window: gtk::Window,
+    callback: F,
     id: i64,
     name_entry: gtk::Entry,
 }
 
-impl InstrumentEditor {
-    pub fn new<F: Fn(Instrument) -> () + 'static, P: IsA<gtk::Window>>(
-        db: Rc<Database>,
+impl<F> InstrumentEditor<F>
+where
+    F: Fn(Instrument) -> () + 'static,
+{
+    pub fn new<P: IsA<gtk::Window>>(
+        backend: Rc<Backend>,
         parent: &P,
         instrument: Option<Instrument>,
         callback: F,
@@ -34,8 +42,9 @@ impl InstrumentEditor {
         };
 
         let result = Rc::new(InstrumentEditor {
-            id: id,
             window: window,
+            callback: callback,
+            id: id,
             name_entry: name_entry,
         });
 
@@ -44,15 +53,15 @@ impl InstrumentEditor {
         }));
 
         save_button.connect_clicked(clone!(@strong result => move |_| {
-            result.window.close();
-
             let instrument = Instrument {
                 id: result.id,
                 name: result.name_entry.get_text().to_string(),
             };
 
-            db.update_instrument(instrument.clone());
-            callback(instrument);
+            backend.update_instrument(instrument.clone(), clone!(@strong result => move |_| {
+                result.window.close();
+                (result.callback)(instrument.clone());
+            }));
         }));
 
         result.window.set_transient_for(Some(parent));

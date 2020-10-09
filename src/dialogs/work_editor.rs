@@ -1,5 +1,6 @@
 use super::selector_row::SelectorRow;
 use super::{InstrumentSelector, PersonSelector, PartEditor, SectionEditor};
+use crate::backend::*;
 use crate::database::*;
 use glib::clone;
 use gtk::prelude::*;
@@ -49,9 +50,12 @@ impl PartOrSection {
     }
 }
 
-pub struct WorkEditor {
-    db: Rc<Database>,
+pub struct WorkEditor<F>
+where
+    F: Fn(WorkDescription) -> () + 'static, {
+    backend: Rc<Backend>,
     window: gtk::Window,
+    callback: F,
     save_button: gtk::Button,
     id: i64,
     title_entry: gtk::Entry,
@@ -63,9 +67,11 @@ pub struct WorkEditor {
     part_list: gtk::ListBox,
 }
 
-impl WorkEditor {
-    pub fn new<F: Fn(WorkDescription) -> () + 'static, P: IsA<gtk::Window>>(
-        db: Rc<Database>,
+impl<F> WorkEditor<F>
+where
+    F: Fn(WorkDescription) -> () + 'static, {
+    pub fn new<P: IsA<gtk::Window>>(
+        backend: Rc<Backend>,
         parent: &P,
         work: Option<WorkDescription>,
         callback: F,
@@ -134,8 +140,9 @@ impl WorkEditor {
         });
 
         let result = Rc::new(WorkEditor {
-            db: db,
+            backend: backend,
             window: window,
+            callback: callback,
             save_button: save_button,
             id: id,
             title_entry: title_entry,
@@ -152,8 +159,6 @@ impl WorkEditor {
         }));
 
         result.save_button.connect_clicked(clone!(@strong result => move |_| {
-            result.window.close();
-
             let mut section_count: i64 = 0;
             let mut parts: Vec<WorkPartDescription> = Vec::new();
             let mut sections: Vec<WorkSectionDescription> = Vec::new();
@@ -179,12 +184,14 @@ impl WorkEditor {
                 sections: sections,
             };
 
-            result.db.update_work(work.clone().into());
-            callback(work);
+            result.backend.update_work(work.clone().into(), clone!(@strong result => move |_| {
+                result.window.close();
+                (result.callback)(work.clone());
+            }));
         }));
 
         composer_button.connect_clicked(clone!(@strong result => move |_| {
-            PersonSelector::new(result.db.clone(), &result.window, clone!(@strong result => move |person| {
+            PersonSelector::new(result.backend.clone(), &result.window, clone!(@strong result => move |person| {
                 result.composer.replace(Some(person.clone()));
                 result.composer_label.set_text(&person.name_fl());
                 result.save_button.set_sensitive(true);
@@ -192,7 +199,7 @@ impl WorkEditor {
         }));
 
         add_instrument_button.connect_clicked(clone!(@strong result => move |_| {
-            InstrumentSelector::new(result.db.clone(), &result.window, clone!(@strong result => move |instrument| {
+            InstrumentSelector::new(result.backend.clone(), &result.window, clone!(@strong result => move |instrument| {
                 {
                     let mut instruments = result.instruments.borrow_mut();
                     instruments.push(instrument);
@@ -216,7 +223,7 @@ impl WorkEditor {
         }));
 
         add_part_button.connect_clicked(clone!(@strong result => move |_| {
-            PartEditor::new(result.db.clone(), &result.window, None, clone!(@strong result => move |part| {
+            PartEditor::new(result.backend.clone(), &result.window, None, clone!(@strong result => move |part| {
                 {
                     let mut structure = result.structure.borrow_mut();
                     structure.push(PartOrSection::part(part));
@@ -247,7 +254,7 @@ impl WorkEditor {
     
                     if pos.is_part() {
                         let editor =
-                            PartEditor::new(result.db.clone(), &result.window, Some(pos.unwrap_part()), clone!(@strong result => move |part| {
+                            PartEditor::new(result.backend.clone(), &result.window, Some(pos.unwrap_part()), clone!(@strong result => move |part| {
                                 result.structure.borrow_mut()[index] = PartOrSection::part(part);
                                 result.show_parts();
                             }));

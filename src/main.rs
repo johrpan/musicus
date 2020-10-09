@@ -11,6 +11,7 @@ use glib::clone;
 use std::cell::RefCell;
 use std::rc::Rc;
 
+mod backend;
 mod database;
 mod dialogs;
 

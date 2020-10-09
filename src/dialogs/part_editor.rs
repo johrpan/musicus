@@ -1,5 +1,6 @@
 use super::selector_row::SelectorRow;
 use super::{InstrumentSelector, PersonSelector};
+use crate::backend::*;
 use crate::database::*;
 use glib::clone;
 use gtk::prelude::*;
@@ -9,7 +10,7 @@ use std::convert::TryInto;
 use std::rc::Rc;
 
 pub struct PartEditor {
-    db: Rc<Database>,
+    backend: Rc<Backend>,
     window: gtk::Window,
     title_entry: gtk::Entry,
     composer: RefCell<Option<Person>>,
@@ -20,7 +21,7 @@ pub struct PartEditor {
 
 impl PartEditor {
     pub fn new<F: Fn(WorkPartDescription) -> () + 'static, P: IsA<gtk::Window>>(
-        db: Rc<Database>,
+        backend: Rc<Backend>,
         parent: &P,
         part: Option<WorkPartDescription>,
         callback: F,
@@ -63,7 +64,7 @@ impl PartEditor {
         });
 
         let result = Rc::new(PartEditor {
-            db: db,
+            backend: backend,
             window: window,
             title_entry: title_entry,
             composer: composer,
@@ -86,7 +87,7 @@ impl PartEditor {
         }));
 
         composer_button.connect_clicked(clone!(@strong result => move |_| {
-            PersonSelector::new(result.db.clone(), &result.window, clone!(@strong result => move |person| {
+            PersonSelector::new(result.backend.clone(), &result.window, clone!(@strong result => move |person| {
                 result.composer.replace(Some(person.clone()));
                 result.composer_label.set_text(&person.name_fl());
             })).show();
@@ -98,7 +99,7 @@ impl PartEditor {
         }));
 
         add_instrument_button.connect_clicked(clone!(@strong result => move |_| {
-            InstrumentSelector::new(result.db.clone(), &result.window, clone!(@strong result => move |instrument| {
+            InstrumentSelector::new(result.backend.clone(), &result.window, clone!(@strong result => move |instrument| {
                 {
                     let mut instruments = result.instruments.borrow_mut();
                     instruments.push(instrument);

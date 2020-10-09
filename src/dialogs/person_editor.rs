@@ -1,19 +1,27 @@
+use crate::backend::Backend;
 use crate::database::*;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
 use std::rc::Rc;
 
-pub struct PersonEditor {
+pub struct PersonEditor<F>
+where
+    F: Fn(Person) -> () + 'static,
+{
     window: gtk::Window,
+    callback: F,
     id: i64,
     first_name_entry: gtk::Entry,
     last_name_entry: gtk::Entry,
 }
 
-impl PersonEditor {
-    pub fn new<F: Fn(Person) -> () + 'static, P: IsA<gtk::Window>>(
-        db: Rc<Database>,
+impl<F> PersonEditor<F>
+where
+    F: Fn(Person) -> () + 'static,
+{
+    pub fn new<P: IsA<gtk::Window>>(
+        backend: Rc<Backend>,
         parent: &P,
         person: Option<Person>,
         callback: F,
@@ -36,8 +44,9 @@ impl PersonEditor {
         };
 
         let result = Rc::new(PersonEditor {
-            id: id,
             window: window,
+            callback: callback,
+            id: id,
             first_name_entry: first_name_entry,
             last_name_entry: last_name_entry,
         });
@@ -47,16 +56,16 @@ impl PersonEditor {
         }));
 
         save_button.connect_clicked(clone!(@strong result => move |_| {
-            result.window.close();
-
             let person = Person {
                 id: result.id,
                 first_name: result.first_name_entry.get_text().to_string(),
                 last_name: result.last_name_entry.get_text().to_string(),
             };
 
-            db.update_person(person.clone());
-            callback(person);
+            backend.update_person(person.clone(), clone!(@strong result => move |_| {
+                result.window.close();
+                (result.callback)(person.clone());
+            }));
         }));
 
         result.window.set_transient_for(Some(parent));

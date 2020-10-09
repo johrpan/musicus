@@ -1,18 +1,26 @@
+use crate::backend::*;
 use crate::database::*;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
 use std::rc::Rc;
 
-pub struct EnsembleEditor {
+pub struct EnsembleEditor<F>
+where
+    F: Fn(Ensemble) -> () + 'static,
+{
     window: gtk::Window,
+    callback: F,
     id: i64,
     name_entry: gtk::Entry,
 }
 
-impl EnsembleEditor {
-    pub fn new<F: Fn(Ensemble) -> () + 'static, P: IsA<gtk::Window>>(
-        db: Rc<Database>,
+impl<F> EnsembleEditor<F>
+where
+    F: Fn(Ensemble) -> () + 'static,
+{
+    pub fn new<P: IsA<gtk::Window>>(
+        backend: Rc<Backend>,
         parent: &P,
         ensemble: Option<Ensemble>,
         callback: F,
@@ -34,8 +42,9 @@ impl EnsembleEditor {
         };
 
         let result = Rc::new(EnsembleEditor {
-            id: id,
             window: window,
+            callback: callback,
+            id: id,
             name_entry: name_entry,
         });
 
@@ -44,15 +53,15 @@ impl EnsembleEditor {
         }));
 
         save_button.connect_clicked(clone!(@strong result => move |_| {
-            result.window.close();
-
             let ensemble = Ensemble {
                 id: result.id,
                 name: result.name_entry.get_text().to_string(),
             };
 
-            db.update_ensemble(ensemble.clone());
-            callback(ensemble);
+            backend.update_ensemble(ensemble.clone(), clone!(@strong result => move |_| {
+                result.window.close();
+                (result.callback)(ensemble.clone());
+            }));
         }));
 
         result.window.set_transient_for(Some(parent));

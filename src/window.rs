@@ -1,3 +1,4 @@
+use super::backend::Backend;
 use super::database::*;
 use super::dialogs::*;
 use gio::prelude::*;
@@ -12,7 +13,7 @@ use std::rc::Rc;
 
 pub struct Window {
     window: libhandy::ApplicationWindow,
-    db: Rc<Database>,
+    backend: Rc<Backend>,
     leaflet: libhandy::Leaflet,
     persons: RefCell<Vec<Person>>,
     works: RefCell<Vec<WorkDescription>>,
@@ -46,14 +47,13 @@ impl Window {
         get_widget!(builder, gtk::Box, recording_box);
         get_widget!(builder, gtk::ListBox, recording_list);
 
-        let db = Rc::new(Database::new("test.sqlite"));
-        let persons = db.get_persons();
+        let backend = Backend::new("test.sqlite");
 
         let result = Rc::new(Window {
             window: window,
-            db: db,
+            backend: Rc::new(backend),
             leaflet: leaflet,
-            persons: RefCell::new(persons),
+            persons: RefCell::new(Vec::new()),
             works: RefCell::new(Vec::new()),
             recordings: RefCell::new(Vec::new()),
             sidebar_box: sidebar_box,
@@ -108,9 +108,11 @@ impl Window {
             result.window,
             "add-person",
             clone!(@strong result => move |_, _| {
-                PersonEditor::new(result.db.clone(), &result.window, None, clone!(@strong result => move |_| {
-                    result.persons.replace(result.db.get_persons());
-                    result.show_persons();
+                PersonEditor::new(result.backend.clone(), &result.window, None, clone!(@strong result => move |_| {
+                    result.backend.get_persons(clone!(@strong result => move |persons| {
+                        result.persons.replace(persons);
+                        result.show_persons();
+                    }));
                 })).show();
             })
         );
@@ -119,7 +121,7 @@ impl Window {
             result.window,
             "add-instrument",
             clone!(@strong result => move |_, _| {
-                InstrumentEditor::new(result.db.clone(), &result.window, None, |instrument| {
+                InstrumentEditor::new(result.backend.clone(), &result.window, None, |instrument| {
                     println!("{:?}", instrument);
                 }).show();
             })
@@ -129,9 +131,11 @@ impl Window {
             result.window,
             "add-work",
             clone!(@strong result => move |_, _| {
-                WorkEditor::new(result.db.clone(), &result.window, None, clone!(@strong result => move |_| {
-                    result.persons.replace(result.db.get_persons());
-                    result.show_persons();
+                WorkEditor::new(result.backend.clone(), &result.window, None, clone!(@strong result => move |_| {
+                    result.backend.get_persons(clone!(@strong result => move |persons| {
+                        result.persons.replace(persons);
+                        result.show_persons();
+                    }));
                 })).show();
             })
         );
@@ -140,7 +144,7 @@ impl Window {
             result.window,
             "add-ensemble",
             clone!(@strong result => move |_, _| {
-                EnsembleEditor::new(result.db.clone(), &result.window, None, |ensemble| {
+                EnsembleEditor::new(result.backend.clone(), &result.window, None, |ensemble| {
                     println!("{:?}", ensemble);
                 }).show();
             })
@@ -155,12 +159,15 @@ impl Window {
             "edit-person",
             Some(glib::VariantTy::new("x").unwrap()),
             clone!(@strong result => move |_, id| {
-                let person = result.db.get_person(id.unwrap().get().unwrap()).unwrap();
-                PersonEditor::new(result.db.clone(), &result.window, Some(person), clone!(@strong result => move |person| {
-                    result.persons.replace(result.db.get_persons());
-                    result.show_persons();
-                    result.show_person(person);
-                })).show();
+                result.backend.get_person(id.unwrap().get().unwrap(), clone!(@strong result => move |person| {
+                    let person = person.unwrap();
+                    PersonEditor::new(result.backend.clone(), &result.window, Some(person), clone!(@strong result => move |person| {
+                        result.backend.get_persons(clone!(@strong result => move |persons| {
+                            result.persons.replace(persons);
+                            result.show_persons();
+                        }));
+                    })).show();
+                }));
             })
         );
 
@@ -169,10 +176,13 @@ impl Window {
             "delete-person",
             Some(glib::VariantTy::new("x").unwrap()),
             clone!(@strong result => move |_, id| {
-                result.db.delete_person(id.unwrap().get().unwrap());
-                result.back();
-                result.persons.replace(result.db.get_persons());
-                result.show_persons();
+                result.backend.delete_person(id.unwrap().get().unwrap(), clone!(@strong result => move |_| {
+                    result.back();
+                    result.backend.get_persons(clone!(@strong result => move |persons| {
+                        result.persons.replace(persons);
+                        result.show_persons();
+                    }));
+                }));
             })
         );
 
@@ -218,13 +228,13 @@ impl Window {
 
         self.header_menu_button.set_menu_model(Some(&menu));
 
-        self.works.replace(self.db.get_work_descriptions(person.id));
-        self.show_works();
-
-        self.show_recordings();
-
-        self.stack.set_visible_child_name("person_screen");
-        self.leaflet.set_visible_child(&self.stack);
+        // let result = self.clone();
+        // self.backend.get_work_descriptions(person.id, |works| {
+        //     result.show_works();
+        //     result.show_recordings();
+        //     result.stack.set_visible_child_name("person_screen");
+        //     result.leaflet.set_visible_child(&result.stack);
+        // });
     }
 
     fn show_works(&self) {
