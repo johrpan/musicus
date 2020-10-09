@@ -50,6 +50,8 @@ where
         let (id, work, performers) = match recording {
             Some(recording) => {
                 save_button.set_sensitive(true);
+                work_label.set_text(&format!("{}: {}", recording.work.composer.name_fl(), recording.work.title));
+                comment_entry.set_text(&recording.comment);
                 (recording.id, Some(recording.work), recording.performances)
             }
             None => (rand::random::<u32>().into(), None, Vec::new()),
@@ -86,8 +88,6 @@ where
                     result.window.close();
                     (result.callback)(recording.clone());
                 }));
-    
-                result.window.close();
             }));
 
         work_button.connect_clicked(clone!(@strong result => move |_| {
@@ -123,6 +123,8 @@ where
         }));
 
         result.window.set_transient_for(Some(parent));
+
+        result.show_performers();
 
         result
     }
