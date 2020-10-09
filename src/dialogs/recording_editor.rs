@@ -19,6 +19,7 @@ where
     save_button: gtk::Button,
     work_label: gtk::Label,
     work: RefCell<Option<WorkDescription>>,
+    comment_entry: gtk::Entry,
     performers: RefCell<Vec<PerformanceDescription>>,
     performer_list: gtk::ListBox,
 }
@@ -41,6 +42,7 @@ where
         get_widget!(builder, gtk::Button, save_button);
         get_widget!(builder, gtk::Button, work_button);
         get_widget!(builder, gtk::Label, work_label);
+        get_widget!(builder, gtk::Entry, comment_entry);
         get_widget!(builder, gtk::ListBox, performer_list);
         get_widget!(builder, gtk::Button, add_performer_button);
         get_widget!(builder, gtk::Button, remove_performer_button);
@@ -61,6 +63,7 @@ where
             save_button: save_button,
             work_label: work_label,
             work: RefCell::new(work),
+            comment_entry: comment_entry,
             performers: RefCell::new(performers),
             performer_list: performer_list,
         });
@@ -72,6 +75,18 @@ where
         result
             .save_button
             .connect_clicked(clone!(@strong result => move |_| {
+                let recording = RecordingDescription {
+                    id: result.id,
+                    work: result.work.borrow().clone().expect("Tried to create recording without work!"),
+                    comment: result.comment_entry.get_text().to_string(),
+                    performances: result.performers.borrow().to_vec(),
+                };
+    
+                result.backend.update_recording(recording.clone().into(), clone!(@strong result => move |_| {
+                    result.window.close();
+                    (result.callback)(recording.clone());
+                }));
+    
                 result.window.close();
             }));
 

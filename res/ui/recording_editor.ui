@@ -54,7 +54,7 @@
               </packing>
             </child>
             <child>
-              <object class="GtkEntry" id="comment_button">
+              <object class="GtkEntry" id="comment_entry">
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
               </object>
