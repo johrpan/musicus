@@ -33,7 +33,14 @@ pub struct Window {
     work_list: gtk::ListBox,
     recording_box: gtk::Box,
     recording_list: gtk::ListBox,
+    actions_revealer: gtk::Revealer,
+    edit_button: gtk::Button,
+    delete_button: gtk::Button,
     person_list_row_activated_handler_id: Cell<Option<glib::SignalHandlerId>>,
+    work_list_row_activated_handler_id: Cell<Option<glib::SignalHandlerId>>,
+    recording_list_row_activated_handler_id: Cell<Option<glib::SignalHandlerId>>,
+    edit_button_clicked_handler_id: Cell<Option<glib::SignalHandlerId>>,
+    delete_button_clicked_handler_id: Cell<Option<glib::SignalHandlerId>>,
 }
 
 impl Window {
@@ -55,6 +62,9 @@ impl Window {
         get_widget!(builder, gtk::ListBox, work_list);
         get_widget!(builder, gtk::Box, recording_box);
         get_widget!(builder, gtk::ListBox, recording_list);
+        get_widget!(builder, gtk::Revealer, actions_revealer);
+        get_widget!(builder, gtk::Button, edit_button);
+        get_widget!(builder, gtk::Button, delete_button);
 
         let backend = Backend::new("test.sqlite");
 
@@ -73,7 +83,14 @@ impl Window {
             work_list: work_list,
             recording_box: recording_box,
             recording_list: recording_list,
+            actions_revealer: actions_revealer,
+            edit_button: edit_button,
+            delete_button: delete_button,
             person_list_row_activated_handler_id: Cell::new(None),
+            work_list_row_activated_handler_id: Cell::new(None),
+            recording_list_row_activated_handler_id: Cell::new(None),
+            edit_button_clicked_handler_id: Cell::new(None),
+            delete_button_clicked_handler_id: Cell::new(None),
         });
 
         action!(
@@ -184,7 +201,8 @@ impl Window {
                     .get_persons(clone!(@strong self as self_ => move |persons| {
                         self_.clone().set_state(Persons(persons));
                     }));
-
+                
+                self.actions_revealer.set_reveal_child(false);
                 self.sidebar_stack.set_visible_child_name("loading");
                 self.stack.set_visible_child_name("empty_screen");
                 self.leaflet.set_visible_child_name("sidebar");
@@ -233,6 +251,8 @@ impl Window {
                     }),
                 )));
 
+
+                self.actions_revealer.set_reveal_child(false);
                 self.sidebar_stack.set_visible_child_name("persons_list");
                 self.stack.set_visible_child_name("empty_screen");
                 self.leaflet.set_visible_child_name("sidebar");
@@ -270,6 +290,7 @@ impl Window {
                     }),
                 );
 
+                self.actions_revealer.set_reveal_child(false);
                 self.content_stack.set_visible_child_name("loading");
                 self.stack.set_visible_child_name("person_screen");
                 self.leaflet.set_visible_child_name("content");
@@ -297,6 +318,56 @@ impl Window {
                     row.show_all();
                     self.work_list.insert(&row, -1);
                 }
+
+                match self.work_list_row_activated_handler_id.take() {
+                    Some(id) => self.work_list.disconnect(id),
+                    None => (),
+                }
+
+                let handler_id = self.work_list.connect_row_activated(
+                    clone!(@strong self as self_, @strong works => move |_, row| {
+                        self_.recording_list.unselect_all();
+
+                        let row = row.get_child().unwrap().downcast::<SelectorRow>().unwrap();
+                        let index: usize = row.get_index().try_into().unwrap();
+                        let work = works[index].clone();
+
+                        match self_.edit_button_clicked_handler_id.take() {
+                            Some(id) => self_.edit_button.disconnect(id),
+                            None => (),
+                        }
+        
+                        let handler_id = self_.edit_button.connect_clicked(
+                            clone!(@strong self_ => move |_| {
+                                WorkEditor::new(self_.backend.clone(), &self_.window, Some(work.clone()), clone!(@strong self_ => move |_| {
+                                        self_.clone().set_state(Loading);
+                                    })).show();
+                            }),
+                        );
+        
+                        self_.edit_button_clicked_handler_id
+                            .set(Some(handler_id));
+
+                        match self_.delete_button_clicked_handler_id.take() {
+                            Some(id) => self_.delete_button.disconnect(id),
+                            None => (),
+                        }
+        
+                        let handler_id = self_.delete_button.connect_clicked(
+                            clone!(@strong self_ => move |_| {
+                               // self_.backend.delete_work(work.id);
+                            }),
+                        );
+        
+                        self_.delete_button_clicked_handler_id
+                            .set(Some(handler_id));
+
+                        self_.actions_revealer.set_reveal_child(true);
+                    }),
+                );
+
+                self.work_list_row_activated_handler_id
+                    .set(Some(handler_id));
 
                 if recordings.is_empty() {
                     self.recording_box.hide();
@@ -328,6 +399,56 @@ impl Window {
                     self.recording_list.insert(&row, -1);
                 }
 
+                match self.recording_list_row_activated_handler_id.take() {
+                    Some(id) => self.recording_list.disconnect(id),
+                    None => (),
+                }
+
+                let handler_id = self.recording_list.connect_row_activated(
+                    clone!(@strong self as self_, @strong recordings => move |_, row| {
+                        self_.work_list.unselect_all();
+
+                        let row = row.get_child().unwrap().downcast::<SelectorRow>().unwrap();
+                        let index: usize = row.get_index().try_into().unwrap();
+                        let recording = recordings[index].clone();
+
+                        match self_.edit_button_clicked_handler_id.take() {
+                            Some(id) => self_.edit_button.disconnect(id),
+                            None => (),
+                        }
+        
+                        let handler_id = self_.edit_button.connect_clicked(
+                            clone!(@strong self_ => move |_| {
+                                RecordingEditor::new(self_.backend.clone(), &self_.window, Some(recording.clone()), clone!(@strong self_ => move |_| {
+                                        self_.clone().set_state(Loading);
+                                    })).show();
+                            }),
+                        );
+        
+                        self_.edit_button_clicked_handler_id
+                            .set(Some(handler_id));
+
+                        match self_.delete_button_clicked_handler_id.take() {
+                            Some(id) => self_.delete_button.disconnect(id),
+                            None => (),
+                        }
+        
+                        let handler_id = self_.delete_button.connect_clicked(
+                            clone!(@strong self_ => move |_| {
+                               // self_.backend.delete_recording(recording.id);
+                            }),
+                        );
+        
+                        self_.delete_button_clicked_handler_id
+                            .set(Some(handler_id));
+
+                        self_.actions_revealer.set_reveal_child(true);
+                    }),
+                );
+
+                self.recording_list_row_activated_handler_id
+                    .set(Some(handler_id));
+
                 self.content_stack.set_visible_child_name("content");
                 self.stack.set_visible_child_name("person_screen");
                 self.leaflet.set_visible_child_name("content");
@@ -336,6 +457,7 @@ impl Window {
     }
 
     fn back(&self) {
+        self.actions_revealer.set_reveal_child(false);
         self.stack.set_visible_child_name("empty_screen");
         self.leaflet.set_visible_child_name("sidebar");
     }
