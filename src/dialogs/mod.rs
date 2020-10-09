@@ -24,3 +24,6 @@ pub use selector_row::*;
 
 pub mod work_editor;
 pub use work_editor::*;
+
+pub mod work_selector;
+pub use work_selector::*;

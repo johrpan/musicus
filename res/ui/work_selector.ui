@@ -1,0 +1,351 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Generated with glade 3.38.1 -->
+<interface>
+  <requires lib="gtk+" version="3.22" />
+  <requires lib="libhandy" version="1.0" />
+  <object class="HdyWindow" id="window">
+    <property name="can-focus">False</property>
+    <property name="default-width">600</property>
+    <property name="default-height">424</property>
+    <property name="modal">True</property>
+    <property name="destroy-with-parent">True</property>
+    <property name="type-hint">dialog</property>
+    <child>
+      <object class="HdyLeaflet" id="leaflet">
+        <property name="visible">True</property>
+        <property name="can-focus">False</property>
+        <property name="visible-child">sidebar_box</property>
+        <property name="can-swipe-back">True</property>
+        <child>
+          <object class="GtkBox" id="sidebar_box">
+            <property name="width-request">225</property>
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <property name="hexpand">False</property>
+            <property name="orientation">vertical</property>
+            <child>
+              <object class="HdyHeaderBar" id="left_header">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="show-close-button">True</property>
+                <child>
+                  <object class="GtkButton" id="add_button">
+                    <property name="visible">True</property>
+                    <property name="can-focus">True</property>
+                    <property name="receives-default">True</property>
+                    <child>
+                      <object class="GtkImage">
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="icon-name">list-add-symbolic</property>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">0</property>
+              </packing>
+            </child>
+            <child>
+              <object class="HdySearchBar">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="search-mode-enabled">True</property>
+                <child>
+                  <object class="HdyClamp">
+                    <property name="visible">True</property>
+                    <property name="can-focus">False</property>
+                    <property name="maximum-size">400</property>
+                    <child>
+                      <object class="GtkSearchEntry" id="person_search_entry">
+                        <property name="visible">True</property>
+                        <property name="can-focus">True</property>
+                        <property name="primary-icon-name">edit-find-symbolic</property>
+                        <property name="primary-icon-activatable">False</property>
+                        <property name="primary-icon-sensitive">False</property>
+                        <property name="placeholder-text" translatable="yes">Search persons …</property>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">1</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkStack" id="sidebar_stack">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="transition-type">crossfade</property>
+                <child>
+                  <object class="GtkSpinner">
+                    <property name="visible">True</property>
+                    <property name="can-focus">False</property>
+                    <property name="active">True</property>
+                  </object>
+                  <packing>
+                    <property name="name">loading</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkScrolledWindow">
+                    <property name="visible">True</property>
+                    <property name="can-focus">True</property>
+                    <child>
+                      <object class="GtkViewport">
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="shadow-type">none</property>
+                        <child>
+                          <object class="GtkListBox" id="person_list">
+                            <property name="visible">True</property>
+                            <property name="can-focus">False</property>
+                            <child type="placeholder">
+                              <object class="GtkLabel">
+                                <property name="visible">True</property>
+                                <property name="can-focus">False</property>
+                                <property name="label" translatable="yes">No persons found.</property>
+                              </object>
+                            </child>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+                  </object>
+                  <packing>
+                    <property name="name">persons_list</property>
+                    <property name="position">1</property>
+                  </packing>
+                </child>
+              </object>
+              <packing>
+                <property name="expand">True</property>
+                <property name="fill">True</property>
+                <property name="position">2</property>
+              </packing>
+            </child>
+          </object>
+          <packing>
+            <property name="name">sidebar</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkSeparator">
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <property name="orientation">vertical</property>
+            <style>
+              <class name="sidebar" />
+            </style>
+          </object>
+          <packing>
+            <property name="navigatable">False</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkStack" id="stack">
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <property name="hexpand">True</property>
+            <property name="transition-type">crossfade</property>
+            <child>
+              <object class="GtkBox" id="empty_screen">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="orientation">vertical</property>
+                <child>
+                  <object class="HdyHeaderBar" id="empty_header">
+                    <property name="visible">True</property>
+                    <property name="can-focus">False</property>
+                    <property name="hexpand">True</property>
+                    <property name="title" translatable="yes">Select work</property>
+                    <property name="show-close-button">True</property>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="position">0</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkLabel">
+                    <property name="visible">True</property>
+                    <property name="can-focus">False</property>
+                    <property name="label" translatable="yes">Select a composer on the left.</property>
+                  </object>
+                  <packing>
+                    <property name="expand">True</property>
+                    <property name="fill">True</property>
+                    <property name="position">1</property>
+                  </packing>
+                </child>
+              </object>
+              <packing>
+                <property name="name">empty_screen</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkBox">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="orientation">vertical</property>
+                <child>
+                  <object class="HdyHeaderBar" id="header">
+                    <property name="visible">True</property>
+                    <property name="can-focus">False</property>
+                    <property name="show-close-button">True</property>
+                    <child>
+                      <object class="GtkRevealer">
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="transition-type">crossfade</property>
+                        <property name="transition-duration" bind-source="leaflet" bind-property="mode-transition-duration" bind-flags="bidirectional|sync-create">0</property>
+                        <property name="reveal-child" bind-source="leaflet" bind-property="folded" bind-flags="sync-create">False</property>
+                        <child>
+                          <object class="GtkButton" id="back_button">
+                            <property name="visible">True</property>
+                            <property name="can-focus">True</property>
+                            <property name="receives-default">True</property>
+                            <child>
+                              <object class="GtkImage">
+                                <property name="visible">True</property>
+                                <property name="can-focus">False</property>
+                                <property name="icon-name">go-previous-symbolic</property>
+                              </object>
+                            </child>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkToggleButton" id="search_button">
+                        <property name="visible">True</property>
+                        <property name="can-focus">True</property>
+                        <property name="receives-default">True</property>
+                        <child>
+                          <object class="GtkImage">
+                            <property name="visible">True</property>
+                            <property name="can-focus">False</property>
+                            <property name="icon-name">edit-find-symbolic</property>
+                          </object>
+                        </child>
+                      </object>
+                      <packing>
+                        <property name="pack-type">end</property>
+                        <property name="position">1</property>
+                      </packing>
+                    </child>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="position">0</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="HdySearchBar">
+                    <property name="visible">True</property>
+                    <property name="can-focus">False</property>
+                    <property name="search-mode-enabled" bind-source="search_button" bind-property="active" bind-flags="bidirectional|sync-create">False</property>
+                    <child>
+                      <object class="HdyClamp">
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="maximum-size">400</property>
+                        <child>
+                          <object class="GtkSearchEntry" id="search_entry">
+                            <property name="visible">True</property>
+                            <property name="can-focus">True</property>
+                            <property name="primary-icon-name">edit-find-symbolic</property>
+                            <property name="primary-icon-activatable">False</property>
+                            <property name="primary-icon-sensitive">False</property>
+                            <property name="placeholder-text" translatable="yes">Search works …</property>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="position">1</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkStack" id="content_stack">
+                    <property name="visible">True</property>
+                    <property name="can-focus">False</property>
+                    <property name="transition-type">crossfade</property>
+                    <child>
+                      <object class="GtkSpinner">
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="active">True</property>
+                      </object>
+                      <packing>
+                        <property name="name">loading</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkScrolledWindow">
+                        <property name="visible">True</property>
+                        <property name="can-focus">True</property>
+                        <child>
+                          <object class="GtkViewport">
+                            <property name="visible">True</property>
+                            <property name="can-focus">False</property>
+                            <property name="shadow-type">none</property>
+                            <child>
+                              <object class="GtkListBox" id="work_list">
+                                <property name="visible">True</property>
+                                <property name="can-focus">False</property>
+                              </object>
+                            </child>
+                          </object>
+                        </child>
+                      </object>
+                      <packing>
+                        <property name="name">content</property>
+                        <property name="position">1</property>
+                      </packing>
+                    </child>
+                  </object>
+                  <packing>
+                    <property name="expand">True</property>
+                    <property name="fill">True</property>
+                    <property name="position">2</property>
+                  </packing>
+                </child>
+              </object>
+              <packing>
+                <property name="name">person_screen</property>
+                <property name="position">1</property>
+              </packing>
+            </child>
+          </object>
+          <packing>
+            <property name="name">content</property>
+          </packing>
+        </child>
+      </object>
+    </child>
+  </object>
+  <object class="HdyHeaderGroup" id="inner_header_group">
+    <headerbars>
+      <headerbar name="empty_header" />
+      <headerbar name="header" />
+    </headerbars>
+  </object>
+  <object class="HdyHeaderGroup">
+    <headerbars>
+      <headerbar name="left_header" />
+      <headerbar name="inner_header_group" />
+    </headerbars>
+  </object>
+</interface>

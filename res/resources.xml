@@ -10,5 +10,6 @@
         <file preprocess="xml-stripblanks">ui/section_editor.ui</file>
         <file preprocess="xml-stripblanks">ui/window.ui</file>
         <file preprocess="xml-stripblanks">ui/work_editor.ui</file>
+        <file preprocess="xml-stripblanks">ui/work_selector.ui</file>
     </gresource>
 </gresources>
