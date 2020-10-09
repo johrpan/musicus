@@ -150,7 +150,7 @@ impl Database {
                 .expect("Failed to load instrumentations!")
                 .iter()
                 .map(|instrumentation| {
-                    self.get_instrument(instrumentation.id)
+                    self.get_instrument(instrumentation.instrument)
                         .expect("Could not find instrument for instrumentation!")
                 })
                 .collect(),
@@ -174,7 +174,7 @@ impl Database {
                         .expect("Failed to load part instrumentations!")
                         .iter()
                         .map(|part_instrumentation| {
-                            self.get_instrument(part_instrumentation.id)
+                            self.get_instrument(part_instrumentation.instrument)
                                 .expect("Could not find instrument for part instrumentation!")
                         })
                         .collect(),
