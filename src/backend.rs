@@ -17,6 +17,7 @@ enum BackendAction {
     DeleteEnsemble(i64, Sender<Result<(), String>>),
     GetEnsembles(Sender<Vec<Ensemble>>),
     UpdateRecording(RecordingInsertion, Sender<Result<(), String>>),
+    GetRecordingsForPerson(i64, Sender<Vec<RecordingDescription>>),
 }
 
 use BackendAction::*;
@@ -124,6 +125,12 @@ impl Backend {
                         db.update_recording(recording);
                         sender
                             .send(Ok(()))
+                            .expect("Failed to send result from database thread!");
+                    }
+                    GetRecordingsForPerson(id, sender) => {
+                        let recordings = db.get_recordings_for_person(id);
+                        sender
+                            .send(recordings)
                             .expect("Failed to send result from database thread!");
                     }
                 }
@@ -369,6 +376,24 @@ impl Backend {
 
         self.action_sender
             .send(UpdateRecording(recording, sender))
+            .expect("Failed to send action to database thread!");
+    }
+
+    pub fn get_recordings_for_person<F: Fn(Vec<RecordingDescription>) -> () + 'static>(
+        &self,
+        id: i64,
+        callback: F,
+    ) {
+        let (sender, receiver) =
+            glib::MainContext::channel::<Vec<RecordingDescription>>(glib::PRIORITY_DEFAULT);
+
+        receiver.attach(None, move |result| {
+            callback(result);
+            glib::Continue(true)
+        });
+
+        self.action_sender
+            .send(GetRecordingsForPerson(id, sender))
             .expect("Failed to send action to database thread!");
     }
 }

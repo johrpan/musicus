@@ -135,6 +135,18 @@ pub struct RecordingDescription {
     pub performances: Vec<PerformanceDescription>,
 }
 
+impl RecordingDescription {
+    pub fn get_performers(&self) -> String {
+        let texts: Vec<String> = self
+            .performances
+            .iter()
+            .map(|performance| performance.get_title())
+            .collect();
+
+        texts.join(", ")
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct RecordingInsertion {
     pub recording: Recording,

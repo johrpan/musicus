@@ -260,7 +260,12 @@ impl Window {
                 self.backend.get_work_descriptions(
                     person.id,
                     clone!(@strong self as self_ => move |works| {
-                        self_.clone().set_state(Person(works, Vec::new()));
+                        self_.backend.get_recordings_for_person(
+                            person.id,
+                            clone!(@strong self_ => move |recordings| {
+                                self_.clone().set_state(Person(works.clone(), recordings));
+                            }),
+                        );
                     }),
                 );
 
@@ -271,6 +276,10 @@ impl Window {
             Person(works, recordings) => {
                 for child in self.work_list.get_children() {
                     self.work_list.remove(&child);
+                }
+
+                for child in self.recording_list.get_children() {
+                    self.recording_list.remove(&child);
                 }
 
                 if works.is_empty() {
@@ -291,6 +300,28 @@ impl Window {
                     self.recording_box.hide();
                 } else {
                     self.recording_box.show();
+                }
+
+                for (index, recording) in recordings.iter().enumerate() {
+                    let work_label = gtk::Label::new(Some(&format!(
+                        "{}: {}",
+                        recording.work.composer.name_fl(),
+                        recording.work.title
+                    )));
+
+                    work_label.set_halign(gtk::Align::Start);
+
+                    let performers_label = gtk::Label::new(Some(&recording.get_performers()));
+                    performers_label.set_opacity(0.5);
+                    performers_label.set_halign(gtk::Align::Start);
+
+                    let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
+                    vbox.add(&work_label);
+                    vbox.add(&performers_label);
+
+                    let row = SelectorRow::new(index.try_into().unwrap(), &vbox);
+                    row.show_all();
+                    self.recording_list.insert(&row, -1);
                 }
 
                 self.content_stack.set_visible_child_name("content");
