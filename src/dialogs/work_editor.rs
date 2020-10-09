@@ -319,6 +319,9 @@ where
 
         result.window.set_transient_for(Some(parent));
 
+        result.show_instruments();
+        result.show_parts();
+
         result
     }
 
