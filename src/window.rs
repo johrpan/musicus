@@ -124,9 +124,15 @@ impl Window {
             })
         );
 
-        action!(result.window, "add-recording", |_, _| {
-            println!("TODO: Add recording.");
-        });
+        action!(
+            result.window,
+            "add-recording",
+            clone!(@strong result => move |_, _| {
+                RecordingEditor::new(result.backend.clone(), &result.window, None, clone!(@strong result => move |_| {
+                    result.clone().set_state(Loading);
+                })).show();
+            })
+        );
 
         action!(
             result.window,

@@ -9,6 +9,7 @@
         <file preprocess="xml-stripblanks">ui/performance_editor.ui</file>
         <file preprocess="xml-stripblanks">ui/person_editor.ui</file>
         <file preprocess="xml-stripblanks">ui/person_selector.ui</file>
+        <file preprocess="xml-stripblanks">ui/recording_editor.ui</file>
         <file preprocess="xml-stripblanks">ui/section_editor.ui</file>
         <file preprocess="xml-stripblanks">ui/window.ui</file>
         <file preprocess="xml-stripblanks">ui/work_editor.ui</file>
