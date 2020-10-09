@@ -1,6 +1,9 @@
 pub mod ensemble_editor;
 pub use ensemble_editor::*;
 
+pub mod ensemble_selector;
+pub use ensemble_selector::*;
+
 pub mod instrument_editor;
 pub use instrument_editor::*;
 
