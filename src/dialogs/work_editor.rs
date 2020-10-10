@@ -105,6 +105,7 @@ where
 
         let composer = RefCell::new(match work.clone() {
             Some(work) => {
+                composer_label.set_text(&work.composer.name_fl());
                 save_button.set_sensitive(true);
                 Some(work.composer)
             }
