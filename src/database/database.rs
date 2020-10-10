@@ -24,9 +24,13 @@ impl Database {
     }
 
     pub fn update_person(&self, person: Person) {
-        diesel::replace_into(persons::table)
-            .values(person)
-            .execute(&self.c)
+        self.defer_foreign_keys();
+        self.c
+            .transaction(|| {
+                diesel::replace_into(persons::table)
+                    .values(person)
+                    .execute(&self.c)
+            })
             .expect("Failed to insert person!");
     }
 
@@ -52,9 +56,13 @@ impl Database {
     }
 
     pub fn update_instrument(&self, instrument: Instrument) {
-        diesel::replace_into(instruments::table)
-            .values(instrument)
-            .execute(&self.c)
+        self.defer_foreign_keys();
+        self.c
+            .transaction(|| {
+                diesel::replace_into(instruments::table)
+                    .values(instrument)
+                    .execute(&self.c)
+            })
             .expect("Failed to insert instrument!");
     }
 
@@ -82,50 +90,52 @@ impl Database {
     pub fn update_work(&self, work_insertion: WorkInsertion) {
         let id = work_insertion.work.id;
 
-        self.delete_work(id);
+        self.defer_foreign_keys();
+        self.c
+            .transaction(|| {
+                self.delete_work(id);
 
-        diesel::insert_into(works::table)
-            .values(work_insertion.work)
-            .execute(&self.c)
-            .expect("Failed to insert work!");
+                diesel::insert_into(works::table)
+                    .values(work_insertion.work)
+                    .execute(&self.c)?;
 
-        for instrument_id in work_insertion.instrument_ids {
-            diesel::insert_into(instrumentations::table)
-                .values(Instrumentation {
-                    id: rand::random(),
-                    work: id,
-                    instrument: instrument_id,
-                })
-                .execute(&self.c)
-                .expect("Failed to insert instrumentation!");
-        }
+                for instrument_id in work_insertion.instrument_ids {
+                    diesel::insert_into(instrumentations::table)
+                        .values(Instrumentation {
+                            id: rand::random(),
+                            work: id,
+                            instrument: instrument_id,
+                        })
+                        .execute(&self.c)?;
+                }
 
-        for part_insertion in work_insertion.parts {
-            let part_id = part_insertion.part.id;
+                for part_insertion in work_insertion.parts {
+                    let part_id = part_insertion.part.id;
 
-            diesel::insert_into(work_parts::table)
-                .values(part_insertion.part)
-                .execute(&self.c)
-                .expect("Failed to insert work part!");
+                    diesel::insert_into(work_parts::table)
+                        .values(part_insertion.part)
+                        .execute(&self.c)?;
 
-            for instrument_id in part_insertion.instrument_ids {
-                diesel::insert_into(part_instrumentations::table)
-                    .values(PartInstrumentation {
-                        id: rand::random(),
-                        work_part: part_id,
-                        instrument: instrument_id,
-                    })
-                    .execute(&self.c)
-                    .expect("Failed to insert part instrumentation!");
-            }
-        }
+                    for instrument_id in part_insertion.instrument_ids {
+                        diesel::insert_into(part_instrumentations::table)
+                            .values(PartInstrumentation {
+                                id: rand::random(),
+                                work_part: part_id,
+                                instrument: instrument_id,
+                            })
+                            .execute(&self.c)?;
+                    }
+                }
 
-        for section in work_insertion.sections {
-            diesel::insert_into(work_sections::table)
-                .values(section)
-                .execute(&self.c)
-                .expect("Failed to insert work section!");
-        }
+                for section in work_insertion.sections {
+                    diesel::insert_into(work_sections::table)
+                        .values(section)
+                        .execute(&self.c)?;
+                }
+
+                diesel::result::QueryResult::Ok(())
+            })
+            .expect("Failed to update work!");
     }
 
     pub fn get_work(&self, id: i64) -> Option<Work> {
@@ -221,9 +231,13 @@ impl Database {
     }
 
     pub fn update_ensemble(&self, ensemble: Ensemble) {
-        diesel::replace_into(ensembles::table)
-            .values(ensemble)
-            .execute(&self.c)
+        self.defer_foreign_keys();
+        self.c
+            .transaction(|| {
+                diesel::replace_into(ensembles::table)
+                    .values(ensemble)
+                    .execute(&self.c)
+            })
             .expect("Failed to insert ensemble!");
     }
 
@@ -251,19 +265,24 @@ impl Database {
     pub fn update_recording(&self, recording_insertion: RecordingInsertion) {
         let id = recording_insertion.recording.id;
 
-        self.delete_recording(id);
+        self.defer_foreign_keys();
+        self.c
+            .transaction(|| {
+                self.delete_recording(id);
 
-        diesel::insert_into(recordings::table)
-            .values(recording_insertion.recording)
-            .execute(&self.c)
-            .expect("Failed to insert recording!");
+                diesel::insert_into(recordings::table)
+                    .values(recording_insertion.recording)
+                    .execute(&self.c)?;
 
-        for performance in recording_insertion.performances {
-            diesel::insert_into(performances::table)
-                .values(performance)
-                .execute(&self.c)
-                .expect("Failed to insert performance!");
-        }
+                for performance in recording_insertion.performances {
+                    diesel::insert_into(performances::table)
+                        .values(performance)
+                        .execute(&self.c)?;
+                }
+
+                diesel::result::QueryResult::Ok(())
+            })
+            .expect("Failed to insert performance!");
     }
 
     pub fn get_recording(&self, id: i64) -> Option<Recording> {
@@ -341,5 +360,11 @@ impl Database {
             .filter(recordings::work.eq(work_id))
             .load::<Recording>(&self.c)
             .expect("Error loading recordings!")
+    }
+
+    fn defer_foreign_keys(&self) {
+        diesel::sql_query("PRAGMA defer_foreign_keys = ON;")
+            .execute(&self.c)
+            .expect("Failed to enable defer_foreign_keys_pragma!");
     }
 }

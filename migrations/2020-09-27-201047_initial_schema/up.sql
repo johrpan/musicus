@@ -56,7 +56,7 @@ CREATE TABLE recordings (
 CREATE TABLE performances (
     id BIGINT NOT NULL PRIMARY KEY,
     recording BIGINT NOT NULL REFERENCES recordings(id) ON DELETE CASCADE,
-    person BIGINT REFERENCES persons(id) ON DELETE CASCADE,
-    ensemble BIGINT REFERENCES ensembles(id) ON DELETE CASCADE,
+    person BIGINT REFERENCES persons(id),
+    ensemble BIGINT REFERENCES ensembles(id),
     role BIGINT REFERENCES instruments(id)
 );
