@@ -45,6 +45,7 @@ where
         get_widget!(builder, gtk::Entry, comment_entry);
         get_widget!(builder, gtk::ListBox, performer_list);
         get_widget!(builder, gtk::Button, add_performer_button);
+        get_widget!(builder, gtk::Button, edit_performer_button);
         get_widget!(builder, gtk::Button, remove_performer_button);
 
         let (id, work, performers) = match recording {
@@ -107,6 +108,23 @@ where
                 
                 result.show_performers();
             })).show();
+        }));
+
+        edit_performer_button.connect_clicked(clone!(@strong result => move |_| {
+            let row = result.get_selected_performer_row();
+            match row {
+                Some(row) => {
+                    let index = row.get_index();
+                    let index: usize = index.try_into().unwrap();
+                    let performer = result.performers.borrow()[index].clone();
+    
+                    PerformanceEditor::new(result.backend.clone(), &result.window, Some(performer), clone!(@strong result => move |performer| {
+                        result.performers.borrow_mut()[index] = performer;
+                        result.show_performers();
+                    })).show();
+                }
+                None => (),
+            }
         }));
 
         remove_performer_button.connect_clicked(clone!(@strong result => move |_| {
