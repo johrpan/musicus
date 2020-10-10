@@ -7,19 +7,21 @@ use gtk::prelude::*;
 use gtk_macros::{action, get_widget};
 use libhandy::prelude::*;
 use libhandy::HeaderBarExt;
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::convert::TryInto;
 use std::rc::Rc;
 
+#[derive(Clone)]
 enum WindowState {
     Loading,
     Persons(Vec<Person>),
     PersonLoading(Person),
-    Person(Vec<WorkDescription>, Vec<RecordingDescription>),
+    Person(Vec<WorkDescription>, Vec<RecordingDescription>, String),
 }
 
 pub struct Window {
     window: libhandy::ApplicationWindow,
+    state: RefCell<WindowState>,
     backend: Rc<Backend>,
     leaflet: libhandy::Leaflet,
     sidebar_stack: gtk::Stack,
@@ -28,6 +30,7 @@ pub struct Window {
     stack: gtk::Stack,
     header: libhandy::HeaderBar,
     header_menu_button: gtk::MenuButton,
+    search_entry: gtk::SearchEntry,
     content_stack: gtk::Stack,
     work_box: gtk::Box,
     work_list: gtk::ListBox,
@@ -57,6 +60,7 @@ impl Window {
         get_widget!(builder, gtk::Stack, stack);
         get_widget!(builder, libhandy::HeaderBar, header);
         get_widget!(builder, gtk::MenuButton, header_menu_button);
+        get_widget!(builder, gtk::SearchEntry, search_entry);
         get_widget!(builder, gtk::Stack, content_stack);
         get_widget!(builder, gtk::Box, work_box);
         get_widget!(builder, gtk::ListBox, work_list);
@@ -70,6 +74,7 @@ impl Window {
 
         let result = Rc::new(Window {
             window: window,
+            state: RefCell::new(Loading),
             backend: Rc::new(backend),
             leaflet: leaflet,
             sidebar_stack: sidebar_stack,
@@ -78,6 +83,7 @@ impl Window {
             stack: stack,
             header: header,
             header_menu_button: header_menu_button,
+            search_entry: search_entry,
             content_stack: content_stack,
             work_box: work_box,
             work_list: work_list,
@@ -182,6 +188,15 @@ impl Window {
                 result.person_list.invalidate_filter();
             }));
 
+        result.search_entry.connect_search_changed(clone!(@strong result => move |_| {
+            match result.get_state() {
+                Person(works, recordings, _) => {
+                    result.clone().set_state(Person(works.clone(), recordings.clone(), result.search_entry.get_text().to_string()));
+                }
+                _ => (),
+            }
+        }));
+
         result.window.set_application(Some(app));
         result.clone().set_state(Loading);
 
@@ -192,8 +207,14 @@ impl Window {
         self.window.present();
     }
 
+    fn get_state(&self) -> WindowState {
+        self.state.borrow().clone()
+    }
+
     fn set_state(self: Rc<Self>, state: WindowState) {
         use WindowState::*;
+
+        self.state.replace(state.clone());
 
         match state {
             Loading => {
@@ -259,6 +280,7 @@ impl Window {
             }
             PersonLoading(person) => {
                 self.header.set_title(Some(&person.name_fl()));
+                self.search_entry.set_text("");
 
                 let edit_menu_item = gio::MenuItem::new(Some("Edit person"), None);
                 edit_menu_item.set_action_and_target_value(
@@ -284,7 +306,7 @@ impl Window {
                         self_.backend.get_recordings_for_person(
                             person.id,
                             clone!(@strong self_ => move |recordings| {
-                                self_.clone().set_state(Person(works.clone(), recordings));
+                                self_.clone().set_state(Person(works.clone(), recordings, String::from("")));
                             }),
                         );
                     }),
@@ -295,7 +317,7 @@ impl Window {
                 self.stack.set_visible_child_name("person_screen");
                 self.leaflet.set_visible_child_name("content");
             }
-            Person(works, recordings) => {
+            Person(works, recordings, search) => {
                 for child in self.work_list.get_children() {
                     self.work_list.remove(&child);
                 }
@@ -311,12 +333,14 @@ impl Window {
                 }
 
                 for (index, work) in works.iter().enumerate() {
-                    let label = gtk::Label::new(Some(&work.title));
-                    label.set_ellipsize(pango::EllipsizeMode::End);
-                    label.set_halign(gtk::Align::Start);
-                    let row = SelectorRow::new(index.try_into().unwrap(), &label);
-                    row.show_all();
-                    self.work_list.insert(&row, -1);
+                    if search.is_empty() || work.title.to_lowercase().contains(&search) {
+                        let label = gtk::Label::new(Some(&work.title));
+                        label.set_ellipsize(pango::EllipsizeMode::End); 
+                        label.set_halign(gtk::Align::Start);
+                        let row = SelectorRow::new(index.try_into().unwrap(), &label);
+                        row.show_all();
+                        self.work_list.insert(&row, -1);
+                    }
                 }
 
                 match self.work_list_row_activated_handler_id.take() {
@@ -376,27 +400,28 @@ impl Window {
                 }
 
                 for (index, recording) in recordings.iter().enumerate() {
-                    let work_label = gtk::Label::new(Some(&format!(
-                        "{}: {}",
-                        recording.work.composer.name_fl(),
-                        recording.work.title
-                    )));
+                    let work_text = format!("{}: {}", recording.work.composer.name_fl(), recording.work.title);
+                    let performers_text = recording.get_performers();
 
-                    work_label.set_ellipsize(pango::EllipsizeMode::End);
-                    work_label.set_halign(gtk::Align::Start);
+                    if search.is_empty() || (work_text.to_lowercase().contains(&search) || performers_text.to_lowercase().contains(&search)) {
+                        let work_label = gtk::Label::new(Some(&work_text));
 
-                    let performers_label = gtk::Label::new(Some(&recording.get_performers()));
-                    performers_label.set_ellipsize(pango::EllipsizeMode::End);
-                    performers_label.set_opacity(0.5);
-                    performers_label.set_halign(gtk::Align::Start);
+                        work_label.set_ellipsize(pango::EllipsizeMode::End);
+                        work_label.set_halign(gtk::Align::Start);
 
-                    let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
-                    vbox.add(&work_label);
-                    vbox.add(&performers_label);
+                        let performers_label = gtk::Label::new(Some(&performers_text));
+                        performers_label.set_ellipsize(pango::EllipsizeMode::End);
+                        performers_label.set_opacity(0.5);
+                        performers_label.set_halign(gtk::Align::Start);
 
-                    let row = SelectorRow::new(index.try_into().unwrap(), &vbox);
-                    row.show_all();
-                    self.recording_list.insert(&row, -1);
+                        let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
+                        vbox.add(&work_label);
+                        vbox.add(&performers_label);
+
+                        let row = SelectorRow::new(index.try_into().unwrap(), &vbox);
+                        row.show_all();
+                        self.recording_list.insert(&row, -1);
+                    }
                 }
 
                 match self.recording_list_row_activated_handler_id.take() {

@@ -432,6 +432,17 @@
                                               <object class="GtkListBox" id="work_list">
                                                 <property name="visible">True</property>
                                                 <property name="can-focus">False</property>
+                                                <child type="placeholder">
+                                                  <object class="GtkLabel">
+                                                    <property name="visible">True</property>
+                                                    <property name="can-focus">False</property>
+                                                    <property name="margin_top">6</property>
+                                                    <property name="margin_bottom">6</property>
+                                                    <property name="margin_start">6</property>
+                                                    <property name="margin_end">6</property>
+                                                    <property name="label" translatable="yes">No works found.</property>
+                                                  </object>
+                                                </child>
                                               </object>
                                             </child>
                                           </object>
@@ -480,6 +491,17 @@
                                               <object class="GtkListBox" id="recording_list">
                                                 <property name="visible">True</property>
                                                 <property name="can-focus">False</property>
+                                                <child type="placeholder">
+                                                  <object class="GtkLabel">
+                                                    <property name="visible">True</property>
+                                                    <property name="can-focus">False</property>
+                                                    <property name="margin_top">6</property>
+                                                    <property name="margin_bottom">6</property>
+                                                    <property name="margin_start">6</property>
+                                                    <property name="margin_end">6</property>
+                                                    <property name="label" translatable="yes">No recordings found.</property>
+                                                  </object>
+                                                </child>
                                               </object>
                                             </child>
                                           </object>
