@@ -12,11 +12,27 @@ use std::convert::TryInto;
 use std::rc::Rc;
 
 #[derive(Clone)]
+enum PersonOrEnsemble {
+    Person(Person),
+    Ensemble(Ensemble),
+}
+
+impl PersonOrEnsemble {
+    pub fn get_title(&self) -> String {
+        match self {
+            PersonOrEnsemble::Person(person) => person.name_lf(),
+            PersonOrEnsemble::Ensemble(ensemble) => ensemble.name.clone(),
+        }
+    }
+}
+
+#[derive(Clone)]
 enum WindowState {
     Loading,
-    Persons(Vec<Person>),
+    Selection(Vec<PersonOrEnsemble>),
     PersonLoading(Person),
-    Person(Vec<WorkDescription>, Vec<RecordingDescription>, String),
+    EnsembleLoading(Ensemble),
+    Selected(Vec<WorkDescription>, Vec<RecordingDescription>, String),
 }
 
 pub struct Window {
@@ -26,7 +42,7 @@ pub struct Window {
     leaflet: libhandy::Leaflet,
     sidebar_stack: gtk::Stack,
     person_search_entry: gtk::SearchEntry,
-    person_list: gtk::ListBox,
+    sidebar_list: gtk::ListBox,
     stack: gtk::Stack,
     header: libhandy::HeaderBar,
     header_menu_button: gtk::MenuButton,
@@ -56,7 +72,7 @@ impl Window {
         get_widget!(builder, libhandy::Leaflet, leaflet);
         get_widget!(builder, gtk::SearchEntry, person_search_entry);
         get_widget!(builder, gtk::Stack, sidebar_stack);
-        get_widget!(builder, gtk::ListBox, person_list);
+        get_widget!(builder, gtk::ListBox, sidebar_list);
         get_widget!(builder, gtk::Stack, stack);
         get_widget!(builder, libhandy::HeaderBar, header);
         get_widget!(builder, gtk::MenuButton, header_menu_button);
@@ -78,7 +94,7 @@ impl Window {
             backend: Rc::new(backend),
             leaflet: leaflet,
             sidebar_stack: sidebar_stack,
-            person_list: person_list,
+            sidebar_list: sidebar_list,
             person_search_entry: person_search_entry,
             stack: stack,
             header: header,
@@ -182,16 +198,41 @@ impl Window {
             })
         );
 
+        action!(
+            result.window,
+            "edit-ensemble",
+            Some(glib::VariantTy::new("x").unwrap()),
+            clone!(@strong result => move |_, id| {
+                result.backend.get_ensemble(id.unwrap().get().unwrap(), clone!(@strong result => move |ensemble| {
+                    let ensemble = ensemble.unwrap();
+                    EnsembleEditor::new(result.backend.clone(), &result.window, Some(ensemble), clone!(@strong result => move |_| {
+                        result.clone().set_state(Loading);
+                    })).show();
+                }));
+            })
+        );
+
+        action!(
+            result.window,
+            "delete-ensemble",
+            Some(glib::VariantTy::new("x").unwrap()),
+            clone!(@strong result => move |_, id| {
+                result.backend.delete_ensemble(id.unwrap().get().unwrap(), clone!(@strong result => move |_| {
+                    result.clone().set_state(Loading);
+                }));
+            })
+        );
+
         result
             .person_search_entry
             .connect_search_changed(clone!(@strong result => move |_| {
-                result.person_list.invalidate_filter();
+                result.sidebar_list.invalidate_filter();
             }));
 
         result.search_entry.connect_search_changed(clone!(@strong result => move |_| {
             match result.get_state() {
-                Person(works, recordings, _) => {
-                    result.clone().set_state(Person(works.clone(), recordings.clone(), result.search_entry.get_text().to_string()));
+                Selected(works, recordings, _) => {
+                    result.clone().set_state(Selected(works.clone(), recordings.clone(), result.search_entry.get_text().to_string()));
                 }
                 _ => (),
             }
@@ -220,7 +261,19 @@ impl Window {
             Loading => {
                 self.backend
                     .get_persons(clone!(@strong self as self_ => move |persons| {
-                        self_.clone().set_state(Persons(persons));
+                        self_.backend.get_ensembles(clone!(@strong self_ => move |ensembles| {
+                            let mut poes: Vec<PersonOrEnsemble> = Vec::new();
+
+                            for person in &persons {
+                                poes.push(PersonOrEnsemble::Person(person.clone()));
+                            }
+
+                            for ensemble in &ensembles {
+                                poes.push(PersonOrEnsemble::Ensemble(ensemble.clone()));
+                            }
+
+                            self_.clone().set_state(Selection(poes));
+                        }));
                     }));
                 
                 self.actions_revealer.set_reveal_child(false);
@@ -228,45 +281,48 @@ impl Window {
                 self.stack.set_visible_child_name("empty_screen");
                 self.leaflet.set_visible_child_name("sidebar");
             }
-            Persons(persons) => {
-                for child in self.person_list.get_children() {
-                    self.person_list.remove(&child);
+            Selection(poes) => {
+                for child in self.sidebar_list.get_children() {
+                    self.sidebar_list.remove(&child);
                 }
 
-                for (index, person) in persons.iter().enumerate() {
-                    let label = gtk::Label::new(Some(&person.name_lf()));
+                for (index, poe) in poes.iter().enumerate() {
+                    let label = gtk::Label::new(Some(&poe.get_title()));
                     label.set_ellipsize(pango::EllipsizeMode::End);
                     label.set_halign(gtk::Align::Start);
                     let row = SelectorRow::new(index.try_into().unwrap(), &label);
                     row.show_all();
-                    self.person_list.insert(&row, -1);
+                    self.sidebar_list.insert(&row, -1);
                 }
 
                 match self.person_list_row_activated_handler_id.take() {
-                    Some(id) => self.person_list.disconnect(id),
+                    Some(id) => self.sidebar_list.disconnect(id),
                     None => (),
                 }
 
-                let handler_id = self.person_list.connect_row_activated(
-                    clone!(@strong self as self_, @strong persons => move |_, row| {
+                let handler_id = self.sidebar_list.connect_row_activated(
+                    clone!(@strong self as self_, @strong poes => move |_, row| {
                         let row = row.get_child().unwrap().downcast::<SelectorRow>().unwrap();
                         let index: usize = row.get_index().try_into().unwrap();
-                        let person = persons[index].clone();
-                        self_.clone().set_state(PersonLoading(person));
+                        let poe = poes[index].clone();
+                        self_.clone().set_state(match poe {
+                            PersonOrEnsemble::Person(person) => PersonLoading(person),
+                            PersonOrEnsemble::Ensemble(ensemble) => EnsembleLoading(ensemble),
+                        });
                     }),
                 );
 
                 self.person_list_row_activated_handler_id
                     .set(Some(handler_id));
 
-                self.person_list.set_filter_func(Some(Box::new(
-                    clone!(@strong self as self_, @strong persons => move |row| {
+                self.sidebar_list.set_filter_func(Some(Box::new(
+                    clone!(@strong self as self_, @strong poes => move |row| {
                         let row = row.get_child().unwrap().downcast::<SelectorRow>().unwrap();
                         let index: usize = row.get_index().try_into().unwrap();
                         let search = self_.person_search_entry.get_text().to_string().to_lowercase();
 
-                        search.is_empty() || persons[index]
-                            .name_lf()
+                        search.is_empty() || poes[index]
+                            .get_title()
                             .to_lowercase()
                             .contains(&search)
                     }),
@@ -306,7 +362,7 @@ impl Window {
                         self_.backend.get_recordings_for_person(
                             person.id,
                             clone!(@strong self_ => move |recordings| {
-                                self_.clone().set_state(Person(works.clone(), recordings, String::from("")));
+                                self_.clone().set_state(Selected(works.clone(), recordings, String::from("")));
                             }),
                         );
                     }),
@@ -317,7 +373,41 @@ impl Window {
                 self.stack.set_visible_child_name("person_screen");
                 self.leaflet.set_visible_child_name("content");
             }
-            Person(works, recordings, search) => {
+            EnsembleLoading(ensemble) => {
+                self.header.set_title(Some(&ensemble.name));
+                self.search_entry.set_text("");
+
+                let edit_menu_item = gio::MenuItem::new(Some("Edit ensemble"), None);
+                edit_menu_item.set_action_and_target_value(
+                    Some("win.edit-ensemble"),
+                    Some(&glib::Variant::from(ensemble.id)),
+                );
+
+                let delete_menu_item = gio::MenuItem::new(Some("Delete ensemble"), None);
+                delete_menu_item.set_action_and_target_value(
+                    Some("win.delete-ensemble"),
+                    Some(&glib::Variant::from(ensemble.id)),
+                );
+
+                let menu = gio::Menu::new();
+                menu.append_item(&edit_menu_item);
+                menu.append_item(&delete_menu_item);
+
+                self.header_menu_button.set_menu_model(Some(&menu));
+
+                self.backend.get_recordings_for_ensemble(
+                    ensemble.id,
+                    clone!(@strong self as self_ => move |recordings| {
+                        self_.clone().set_state(Selected(Vec::new(), recordings, String::from("")));
+                    }),
+                );
+
+                self.actions_revealer.set_reveal_child(false);
+                self.content_stack.set_visible_child_name("loading");
+                self.stack.set_visible_child_name("person_screen");
+                self.leaflet.set_visible_child_name("content");
+            }
+            Selected(works, recordings, search) => {
                 for child in self.work_list.get_children() {
                     self.work_list.remove(&child);
                 }

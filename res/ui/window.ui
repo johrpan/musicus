@@ -121,7 +121,7 @@
                         <property name="can-focus">False</property>
                         <property name="shadow-type">none</property>
                         <child>
-                          <object class="GtkListBox" id="person_list">
+                          <object class="GtkListBox" id="sidebar_list">
                             <property name="visible">True</property>
                             <property name="can-focus">False</property>
                             <child type="placeholder">

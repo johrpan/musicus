@@ -349,6 +349,21 @@ impl Database {
             .collect()
     }
 
+    pub fn get_recordings_for_ensemble(&self, id: i64) -> Vec<RecordingDescription> {
+        let recordings = recordings::table
+            .inner_join(performances::table.on(performances::recording.eq(recordings::id)))
+            .inner_join(ensembles::table.on(ensembles::id.nullable().eq(performances::ensemble)))
+            .filter(ensembles::id.eq(id))
+            .select(recordings::table::all_columns())
+            .load::<Recording>(&self.c)
+            .expect("Error loading recordings for ensemble!");
+
+        recordings
+            .iter()
+            .map(|recording| self.get_recording_description_for_recording(recording.clone()))
+            .collect()
+    }
+
     pub fn delete_recording(&self, id: i64) {
         diesel::delete(recordings::table.filter(recordings::id.eq(id)))
             .execute(&self.c)
