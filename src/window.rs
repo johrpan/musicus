@@ -30,9 +30,15 @@ impl PersonOrEnsemble {
 enum WindowState {
     Loading,
     Selection(Vec<PersonOrEnsemble>),
-    PersonLoading(Person),
-    EnsembleLoading(Ensemble),
-    Selected(Vec<WorkDescription>, Vec<RecordingDescription>, String),
+    OverviewScreenLoading(PersonOrEnsemble),
+    OverviewScreen(
+        PersonOrEnsemble,
+        Vec<WorkDescription>,
+        Vec<RecordingDescription>,
+        String,
+    ),
+    WorkScreenLoading(PersonOrEnsemble, WorkDescription),
+    RecordingScreenLoading(PersonOrEnsemble, RecordingDescription),
 }
 
 pub struct Window {
@@ -43,23 +49,22 @@ pub struct Window {
     sidebar_stack: gtk::Stack,
     person_search_entry: gtk::SearchEntry,
     sidebar_list: gtk::ListBox,
-    stack: gtk::Stack,
-    header: libhandy::HeaderBar,
-    header_menu_button: gtk::MenuButton,
-    search_entry: gtk::SearchEntry,
-    content_stack: gtk::Stack,
-    work_box: gtk::Box,
-    work_list: gtk::ListBox,
-    recording_box: gtk::Box,
-    recording_list: gtk::ListBox,
-    actions_revealer: gtk::Revealer,
-    edit_button: gtk::Button,
-    delete_button: gtk::Button,
-    person_list_row_activated_handler_id: Cell<Option<glib::SignalHandlerId>>,
-    work_list_row_activated_handler_id: Cell<Option<glib::SignalHandlerId>>,
-    recording_list_row_activated_handler_id: Cell<Option<glib::SignalHandlerId>>,
-    edit_button_clicked_handler_id: Cell<Option<glib::SignalHandlerId>>,
-    delete_button_clicked_handler_id: Cell<Option<glib::SignalHandlerId>>,
+    main_stack: gtk::Stack,
+    overview_header: libhandy::HeaderBar,
+    overview_header_menu_button: gtk::MenuButton,
+    overview_search_entry: gtk::SearchEntry,
+    overview_stack: gtk::Stack,
+    overview_work_box: gtk::Box,
+    overview_work_list: gtk::ListBox,
+    overview_recording_box: gtk::Box,
+    overview_recording_list: gtk::ListBox,
+    work_details_header: libhandy::HeaderBar,
+    work_details_stack: gtk::Stack,
+    recording_details_header: libhandy::HeaderBar,
+    recording_details_stack: gtk::Stack,
+    sidebar_list_row_activated_handler_id: Cell<Option<glib::SignalHandlerId>>,
+    overview_work_list_row_activated_handler_id: Cell<Option<glib::SignalHandlerId>>,
+    overview_recording_list_row_activated_handler_id: Cell<Option<glib::SignalHandlerId>>,
 }
 
 impl Window {
@@ -73,18 +78,21 @@ impl Window {
         get_widget!(builder, gtk::SearchEntry, person_search_entry);
         get_widget!(builder, gtk::Stack, sidebar_stack);
         get_widget!(builder, gtk::ListBox, sidebar_list);
-        get_widget!(builder, gtk::Stack, stack);
-        get_widget!(builder, libhandy::HeaderBar, header);
-        get_widget!(builder, gtk::MenuButton, header_menu_button);
-        get_widget!(builder, gtk::SearchEntry, search_entry);
-        get_widget!(builder, gtk::Stack, content_stack);
-        get_widget!(builder, gtk::Box, work_box);
-        get_widget!(builder, gtk::ListBox, work_list);
-        get_widget!(builder, gtk::Box, recording_box);
-        get_widget!(builder, gtk::ListBox, recording_list);
-        get_widget!(builder, gtk::Revealer, actions_revealer);
-        get_widget!(builder, gtk::Button, edit_button);
-        get_widget!(builder, gtk::Button, delete_button);
+        get_widget!(builder, gtk::Stack, main_stack);
+        get_widget!(builder, libhandy::HeaderBar, overview_header);
+        get_widget!(builder, gtk::MenuButton, overview_header_menu_button);
+        get_widget!(builder, gtk::SearchEntry, overview_search_entry);
+        get_widget!(builder, gtk::Stack, overview_stack);
+        get_widget!(builder, gtk::Box, overview_work_box);
+        get_widget!(builder, gtk::ListBox, overview_work_list);
+        get_widget!(builder, gtk::Box, overview_recording_box);
+        get_widget!(builder, gtk::ListBox, overview_recording_list);
+        get_widget!(builder, libhandy::HeaderBar, work_details_header);
+        get_widget!(builder, gtk::Button, work_details_back_button);
+        get_widget!(builder, gtk::Stack, work_details_stack);
+        get_widget!(builder, libhandy::HeaderBar, recording_details_header);
+        get_widget!(builder, gtk::Button, recording_details_back_button);
+        get_widget!(builder, gtk::Stack, recording_details_stack);
 
         let backend = Backend::new("test.sqlite");
 
@@ -96,23 +104,22 @@ impl Window {
             sidebar_stack: sidebar_stack,
             sidebar_list: sidebar_list,
             person_search_entry: person_search_entry,
-            stack: stack,
-            header: header,
-            header_menu_button: header_menu_button,
-            search_entry: search_entry,
-            content_stack: content_stack,
-            work_box: work_box,
-            work_list: work_list,
-            recording_box: recording_box,
-            recording_list: recording_list,
-            actions_revealer: actions_revealer,
-            edit_button: edit_button,
-            delete_button: delete_button,
-            person_list_row_activated_handler_id: Cell::new(None),
-            work_list_row_activated_handler_id: Cell::new(None),
-            recording_list_row_activated_handler_id: Cell::new(None),
-            edit_button_clicked_handler_id: Cell::new(None),
-            delete_button_clicked_handler_id: Cell::new(None),
+            main_stack: main_stack,
+            overview_header: overview_header,
+            overview_header_menu_button: overview_header_menu_button,
+            overview_search_entry: overview_search_entry,
+            overview_stack: overview_stack,
+            overview_work_box: overview_work_box,
+            overview_work_list: overview_work_list,
+            overview_recording_box: overview_recording_box,
+            overview_recording_list: overview_recording_list,
+            work_details_header: work_details_header,
+            work_details_stack: work_details_stack,
+            recording_details_header: recording_details_header,
+            recording_details_stack: recording_details_stack,
+            sidebar_list_row_activated_handler_id: Cell::new(None),
+            overview_work_list_row_activated_handler_id: Cell::new(None),
+            overview_recording_list_row_activated_handler_id: Cell::new(None),
         });
 
         action!(
@@ -229,11 +236,29 @@ impl Window {
                 result.sidebar_list.invalidate_filter();
             }));
 
-        result.search_entry.connect_search_changed(clone!(@strong result => move |_| {
+        result.overview_search_entry.connect_search_changed(clone!(@strong result => move |_| {
             match result.get_state() {
-                Selected(works, recordings, _) => {
-                    result.clone().set_state(Selected(works.clone(), recordings.clone(), result.search_entry.get_text().to_string()));
-                }
+                OverviewScreen(poe, works, recordings, _) => {
+                    result.clone().set_state(OverviewScreen(poe, works.clone(), recordings.clone(), result.overview_search_entry.get_text().to_string()));
+                },
+                _ => (),
+            }
+        }));
+
+        work_details_back_button.connect_clicked(clone!(@strong result => move |_| {
+            match result.get_state() {
+                WorkScreenLoading(poe, _) => {
+                    result.clone().set_state(OverviewScreenLoading(poe));
+                },
+                _ => (),
+            }
+        }));
+
+        recording_details_back_button.connect_clicked(clone!(@strong result => move |_| {
+            match result.get_state() {
+                RecordingScreenLoading(poe, _) => {
+                    result.clone().set_state(OverviewScreenLoading(poe));
+                },
                 _ => (),
             }
         }));
@@ -275,10 +300,9 @@ impl Window {
                             self_.clone().set_state(Selection(poes));
                         }));
                     }));
-                
-                self.actions_revealer.set_reveal_child(false);
+
                 self.sidebar_stack.set_visible_child_name("loading");
-                self.stack.set_visible_child_name("empty_screen");
+                self.main_stack.set_visible_child_name("empty_screen");
                 self.leaflet.set_visible_child_name("sidebar");
             }
             Selection(poes) => {
@@ -295,7 +319,7 @@ impl Window {
                     self.sidebar_list.insert(&row, -1);
                 }
 
-                match self.person_list_row_activated_handler_id.take() {
+                match self.sidebar_list_row_activated_handler_id.take() {
                     Some(id) => self.sidebar_list.disconnect(id),
                     None => (),
                 }
@@ -305,14 +329,11 @@ impl Window {
                         let row = row.get_child().unwrap().downcast::<SelectorRow>().unwrap();
                         let index: usize = row.get_index().try_into().unwrap();
                         let poe = poes[index].clone();
-                        self_.clone().set_state(match poe {
-                            PersonOrEnsemble::Person(person) => PersonLoading(person),
-                            PersonOrEnsemble::Ensemble(ensemble) => EnsembleLoading(ensemble),
-                        });
+                        self_.clone().set_state(OverviewScreenLoading(poe));
                     }),
                 );
 
-                self.person_list_row_activated_handler_id
+                self.sidebar_list_row_activated_handler_id
                     .set(Some(handler_id));
 
                 self.sidebar_list.set_filter_func(Some(Box::new(
@@ -328,172 +349,141 @@ impl Window {
                     }),
                 )));
 
-
-                self.actions_revealer.set_reveal_child(false);
-                self.sidebar_stack.set_visible_child_name("persons_list");
-                self.stack.set_visible_child_name("empty_screen");
+                self.sidebar_stack.set_visible_child_name("content");
+                self.main_stack.set_visible_child_name("empty_screen");
                 self.leaflet.set_visible_child_name("sidebar");
             }
-            PersonLoading(person) => {
-                self.header.set_title(Some(&person.name_fl()));
-                self.search_entry.set_text("");
+            OverviewScreenLoading(poe) => {
+                match poe.clone() {
+                    PersonOrEnsemble::Person(person) => {
+                        self.overview_header.set_title(Some(&person.name_fl()));
 
-                let edit_menu_item = gio::MenuItem::new(Some("Edit person"), None);
-                edit_menu_item.set_action_and_target_value(
-                    Some("win.edit-person"),
-                    Some(&glib::Variant::from(person.id)),
-                );
+                        let edit_menu_item = gio::MenuItem::new(Some("Edit person"), None);
+                        edit_menu_item.set_action_and_target_value(
+                            Some("win.edit-person"),
+                            Some(&glib::Variant::from(person.id)),
+                        );
 
-                let delete_menu_item = gio::MenuItem::new(Some("Delete person"), None);
-                delete_menu_item.set_action_and_target_value(
-                    Some("win.delete-person"),
-                    Some(&glib::Variant::from(person.id)),
-                );
+                        let delete_menu_item = gio::MenuItem::new(Some("Delete person"), None);
+                        delete_menu_item.set_action_and_target_value(
+                            Some("win.delete-person"),
+                            Some(&glib::Variant::from(person.id)),
+                        );
 
-                let menu = gio::Menu::new();
-                menu.append_item(&edit_menu_item);
-                menu.append_item(&delete_menu_item);
+                        let menu = gio::Menu::new();
+                        menu.append_item(&edit_menu_item);
+                        menu.append_item(&delete_menu_item);
 
-                self.header_menu_button.set_menu_model(Some(&menu));
+                        self.overview_header_menu_button.set_menu_model(Some(&menu));
 
-                self.backend.get_work_descriptions(
-                    person.id,
-                    clone!(@strong self as self_ => move |works| {
-                        self_.backend.get_recordings_for_person(
+                        self.backend.get_work_descriptions(
                             person.id,
-                            clone!(@strong self_ => move |recordings| {
-                                self_.clone().set_state(Selected(works.clone(), recordings, String::from("")));
+                            clone!(@strong self as self_, @strong poe => move |works| {
+                                self_.backend.get_recordings_for_person(
+                                    person.id,
+                                    clone!(@strong self_, @strong poe => move |recordings| {
+                                        self_.clone().set_state(OverviewScreen(poe.clone(), works.clone(), recordings, String::from("")));
+                                    }),
+                                );
                             }),
                         );
-                    }),
-                );
+                    }
+                    PersonOrEnsemble::Ensemble(ensemble) => {
+                        self.overview_header.set_title(Some(&ensemble.name));
 
-                self.actions_revealer.set_reveal_child(false);
-                self.content_stack.set_visible_child_name("loading");
-                self.stack.set_visible_child_name("person_screen");
-                self.leaflet.set_visible_child_name("content");
-            }
-            EnsembleLoading(ensemble) => {
-                self.header.set_title(Some(&ensemble.name));
-                self.search_entry.set_text("");
+                        let edit_menu_item = gio::MenuItem::new(Some("Edit ensemble"), None);
+                        edit_menu_item.set_action_and_target_value(
+                            Some("win.edit-ensemble"),
+                            Some(&glib::Variant::from(ensemble.id)),
+                        );
 
-                let edit_menu_item = gio::MenuItem::new(Some("Edit ensemble"), None);
-                edit_menu_item.set_action_and_target_value(
-                    Some("win.edit-ensemble"),
-                    Some(&glib::Variant::from(ensemble.id)),
-                );
+                        let delete_menu_item = gio::MenuItem::new(Some("Delete ensemble"), None);
+                        delete_menu_item.set_action_and_target_value(
+                            Some("win.delete-ensemble"),
+                            Some(&glib::Variant::from(ensemble.id)),
+                        );
 
-                let delete_menu_item = gio::MenuItem::new(Some("Delete ensemble"), None);
-                delete_menu_item.set_action_and_target_value(
-                    Some("win.delete-ensemble"),
-                    Some(&glib::Variant::from(ensemble.id)),
-                );
+                        let menu = gio::Menu::new();
+                        menu.append_item(&edit_menu_item);
+                        menu.append_item(&delete_menu_item);
 
-                let menu = gio::Menu::new();
-                menu.append_item(&edit_menu_item);
-                menu.append_item(&delete_menu_item);
+                        self.overview_header_menu_button.set_menu_model(Some(&menu));
 
-                self.header_menu_button.set_menu_model(Some(&menu));
-
-                self.backend.get_recordings_for_ensemble(
-                    ensemble.id,
-                    clone!(@strong self as self_ => move |recordings| {
-                        self_.clone().set_state(Selected(Vec::new(), recordings, String::from("")));
-                    }),
-                );
-
-                self.actions_revealer.set_reveal_child(false);
-                self.content_stack.set_visible_child_name("loading");
-                self.stack.set_visible_child_name("person_screen");
-                self.leaflet.set_visible_child_name("content");
-            }
-            Selected(works, recordings, search) => {
-                for child in self.work_list.get_children() {
-                    self.work_list.remove(&child);
+                        self.backend.get_recordings_for_ensemble(
+                            ensemble.id,
+                            clone!(@strong self as self_ => move |recordings| {
+                                self_.clone().set_state(OverviewScreen(poe.clone(), Vec::new(), recordings, String::from("")));
+                            }),
+                        );
+                    }
                 }
 
-                for child in self.recording_list.get_children() {
-                    self.recording_list.remove(&child);
+                self.overview_search_entry.set_text("");
+
+                self.overview_stack.set_visible_child_name("loading");
+                self.main_stack.set_visible_child_name("overview_screen");
+                self.leaflet.set_visible_child_name("content");
+            }
+            OverviewScreen(poe, works, recordings, search) => {
+                for child in self.overview_work_list.get_children() {
+                    self.overview_work_list.remove(&child);
+                }
+
+                for child in self.overview_recording_list.get_children() {
+                    self.overview_recording_list.remove(&child);
                 }
 
                 if works.is_empty() {
-                    self.work_box.hide();
+                    self.overview_work_box.hide();
                 } else {
-                    self.work_box.show();
+                    self.overview_work_box.show();
                 }
 
                 for (index, work) in works.iter().enumerate() {
                     if search.is_empty() || work.title.to_lowercase().contains(&search) {
                         let label = gtk::Label::new(Some(&work.title));
-                        label.set_ellipsize(pango::EllipsizeMode::End); 
+                        label.set_ellipsize(pango::EllipsizeMode::End);
                         label.set_halign(gtk::Align::Start);
                         let row = SelectorRow::new(index.try_into().unwrap(), &label);
                         row.show_all();
-                        self.work_list.insert(&row, -1);
+                        self.overview_work_list.insert(&row, -1);
                     }
                 }
 
-                match self.work_list_row_activated_handler_id.take() {
-                    Some(id) => self.work_list.disconnect(id),
+                match self.overview_work_list_row_activated_handler_id.take() {
+                    Some(id) => self.overview_work_list.disconnect(id),
                     None => (),
                 }
 
-                let handler_id = self.work_list.connect_row_activated(
-                    clone!(@strong self as self_, @strong works => move |_, row| {
-                        self_.recording_list.unselect_all();
+                let handler_id = self.overview_work_list.connect_row_activated(
+                    clone!(@strong self as self_, @strong works, @strong poe => move |_, row| {
+                        self_.overview_recording_list.unselect_all();
 
                         let row = row.get_child().unwrap().downcast::<SelectorRow>().unwrap();
                         let index: usize = row.get_index().try_into().unwrap();
                         let work = works[index].clone();
 
-                        match self_.edit_button_clicked_handler_id.take() {
-                            Some(id) => self_.edit_button.disconnect(id),
-                            None => (),
-                        }
-        
-                        let handler_id = self_.edit_button.connect_clicked(
-                            clone!(@strong self_ => move |_| {
-                                WorkEditor::new(self_.backend.clone(), &self_.window, Some(work.clone()), clone!(@strong self_ => move |_| {
-                                        self_.clone().set_state(Loading);
-                                    })).show();
-                            }),
-                        );
-        
-                        self_.edit_button_clicked_handler_id
-                            .set(Some(handler_id));
-
-                        match self_.delete_button_clicked_handler_id.take() {
-                            Some(id) => self_.delete_button.disconnect(id),
-                            None => (),
-                        }
-        
-                        let handler_id = self_.delete_button.connect_clicked(
-                            clone!(@strong self_ => move |_| {
-                               // self_.backend.delete_work(work.id);
-                            }),
-                        );
-        
-                        self_.delete_button_clicked_handler_id
-                            .set(Some(handler_id));
-
-                        self_.actions_revealer.set_reveal_child(true);
+                        self_.clone().set_state(WorkScreenLoading(poe.clone(), work));
                     }),
                 );
 
-                self.work_list_row_activated_handler_id
+                self.overview_work_list_row_activated_handler_id
                     .set(Some(handler_id));
 
                 if recordings.is_empty() {
-                    self.recording_box.hide();
+                    self.overview_recording_box.hide();
                 } else {
-                    self.recording_box.show();
+                    self.overview_recording_box.show();
                 }
 
                 for (index, recording) in recordings.iter().enumerate() {
-                    let work_text = format!("{}: {}", recording.work.composer.name_fl(), recording.work.title);
+                    let work_text = recording.work.get_title();
                     let performers_text = recording.get_performers();
 
-                    if search.is_empty() || (work_text.to_lowercase().contains(&search) || performers_text.to_lowercase().contains(&search)) {
+                    if search.is_empty()
+                        || (work_text.to_lowercase().contains(&search)
+                            || performers_text.to_lowercase().contains(&search))
+                    {
                         let work_label = gtk::Label::new(Some(&work_text));
 
                         work_label.set_ellipsize(pango::EllipsizeMode::End);
@@ -510,70 +500,61 @@ impl Window {
 
                         let row = SelectorRow::new(index.try_into().unwrap(), &vbox);
                         row.show_all();
-                        self.recording_list.insert(&row, -1);
+                        self.overview_recording_list.insert(&row, -1);
                     }
                 }
 
-                match self.recording_list_row_activated_handler_id.take() {
-                    Some(id) => self.recording_list.disconnect(id),
+                match self.overview_recording_list_row_activated_handler_id.take() {
+                    Some(id) => self.overview_recording_list.disconnect(id),
                     None => (),
                 }
 
-                let handler_id = self.recording_list.connect_row_activated(
-                    clone!(@strong self as self_, @strong recordings => move |_, row| {
-                        self_.work_list.unselect_all();
+                let handler_id = self.overview_recording_list.connect_row_activated(
+                    clone!(@strong self as self_, @strong recordings, @strong poe => move |_, row| {
+                        self_.overview_work_list.unselect_all();
 
                         let row = row.get_child().unwrap().downcast::<SelectorRow>().unwrap();
                         let index: usize = row.get_index().try_into().unwrap();
                         let recording = recordings[index].clone();
 
-                        match self_.edit_button_clicked_handler_id.take() {
-                            Some(id) => self_.edit_button.disconnect(id),
-                            None => (),
-                        }
-        
-                        let handler_id = self_.edit_button.connect_clicked(
-                            clone!(@strong self_ => move |_| {
-                                RecordingEditor::new(self_.backend.clone(), &self_.window, Some(recording.clone()), clone!(@strong self_ => move |_| {
-                                        self_.clone().set_state(Loading);
-                                    })).show();
-                            }),
-                        );
-        
-                        self_.edit_button_clicked_handler_id
-                            .set(Some(handler_id));
-
-                        match self_.delete_button_clicked_handler_id.take() {
-                            Some(id) => self_.delete_button.disconnect(id),
-                            None => (),
-                        }
-        
-                        let handler_id = self_.delete_button.connect_clicked(
-                            clone!(@strong self_ => move |_| {
-                               // self_.backend.delete_recording(recording.id);
-                            }),
-                        );
-        
-                        self_.delete_button_clicked_handler_id
-                            .set(Some(handler_id));
-
-                        self_.actions_revealer.set_reveal_child(true);
+                        self_.clone().set_state(RecordingScreenLoading(poe.clone(), recording));
                     }),
                 );
 
-                self.recording_list_row_activated_handler_id
+                self.overview_recording_list_row_activated_handler_id
                     .set(Some(handler_id));
 
-                self.content_stack.set_visible_child_name("content");
-                self.stack.set_visible_child_name("person_screen");
+                self.overview_stack.set_visible_child_name("content");
+                self.main_stack.set_visible_child_name("overview_screen");
+                self.leaflet.set_visible_child_name("content");
+            }
+            WorkScreenLoading(poe, work) => {
+                self.work_details_header
+                    .set_title(Some(&work.composer.name_fl()));
+                self.work_details_header.set_subtitle(Some(&work.title));
+
+                self.work_details_stack.set_visible_child_name("loading");
+                self.main_stack
+                    .set_visible_child_name("work_details_screen");
+                self.leaflet.set_visible_child_name("content");
+            }
+            RecordingScreenLoading(poe, recording) => {
+                self.recording_details_header
+                    .set_title(Some(&recording.work.get_title()));
+                self.recording_details_header
+                    .set_subtitle(Some(&recording.get_performers()));
+
+                self.recording_details_stack
+                    .set_visible_child_name("loading");
+                self.main_stack
+                    .set_visible_child_name("recording_details_screen");
                 self.leaflet.set_visible_child_name("content");
             }
         }
     }
 
     fn back(&self) {
-        self.actions_revealer.set_reveal_child(false);
-        self.stack.set_visible_child_name("empty_screen");
+        self.main_stack.set_visible_child_name("empty_screen");
         self.leaflet.set_visible_child_name("sidebar");
     }
 }

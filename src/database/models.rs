@@ -24,6 +24,12 @@ pub struct WorkDescription {
     pub sections: Vec<WorkSectionDescription>,
 }
 
+impl WorkDescription {
+    pub fn get_title(&self) -> String {
+        format!("{}: {}", self.composer.name_fl(), self.title)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct WorkPartInsertion {
     pub part: WorkPart,

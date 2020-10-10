@@ -21,7 +21,7 @@
             <property name="hexpand">False</property>
             <property name="orientation">vertical</property>
             <child>
-              <object class="HdyHeaderBar" id="left_header">
+              <object class="HdyHeaderBar" id="sidebar_header">
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
                 <property name="show-close-button">True</property>
@@ -128,7 +128,7 @@
                               <object class="GtkLabel">
                                 <property name="visible">True</property>
                                 <property name="can-focus">False</property>
-                                <property name="label" translatable="yes">No persons found.</property>
+                                <property name="label" translatable="yes">No persons or ensembles found.</property>
                               </object>
                             </child>
                           </object>
@@ -137,7 +137,7 @@
                     </child>
                   </object>
                   <packing>
-                    <property name="name">persons_list</property>
+                    <property name="name">content</property>
                     <property name="position">1</property>
                   </packing>
                 </child>
@@ -167,13 +167,13 @@
           </packing>
         </child>
         <child>
-          <object class="GtkStack" id="stack">
+          <object class="GtkStack" id="main_stack">
             <property name="visible">True</property>
             <property name="can-focus">False</property>
             <property name="hexpand">True</property>
             <property name="transition-type">crossfade</property>
             <child>
-              <object class="GtkBox" id="empty_screen">
+              <object class="GtkBox">
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
                 <property name="orientation">vertical</property>
@@ -263,7 +263,7 @@
                 <property name="can-focus">False</property>
                 <property name="orientation">vertical</property>
                 <child>
-                  <object class="HdyHeaderBar" id="header">
+                  <object class="HdyHeaderBar" id="overview_header">
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
                     <property name="show-close-button">True</property>
@@ -275,7 +275,7 @@
                         <property name="transition-duration" bind-source="leaflet" bind-property="mode-transition-duration" bind-flags="bidirectional|sync-create">0</property>
                         <property name="reveal-child" bind-source="leaflet" bind-property="folded" bind-flags="sync-create">False</property>
                         <child>
-                          <object class="GtkButton" id="back_button">
+                          <object class="GtkButton" id="overview_back_button">
                             <property name="visible">True</property>
                             <property name="can-focus">True</property>
                             <property name="receives-default">True</property>
@@ -292,7 +292,7 @@
                       </object>
                     </child>
                     <child>
-                      <object class="GtkMenuButton" id="header_menu_button">
+                      <object class="GtkMenuButton" id="overview_header_menu_button">
                         <property name="visible">True</property>
                         <property name="can-focus">True</property>
                         <property name="focus-on-click">False</property>
@@ -311,7 +311,7 @@
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkToggleButton" id="search_button">
+                      <object class="GtkToggleButton" id="overview_search_button">
                         <property name="visible">True</property>
                         <property name="can-focus">True</property>
                         <property name="receives-default">True</property>
@@ -339,14 +339,14 @@
                   <object class="HdySearchBar">
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
-                    <property name="search-mode-enabled" bind-source="search_button" bind-property="active" bind-flags="bidirectional|sync-create">False</property>
+                    <property name="search-mode-enabled" bind-source="overview_search_button" bind-property="active" bind-flags="bidirectional|sync-create">False</property>
                     <child>
                       <object class="HdyClamp">
                         <property name="visible">True</property>
                         <property name="can-focus">False</property>
                         <property name="maximum-size">400</property>
                         <child>
-                          <object class="GtkSearchEntry" id="search_entry">
+                          <object class="GtkSearchEntry" id="overview_search_entry">
                             <property name="visible">True</property>
                             <property name="can-focus">True</property>
                             <property name="primary-icon-name">edit-find-symbolic</property>
@@ -365,7 +365,7 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkStack" id="content_stack">
+                  <object class="GtkStack" id="overview_stack">
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
                     <property name="transition-type">crossfade</property>
@@ -380,78 +380,36 @@
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkBox">
+                      <object class="GtkScrolledWindow">
                         <property name="visible">True</property>
-                        <property name="can-focus">False</property>
-                        <property name="orientation">vertical</property>
+                        <property name="can-focus">True</property>
                         <child>
-                          <object class="GtkScrolledWindow">
+                          <object class="GtkViewport">
                             <property name="visible">True</property>
-                            <property name="can-focus">True</property>
+                            <property name="can-focus">False</property>
+                            <property name="shadow-type">none</property>
                             <child>
-                              <object class="GtkViewport">
+                              <object class="GtkBox">
                                 <property name="visible">True</property>
                                 <property name="can-focus">False</property>
-                                <property name="shadow-type">none</property>
+                                <property name="border-width">18</property>
+                                <property name="orientation">vertical</property>
+                                <property name="spacing">18</property>
                                 <child>
-                                  <object class="GtkBox">
+                                  <object class="GtkBox" id="overview_work_box">
                                     <property name="visible">True</property>
                                     <property name="can-focus">False</property>
-                                    <property name="border-width">18</property>
                                     <property name="orientation">vertical</property>
-                                    <property name="spacing">18</property>
+                                    <property name="spacing">12</property>
                                     <child>
-                                      <object class="GtkBox" id="work_box">
+                                      <object class="GtkLabel">
                                         <property name="visible">True</property>
                                         <property name="can-focus">False</property>
-                                        <property name="orientation">vertical</property>
-                                        <property name="spacing">12</property>
-                                        <child>
-                                          <object class="GtkLabel">
-                                            <property name="visible">True</property>
-                                            <property name="can-focus">False</property>
-                                            <property name="halign">start</property>
-                                            <property name="label" translatable="yes">Works</property>
-                                            <attributes>
-                                              <attribute name="size" value="12288" />
-                                            </attributes>
-                                          </object>
-                                          <packing>
-                                            <property name="expand">False</property>
-                                            <property name="fill">True</property>
-                                            <property name="position">0</property>
-                                          </packing>
-                                        </child>
-                                        <child>
-                                          <object class="GtkFrame">
-                                            <property name="visible">True</property>
-                                            <property name="can-focus">False</property>
-                                            <property name="label-xalign">0</property>
-                                            <property name="shadow-type">in</property>
-                                            <child>
-                                              <object class="GtkListBox" id="work_list">
-                                                <property name="visible">True</property>
-                                                <property name="can-focus">False</property>
-                                                <child type="placeholder">
-                                                  <object class="GtkLabel">
-                                                    <property name="visible">True</property>
-                                                    <property name="can-focus">False</property>
-                                                    <property name="margin_top">6</property>
-                                                    <property name="margin_bottom">6</property>
-                                                    <property name="margin_start">6</property>
-                                                    <property name="margin_end">6</property>
-                                                    <property name="label" translatable="yes">No works found.</property>
-                                                  </object>
-                                                </child>
-                                              </object>
-                                            </child>
-                                          </object>
-                                          <packing>
-                                            <property name="expand">False</property>
-                                            <property name="fill">True</property>
-                                            <property name="position">1</property>
-                                          </packing>
-                                        </child>
+                                        <property name="halign">start</property>
+                                        <property name="label" translatable="yes">Works</property>
+                                        <attributes>
+                                          <attribute name="size" value="12288" />
+                                        </attributes>
                                       </object>
                                       <packing>
                                         <property name="expand">False</property>
@@ -460,56 +418,29 @@
                                       </packing>
                                     </child>
                                     <child>
-                                      <object class="GtkBox" id="recording_box">
+                                      <object class="GtkFrame">
                                         <property name="visible">True</property>
                                         <property name="can-focus">False</property>
-                                        <property name="orientation">vertical</property>
-                                        <property name="spacing">12</property>
+                                        <property name="label-xalign">0</property>
+                                        <property name="shadow-type">in</property>
                                         <child>
-                                          <object class="GtkLabel">
+                                          <object class="GtkListBox" id="overview_work_list">
                                             <property name="visible">True</property>
                                             <property name="can-focus">False</property>
-                                            <property name="halign">start</property>
-                                            <property name="label" translatable="yes">Recordings</property>
-                                            <attributes>
-                                              <attribute name="size" value="12288" />
-                                            </attributes>
-                                          </object>
-                                          <packing>
-                                            <property name="expand">False</property>
-                                            <property name="fill">True</property>
-                                            <property name="position">0</property>
-                                          </packing>
-                                        </child>
-                                        <child>
-                                          <object class="GtkFrame">
-                                            <property name="visible">True</property>
-                                            <property name="can-focus">False</property>
-                                            <property name="label-xalign">0</property>
-                                            <property name="shadow-type">in</property>
-                                            <child>
-                                              <object class="GtkListBox" id="recording_list">
+                                            <child type="placeholder">
+                                              <object class="GtkLabel">
                                                 <property name="visible">True</property>
                                                 <property name="can-focus">False</property>
-                                                <child type="placeholder">
-                                                  <object class="GtkLabel">
-                                                    <property name="visible">True</property>
-                                                    <property name="can-focus">False</property>
-                                                    <property name="margin_top">6</property>
-                                                    <property name="margin_bottom">6</property>
-                                                    <property name="margin_start">6</property>
-                                                    <property name="margin_end">6</property>
-                                                    <property name="label" translatable="yes">No recordings found.</property>
-                                                  </object>
-                                                </child>
+                                                <property name="margin-left">6</property>
+                                                <property name="margin-right">6</property>
+                                                <property name="margin-start">6</property>
+                                                <property name="margin-end">6</property>
+                                                <property name="margin-top">6</property>
+                                                <property name="margin-bottom">6</property>
+                                                <property name="label" translatable="yes">No works found.</property>
                                               </object>
                                             </child>
                                           </object>
-                                          <packing>
-                                            <property name="expand">False</property>
-                                            <property name="fill">True</property>
-                                            <property name="position">1</property>
-                                          </packing>
                                         </child>
                                       </object>
                                       <packing>
@@ -519,73 +450,76 @@
                                       </packing>
                                     </child>
                                   </object>
-                                </child>
-                              </object>
-                            </child>
-                          </object>
-                          <packing>
-                            <property name="expand">True</property>
-                            <property name="fill">True</property>
-                            <property name="position">0</property>
-                          </packing>
-                        </child>
-                        <child>
-                          <object class="GtkRevealer" id="actions_revealer">
-                            <property name="visible">True</property>
-                            <property name="can-focus">False</property>
-                            <property name="transition-type">slide-up</property>
-                            <property name="reveal-child">False</property>
-                            <child>
-                              <object class="GtkActionBar">
-                                <property name="visible">True</property>
-                                <property name="can-focus">False</property>
-                                <child>
-                                  <object class="GtkButton" id="edit_button">
-                                    <property name="visible">True</property>
-                                    <property name="can-focus">True</property>
-                                    <property name="receives-default">True</property>
-                                    <child>
-                                      <object class="GtkImage">
-                                        <property name="visible">True</property>
-                                        <property name="can-focus">False</property>
-                                        <property name="icon-name">document-edit-symbolic</property>
-                                      </object>
-                                    </child>
-                                  </object>
                                   <packing>
-                                    <property name="pack-type">start</property>
+                                    <property name="expand">False</property>
+                                    <property name="fill">True</property>
                                     <property name="position">0</property>
                                   </packing>
                                 </child>
                                 <child>
-                                  <object class="GtkButton" id="delete_button">
+                                  <object class="GtkBox" id="overview_recording_box">
                                     <property name="visible">True</property>
-                                    <property name="can-focus">True</property>
-                                    <property name="receives-default">True</property>
-                                    <style>
-                                      <class name="destructive-action" />
-                                    </style>
+                                    <property name="can-focus">False</property>
+                                    <property name="orientation">vertical</property>
+                                    <property name="spacing">12</property>
                                     <child>
-                                      <object class="GtkImage">
+                                      <object class="GtkLabel">
                                         <property name="visible">True</property>
                                         <property name="can-focus">False</property>
-                                        <property name="icon-name">user-trash-symbolic</property>
+                                        <property name="halign">start</property>
+                                        <property name="label" translatable="yes">Recordings</property>
+                                        <attributes>
+                                          <attribute name="size" value="12288" />
+                                        </attributes>
                                       </object>
+                                      <packing>
+                                        <property name="expand">False</property>
+                                        <property name="fill">True</property>
+                                        <property name="position">0</property>
+                                      </packing>
+                                    </child>
+                                    <child>
+                                      <object class="GtkFrame">
+                                        <property name="visible">True</property>
+                                        <property name="can-focus">False</property>
+                                        <property name="label-xalign">0</property>
+                                        <property name="shadow-type">in</property>
+                                        <child>
+                                          <object class="GtkListBox" id="overview_recording_list">
+                                            <property name="visible">True</property>
+                                            <property name="can-focus">False</property>
+                                            <child type="placeholder">
+                                              <object class="GtkLabel">
+                                                <property name="visible">True</property>
+                                                <property name="can-focus">False</property>
+                                                <property name="margin-left">6</property>
+                                                <property name="margin-right">6</property>
+                                                <property name="margin-start">6</property>
+                                                <property name="margin-end">6</property>
+                                                <property name="margin-top">6</property>
+                                                <property name="margin-bottom">6</property>
+                                                <property name="label" translatable="yes">No recordings found.</property>
+                                              </object>
+                                            </child>
+                                          </object>
+                                        </child>
+                                      </object>
+                                      <packing>
+                                        <property name="expand">False</property>
+                                        <property name="fill">True</property>
+                                        <property name="position">1</property>
+                                      </packing>
                                     </child>
                                   </object>
                                   <packing>
-                                    <property name="pack-type">end</property>
-                                    <property name="position">0</property>
+                                    <property name="expand">False</property>
+                                    <property name="fill">True</property>
+                                    <property name="position">1</property>
                                   </packing>
                                 </child>
                               </object>
                             </child>
                           </object>
-                          <packing>
-                            <property name="expand">False</property>
-                            <property name="fill">True</property>
-                            <property name="position">1</property>
-                          </packing>
                         </child>
                       </object>
                       <packing>
@@ -602,8 +536,360 @@
                 </child>
               </object>
               <packing>
-                <property name="name">person_screen</property>
+                <property name="name">overview_screen</property>
+                <property name="title" translatable="yes">page0</property>
                 <property name="position">1</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkBox">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="orientation">vertical</property>
+                <child>
+                  <object class="HdyHeaderBar" id="work_details_header">
+                    <property name="visible">True</property>
+                    <property name="can-focus">False</property>
+                    <property name="show-close-button">True</property>
+                    <child>
+                      <object class="GtkButton" id="work_details_back_button">
+                        <property name="visible">True</property>
+                        <property name="can-focus">True</property>
+                        <property name="receives-default">True</property>
+                        <child>
+                          <object class="GtkImage">
+                            <property name="visible">True</property>
+                            <property name="can-focus">False</property>
+                            <property name="icon-name">go-previous-symbolic</property>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkMenuButton" id="work_details_header_menu_button">
+                        <property name="visible">True</property>
+                        <property name="can-focus">True</property>
+                        <property name="focus-on-click">False</property>
+                        <property name="receives-default">True</property>
+                        <child>
+                          <object class="GtkImage">
+                            <property name="visible">True</property>
+                            <property name="can-focus">False</property>
+                            <property name="icon-name">view-more-symbolic</property>
+                          </object>
+                        </child>
+                      </object>
+                      <packing>
+                        <property name="pack-type">end</property>
+                        <property name="position">1</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkToggleButton" id="work_details_search_button">
+                        <property name="visible">True</property>
+                        <property name="can-focus">True</property>
+                        <property name="receives-default">True</property>
+                        <child>
+                          <object class="GtkImage">
+                            <property name="visible">True</property>
+                            <property name="can-focus">False</property>
+                            <property name="icon-name">edit-find-symbolic</property>
+                          </object>
+                        </child>
+                      </object>
+                      <packing>
+                        <property name="pack-type">end</property>
+                        <property name="position">1</property>
+                      </packing>
+                    </child>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="position">0</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="HdySearchBar">
+                    <property name="visible">True</property>
+                    <property name="can-focus">False</property>
+                    <property name="search-mode-enabled" bind-source="work_details_search_button" bind-property="active" bind-flags="bidirectional|sync-create">False</property>
+                    <child>
+                      <object class="HdyClamp">
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="maximum-size">400</property>
+                        <child>
+                          <object class="GtkSearchEntry" id="work_details_search_entry">
+                            <property name="visible">True</property>
+                            <property name="can-focus">True</property>
+                            <property name="primary-icon-name">edit-find-symbolic</property>
+                            <property name="primary-icon-activatable">False</property>
+                            <property name="primary-icon-sensitive">False</property>
+                            <property name="placeholder-text" translatable="yes">Search recordings …</property>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="position">1</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkStack" id="work_details_stack">
+                    <property name="visible">True</property>
+                    <property name="can-focus">False</property>
+                    <property name="transition-type">crossfade</property>
+                    <child>
+                      <object class="GtkSpinner">
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="active">True</property>
+                      </object>
+                      <packing>
+                        <property name="name">loading</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkScrolledWindow">
+                        <property name="visible">True</property>
+                        <property name="can-focus">True</property>
+                        <child>
+                          <object class="GtkViewport">
+                            <property name="visible">True</property>
+                            <property name="can-focus">False</property>
+                            <property name="shadow-type">none</property>
+                            <child>
+                              <object class="GtkBox">
+                                <property name="visible">True</property>
+                                <property name="can-focus">False</property>
+                                <property name="border-width">18</property>
+                                <property name="orientation">vertical</property>
+                                <property name="spacing">12</property>
+                                <child>
+                                  <object class="GtkLabel">
+                                    <property name="visible">True</property>
+                                    <property name="can-focus">False</property>
+                                    <property name="halign">start</property>
+                                    <property name="label" translatable="yes">Recordings</property>
+                                    <attributes>
+                                      <attribute name="size" value="12288" />
+                                    </attributes>
+                                  </object>
+                                  <packing>
+                                    <property name="expand">False</property>
+                                    <property name="fill">True</property>
+                                    <property name="position">0</property>
+                                  </packing>
+                                </child>
+                                <child>
+                                  <object class="GtkFrame">
+                                    <property name="visible">True</property>
+                                    <property name="can-focus">False</property>
+                                    <property name="label-xalign">0</property>
+                                    <property name="shadow-type">in</property>
+                                    <child>
+                                      <object class="GtkListBox" id="work_details_recording_list">
+                                        <property name="visible">True</property>
+                                        <property name="can-focus">False</property>
+                                        <child type="placeholder">
+                                          <object class="GtkLabel">
+                                            <property name="visible">True</property>
+                                            <property name="can-focus">False</property>
+                                            <property name="margin-left">6</property>
+                                            <property name="margin-right">6</property>
+                                            <property name="margin-start">6</property>
+                                            <property name="margin-end">6</property>
+                                            <property name="margin-top">6</property>
+                                            <property name="margin-bottom">6</property>
+                                            <property name="label" translatable="yes">No recordings found.</property>
+                                          </object>
+                                        </child>
+                                      </object>
+                                    </child>
+                                  </object>
+                                  <packing>
+                                    <property name="expand">False</property>
+                                    <property name="fill">True</property>
+                                    <property name="position">1</property>
+                                  </packing>
+                                </child>
+                              </object>
+                            </child>
+                          </object>
+                        </child>
+                      </object>
+                      <packing>
+                        <property name="name">content</property>
+                        <property name="position">1</property>
+                      </packing>
+                    </child>
+                  </object>
+                  <packing>
+                    <property name="expand">True</property>
+                    <property name="fill">True</property>
+                    <property name="position">2</property>
+                  </packing>
+                </child>
+              </object>
+              <packing>
+                <property name="name">work_details_screen</property>
+                <property name="position">2</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkBox">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="orientation">vertical</property>
+                <child>
+                  <object class="HdyHeaderBar" id="recording_details_header">
+                    <property name="visible">True</property>
+                    <property name="can-focus">False</property>
+                    <property name="show-close-button">True</property>
+                    <child>
+                      <object class="GtkButton" id="recording_details_back_button">
+                        <property name="visible">True</property>
+                        <property name="can-focus">True</property>
+                        <property name="receives-default">True</property>
+                        <child>
+                          <object class="GtkImage">
+                            <property name="visible">True</property>
+                            <property name="can-focus">False</property>
+                            <property name="icon-name">go-previous-symbolic</property>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkMenuButton" id="recording_details_header_menu_button">
+                        <property name="visible">True</property>
+                        <property name="can-focus">True</property>
+                        <property name="focus-on-click">False</property>
+                        <property name="receives-default">True</property>
+                        <child>
+                          <object class="GtkImage">
+                            <property name="visible">True</property>
+                            <property name="can-focus">False</property>
+                            <property name="icon-name">view-more-symbolic</property>
+                          </object>
+                        </child>
+                      </object>
+                      <packing>
+                        <property name="pack-type">end</property>
+                        <property name="position">1</property>
+                      </packing>
+                    </child>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="position">0</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkStack" id="recording_details_stack">
+                    <property name="visible">True</property>
+                    <property name="can-focus">False</property>
+                    <property name="transition-type">crossfade</property>
+                    <child>
+                      <object class="GtkSpinner">
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="active">True</property>
+                      </object>
+                      <packing>
+                        <property name="name">loading</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkScrolledWindow">
+                        <property name="visible">True</property>
+                        <property name="can-focus">True</property>
+                        <child>
+                          <object class="GtkViewport">
+                            <property name="visible">True</property>
+                            <property name="can-focus">False</property>
+                            <property name="shadow-type">none</property>
+                            <child>
+                              <object class="GtkBox">
+                                <property name="visible">True</property>
+                                <property name="can-focus">False</property>
+                                <property name="border-width">18</property>
+                                <property name="orientation">vertical</property>
+                                <property name="spacing">12</property>
+                                <child>
+                                  <object class="GtkLabel">
+                                    <property name="visible">True</property>
+                                    <property name="can-focus">False</property>
+                                    <property name="halign">start</property>
+                                    <property name="label" translatable="yes">Tracks</property>
+                                    <attributes>
+                                      <attribute name="size" value="12288" />
+                                    </attributes>
+                                  </object>
+                                  <packing>
+                                    <property name="expand">False</property>
+                                    <property name="fill">True</property>
+                                    <property name="position">0</property>
+                                  </packing>
+                                </child>
+                                <child>
+                                  <object class="GtkFrame">
+                                    <property name="visible">True</property>
+                                    <property name="can-focus">False</property>
+                                    <property name="label-xalign">0</property>
+                                    <property name="shadow-type">in</property>
+                                    <child>
+                                      <object class="GtkListBox" id="recording_details_track_list">
+                                        <property name="visible">True</property>
+                                        <property name="can-focus">False</property>
+                                        <child type="placeholder">
+                                          <object class="GtkLabel">
+                                            <property name="visible">True</property>
+                                            <property name="can-focus">False</property>
+                                            <property name="margin-left">6</property>
+                                            <property name="margin-right">6</property>
+                                            <property name="margin-start">6</property>
+                                            <property name="margin-end">6</property>
+                                            <property name="margin-top">6</property>
+                                            <property name="margin-bottom">6</property>
+                                            <property name="label" translatable="yes">No tracks found.</property>
+                                          </object>
+                                        </child>
+                                      </object>
+                                    </child>
+                                  </object>
+                                  <packing>
+                                    <property name="expand">False</property>
+                                    <property name="fill">True</property>
+                                    <property name="position">1</property>
+                                  </packing>
+                                </child>
+                              </object>
+                            </child>
+                          </object>
+                        </child>
+                      </object>
+                      <packing>
+                        <property name="name">content</property>
+                        <property name="position">1</property>
+                      </packing>
+                    </child>
+                  </object>
+                  <packing>
+                    <property name="expand">True</property>
+                    <property name="fill">True</property>
+                    <property name="position">2</property>
+                  </packing>
+                </child>
+              </object>
+              <packing>
+                <property name="name">recording_details_screen</property>
+                <property name="position">3</property>
               </packing>
             </child>
           </object>
@@ -617,12 +903,14 @@
   <object class="HdyHeaderGroup" id="inner_header_group">
     <headerbars>
       <headerbar name="empty_header" />
-      <headerbar name="header" />
+      <headerbar name="overview_header" />
+      <headerbar name="work_details_header" />
+      <headerbar name="recording_details_header" />
     </headerbars>
   </object>
   <object class="HdyHeaderGroup">
     <headerbars>
-      <headerbar name="left_header" />
+      <headerbar name="sidebar_header" />
       <headerbar name="inner_header_group" />
     </headerbars>
   </object>

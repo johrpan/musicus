@@ -51,7 +51,7 @@ where
         let (id, work, performers) = match recording {
             Some(recording) => {
                 save_button.set_sensitive(true);
-                work_label.set_text(&format!("{}: {}", recording.work.composer.name_fl(), recording.work.title));
+                work_label.set_text(&recording.work.get_title());
                 comment_entry.set_text(&recording.comment);
                 (recording.id, Some(recording.work), recording.performances)
             }
