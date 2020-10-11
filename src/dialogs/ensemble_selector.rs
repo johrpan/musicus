@@ -41,40 +41,40 @@ where
             list: list,
         });
 
-        result
-            .backend
-            .get_ensembles(clone!(@strong result => move |ensembles| {
-                let ensembles = ensembles.unwrap();
+        let c = glib::MainContext::default();
+        let clone = result.clone();
+        c.spawn_local(async move {
+            let ensembles = clone.backend.get_ensembles().await.unwrap();
 
-                for (index, ensemble) in ensembles.iter().enumerate() {
-                    let label = gtk::Label::new(Some(&ensemble.name));
-                    label.set_halign(gtk::Align::Start);
-                    let row = SelectorRow::new(index.try_into().unwrap(), &label);
-                    row.show_all();
-                    result.list.insert(&row, -1);
-                }
+            for (index, ensemble) in ensembles.iter().enumerate() {
+                let label = gtk::Label::new(Some(&ensemble.name));
+                label.set_halign(gtk::Align::Start);
+                let row = SelectorRow::new(index.try_into().unwrap(), &label);
+                row.show_all();
+                clone.list.insert(&row, -1);
+            }
 
-                result
-                    .list
-                    .connect_row_activated(clone!(@strong result, @strong ensembles => move |_, row| {
-                        result.window.close();
-                        let row = row.get_child().unwrap().downcast::<SelectorRow>().unwrap();
-                        let index: usize = row.get_index().try_into().unwrap();
-                        (result.callback)(ensembles[index].clone());
-                    }));
+            clone.list.connect_row_activated(
+                clone!(@strong clone, @strong ensembles => move |_, row| {
+                    clone.window.close();
+                    let row = row.get_child().unwrap().downcast::<SelectorRow>().unwrap();
+                    let index: usize = row.get_index().try_into().unwrap();
+                    (clone.callback)(ensembles[index].clone());
+                }),
+            );
 
-                result
-                    .list
-                    .set_filter_func(Some(Box::new(clone!(@strong result => move |row| {
-                        let row = row.get_child().unwrap().downcast::<SelectorRow>().unwrap();
-                        let index: usize = row.get_index().try_into().unwrap();
-                        let search = result.search_entry.get_text().to_string().to_lowercase();
-                        search.is_empty() || ensembles[index]
-                            .name
-                            .to_lowercase()
-                            .contains(&search)
-                    }))));
-            }));
+            clone
+                .list
+                .set_filter_func(Some(Box::new(clone!(@strong clone => move |row| {
+                    let row = row.get_child().unwrap().downcast::<SelectorRow>().unwrap();
+                    let index: usize = row.get_index().try_into().unwrap();
+                    let search = clone.search_entry.get_text().to_string().to_lowercase();
+                    search.is_empty() || ensembles[index]
+                        .name
+                        .to_lowercase()
+                        .contains(&search)
+                }))));
+        });
 
         result
             .search_entry

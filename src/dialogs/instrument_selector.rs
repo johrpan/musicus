@@ -41,41 +41,41 @@ where
             list: list,
         });
 
-        result
-            .backend
-            .get_instruments(clone!(@strong result => move |instruments| {
-                let instruments = instruments.unwrap();
+        let c = glib::MainContext::default();
+        let clone = result.clone();
+        c.spawn_local(async move {
+            let instruments = clone.backend.get_instruments().await.unwrap();
 
-                for (index, instrument) in instruments.iter().enumerate() {
-                    let label = gtk::Label::new(Some(&instrument.name));
-                    label.set_halign(gtk::Align::Start);
-                    let row = SelectorRow::new(index.try_into().unwrap(), &label);
-                    row.show_all();
-                    result.list.insert(&row, -1);
-                }
+            for (index, instrument) in instruments.iter().enumerate() {
+                let label = gtk::Label::new(Some(&instrument.name));
+                label.set_halign(gtk::Align::Start);
+                let row = SelectorRow::new(index.try_into().unwrap(), &label);
+                row.show_all();
+                clone.list.insert(&row, -1);
+            }
 
-                result
-                    .list
-                    .connect_row_activated(clone!(@strong result, @strong instruments => move |_, row| {
-                        result.window.close();
-                        let row = row.get_child().unwrap().downcast::<SelectorRow>().unwrap();
-                        let index: usize = row.get_index().try_into().unwrap();
-                        (result.callback)(instruments[index].clone());
-                    }));
+            clone.list.connect_row_activated(
+                clone!(@strong clone, @strong instruments => move |_, row| {
+                    clone.window.close();
+                    let row = row.get_child().unwrap().downcast::<SelectorRow>().unwrap();
+                    let index: usize = row.get_index().try_into().unwrap();
+                    (clone.callback)(instruments[index].clone());
+                }),
+            );
 
-                result
-                    .list
-                    .set_filter_func(Some(Box::new(clone!(@strong result => move |row| {
-                        let row = row.get_child().unwrap().downcast::<SelectorRow>().unwrap();
-                        let index: usize = row.get_index().try_into().unwrap();
-                        let search = result.search_entry.get_text().to_string();
+            clone
+                .list
+                .set_filter_func(Some(Box::new(clone!(@strong clone => move |row| {
+                    let row = row.get_child().unwrap().downcast::<SelectorRow>().unwrap();
+                    let index: usize = row.get_index().try_into().unwrap();
+                    let search = clone.search_entry.get_text().to_string();
 
-                        search.is_empty() || instruments[index]
-                            .name
-                            .to_lowercase()
-                            .contains(&result.search_entry.get_text().to_string().to_lowercase())
-                    }))));
-            }));
+                    search.is_empty() || instruments[index]
+                        .name
+                        .to_lowercase()
+                        .contains(&clone.search_entry.get_text().to_string().to_lowercase())
+                }))));
+        });
 
         result
             .search_entry

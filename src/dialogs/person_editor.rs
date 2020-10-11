@@ -9,6 +9,7 @@ pub struct PersonEditor<F>
 where
     F: Fn(Person) -> () + 'static,
 {
+    backend: Rc<Backend>,
     window: gtk::Window,
     callback: F,
     id: i64,
@@ -44,6 +45,7 @@ where
         };
 
         let result = Rc::new(PersonEditor {
+            backend: backend,
             window: window,
             callback: callback,
             id: id,
@@ -62,10 +64,13 @@ where
                 last_name: result.last_name_entry.get_text().to_string(),
             };
 
-            backend.update_person(person.clone(), clone!(@strong result => move |_| {
-                result.window.close();
-                (result.callback)(person.clone());
-            }));
+            let c = glib::MainContext::default();
+            let clone = result.clone();
+            c.spawn_local(async move {
+                clone.backend.update_person(person.clone()).await.unwrap();
+                clone.window.close();
+                (clone.callback)(person.clone());
+            });
         }));
 
         result.window.set_transient_for(Some(parent));

@@ -185,10 +185,13 @@ where
                 sections: sections,
             };
 
-            result.backend.update_work(work.clone().into(), clone!(@strong result => move |_| {
-                result.window.close();
-                (result.callback)(work.clone());
-            }));
+            let c = glib::MainContext::default();
+            let clone = result.clone();
+            c.spawn_local(async move {
+                clone.backend.update_work(work.clone().into()).await.unwrap();
+                clone.window.close();
+                (clone.callback)(work.clone());
+            });
         }));
 
         composer_button.connect_clicked(clone!(@strong result => move |_| {

@@ -122,10 +122,12 @@ where
 
         match state {
             Loading => {
-                self.backend
-                    .get_persons(clone!(@strong self as self_ => move |persons| {
-                        self_.clone().set_state(Persons(persons.unwrap()));
-                    }));
+                let c = glib::MainContext::default();
+                let clone = self.clone();
+                c.spawn_local(async move {
+                    let persons = clone.backend.get_persons().await.unwrap();
+                    clone.clone().set_state(Persons(persons));
+                });
 
                 self.sidebar_stack.set_visible_child_name("loading");
                 self.stack.set_visible_child_name("empty_screen");
@@ -181,12 +183,16 @@ where
             PersonLoading(person) => {
                 self.header.set_title(Some(&person.name_fl()));
 
-                self.backend.get_work_descriptions(
-                    person.id,
-                    clone!(@strong self as self_ => move |works| {
-                        self_.clone().set_state(Person(works.unwrap()));
-                    }),
-                );
+                let c = glib::MainContext::default();
+                let clone = self.clone();
+                c.spawn_local(async move {
+                    let works = clone
+                        .backend
+                        .get_work_descriptions(person.id)
+                        .await
+                        .unwrap();
+                    clone.clone().set_state(Person(works));
+                });
 
                 self.content_stack.set_visible_child_name("loading");
                 self.stack.set_visible_child_name("person_screen");

@@ -1,6 +1,7 @@
 use super::backend::Backend;
 use super::database::*;
 use super::dialogs::*;
+use futures::prelude::*;
 use gio::prelude::*;
 use glib::clone;
 use gtk::prelude::*;
@@ -196,12 +197,15 @@ impl Window {
             "edit-person",
             Some(glib::VariantTy::new("x").unwrap()),
             clone!(@strong result => move |_, id| {
-                result.backend.get_person(id.unwrap().get().unwrap(), clone!(@strong result => move |person| {
-                    let person = person.unwrap();
+                let id = id.unwrap().get().unwrap();
+                let result = result.clone();
+                let c = glib::MainContext::default();
+                c.spawn_local(async move {
+                    let person = result.backend.get_person(id).await.unwrap();
                     PersonEditor::new(result.backend.clone(), &result.window, Some(person), clone!(@strong result => move |_| {
                         result.clone().set_state(Loading);
                     })).show();
-                }));
+                });
             })
         );
 
@@ -210,9 +214,13 @@ impl Window {
             "delete-person",
             Some(glib::VariantTy::new("x").unwrap()),
             clone!(@strong result => move |_, id| {
-                result.backend.delete_person(id.unwrap().get().unwrap(), clone!(@strong result => move |_| {
+                let id = id.unwrap().get().unwrap();
+                let result = result.clone();
+                let c = glib::MainContext::default();
+                c.spawn_local(async move {
+                    result.backend.delete_person(id).await.unwrap();
                     result.clone().set_state(Loading);
-                }));
+                });
             })
         );
 
@@ -221,12 +229,15 @@ impl Window {
             "edit-ensemble",
             Some(glib::VariantTy::new("x").unwrap()),
             clone!(@strong result => move |_, id| {
-                result.backend.get_ensemble(id.unwrap().get().unwrap(), clone!(@strong result => move |ensemble| {
-                    let ensemble = ensemble.unwrap();
+                let id = id.unwrap().get().unwrap();
+                let result = result.clone();
+                let c = glib::MainContext::default();
+                c.spawn_local(async move {
+                    let ensemble = result.backend.get_ensemble(id).await.unwrap();
                     EnsembleEditor::new(result.backend.clone(), &result.window, Some(ensemble), clone!(@strong result => move |_| {
                         result.clone().set_state(Loading);
                     })).show();
-                }));
+                });
             })
         );
 
@@ -235,9 +246,13 @@ impl Window {
             "delete-ensemble",
             Some(glib::VariantTy::new("x").unwrap()),
             clone!(@strong result => move |_, id| {
-                result.backend.delete_ensemble(id.unwrap().get().unwrap(), clone!(@strong result => move |_| {
+                let id = id.unwrap().get().unwrap();
+                let result = result.clone();
+                let c = glib::MainContext::default();
+                c.spawn_local(async move {
+                    result.backend.delete_ensemble(id).await.unwrap();
                     result.clone().set_state(Loading);
-                }));
+                });
             })
         );
 
@@ -298,24 +313,24 @@ impl Window {
 
         match state {
             Loading => {
-                self.backend
-                    .get_persons(clone!(@strong self as self_ => move |persons| {
-                        let persons = persons.unwrap();
-                        self_.backend.get_ensembles(clone!(@strong self_ => move |ensembles| {
-                            let ensembles = ensembles.unwrap();
-                            let mut poes: Vec<PersonOrEnsemble> = Vec::new();
+                let self_ = self.clone();
+                let c = glib::MainContext::default();
+                c.spawn_local(async move {
+                    let persons = self_.backend.get_persons().await.unwrap();
+                    let ensembles = self_.backend.get_ensembles().await.unwrap();
 
-                            for person in &persons {
-                                poes.push(PersonOrEnsemble::Person(person.clone()));
-                            }
+                    let mut poes: Vec<PersonOrEnsemble> = Vec::new();
 
-                            for ensemble in &ensembles {
-                                poes.push(PersonOrEnsemble::Ensemble(ensemble.clone()));
-                            }
+                    for person in &persons {
+                        poes.push(PersonOrEnsemble::Person(person.clone()));
+                    }
 
-                            self_.clone().set_state(Selection(poes));
-                        }));
-                    }));
+                    for ensemble in &ensembles {
+                        poes.push(PersonOrEnsemble::Ensemble(ensemble.clone()));
+                    }
+
+                    self_.clone().set_state(Selection(poes));
+                });
 
                 self.sidebar_stack.set_visible_child_name("loading");
                 self.main_stack.set_visible_child_name("empty_screen");
@@ -392,19 +407,26 @@ impl Window {
 
                         self.overview_header_menu_button.set_menu_model(Some(&menu));
 
-                        self.backend.get_work_descriptions(
-                            person.id,
-                            clone!(@strong self as self_, @strong poe => move |works| {
-                                let works = works.unwrap();
-                                self_.backend.get_recordings_for_person(
-                                    person.id,
-                                    clone!(@strong self_, @strong poe => move |recordings| {
-                                        let recordings = recordings.unwrap();
-                                        self_.clone().set_state(OverviewScreen(poe.clone(), works.clone(), recordings, String::from("")));
-                                    }),
-                                );
-                            }),
-                        );
+                        let self_ = self.clone();
+                        let c = glib::MainContext::default();
+                        c.spawn_local(async move {
+                            let works = self_
+                                .backend
+                                .get_work_descriptions(person.id)
+                                .await
+                                .unwrap();
+                            let recordings = self_
+                                .backend
+                                .get_recordings_for_person(person.id)
+                                .await
+                                .unwrap();
+                            self_.clone().set_state(OverviewScreen(
+                                poe.clone(),
+                                works.clone(),
+                                recordings,
+                                String::from(""),
+                            ));
+                        });
                     }
                     PersonOrEnsemble::Ensemble(ensemble) => {
                         self.overview_header.set_title(Some(&ensemble.name));
@@ -427,13 +449,21 @@ impl Window {
 
                         self.overview_header_menu_button.set_menu_model(Some(&menu));
 
-                        self.backend.get_recordings_for_ensemble(
-                            ensemble.id,
-                            clone!(@strong self as self_ => move |recordings| {
-                                let recordings = recordings.unwrap();
-                                self_.clone().set_state(OverviewScreen(poe.clone(), Vec::new(), recordings, String::from("")));
-                            }),
-                        );
+                        let self_ = self.clone();
+                        let c = glib::MainContext::default();
+                        c.spawn_local(async move {
+                            let recordings = self_
+                                .backend
+                                .get_recordings_for_ensemble(ensemble.id)
+                                .await
+                                .unwrap();
+                            self_.clone().set_state(OverviewScreen(
+                                poe.clone(),
+                                Vec::new(),
+                                recordings,
+                                String::from(""),
+                            ));
+                        });
                     }
                 }
 
@@ -552,13 +582,21 @@ impl Window {
                     .set_title(Some(&work.composer.name_fl()));
                 self.work_details_header.set_subtitle(Some(&work.title));
 
-                self.backend.get_recordings_for_work(
-                    work.id,
-                    clone!(@strong self as self_ => move |recordings| {
-                        let recordings = recordings.unwrap();
-                        self_.clone().set_state(WorkScreen(poe.clone(), work.clone(), recordings, String::new()));
-                    }),
-                );
+                let c = glib::MainContext::default();
+                let self_ = self.clone();
+                c.spawn_local(async move {
+                    let recordings = self_
+                        .backend
+                        .get_recordings_for_work(work.id)
+                        .await
+                        .unwrap();
+                    self_.clone().set_state(WorkScreen(
+                        poe.clone(),
+                        work.clone(),
+                        recordings,
+                        String::new(),
+                    ));
+                });
 
                 self.work_details_stack.set_visible_child_name("loading");
                 self.main_stack

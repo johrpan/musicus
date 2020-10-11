@@ -9,6 +9,7 @@ pub struct EnsembleEditor<F>
 where
     F: Fn(Ensemble) -> () + 'static,
 {
+    backend: Rc<Backend>,
     window: gtk::Window,
     callback: F,
     id: i64,
@@ -42,6 +43,7 @@ where
         };
 
         let result = Rc::new(EnsembleEditor {
+            backend: backend,
             window: window,
             callback: callback,
             id: id,
@@ -58,10 +60,13 @@ where
                 name: result.name_entry.get_text().to_string(),
             };
 
-            backend.update_ensemble(ensemble.clone(), clone!(@strong result => move |_| {
-                result.window.close();
-                (result.callback)(ensemble.clone());
-            }));
+            let clone = result.clone();
+            let c = glib::MainContext::default();
+            c.spawn_local(async move {
+                clone.backend.update_ensemble(ensemble.clone()).await.unwrap();
+                clone.window.close();
+                (clone.callback)(ensemble.clone());
+            });
         }));
 
         result.window.set_transient_for(Some(parent));

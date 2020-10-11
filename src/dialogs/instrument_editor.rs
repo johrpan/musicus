@@ -9,6 +9,7 @@ pub struct InstrumentEditor<F>
 where
     F: Fn(Instrument) -> () + 'static,
 {
+    backend: Rc<Backend>,
     window: gtk::Window,
     callback: F,
     id: i64,
@@ -42,6 +43,7 @@ where
         };
 
         let result = Rc::new(InstrumentEditor {
+            backend: backend,
             window: window,
             callback: callback,
             id: id,
@@ -58,10 +60,13 @@ where
                 name: result.name_entry.get_text().to_string(),
             };
 
-            backend.update_instrument(instrument.clone(), clone!(@strong result => move |_| {
-                result.window.close();
-                (result.callback)(instrument.clone());
-            }));
+            let c = glib::MainContext::default();
+            let clone = result.clone();
+            c.spawn_local(async move {
+                clone.backend.update_instrument(instrument.clone()).await.unwrap();
+                clone.window.close();
+                (clone.callback)(instrument.clone());
+            });
         }));
 
         result.window.set_transient_for(Some(parent));

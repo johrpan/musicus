@@ -1,6 +1,7 @@
 use super::database::*;
 use anyhow::Result;
-use glib::Sender;
+use futures_channel::oneshot;
+use futures_channel::oneshot::Sender;
 
 enum BackendAction {
     UpdatePerson(Person, Sender<Result<()>>),
@@ -157,265 +158,123 @@ impl Backend {
         }
     }
 
-    pub fn update_person<F: Fn(Result<()>) -> () + 'static>(&self, person: Person, callback: F) {
-        let (sender, receiver) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
-
-        receiver.attach(None, move |result| {
-            callback(result);
-            glib::Continue(true)
-        });
-
-        self.action_sender
-            .send(UpdatePerson(person, sender))
-            .expect("Failed to send action to database thread!");
+    pub async fn update_person(&self, person: Person) -> Result<()> {
+        let (sender, receiver) = oneshot::channel();
+        self.action_sender.send(UpdatePerson(person, sender));
+        receiver.await?
     }
 
-    pub fn get_person<F: Fn(Result<Person>) -> () + 'static>(&self, id: i64, callback: F) {
-        let (sender, receiver) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
-
-        receiver.attach(None, move |result| {
-            callback(result);
-            glib::Continue(true)
-        });
-
-        self.action_sender
-            .send(GetPerson(id, sender))
-            .expect("Failed to send action to database thread!");
+    pub async fn get_person(&self, id: i64) -> Result<Person> {
+        let (sender, receiver) = oneshot::channel();
+        self.action_sender.send(GetPerson(id, sender));
+        receiver.await?
     }
 
-    pub fn delete_person<F: Fn(Result<()>) -> () + 'static>(&self, id: i64, callback: F) {
-        let (sender, receiver) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
-
-        receiver.attach(None, move |result| {
-            callback(result);
-            glib::Continue(true)
-        });
-
-        self.action_sender
-            .send(DeletePerson(id, sender))
-            .expect("Failed to send action to database thread!");
+    pub async fn delete_person(&self, id: i64) -> Result<()> {
+        let (sender, receiver) = oneshot::channel();
+        self.action_sender.send(DeletePerson(id, sender));
+        receiver.await?
     }
 
-    pub fn get_persons<F: Fn(Result<Vec<Person>>) -> () + 'static>(&self, callback: F) {
-        let (sender, receiver) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
-
-        receiver.attach(None, move |result| {
-            callback(result);
-            glib::Continue(true)
-        });
-
-        self.action_sender
-            .send(GetPersons(sender))
-            .expect("Failed to send action to database thread!");
+    pub async fn get_persons(&self) -> Result<Vec<Person>> {
+        let (sender, receiver) = oneshot::channel();
+        self.action_sender.send(GetPersons(sender));
+        receiver.await?
     }
 
-    pub fn update_instrument<F: Fn(Result<()>) -> () + 'static>(
+    pub async fn update_instrument(&self, instrument: Instrument) -> Result<()> {
+        let (sender, receiver) = oneshot::channel();
+        self.action_sender
+            .send(UpdateInstrument(instrument, sender));
+        receiver.await?
+    }
+
+    pub async fn get_instrument(&self, id: i64) -> Result<Instrument> {
+        let (sender, receiver) = oneshot::channel();
+        self.action_sender.send(GetInstrument(id, sender));
+        receiver.await?
+    }
+
+    pub async fn delete_instrument(&self, id: i64) -> Result<()> {
+        let (sender, receiver) = oneshot::channel();
+        self.action_sender.send(DeleteInstrument(id, sender));
+        receiver.await?
+    }
+
+    pub async fn get_instruments(&self) -> Result<Vec<Instrument>> {
+        let (sender, receiver) = oneshot::channel();
+        self.action_sender.send(GetInstruments(sender));
+        receiver.await?
+    }
+
+    pub async fn update_work(&self, work_insertion: WorkInsertion) -> Result<()> {
+        let (sender, receiver) = oneshot::channel();
+        self.action_sender.send(UpdateWork(work_insertion, sender));
+        receiver.await?
+    }
+
+    pub async fn get_work_descriptions(&self, person_id: i64) -> Result<Vec<WorkDescription>> {
+        let (sender, receiver) = oneshot::channel();
+        self.action_sender
+            .send(GetWorkDescriptions(person_id, sender));
+        receiver.await?
+    }
+
+    pub async fn update_ensemble(&self, ensemble: Ensemble) -> Result<()> {
+        let (sender, receiver) = oneshot::channel();
+        self.action_sender.send(UpdateEnsemble(ensemble, sender));
+        receiver.await?
+    }
+
+    pub async fn get_ensemble(&self, id: i64) -> Result<Ensemble> {
+        let (sender, receiver) = oneshot::channel();
+        self.action_sender.send(GetEnsemble(id, sender));
+        receiver.await?
+    }
+
+    pub async fn delete_ensemble(&self, id: i64) -> Result<()> {
+        let (sender, receiver) = oneshot::channel();
+        self.action_sender.send(DeleteEnsemble(id, sender));
+        receiver.await?
+    }
+
+    pub async fn get_ensembles(&self) -> Result<Vec<Ensemble>> {
+        let (sender, receiver) = oneshot::channel();
+        self.action_sender.send(GetEnsembles(sender));
+        receiver.await?
+    }
+
+    pub async fn update_recording(&self, recording_insertion: RecordingInsertion) -> Result<()> {
+        let (sender, receiver) = oneshot::channel();
+        self.action_sender
+            .send(UpdateRecording(recording_insertion, sender));
+        receiver.await?
+    }
+
+    pub async fn get_recordings_for_person(
         &self,
-        instrument: Instrument,
-        callback: F,
-    ) {
-        let (sender, receiver) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
-
-        receiver.attach(None, move |result| {
-            callback(result);
-            glib::Continue(true)
-        });
-
+        person_id: i64,
+    ) -> Result<Vec<RecordingDescription>> {
+        let (sender, receiver) = oneshot::channel();
         self.action_sender
-            .send(UpdateInstrument(instrument, sender))
-            .expect("Failed to send action to database thread!");
+            .send(GetRecordingsForPerson(person_id, sender));
+        receiver.await?
     }
 
-    pub fn get_instrument<F: Fn(Result<Instrument>) -> () + 'static>(&self, id: i64, callback: F) {
-        let (sender, receiver) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
-
-        receiver.attach(None, move |result| {
-            callback(result);
-            glib::Continue(true)
-        });
-
-        self.action_sender
-            .send(GetInstrument(id, sender))
-            .expect("Failed to send action to database thread!");
-    }
-
-    pub fn delete_instrument<F: Fn(Result<()>) -> () + 'static>(&self, id: i64, callback: F) {
-        let (sender, receiver) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
-
-        receiver.attach(None, move |result| {
-            callback(result);
-            glib::Continue(true)
-        });
-
-        self.action_sender
-            .send(DeleteInstrument(id, sender))
-            .expect("Failed to send action to database thread!");
-    }
-
-    pub fn get_instruments<F: Fn(Result<Vec<Instrument>>) -> () + 'static>(&self, callback: F) {
-        let (sender, receiver) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
-
-        receiver.attach(None, move |result| {
-            callback(result);
-            glib::Continue(true)
-        });
-
-        self.action_sender
-            .send(GetInstruments(sender))
-            .expect("Failed to send action to database thread!");
-    }
-
-    pub fn update_work<F: Fn(Result<()>) -> () + 'static>(&self, work: WorkInsertion, callback: F) {
-        let (sender, receiver) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
-
-        receiver.attach(None, move |result| {
-            callback(result);
-            glib::Continue(true)
-        });
-
-        self.action_sender
-            .send(UpdateWork(work, sender))
-            .expect("Failed to send action to database thread!");
-    }
-
-    pub fn get_work_descriptions<F: Fn(Result<Vec<WorkDescription>>) -> () + 'static>(
+    pub async fn get_recordings_for_ensemble(
         &self,
-        id: i64,
-        callback: F,
-    ) {
-        let (sender, receiver) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
-
-        receiver.attach(None, move |result| {
-            callback(result);
-            glib::Continue(true)
-        });
-
+        ensemble_id: i64,
+    ) -> Result<Vec<RecordingDescription>> {
+        let (sender, receiver) = oneshot::channel();
         self.action_sender
-            .send(GetWorkDescriptions(id, sender))
-            .expect("Failed to send action to database thread!");
+            .send(GetRecordingsForEnsemble(ensemble_id, sender));
+        receiver.await?
     }
 
-    pub fn update_ensemble<F: Fn(Result<()>) -> () + 'static>(
-        &self,
-        ensemble: Ensemble,
-        callback: F,
-    ) {
-        let (sender, receiver) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
-
-        receiver.attach(None, move |result| {
-            callback(result);
-            glib::Continue(true)
-        });
-
+    pub async fn get_recordings_for_work(&self, work_id: i64) -> Result<Vec<RecordingDescription>> {
+        let (sender, receiver) = oneshot::channel();
         self.action_sender
-            .send(UpdateEnsemble(ensemble, sender))
-            .expect("Failed to send action to database thread!");
-    }
-
-    pub fn get_ensemble<F: Fn(Result<Ensemble>) -> () + 'static>(&self, id: i64, callback: F) {
-        let (sender, receiver) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
-
-        receiver.attach(None, move |result| {
-            callback(result);
-            glib::Continue(true)
-        });
-
-        self.action_sender
-            .send(GetEnsemble(id, sender))
-            .expect("Failed to send action to database thread!");
-    }
-
-    pub fn delete_ensemble<F: Fn(Result<()>) -> () + 'static>(&self, id: i64, callback: F) {
-        let (sender, receiver) = glib::MainContext::channel::<Result<()>>(glib::PRIORITY_DEFAULT);
-
-        receiver.attach(None, move |result| {
-            callback(result);
-            glib::Continue(true)
-        });
-
-        self.action_sender
-            .send(DeleteEnsemble(id, sender))
-            .expect("Failed to send action to database thread!");
-    }
-
-    pub fn get_ensembles<F: Fn(Result<Vec<Ensemble>>) -> () + 'static>(&self, callback: F) {
-        let (sender, receiver) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
-
-        receiver.attach(None, move |result| {
-            callback(result);
-            glib::Continue(true)
-        });
-
-        self.action_sender
-            .send(GetEnsembles(sender))
-            .expect("Failed to send action to database thread!");
-    }
-
-    pub fn update_recording<F: Fn(Result<()>) -> () + 'static>(
-        &self,
-        recording: RecordingInsertion,
-        callback: F,
-    ) {
-        let (sender, receiver) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
-
-        receiver.attach(None, move |result| {
-            callback(result);
-            glib::Continue(true)
-        });
-
-        self.action_sender
-            .send(UpdateRecording(recording, sender))
-            .expect("Failed to send action to database thread!");
-    }
-
-    pub fn get_recordings_for_person<F: Fn(Result<Vec<RecordingDescription>>) -> () + 'static>(
-        &self,
-        id: i64,
-        callback: F,
-    ) {
-        let (sender, receiver) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
-
-        receiver.attach(None, move |result| {
-            callback(result);
-            glib::Continue(true)
-        });
-
-        self.action_sender
-            .send(GetRecordingsForPerson(id, sender))
-            .expect("Failed to send action to database thread!");
-    }
-
-    pub fn get_recordings_for_ensemble<F: Fn(Result<Vec<RecordingDescription>>) -> () + 'static>(
-        &self,
-        id: i64,
-        callback: F,
-    ) {
-        let (sender, receiver) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
-
-        receiver.attach(None, move |result| {
-            callback(result);
-            glib::Continue(true)
-        });
-
-        self.action_sender
-            .send(GetRecordingsForEnsemble(id, sender))
-            .expect("Failed to send action to database thread!");
-    }
-
-    pub fn get_recordings_for_work<F: Fn(Result<Vec<RecordingDescription>>) -> () + 'static>(
-        &self,
-        id: i64,
-        callback: F,
-    ) {
-        let (sender, receiver) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
-
-        receiver.attach(None, move |result| {
-            callback(result);
-            glib::Continue(true)
-        });
-
-        self.action_sender
-            .send(GetRecordingsForWork(id, sender))
-            .expect("Failed to send action to database thread!");
+            .send(GetRecordingsForWork(work_id, sender));
+        receiver.await?
     }
 }

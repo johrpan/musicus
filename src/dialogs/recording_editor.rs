@@ -84,11 +84,14 @@ where
                     comment: result.comment_entry.get_text().to_string(),
                     performances: result.performers.borrow().to_vec(),
                 };
-    
-                result.backend.update_recording(recording.clone().into(), clone!(@strong result => move |_| {
-                    result.window.close();
-                    (result.callback)(recording.clone());
-                }));
+
+                let c = glib::MainContext::default();
+                let clone = result.clone();
+                c.spawn_local(async move {
+                    clone.backend.update_recording(recording.clone().into()).await.unwrap();
+                    clone.window.close();
+                    (clone.callback)(recording.clone());
+                });
             }));
 
         work_button.connect_clicked(clone!(@strong result => move |_| {
