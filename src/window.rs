@@ -1,7 +1,6 @@
 use super::backend::Backend;
 use super::database::*;
 use super::dialogs::*;
-use futures::prelude::*;
 use gio::prelude::*;
 use glib::clone;
 use gtk::prelude::*;
@@ -603,7 +602,7 @@ impl Window {
                     .set_visible_child_name("work_details_screen");
                 self.leaflet.set_visible_child_name("content");
             }
-            WorkScreen(poe, work, recordings, search) => {
+            WorkScreen(poe, _, recordings, search) => {
                 for child in self.work_details_recording_list.get_children() {
                     self.work_details_recording_list.remove(&child);
                 }
@@ -664,7 +663,7 @@ impl Window {
                     .set_visible_child_name("work_details_screen");
                 self.leaflet.set_visible_child_name("content");
             }
-            RecordingScreenLoading(poe, recording) => {
+            RecordingScreenLoading(_, recording) => {
                 self.recording_details_header
                     .set_title(Some(&recording.work.get_title()));
                 self.recording_details_header

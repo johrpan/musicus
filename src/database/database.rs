@@ -1,7 +1,7 @@
 use super::models::*;
 use super::schema::*;
 use super::tables::*;
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Error, Result};
 use diesel::prelude::*;
 
 embed_migrations!();
@@ -84,8 +84,8 @@ impl Database {
         let id = work_insertion.work.id;
 
         self.defer_foreign_keys();
-        self.c.transaction(|| {
-            self.delete_work(id);
+        self.c.transaction::<(), Error, _>(|| {
+            self.delete_work(id)?;
 
             diesel::insert_into(works::table)
                 .values(work_insertion.work)
@@ -125,7 +125,7 @@ impl Database {
                     .execute(&self.c)?;
             }
 
-            diesel::result::QueryResult::Ok(())
+            Ok(())
         })?;
 
         Ok(())
@@ -267,8 +267,8 @@ impl Database {
         let id = recording_insertion.recording.id;
 
         self.defer_foreign_keys();
-        self.c.transaction(|| {
-            self.delete_recording(id);
+        self.c.transaction::<(), Error, _>(|| {
+            self.delete_recording(id)?;
 
             diesel::insert_into(recordings::table)
                 .values(recording_insertion.recording)
@@ -280,7 +280,7 @@ impl Database {
                     .execute(&self.c)?;
             }
 
-            diesel::result::QueryResult::Ok(())
+            Ok(())
         })?;
 
         Ok(())
