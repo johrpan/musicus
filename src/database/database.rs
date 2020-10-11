@@ -1,6 +1,7 @@
 use super::models::*;
 use super::schema::*;
 use super::tables::*;
+use anyhow::{anyhow, Result};
 use diesel::prelude::*;
 
 embed_migrations!();
@@ -10,385 +11,392 @@ pub struct Database {
 }
 
 impl Database {
-    pub fn new(path: &str) -> Database {
-        let c = SqliteConnection::establish(path)
-            .expect(&format!("Failed to connect to database at \"{}\"!", path));
+    pub fn new(path: &str) -> Result<Database> {
+        let c = SqliteConnection::establish(path)?;
 
-        diesel::sql_query("PRAGMA foreign_keys = ON;")
-            .execute(&c)
-            .expect("Failed to activate foreign key support!");
+        diesel::sql_query("PRAGMA foreign_keys = ON;").execute(&c)?;
+        embedded_migrations::run(&c)?;
 
-        embedded_migrations::run(&c).expect("Failed to run migrations!");
-
-        Database { c: c }
+        Ok(Database { c: c })
     }
 
-    pub fn update_person(&self, person: Person) {
+    pub fn update_person(&self, person: Person) -> Result<()> {
         self.defer_foreign_keys();
-        self.c
-            .transaction(|| {
-                diesel::replace_into(persons::table)
-                    .values(person)
-                    .execute(&self.c)
-            })
-            .expect("Failed to insert person!");
+        self.c.transaction(|| {
+            diesel::replace_into(persons::table)
+                .values(person)
+                .execute(&self.c)
+        })?;
+
+        Ok(())
     }
 
-    pub fn get_person(&self, id: i64) -> Option<Person> {
+    pub fn get_person(&self, id: i64) -> Result<Person> {
         persons::table
             .filter(persons::id.eq(id))
-            .load::<Person>(&self.c)
-            .expect("Error loading person!")
+            .load::<Person>(&self.c)?
             .first()
             .cloned()
+            .ok_or(anyhow!("No person with ID: {}", id))
     }
 
-    pub fn delete_person(&self, id: i64) {
-        diesel::delete(persons::table.filter(persons::id.eq(id)))
-            .execute(&self.c)
-            .expect("Failed to delete person!");
+    pub fn delete_person(&self, id: i64) -> Result<()> {
+        diesel::delete(persons::table.filter(persons::id.eq(id))).execute(&self.c)?;
+        Ok(())
     }
 
-    pub fn get_persons(&self) -> Vec<Person> {
-        persons::table
-            .load::<Person>(&self.c)
-            .expect("Error loading persons!")
+    pub fn get_persons(&self) -> Result<Vec<Person>> {
+        let persons = persons::table.load::<Person>(&self.c)?;
+        Ok(persons)
     }
 
-    pub fn update_instrument(&self, instrument: Instrument) {
+    pub fn update_instrument(&self, instrument: Instrument) -> Result<()> {
         self.defer_foreign_keys();
-        self.c
-            .transaction(|| {
-                diesel::replace_into(instruments::table)
-                    .values(instrument)
-                    .execute(&self.c)
-            })
-            .expect("Failed to insert instrument!");
+        self.c.transaction(|| {
+            diesel::replace_into(instruments::table)
+                .values(instrument)
+                .execute(&self.c)
+        })?;
+
+        Ok(())
     }
 
-    pub fn get_instrument(&self, id: i64) -> Option<Instrument> {
+    pub fn get_instrument(&self, id: i64) -> Result<Instrument> {
         instruments::table
             .filter(instruments::id.eq(id))
-            .load::<Instrument>(&self.c)
-            .expect("Error loading instrument!")
+            .load::<Instrument>(&self.c)?
             .first()
             .cloned()
+            .ok_or(anyhow!("No instrument with ID: {}", id))
     }
 
-    pub fn delete_instrument(&self, id: i64) {
-        diesel::delete(instruments::table.filter(instruments::id.eq(id)))
-            .execute(&self.c)
-            .expect("Failed to delete instrument!");
+    pub fn delete_instrument(&self, id: i64) -> Result<()> {
+        diesel::delete(instruments::table.filter(instruments::id.eq(id))).execute(&self.c)?;
+        Ok(())
     }
 
-    pub fn get_instruments(&self) -> Vec<Instrument> {
-        instruments::table
-            .load::<Instrument>(&self.c)
-            .expect("Error loading instruments!")
+    pub fn get_instruments(&self) -> Result<Vec<Instrument>> {
+        let instruments = instruments::table.load::<Instrument>(&self.c)?;
+        Ok(instruments)
     }
 
-    pub fn update_work(&self, work_insertion: WorkInsertion) {
+    pub fn update_work(&self, work_insertion: WorkInsertion) -> Result<()> {
         let id = work_insertion.work.id;
 
         self.defer_foreign_keys();
-        self.c
-            .transaction(|| {
-                self.delete_work(id);
+        self.c.transaction(|| {
+            self.delete_work(id);
 
-                diesel::insert_into(works::table)
-                    .values(work_insertion.work)
+            diesel::insert_into(works::table)
+                .values(work_insertion.work)
+                .execute(&self.c)?;
+
+            for instrument_id in work_insertion.instrument_ids {
+                diesel::insert_into(instrumentations::table)
+                    .values(Instrumentation {
+                        id: rand::random(),
+                        work: id,
+                        instrument: instrument_id,
+                    })
+                    .execute(&self.c)?;
+            }
+
+            for part_insertion in work_insertion.parts {
+                let part_id = part_insertion.part.id;
+
+                diesel::insert_into(work_parts::table)
+                    .values(part_insertion.part)
                     .execute(&self.c)?;
 
-                for instrument_id in work_insertion.instrument_ids {
-                    diesel::insert_into(instrumentations::table)
-                        .values(Instrumentation {
+                for instrument_id in part_insertion.instrument_ids {
+                    diesel::insert_into(part_instrumentations::table)
+                        .values(PartInstrumentation {
                             id: rand::random(),
-                            work: id,
+                            work_part: part_id,
                             instrument: instrument_id,
                         })
                         .execute(&self.c)?;
                 }
+            }
 
-                for part_insertion in work_insertion.parts {
-                    let part_id = part_insertion.part.id;
+            for section in work_insertion.sections {
+                diesel::insert_into(work_sections::table)
+                    .values(section)
+                    .execute(&self.c)?;
+            }
 
-                    diesel::insert_into(work_parts::table)
-                        .values(part_insertion.part)
-                        .execute(&self.c)?;
+            diesel::result::QueryResult::Ok(())
+        })?;
 
-                    for instrument_id in part_insertion.instrument_ids {
-                        diesel::insert_into(part_instrumentations::table)
-                            .values(PartInstrumentation {
-                                id: rand::random(),
-                                work_part: part_id,
-                                instrument: instrument_id,
-                            })
-                            .execute(&self.c)?;
-                    }
-                }
-
-                for section in work_insertion.sections {
-                    diesel::insert_into(work_sections::table)
-                        .values(section)
-                        .execute(&self.c)?;
-                }
-
-                diesel::result::QueryResult::Ok(())
-            })
-            .expect("Failed to update work!");
+        Ok(())
     }
 
-    pub fn get_work(&self, id: i64) -> Option<Work> {
+    pub fn get_work(&self, id: i64) -> Result<Work> {
         works::table
             .filter(works::id.eq(id))
-            .load::<Work>(&self.c)
-            .expect("Error loading work!")
+            .load::<Work>(&self.c)?
             .first()
             .cloned()
+            .ok_or(anyhow!("No work with ID: {}", id))
     }
 
-    pub fn get_work_description_for_work(&self, work: &Work) -> WorkDescription {
-        WorkDescription {
+    pub fn get_work_description_for_work(&self, work: &Work) -> Result<WorkDescription> {
+        let mut instruments: Vec<Instrument> = Vec::new();
+
+        let instrumentations = instrumentations::table
+            .filter(instrumentations::work.eq(work.id))
+            .load::<Instrumentation>(&self.c)?;
+
+        for instrumentation in instrumentations {
+            instruments.push(self.get_instrument(instrumentation.instrument)?);
+        }
+
+        let mut part_descriptions: Vec<WorkPartDescription> = Vec::new();
+
+        let work_parts = work_parts::table
+            .filter(work_parts::work.eq(work.id))
+            .load::<WorkPart>(&self.c)?;
+
+        for work_part in work_parts {
+            let mut part_instruments: Vec<Instrument> = Vec::new();
+
+            let part_instrumentations = part_instrumentations::table
+                .filter(part_instrumentations::work_part.eq(work_part.id))
+                .load::<PartInstrumentation>(&self.c)?;
+
+            for part_instrumentation in part_instrumentations {
+                part_instruments.push(self.get_instrument(part_instrumentation.instrument)?);
+            }
+
+            part_descriptions.push(WorkPartDescription {
+                composer: match work_part.composer {
+                    Some(composer) => Some(self.get_person(composer)?),
+                    None => None,
+                },
+                title: work_part.title.clone(),
+                instruments: part_instruments,
+            });
+        }
+
+        let mut section_descriptions: Vec<WorkSectionDescription> = Vec::new();
+
+        let sections = work_sections::table
+            .filter(work_sections::work.eq(work.id))
+            .load::<WorkSection>(&self.c)?;
+
+        for section in sections {
+            section_descriptions.push(WorkSectionDescription {
+                title: section.title.clone(),
+                before_index: section.before_index,
+            });
+        }
+
+        let work_description = WorkDescription {
             id: work.id,
-            composer: self
-                .get_person(work.composer)
-                .expect("Could not find composer for work!"),
+            composer: self.get_person(work.composer)?,
             title: work.title.clone(),
-            instruments: instrumentations::table
-                .filter(instrumentations::work.eq(work.id))
-                .load::<Instrumentation>(&self.c)
-                .expect("Failed to load instrumentations!")
-                .iter()
-                .map(|instrumentation| {
-                    self.get_instrument(instrumentation.instrument)
-                        .expect("Could not find instrument for instrumentation!")
-                })
-                .collect(),
-            parts: work_parts::table
-                .filter(work_parts::work.eq(work.id))
-                .load::<WorkPart>(&self.c)
-                .expect("Failed to load work parts!")
-                .iter()
-                .map(|work_part| WorkPartDescription {
-                    composer: match work_part.composer {
-                        Some(composer) => Some(
-                            self.get_person(composer)
-                                .expect("Could not find composer for work part!"),
-                        ),
-                        None => None,
-                    },
-                    title: work_part.title.clone(),
-                    instruments: part_instrumentations::table
-                        .filter(part_instrumentations::work_part.eq(work_part.id))
-                        .load::<PartInstrumentation>(&self.c)
-                        .expect("Failed to load part instrumentations!")
-                        .iter()
-                        .map(|part_instrumentation| {
-                            self.get_instrument(part_instrumentation.instrument)
-                                .expect("Could not find instrument for part instrumentation!")
-                        })
-                        .collect(),
-                })
-                .collect(),
-            sections: work_sections::table
-                .filter(work_sections::work.eq(work.id))
-                .load::<WorkSection>(&self.c)
-                .expect("Failed to load work sections!")
-                .iter()
-                .map(|section| WorkSectionDescription {
-                    title: section.title.clone(),
-                    before_index: section.before_index,
-                })
-                .collect(),
-        }
+            instruments: instruments,
+            parts: part_descriptions,
+            sections: section_descriptions,
+        };
+
+        Ok(work_description)
     }
 
-    pub fn get_work_description(&self, id: i64) -> Option<WorkDescription> {
-        match self.get_work(id) {
-            Some(work) => Some(self.get_work_description_for_work(&work)),
-            None => None,
-        }
+    pub fn get_work_description(&self, id: i64) -> Result<WorkDescription> {
+        let work = self.get_work(id)?;
+        let work_description = self.get_work_description_for_work(&work)?;
+        Ok(work_description)
     }
 
-    pub fn delete_work(&self, id: i64) {
-        diesel::delete(works::table.filter(works::id.eq(id)))
-            .execute(&self.c)
-            .expect("Failed to delete work!");
+    pub fn delete_work(&self, id: i64) -> Result<()> {
+        diesel::delete(works::table.filter(works::id.eq(id))).execute(&self.c)?;
+        Ok(())
     }
 
-    pub fn get_works(&self, composer_id: i64) -> Vec<Work> {
-        works::table
+    pub fn get_works(&self, composer_id: i64) -> Result<Vec<Work>> {
+        let works = works::table
             .filter(works::composer.eq(composer_id))
-            .load::<Work>(&self.c)
-            .expect("Error loading works!")
+            .load::<Work>(&self.c)?;
+
+        Ok(works)
     }
 
-    pub fn get_work_descriptions(&self, composer_id: i64) -> Vec<WorkDescription> {
-        self.get_works(composer_id)
-            .iter()
-            .map(|work| self.get_work_description_for_work(work))
-            .collect()
+    pub fn get_work_descriptions(&self, composer_id: i64) -> Result<Vec<WorkDescription>> {
+        let mut work_descriptions: Vec<WorkDescription> = Vec::new();
+
+        let works = self.get_works(composer_id)?;
+        for work in works {
+            work_descriptions.push(self.get_work_description_for_work(&work)?);
+        }
+
+        Ok(work_descriptions)
     }
 
-    pub fn update_ensemble(&self, ensemble: Ensemble) {
+    pub fn update_ensemble(&self, ensemble: Ensemble) -> Result<()> {
         self.defer_foreign_keys();
-        self.c
-            .transaction(|| {
-                diesel::replace_into(ensembles::table)
-                    .values(ensemble)
-                    .execute(&self.c)
-            })
-            .expect("Failed to insert ensemble!");
+        self.c.transaction(|| {
+            diesel::replace_into(ensembles::table)
+                .values(ensemble)
+                .execute(&self.c)
+        })?;
+
+        Ok(())
     }
 
-    pub fn get_ensemble(&self, id: i64) -> Option<Ensemble> {
+    pub fn get_ensemble(&self, id: i64) -> Result<Ensemble> {
         ensembles::table
             .filter(ensembles::id.eq(id))
-            .load::<Ensemble>(&self.c)
-            .expect("Error loading ensemble!")
+            .load::<Ensemble>(&self.c)?
             .first()
             .cloned()
+            .ok_or(anyhow!("No ensemble with ID: {}", id))
     }
 
-    pub fn delete_ensemble(&self, id: i64) {
-        diesel::delete(ensembles::table.filter(ensembles::id.eq(id)))
-            .execute(&self.c)
-            .expect("Failed to delete ensemble!");
+    pub fn delete_ensemble(&self, id: i64) -> Result<()> {
+        diesel::delete(ensembles::table.filter(ensembles::id.eq(id))).execute(&self.c)?;
+        Ok(())
     }
 
-    pub fn get_ensembles(&self) -> Vec<Ensemble> {
-        ensembles::table
-            .load::<Ensemble>(&self.c)
-            .expect("Error loading ensembles!")
+    pub fn get_ensembles(&self) -> Result<Vec<Ensemble>> {
+        let ensembles = ensembles::table.load::<Ensemble>(&self.c)?;
+        Ok(ensembles)
     }
 
-    pub fn update_recording(&self, recording_insertion: RecordingInsertion) {
+    pub fn update_recording(&self, recording_insertion: RecordingInsertion) -> Result<()> {
         let id = recording_insertion.recording.id;
 
         self.defer_foreign_keys();
-        self.c
-            .transaction(|| {
-                self.delete_recording(id);
+        self.c.transaction(|| {
+            self.delete_recording(id);
 
-                diesel::insert_into(recordings::table)
-                    .values(recording_insertion.recording)
+            diesel::insert_into(recordings::table)
+                .values(recording_insertion.recording)
+                .execute(&self.c)?;
+
+            for performance in recording_insertion.performances {
+                diesel::insert_into(performances::table)
+                    .values(performance)
                     .execute(&self.c)?;
+            }
 
-                for performance in recording_insertion.performances {
-                    diesel::insert_into(performances::table)
-                        .values(performance)
-                        .execute(&self.c)?;
-                }
+            diesel::result::QueryResult::Ok(())
+        })?;
 
-                diesel::result::QueryResult::Ok(())
-            })
-            .expect("Failed to insert performance!");
+        Ok(())
     }
 
-    pub fn get_recording(&self, id: i64) -> Option<Recording> {
+    pub fn get_recording(&self, id: i64) -> Result<Recording> {
         recordings::table
             .filter(recordings::id.eq(id))
-            .load::<Recording>(&self.c)
-            .expect("Error loading recording!")
+            .load::<Recording>(&self.c)?
             .first()
             .cloned()
+            .ok_or(anyhow!("No recording with ID: {}", id))
     }
 
     pub fn get_recording_description_for_recording(
         &self,
-        recording: Recording,
-    ) -> RecordingDescription {
-        RecordingDescription {
+        recording: &Recording,
+    ) -> Result<RecordingDescription> {
+        let mut performance_descriptions: Vec<PerformanceDescription> = Vec::new();
+
+        let performances = performances::table
+            .filter(performances::recording.eq(recording.id))
+            .load::<Performance>(&self.c)?;
+
+        for performance in performances {
+            performance_descriptions.push(PerformanceDescription {
+                person: match performance.person {
+                    Some(id) => Some(self.get_person(id)?),
+                    None => None,
+                },
+                ensemble: match performance.ensemble {
+                    Some(id) => Some(self.get_ensemble(id)?),
+                    None => None,
+                },
+                role: match performance.role {
+                    Some(id) => Some(self.get_instrument(id)?),
+                    None => None,
+                },
+            });
+        }
+
+        Ok(RecordingDescription {
             id: recording.id,
-            work: self
-                .get_work_description(recording.work)
-                .expect("Could not find work for recording!"),
-            comment: recording.comment,
-            performances: performances::table
-                .filter(performances::recording.eq(recording.id))
-                .load::<Performance>(&self.c)
-                .expect("Failed to load performances!")
-                .iter()
-                .map(|performance| PerformanceDescription {
-                    person: performance.person.map(|id| {
-                        self.get_person(id)
-                            .expect("Could not find person for performance!")
-                    }),
-                    ensemble: performance.ensemble.map(|id| {
-                        self.get_ensemble(id)
-                            .expect("Could not find ensemble for performance!")
-                    }),
-                    role: performance.role.map(|id| {
-                        self.get_instrument(id)
-                            .expect("Could not find role for performance!")
-                    }),
-                })
-                .collect(),
-        }
+            work: self.get_work_description(recording.work)?,
+            comment: recording.comment.clone(),
+            performances: performance_descriptions,
+        })
     }
 
-    pub fn get_recording_description(&self, id: i64) -> Option<RecordingDescription> {
-        match self.get_recording(id) {
-            Some(recording) => Some(self.get_recording_description_for_recording(recording)),
-            None => None,
-        }
+    pub fn get_recording_description(&self, id: i64) -> Result<RecordingDescription> {
+        let recording = self.get_recording(id)?;
+        let recording_description = self.get_recording_description_for_recording(&recording)?;
+        Ok(recording_description)
     }
 
-    pub fn get_recordings_for_person(&self, id: i64) -> Vec<RecordingDescription> {
+    pub fn get_recordings_for_person(&self, id: i64) -> Result<Vec<RecordingDescription>> {
+        let mut recording_descriptions: Vec<RecordingDescription> = Vec::new();
+
         let recordings = recordings::table
             .inner_join(performances::table.on(performances::recording.eq(recordings::id)))
             .inner_join(persons::table.on(persons::id.nullable().eq(performances::person)))
             .filter(persons::id.eq(id))
             .select(recordings::table::all_columns())
-            .load::<Recording>(&self.c)
-            .expect("Error loading recordings for person!");
+            .load::<Recording>(&self.c)?;
 
-        recordings
-            .iter()
-            .map(|recording| self.get_recording_description_for_recording(recording.clone()))
-            .collect()
+        for recording in recordings {
+            recording_descriptions.push(self.get_recording_description_for_recording(&recording)?);
+        }
+
+        Ok(recording_descriptions)
     }
 
-    pub fn get_recordings_for_ensemble(&self, id: i64) -> Vec<RecordingDescription> {
+    pub fn get_recordings_for_ensemble(&self, id: i64) -> Result<Vec<RecordingDescription>> {
+        let mut recording_descriptions: Vec<RecordingDescription> = Vec::new();
+
         let recordings = recordings::table
             .inner_join(performances::table.on(performances::recording.eq(recordings::id)))
             .inner_join(ensembles::table.on(ensembles::id.nullable().eq(performances::ensemble)))
             .filter(ensembles::id.eq(id))
             .select(recordings::table::all_columns())
-            .load::<Recording>(&self.c)
-            .expect("Error loading recordings for ensemble!");
+            .load::<Recording>(&self.c)?;
 
-        recordings
-            .iter()
-            .map(|recording| self.get_recording_description_for_recording(recording.clone()))
-            .collect()
+        for recording in recordings {
+            recording_descriptions.push(self.get_recording_description_for_recording(&recording)?);
+        }
+
+        Ok(recording_descriptions)
     }
 
-    pub fn get_recordings_for_work(&self, id: i64) -> Vec<RecordingDescription> {
+    pub fn get_recordings_for_work(&self, id: i64) -> Result<Vec<RecordingDescription>> {
+        let mut recording_descriptions: Vec<RecordingDescription> = Vec::new();
+
         let recordings = recordings::table
             .inner_join(works::table.on(works::id.eq(recordings::work)))
             .filter(works::id.eq(id))
             .select(recordings::table::all_columns())
-            .load::<Recording>(&self.c)
-            .expect("Error loading recordings for work!");
+            .load::<Recording>(&self.c)?;
 
-        recordings
-            .iter()
-            .map(|recording| self.get_recording_description_for_recording(recording.clone()))
-            .collect()
+        for recording in recordings {
+            recording_descriptions.push(self.get_recording_description_for_recording(&recording)?);
+        }
+
+        Ok(recording_descriptions)
     }
 
-    pub fn delete_recording(&self, id: i64) {
-        diesel::delete(recordings::table.filter(recordings::id.eq(id)))
-            .execute(&self.c)
-            .expect("Failed to delete recording!");
+    pub fn delete_recording(&self, id: i64) -> Result<()> {
+        diesel::delete(recordings::table.filter(recordings::id.eq(id))).execute(&self.c)?;
+        Ok(())
     }
 
-    pub fn get_recordings(&self, work_id: i64) -> Vec<Recording> {
-        recordings::table
+    pub fn get_recordings(&self, work_id: i64) -> Result<Vec<Recording>> {
+        let recordings = recordings::table
             .filter(recordings::work.eq(work_id))
-            .load::<Recording>(&self.c)
-            .expect("Error loading recordings!")
+            .load::<Recording>(&self.c)?;
+
+        Ok(recordings)
     }
 
     fn defer_foreign_keys(&self) {

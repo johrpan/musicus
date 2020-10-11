@@ -124,7 +124,7 @@ where
             Loading => {
                 self.backend
                     .get_persons(clone!(@strong self as self_ => move |persons| {
-                        self_.clone().set_state(Persons(persons));
+                        self_.clone().set_state(Persons(persons.unwrap()));
                     }));
 
                 self.sidebar_stack.set_visible_child_name("loading");
@@ -184,7 +184,7 @@ where
                 self.backend.get_work_descriptions(
                     person.id,
                     clone!(@strong self as self_ => move |works| {
-                        self_.clone().set_state(Person(works));
+                        self_.clone().set_state(Person(works.unwrap()));
                     }),
                 );
 

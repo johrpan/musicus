@@ -300,7 +300,9 @@ impl Window {
             Loading => {
                 self.backend
                     .get_persons(clone!(@strong self as self_ => move |persons| {
+                        let persons = persons.unwrap();
                         self_.backend.get_ensembles(clone!(@strong self_ => move |ensembles| {
+                            let ensembles = ensembles.unwrap();
                             let mut poes: Vec<PersonOrEnsemble> = Vec::new();
 
                             for person in &persons {
@@ -393,9 +395,11 @@ impl Window {
                         self.backend.get_work_descriptions(
                             person.id,
                             clone!(@strong self as self_, @strong poe => move |works| {
+                                let works = works.unwrap();
                                 self_.backend.get_recordings_for_person(
                                     person.id,
                                     clone!(@strong self_, @strong poe => move |recordings| {
+                                        let recordings = recordings.unwrap();
                                         self_.clone().set_state(OverviewScreen(poe.clone(), works.clone(), recordings, String::from("")));
                                     }),
                                 );
@@ -426,6 +430,7 @@ impl Window {
                         self.backend.get_recordings_for_ensemble(
                             ensemble.id,
                             clone!(@strong self as self_ => move |recordings| {
+                                let recordings = recordings.unwrap();
                                 self_.clone().set_state(OverviewScreen(poe.clone(), Vec::new(), recordings, String::from("")));
                             }),
                         );
@@ -550,6 +555,7 @@ impl Window {
                 self.backend.get_recordings_for_work(
                     work.id,
                     clone!(@strong self as self_ => move |recordings| {
+                        let recordings = recordings.unwrap();
                         self_.clone().set_state(WorkScreen(poe.clone(), work.clone(), recordings, String::new()));
                     }),
                 );
@@ -592,7 +598,10 @@ impl Window {
                     }
                 }
 
-                match self.work_details_recording_list_row_activated_handler_id.take() {
+                match self
+                    .work_details_recording_list_row_activated_handler_id
+                    .take()
+                {
                     Some(id) => self.work_details_recording_list.disconnect(id),
                     None => (),
                 }

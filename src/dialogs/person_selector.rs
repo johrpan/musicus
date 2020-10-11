@@ -44,6 +44,8 @@ where
         result
             .backend
             .get_persons(clone!(@strong result => move |persons| {
+                let persons = persons.unwrap();
+
                 for (index, person) in persons.iter().enumerate() {
                     let label = gtk::Label::new(Some(&person.name_lf()));
                     label.set_halign(gtk::Align::Start);

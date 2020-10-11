@@ -44,6 +44,8 @@ where
         result
             .backend
             .get_ensembles(clone!(@strong result => move |ensembles| {
+                let ensembles = ensembles.unwrap();
+
                 for (index, ensemble) in ensembles.iter().enumerate() {
                     let label = gtk::Label::new(Some(&ensemble.name));
                     label.set_halign(gtk::Align::Start);

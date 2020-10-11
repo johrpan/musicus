@@ -44,6 +44,8 @@ where
         result
             .backend
             .get_instruments(clone!(@strong result => move |instruments| {
+                let instruments = instruments.unwrap();
+
                 for (index, instrument) in instruments.iter().enumerate() {
                     let label = gtk::Label::new(Some(&instrument.name));
                     label.set_halign(gtk::Align::Start);
