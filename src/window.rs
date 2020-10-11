@@ -38,6 +38,12 @@ enum WindowState {
         String,
     ),
     WorkScreenLoading(PersonOrEnsemble, WorkDescription),
+    WorkScreen(
+        PersonOrEnsemble,
+        WorkDescription,
+        Vec<RecordingDescription>,
+        String,
+    ),
     RecordingScreenLoading(PersonOrEnsemble, RecordingDescription),
 }
 
@@ -60,11 +66,13 @@ pub struct Window {
     overview_recording_list: gtk::ListBox,
     work_details_header: libhandy::HeaderBar,
     work_details_stack: gtk::Stack,
+    work_details_recording_list: gtk::ListBox,
     recording_details_header: libhandy::HeaderBar,
     recording_details_stack: gtk::Stack,
     sidebar_list_row_activated_handler_id: Cell<Option<glib::SignalHandlerId>>,
     overview_work_list_row_activated_handler_id: Cell<Option<glib::SignalHandlerId>>,
     overview_recording_list_row_activated_handler_id: Cell<Option<glib::SignalHandlerId>>,
+    work_details_recording_list_row_activated_handler_id: Cell<Option<glib::SignalHandlerId>>,
 }
 
 impl Window {
@@ -90,6 +98,7 @@ impl Window {
         get_widget!(builder, libhandy::HeaderBar, work_details_header);
         get_widget!(builder, gtk::Button, work_details_back_button);
         get_widget!(builder, gtk::Stack, work_details_stack);
+        get_widget!(builder, gtk::ListBox, work_details_recording_list);
         get_widget!(builder, libhandy::HeaderBar, recording_details_header);
         get_widget!(builder, gtk::Button, recording_details_back_button);
         get_widget!(builder, gtk::Stack, recording_details_stack);
@@ -115,11 +124,13 @@ impl Window {
             overview_recording_list: overview_recording_list,
             work_details_header: work_details_header,
             work_details_stack: work_details_stack,
+            work_details_recording_list: work_details_recording_list,
             recording_details_header: recording_details_header,
             recording_details_stack: recording_details_stack,
             sidebar_list_row_activated_handler_id: Cell::new(None),
             overview_work_list_row_activated_handler_id: Cell::new(None),
             overview_recording_list_row_activated_handler_id: Cell::new(None),
+            work_details_recording_list_row_activated_handler_id: Cell::new(None),
         });
 
         action!(
@@ -248,6 +259,9 @@ impl Window {
         work_details_back_button.connect_clicked(clone!(@strong result => move |_| {
             match result.get_state() {
                 WorkScreenLoading(poe, _) => {
+                    result.clone().set_state(OverviewScreenLoading(poe));
+                },
+                WorkScreen(poe, _, _, _) => {
                     result.clone().set_state(OverviewScreenLoading(poe));
                 },
                 _ => (),
@@ -533,7 +547,72 @@ impl Window {
                     .set_title(Some(&work.composer.name_fl()));
                 self.work_details_header.set_subtitle(Some(&work.title));
 
+                self.backend.get_recordings_for_work(
+                    work.id,
+                    clone!(@strong self as self_ => move |recordings| {
+                        self_.clone().set_state(WorkScreen(poe.clone(), work.clone(), recordings, String::new()));
+                    }),
+                );
+
                 self.work_details_stack.set_visible_child_name("loading");
+                self.main_stack
+                    .set_visible_child_name("work_details_screen");
+                self.leaflet.set_visible_child_name("content");
+            }
+            WorkScreen(poe, work, recordings, search) => {
+                for child in self.work_details_recording_list.get_children() {
+                    self.work_details_recording_list.remove(&child);
+                }
+
+                for (index, recording) in recordings.iter().enumerate() {
+                    let work_text = recording.work.get_title();
+                    let performers_text = recording.get_performers();
+
+                    if search.is_empty()
+                        || (work_text.to_lowercase().contains(&search)
+                            || performers_text.to_lowercase().contains(&search))
+                    {
+                        let work_label = gtk::Label::new(Some(&work_text));
+
+                        work_label.set_ellipsize(pango::EllipsizeMode::End);
+                        work_label.set_halign(gtk::Align::Start);
+
+                        let performers_label = gtk::Label::new(Some(&performers_text));
+                        performers_label.set_ellipsize(pango::EllipsizeMode::End);
+                        performers_label.set_opacity(0.5);
+                        performers_label.set_halign(gtk::Align::Start);
+
+                        let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
+                        vbox.add(&work_label);
+                        vbox.add(&performers_label);
+
+                        let row = SelectorRow::new(index.try_into().unwrap(), &vbox);
+                        row.show_all();
+                        self.work_details_recording_list.insert(&row, -1);
+                    }
+                }
+
+                match self.work_details_recording_list_row_activated_handler_id.take() {
+                    Some(id) => self.work_details_recording_list.disconnect(id),
+                    None => (),
+                }
+
+                let handler_id = self.work_details_recording_list.connect_row_activated(
+                    clone!(@strong self as self_, @strong recordings, @strong poe => move |_, row| {
+                        self_.overview_work_list.unselect_all();
+
+                        let row = row.get_child().unwrap().downcast::<SelectorRow>().unwrap();
+                        let index: usize = row.get_index().try_into().unwrap();
+                        let recording = recordings[index].clone();
+
+                        self_.clone().set_state(RecordingScreenLoading(poe.clone(), recording));
+                    }),
+                );
+
+                self.work_details_recording_list_row_activated_handler_id
+                    .set(Some(handler_id));
+
+                self.work_details_stack.set_visible_child_name("content");
                 self.main_stack
                     .set_visible_child_name("work_details_screen");
                 self.leaflet.set_visible_child_name("content");

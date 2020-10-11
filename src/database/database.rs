@@ -364,6 +364,20 @@ impl Database {
             .collect()
     }
 
+    pub fn get_recordings_for_work(&self, id: i64) -> Vec<RecordingDescription> {
+        let recordings = recordings::table
+            .inner_join(works::table.on(works::id.eq(recordings::work)))
+            .filter(works::id.eq(id))
+            .select(recordings::table::all_columns())
+            .load::<Recording>(&self.c)
+            .expect("Error loading recordings for work!");
+
+        recordings
+            .iter()
+            .map(|recording| self.get_recording_description_for_recording(recording.clone()))
+            .collect()
+    }
+
     pub fn delete_recording(&self, id: i64) {
         diesel::delete(recordings::table.filter(recordings::id.eq(id)))
             .execute(&self.c)
