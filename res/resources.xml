@@ -3,16 +3,22 @@
     <gresource prefix="/de/johrpan/musicus_editor">
         <file preprocess="xml-stripblanks">ui/ensemble_editor.ui</file>
         <file preprocess="xml-stripblanks">ui/ensemble_selector.ui</file>
+        <file preprocess="xml-stripblanks">ui/ensemble_screen.ui</file>
         <file preprocess="xml-stripblanks">ui/instrument_editor.ui</file>
         <file preprocess="xml-stripblanks">ui/instrument_selector.ui</file>
         <file preprocess="xml-stripblanks">ui/part_editor.ui</file>
         <file preprocess="xml-stripblanks">ui/performance_editor.ui</file>
         <file preprocess="xml-stripblanks">ui/person_editor.ui</file>
+        <file preprocess="xml-stripblanks">ui/person_list.ui</file>
+        <file preprocess="xml-stripblanks">ui/person_screen.ui</file>
         <file preprocess="xml-stripblanks">ui/person_selector.ui</file>
+        <file preprocess="xml-stripblanks">ui/poe_list.ui</file>
         <file preprocess="xml-stripblanks">ui/recording_editor.ui</file>
+        <file preprocess="xml-stripblanks">ui/recording_screen.ui</file>
         <file preprocess="xml-stripblanks">ui/section_editor.ui</file>
         <file preprocess="xml-stripblanks">ui/window.ui</file>
         <file preprocess="xml-stripblanks">ui/work_editor.ui</file>
+        <file preprocess="xml-stripblanks">ui/work_screen.ui</file>
         <file preprocess="xml-stripblanks">ui/work_selector.ui</file>
     </gresource>
 </gresources>

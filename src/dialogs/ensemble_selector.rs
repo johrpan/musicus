@@ -1,7 +1,7 @@
-use super::selector_row::SelectorRow;
 use super::EnsembleEditor;
 use crate::backend::Backend;
 use crate::database::*;
+use crate::widgets::*;
 use gio::prelude::*;
 use glib::clone;
 use gtk::prelude::*;

@@ -1,7 +1,7 @@
-use super::selector_row::SelectorRow;
 use super::{InstrumentSelector, PersonSelector};
 use crate::backend::*;
 use crate::database::*;
+use crate::widgets::*;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;

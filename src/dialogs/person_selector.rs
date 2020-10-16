@@ -1,104 +1,58 @@
-use super::selector_row::SelectorRow;
 use super::PersonEditor;
 use crate::backend::Backend;
 use crate::database::*;
+use crate::widgets::*;
 use gio::prelude::*;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
-use std::convert::TryInto;
 use std::rc::Rc;
 
-pub struct PersonSelector<F>
-where
-    F: Fn(Person) -> () + 'static,
-{
-    backend: Rc<Backend>,
+pub struct PersonSelector {
     window: gtk::Window,
-    callback: F,
-    list: gtk::ListBox,
-    search_entry: gtk::SearchEntry,
 }
 
-impl<F> PersonSelector<F>
-where
-    F: Fn(Person) -> () + 'static,
-{
-    pub fn new<P: IsA<gtk::Window>>(backend: Rc<Backend>, parent: &P, callback: F) -> Rc<Self> {
+impl PersonSelector {
+    pub fn new<P, F>(backend: Rc<Backend>, parent: &P, callback: F) -> Self
+    where
+        P: IsA<gtk::Window>,
+        F: Fn(Person) -> () + 'static,
+    {
         let builder =
             gtk::Builder::from_resource("/de/johrpan/musicus_editor/ui/person_selector.ui");
 
         get_widget!(builder, gtk::Window, window);
         get_widget!(builder, gtk::Button, add_button);
-        get_widget!(builder, gtk::SearchEntry, search_entry);
-        get_widget!(builder, gtk::ListBox, list);
 
-        let result = Rc::new(PersonSelector {
-            backend: backend,
-            window: window,
-            callback: callback,
-            search_entry: search_entry,
-            list: list,
-        });
+        let callback = Rc::new(callback);
 
-        let c = glib::MainContext::default();
-        let clone = result.clone();
-        c.spawn_local(async move {
-            let persons = clone.backend.get_persons().await.unwrap();
+        let list = PersonList::new(backend.clone());
 
-            for (index, person) in persons.iter().enumerate() {
-                let label = gtk::Label::new(Some(&person.name_lf()));
-                label.set_halign(gtk::Align::Start);
-                let row = SelectorRow::new(index.try_into().unwrap(), &label);
-                row.show_all();
-                clone.list.insert(&row, -1);
-            }
-
-            clone.list.connect_row_activated(
-                clone!(@strong clone, @strong persons => move |_, row| {
-                    clone.window.close();
-                    let row = row.get_child().unwrap().downcast::<SelectorRow>().unwrap();
-                    let index: usize = row.get_index().try_into().unwrap();
-                    (clone.callback)(persons[index].clone());
-                }),
-            );
-
-            clone
-                .list
-                .set_filter_func(Some(Box::new(clone!(@strong clone => move |row| {
-                    let row = row.get_child().unwrap().downcast::<SelectorRow>().unwrap();
-                    let index: usize = row.get_index().try_into().unwrap();
-                    let search = clone.search_entry.get_text().to_string().to_lowercase();
-                    search.is_empty() || persons[index]
-                        .name_lf()
-                        .to_lowercase()
-                        .contains(&search)
-                }))));
-        });
-
-        result
-            .search_entry
-            .connect_search_changed(clone!(@strong result => move |_| {
-                result.list.invalidate_filter();
-            }));
-
-        add_button.connect_clicked(clone!(@strong result => move |_| {
-            let editor = PersonEditor::new(
-                result.backend.clone(),
-                &result.window,
-                None,
-                clone!(@strong result => move |person| {
-                    result.window.close();
-                    (result.callback)(person);
-                }),
-            );
-
-            editor.show();
+        list.set_selected(clone!(@strong window, @strong callback => move |person| {
+            window.close();
+            callback(person.clone());
         }));
 
-        result.window.set_transient_for(Some(parent));
+        window.set_transient_for(Some(parent));
+        window.add(&list.widget);
 
-        result
+        add_button.connect_clicked(
+            clone!(@strong backend, @strong window, @strong callback => move |_| {
+                let editor = PersonEditor::new(
+                    backend.clone(),
+                    &window,
+                    None,
+                    clone!(@strong window, @strong callback => move |person| {
+                        window.close();
+                        callback(person);
+                    }),
+                );
+
+                editor.show();
+            }),
+        );
+
+        Self { window }
     }
 
     pub fn show(&self) {

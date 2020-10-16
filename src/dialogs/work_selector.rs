@@ -1,6 +1,7 @@
 use super::*;
 use crate::backend::Backend;
 use crate::database::*;
+use crate::widgets::*;
 use gio::prelude::*;
 use glib::clone;
 use gtk::prelude::*;

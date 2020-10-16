@@ -14,6 +14,8 @@ use std::rc::Rc;
 mod backend;
 mod database;
 mod dialogs;
+mod screens;
+mod widgets;
 
 mod window;
 use window::Window;
