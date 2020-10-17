@@ -1,3 +1,4 @@
+use super::*;
 use crate::backend::*;
 use crate::database::*;
 use crate::widgets::*;
@@ -9,10 +10,11 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 pub struct WorkScreen {
-    pub widget: gtk::Box,
+    backend: Rc<Backend>,
+    widget: gtk::Box,
     stack: gtk::Stack,
     recording_list: Rc<List<RecordingDescription>>,
-    back: RefCell<Option<Box<dyn Fn() -> () + 'static>>>,
+    navigator: RefCell<Option<Rc<Navigator>>>,
 }
 
 impl WorkScreen {
@@ -59,10 +61,11 @@ impl WorkScreen {
         recording_frame.add(&recording_list.widget);
 
         let result = Rc::new(Self {
+            backend,
             widget,
             stack,
             recording_list,
-            back: RefCell::new(None),
+            navigator: RefCell::new(None),
         });
 
         search_entry.connect_search_changed(clone!(@strong result => move |_| {
@@ -70,15 +73,29 @@ impl WorkScreen {
         }));
 
         back_button.connect_clicked(clone!(@strong result => move |_| {
-            if let Some(back) = &*result.back.borrow() {
-                back();
+            let navigator = result.navigator.borrow().clone();
+            if let Some(navigator) = navigator {
+                navigator.clone().pop();
             }
         }));
+
+        result
+            .recording_list
+            .set_selected(clone!(@strong result => move |recording| {
+                let navigator = result.navigator.borrow().clone();
+                if let Some(navigator) = navigator {
+                    navigator.push(RecordingScreen::new(result.backend.clone(), recording.clone()));
+                }
+            }));
 
         let context = glib::MainContext::default();
         let clone = result.clone();
         context.spawn_local(async move {
-            let recordings = backend.get_recordings_for_work(work.id).await.unwrap();
+            let recordings = clone
+                .backend
+                .get_recordings_for_work(work.id)
+                .await
+                .unwrap();
 
             if recordings.is_empty() {
                 clone.stack.set_visible_child_name("nothing");
@@ -90,18 +107,18 @@ impl WorkScreen {
 
         result
     }
+}
 
-    pub fn set_back<B>(&self, back: B)
-    where
-        B: Fn() -> () + 'static,
-    {
-        self.back.replace(Some(Box::new(back)));
+impl NavigatorScreen for WorkScreen {
+    fn attach_navigator(&self, navigator: Rc<Navigator>) {
+        self.navigator.replace(Some(navigator));
     }
 
-    pub fn set_recording_selected<S>(&self, selected: S)
-    where
-        S: Fn(&RecordingDescription) -> () + 'static,
-    {
-        self.recording_list.set_selected(selected);
+    fn get_widget(&self) -> gtk::Widget {
+        self.widget.clone().upcast()
+    }
+
+    fn detach_navigator(&self) {
+        self.navigator.replace(None);
     }
 }

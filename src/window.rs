@@ -15,7 +15,7 @@ pub struct Window {
     leaflet: libhandy::Leaflet,
     sidebar_box: gtk::Box,
     poe_list: Rc<PoeList>,
-    stack: Stack,
+    navigator: Rc<Navigator>,
 }
 
 impl Window {
@@ -29,7 +29,7 @@ impl Window {
 
         let backend = Rc::new(Backend::new("test.sqlite"));
         let poe_list = PoeList::new(backend.clone());
-        let stack = Stack::new(&empty_screen);
+        let navigator = Navigator::new(&empty_screen);
 
         let result = Rc::new(Self {
             backend,
@@ -37,78 +37,24 @@ impl Window {
             leaflet,
             sidebar_box,
             poe_list,
-            stack,
+            navigator,
         });
 
         result
             .poe_list
             .set_selected(clone!(@strong result => move |poe| {
-                result.leaflet.set_visible_child(&result.stack.widget);
+                result.leaflet.set_visible_child(&result.navigator.widget);
                 match poe {
                     PersonOrEnsemble::Person(person) => {
-                        let person_screen = Rc::new(PersonScreen::new(result.backend.clone(), person.clone()));
-
-                        person_screen.set_back(clone!(@strong result => move || {
-                            result.leaflet.set_visible_child(&result.sidebar_box);
-                            result.stack.reset_child();
-                        }));
-
-                        person_screen.set_work_selected(clone!(@strong result, @strong person_screen => move |work| {
-                            let work_screen = Rc::new(WorkScreen::new(result.backend.clone(), work.clone()));
-
-                            work_screen.set_back(clone!(@strong result, @strong person_screen => move || {
-                                result.stack.set_child(person_screen.widget.clone());
-                            }));
-
-                            work_screen.set_recording_selected(clone!(@strong result, @strong work_screen => move |recording| {
-                                let recording_screen = RecordingScreen::new(result.backend.clone(), recording.clone());
-
-                                recording_screen.set_back(clone!(@strong result, @strong work_screen => move || {
-                                    result.stack.set_child(work_screen.widget.clone());
-                                }));
-
-                                result.stack.set_child(recording_screen.widget.clone());
-                            }));
-
-                            result.stack.set_child(work_screen.widget.clone());
-                        }));
-
-                        person_screen.set_recording_selected(clone!(@strong result, @strong person_screen => move |recording| {
-                            let recording_screen = Rc::new(RecordingScreen::new(result.backend.clone(), recording.clone()));
-
-                            recording_screen.set_back(clone!(@strong result, @strong person_screen => move || {
-                                result.stack.set_child(person_screen.widget.clone());
-                            }));
-
-                            result.stack.set_child(recording_screen.widget.clone());
-                        }));
-
-                        result.stack.set_child(person_screen.widget.clone());
+                        result.navigator.clone().replace(PersonScreen::new(result.backend.clone(), person.clone()));
                     }
                     PersonOrEnsemble::Ensemble(ensemble) => {
-                        let ensemble_screen = EnsembleScreen::new(result.backend.clone(), ensemble.clone());
-
-                        ensemble_screen.set_back(clone!(@strong result => move || {
-                            result.leaflet.set_visible_child(&result.sidebar_box);
-                            result.stack.reset_child();
-                        }));
-
-                        ensemble_screen.set_recording_selected(clone!(@strong result, @strong ensemble_screen => move |recording| {
-                            let recording_screen = Rc::new(RecordingScreen::new(result.backend.clone(), recording.clone()));
-
-                            recording_screen.set_back(clone!(@strong result, @strong ensemble_screen => move || {
-                                result.stack.set_child(ensemble_screen.widget.clone());
-                            }));
-
-                            result.stack.set_child(recording_screen.widget.clone());
-                        }));
-
-                        result.stack.set_child(ensemble_screen.widget.clone());
+                        result.navigator.clone().replace(EnsembleScreen::new(result.backend.clone(), ensemble.clone()));
                     }
                 }
             }));
 
-        result.leaflet.add(&result.stack.widget);
+        result.leaflet.add(&result.navigator.widget);
         result
             .sidebar_box
             .pack_start(&result.poe_list.widget, true, true, 0);
@@ -237,7 +183,7 @@ impl Window {
 
     fn reload(&self) {
         self.poe_list.clone().reload();
-        self.stack.reset_child();
+        self.navigator.reset();
         self.leaflet.set_visible_child(&self.sidebar_box);
     }
 }

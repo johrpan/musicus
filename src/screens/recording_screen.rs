@@ -1,5 +1,6 @@
 use crate::backend::*;
 use crate::database::*;
+use crate::widgets::*;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
@@ -8,8 +9,8 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 pub struct RecordingScreen {
-    pub widget: gtk::Box,
-    back: RefCell<Option<Box<dyn Fn() -> () + 'static>>>,
+    widget: gtk::Box,
+    navigator: RefCell<Option<Rc<Navigator>>>,
 }
 
 impl RecordingScreen {
@@ -27,22 +28,30 @@ impl RecordingScreen {
 
         let result = Rc::new(Self {
             widget,
-            back: RefCell::new(None),
+            navigator: RefCell::new(None),
         });
 
         back_button.connect_clicked(clone!(@strong result => move |_| {
-            if let Some(back) = &*result.back.borrow() {
-                back();
+            let navigator = result.navigator.borrow().clone();
+            if let Some(navigator) = navigator {
+                navigator.clone().pop();
             }
         }));
 
         result
     }
+}
 
-    pub fn set_back<B>(&self, back: B)
-    where
-        B: Fn() -> () + 'static,
-    {
-        self.back.replace(Some(Box::new(back)));
+impl NavigatorScreen for RecordingScreen {
+    fn attach_navigator(&self, navigator: Rc<Navigator>) {
+        self.navigator.replace(Some(navigator));
+    }
+
+    fn get_widget(&self) -> gtk::Widget {
+        self.widget.clone().upcast()
+    }
+
+    fn detach_navigator(&self) {
+        self.navigator.replace(None);
     }
 }
