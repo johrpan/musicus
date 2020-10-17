@@ -102,6 +102,7 @@ impl PersonScreen {
         result
             .work_list
             .set_selected(clone!(@strong result => move |work| {
+                result.recording_list.clear_selection();
                 let navigator = result.navigator.borrow().clone();
                 if let Some(navigator) = navigator {
                     navigator.push(WorkScreen::new(result.backend.clone(), work.clone()));
@@ -111,6 +112,7 @@ impl PersonScreen {
         result
             .recording_list
             .set_selected(clone!(@strong result => move |recording| {
+                result.work_list.clear_selection();
                 let navigator = result.navigator.borrow().clone();
                 if let Some(navigator) = navigator {
                     navigator.push(RecordingScreen::new(result.backend.clone(), recording.clone()));

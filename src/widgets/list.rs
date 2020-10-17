@@ -87,4 +87,8 @@ where
     pub fn invalidate_filter(&self) {
         self.widget.invalidate_filter();
     }
+
+    pub fn clear_selection(&self) {
+        self.widget.unselect_all();
+    }
 }
