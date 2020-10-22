@@ -35,6 +35,24 @@ impl PersonScreen {
 
         header.set_title(Some(&person.name_fl()));
 
+        let edit_menu_item = gio::MenuItem::new(Some("Edit person"), None);
+        edit_menu_item.set_action_and_target_value(
+            Some("win.edit-person"),
+            Some(&glib::Variant::from(person.id)),
+        );
+
+        let delete_menu_item = gio::MenuItem::new(Some("Delete person"), None);
+        delete_menu_item.set_action_and_target_value(
+            Some("win.delete-person"),
+            Some(&glib::Variant::from(person.id)),
+        );
+
+        let menu = gio::Menu::new();
+        menu.append_item(&edit_menu_item);
+        menu.append_item(&delete_menu_item);
+
+        menu_button.set_menu_model(Some(&menu));
+
         let work_list = List::new(
             |work: &WorkDescription| {
                 let label = gtk::Label::new(Some(&work.title));

@@ -32,6 +32,24 @@ impl WorkScreen {
         header.set_title(Some(&work.title));
         header.set_subtitle(Some(&work.composer.name_fl()));
 
+        let edit_menu_item = gio::MenuItem::new(Some("Edit work"), None);
+        edit_menu_item.set_action_and_target_value(
+            Some("win.edit-work"),
+            Some(&glib::Variant::from(work.id)),
+        );
+
+        let delete_menu_item = gio::MenuItem::new(Some("Delete work"), None);
+        delete_menu_item.set_action_and_target_value(
+            Some("win.delete-work"),
+            Some(&glib::Variant::from(work.id)),
+        );
+
+        let menu = gio::Menu::new();
+        menu.append_item(&edit_menu_item);
+        menu.append_item(&delete_menu_item);
+
+        menu_button.set_menu_model(Some(&menu));
+
         let recording_list = List::new(
             |recording: &RecordingDescription| {
                 let work_label = gtk::Label::new(Some(&recording.work.get_title()));

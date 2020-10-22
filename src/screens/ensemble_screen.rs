@@ -32,6 +32,24 @@ impl EnsembleScreen {
 
         header.set_title(Some(&ensemble.name));
 
+        let edit_menu_item = gio::MenuItem::new(Some("Edit ensemble"), None);
+        edit_menu_item.set_action_and_target_value(
+            Some("win.edit-ensemble"),
+            Some(&glib::Variant::from(ensemble.id)),
+        );
+
+        let delete_menu_item = gio::MenuItem::new(Some("Delete ensemble"), None);
+        delete_menu_item.set_action_and_target_value(
+            Some("win.delete-ensemble"),
+            Some(&glib::Variant::from(ensemble.id)),
+        );
+
+        let menu = gio::Menu::new();
+        menu.append_item(&edit_menu_item);
+        menu.append_item(&delete_menu_item);
+
+        menu_button.set_menu_model(Some(&menu));
+
         let recording_list = List::new(
             |recording: &RecordingDescription| {
                 let work_label = gtk::Label::new(Some(&recording.work.get_title()));

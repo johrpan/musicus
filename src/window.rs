@@ -174,6 +174,70 @@ impl Window {
             })
         );
 
+        action!(
+            result.window,
+            "edit-work",
+            Some(glib::VariantTy::new("x").unwrap()),
+            clone!(@strong result => move |_, id| {
+                let id = id.unwrap().get().unwrap();
+                let result = result.clone();
+                let c = glib::MainContext::default();
+                c.spawn_local(async move {
+                    let work = result.backend.get_work_description(id).await.unwrap();
+                    WorkEditor::new(result.backend.clone(), &result.window, Some(work), clone!(@strong result => move |_| {
+                        result.reload();
+                    })).show();
+                });
+            })
+        );
+
+        action!(
+            result.window,
+            "delete-work",
+            Some(glib::VariantTy::new("x").unwrap()),
+            clone!(@strong result => move |_, id| {
+                let id = id.unwrap().get().unwrap();
+                let result = result.clone();
+                let c = glib::MainContext::default();
+                c.spawn_local(async move {
+                    result.backend.delete_work(id).await.unwrap();
+                    result.reload();
+                });
+            })
+        );
+
+        action!(
+            result.window,
+            "edit-recording",
+            Some(glib::VariantTy::new("x").unwrap()),
+            clone!(@strong result => move |_, id| {
+                let id = id.unwrap().get().unwrap();
+                let result = result.clone();
+                let c = glib::MainContext::default();
+                c.spawn_local(async move {
+                    let recording = result.backend.get_recording_description(id).await.unwrap();
+                    RecordingEditor::new(result.backend.clone(), &result.window, Some(recording), clone!(@strong result => move |_| {
+                        result.reload();
+                    })).show();
+                });
+            })
+        );
+
+        action!(
+            result.window,
+            "delete-recording",
+            Some(glib::VariantTy::new("x").unwrap()),
+            clone!(@strong result => move |_, id| {
+                let id = id.unwrap().get().unwrap();
+                let result = result.clone();
+                let c = glib::MainContext::default();
+                c.spawn_local(async move {
+                    result.backend.delete_recording(id).await.unwrap();
+                    result.reload();
+                });
+            })
+        );
+
         result
     }
 

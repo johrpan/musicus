@@ -26,6 +26,24 @@ impl RecordingScreen {
         header.set_title(Some(&recording.work.get_title()));
         header.set_subtitle(Some(&recording.get_performers()));
 
+        let edit_menu_item = gio::MenuItem::new(Some("Edit recording"), None);
+        edit_menu_item.set_action_and_target_value(
+            Some("win.edit-recording"),
+            Some(&glib::Variant::from(recording.id)),
+        );
+
+        let delete_menu_item = gio::MenuItem::new(Some("Delete recording"), None);
+        delete_menu_item.set_action_and_target_value(
+            Some("win.delete-recording"),
+            Some(&glib::Variant::from(recording.id)),
+        );
+
+        let menu = gio::Menu::new();
+        menu.append_item(&edit_menu_item);
+        menu.append_item(&delete_menu_item);
+
+        menu_button.set_menu_model(Some(&menu));
+
         let result = Rc::new(Self {
             widget,
             navigator: RefCell::new(None),

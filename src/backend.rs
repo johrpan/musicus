@@ -13,12 +13,16 @@ enum BackendAction {
     DeleteInstrument(i64, Sender<Result<()>>),
     GetInstruments(Sender<Result<Vec<Instrument>>>),
     UpdateWork(WorkInsertion, Sender<Result<()>>),
+    GetWorkDescription(i64, Sender<Result<WorkDescription>>),
+    DeleteWork(i64, Sender<Result<()>>),
     GetWorkDescriptions(i64, Sender<Result<Vec<WorkDescription>>>),
     UpdateEnsemble(Ensemble, Sender<Result<()>>),
     GetEnsemble(i64, Sender<Result<Ensemble>>),
     DeleteEnsemble(i64, Sender<Result<()>>),
     GetEnsembles(Sender<Result<Vec<Ensemble>>>),
     UpdateRecording(RecordingInsertion, Sender<Result<()>>),
+    GetRecordingDescription(i64, Sender<Result<RecordingDescription>>),
+    DeleteRecording(i64, Sender<Result<()>>),
     GetRecordingsForPerson(i64, Sender<Result<Vec<RecordingDescription>>>),
     GetRecordingsForEnsemble(i64, Sender<Result<Vec<RecordingDescription>>>),
     GetRecordingsForWork(i64, Sender<Result<Vec<RecordingDescription>>>),
@@ -86,6 +90,16 @@ impl Backend {
                             .send(db.update_work(work))
                             .expect("Failed to send result from database thread!");
                     }
+                    GetWorkDescription(id, sender) => {
+                        sender
+                            .send(db.get_work_description(id))
+                            .expect("Failed to send result from database thread!");
+                    }
+                    DeleteWork(id, sender) => {
+                        sender
+                            .send(db.delete_work(id))
+                            .expect("Failed to send result from database thread!");
+                    }
                     GetWorkDescriptions(id, sender) => {
                         sender
                             .send(db.get_work_descriptions(id))
@@ -114,6 +128,16 @@ impl Backend {
                     UpdateRecording(recording, sender) => {
                         sender
                             .send(db.update_recording(recording))
+                            .expect("Failed to send result from database thread!");
+                    }
+                    GetRecordingDescription(id, sender) => {
+                        sender
+                            .send(db.get_recording_description(id))
+                            .expect("Failed to send result from database thread!");
+                    }
+                    DeleteRecording(id, sender) => {
+                        sender
+                            .send(db.delete_recording(id))
                             .expect("Failed to send result from database thread!");
                     }
                     GetRecordingsForPerson(id, sender) => {
@@ -196,6 +220,18 @@ impl Backend {
         receiver.await?
     }
 
+    pub async fn get_work_description(&self, id: i64) -> Result<WorkDescription> {
+        let (sender, receiver) = oneshot::channel();
+        self.action_sender.send(GetWorkDescription(id, sender))?;
+        receiver.await?
+    }
+
+    pub async fn delete_work(&self, id: i64) -> Result<()> {
+        let (sender, receiver) = oneshot::channel();
+        self.action_sender.send(DeleteWork(id, sender))?;
+        receiver.await?
+    }
+
     pub async fn get_work_descriptions(&self, person_id: i64) -> Result<Vec<WorkDescription>> {
         let (sender, receiver) = oneshot::channel();
         self.action_sender
@@ -231,6 +267,19 @@ impl Backend {
         let (sender, receiver) = oneshot::channel();
         self.action_sender
             .send(UpdateRecording(recording_insertion, sender))?;
+        receiver.await?
+    }
+
+    pub async fn get_recording_description(&self, id: i64) -> Result<RecordingDescription> {
+        let (sender, receiver) = oneshot::channel();
+        self.action_sender
+            .send(GetRecordingDescription(id, sender))?;
+        receiver.await?
+    }
+
+    pub async fn delete_recording(&self, id: i64) -> Result<()> {
+        let (sender, receiver) = oneshot::channel();
+        self.action_sender.send(DeleteRecording(id, sender))?;
         receiver.await?
     }
 
