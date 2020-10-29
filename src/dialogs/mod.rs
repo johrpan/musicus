@@ -25,6 +25,9 @@ pub use person_selector::*;
 pub mod recording_editor;
 pub use recording_editor::*;
 
+pub mod recording_selector;
+pub use recording_selector::*;
+
 pub mod section_editor;
 pub use section_editor::*;
 
