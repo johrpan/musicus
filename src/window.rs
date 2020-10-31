@@ -27,7 +27,7 @@ impl Window {
         get_widget!(builder, gtk::Box, sidebar_box);
         get_widget!(builder, gtk::Box, empty_screen);
 
-        let backend = Rc::new(Backend::new("test.sqlite"));
+        let backend = Rc::new(Backend::new("test.sqlite", std::env::current_dir().unwrap()));
         let poe_list = PoeList::new(backend.clone());
         let navigator = Navigator::new(&empty_screen);
 
@@ -105,6 +105,16 @@ impl Window {
             "add-recording",
             clone!(@strong result => move |_, _| {
                 RecordingEditor::new(result.backend.clone(), &result.window, None, clone!(@strong result => move |_| {
+                    result.reload();
+                })).show();
+            })
+        );
+
+        action!(
+            result.window,
+            "add-tracks",
+            clone!(@strong result => move |_, _| {
+                TracksEditor::new(result.backend.clone(), &result.window, clone!(@strong result => move || {
                     result.reload();
                 })).show();
             })

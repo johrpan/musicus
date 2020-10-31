@@ -18,6 +18,8 @@
         <file preprocess="xml-stripblanks">ui/recording_selector.ui</file>
         <file preprocess="xml-stripblanks">ui/recording_selector_screen.ui</file>
         <file preprocess="xml-stripblanks">ui/section_editor.ui</file>
+        <file preprocess="xml-stripblanks">ui/tracks_editor.ui</file>
+        <file preprocess="xml-stripblanks">ui/track_editor.ui</file>
         <file preprocess="xml-stripblanks">ui/window.ui</file>
         <file preprocess="xml-stripblanks">ui/work_editor.ui</file>
         <file preprocess="xml-stripblanks">ui/work_screen.ui</file>

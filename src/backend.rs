@@ -2,6 +2,8 @@ use super::database::*;
 use anyhow::Result;
 use futures_channel::oneshot;
 use futures_channel::oneshot::Sender;
+use std::cell::RefCell;
+use std::path::PathBuf;
 
 enum BackendAction {
     UpdatePerson(Person, Sender<Result<()>>),
@@ -32,10 +34,11 @@ use BackendAction::*;
 
 pub struct Backend {
     action_sender: std::sync::mpsc::Sender<BackendAction>,
+    music_library_path: RefCell<Option<PathBuf>>,
 }
 
 impl Backend {
-    pub fn new(url: &str) -> Self {
+    pub fn new(url: &str, music_library_path: PathBuf) -> Self {
         let url = url.to_string();
 
         let (action_sender, action_receiver) = std::sync::mpsc::channel::<BackendAction>();
@@ -161,6 +164,7 @@ impl Backend {
 
         Backend {
             action_sender: action_sender,
+            music_library_path: RefCell::new(Some(music_library_path)),
         }
     }
 
@@ -308,5 +312,13 @@ impl Backend {
         self.action_sender
             .send(GetRecordingsForWork(work_id, sender))?;
         receiver.await?
+    }
+
+    pub fn set_music_library_path(&self, path: &str) {
+        self.music_library_path.replace(Some(PathBuf::from(path)));
+    }
+
+    pub fn get_music_library_path(&self) -> Option<PathBuf> {
+        self.music_library_path.borrow().clone()
     }
 }

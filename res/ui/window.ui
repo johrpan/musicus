@@ -193,6 +193,10 @@
         <attribute name="label" translatable="yes">Add recording</attribute>
         <attribute name="action">win.add-recording</attribute>
       </item>
+      <item>
+        <attribute name="label" translatable="yes">Add tracks</attribute>
+        <attribute name="action">win.add-tracks</attribute>
+      </item>
     </section>
   </menu>
 </interface>

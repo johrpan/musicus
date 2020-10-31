@@ -31,6 +31,12 @@ pub use recording_selector::*;
 pub mod section_editor;
 pub use section_editor::*;
 
+pub mod track_editor;
+pub use track_editor::*;
+
+pub mod tracks_editor;
+pub use tracks_editor::*;
+
 pub mod work_editor;
 pub use work_editor::*;
 

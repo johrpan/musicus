@@ -181,3 +181,9 @@ impl From<RecordingDescription> for RecordingInsertion {
         }
     }
 }
+
+#[derive(Debug, Clone)]
+pub struct Track {
+    pub work_parts: Vec<usize>,
+    pub file_name: String,
+}

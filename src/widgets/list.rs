@@ -70,6 +70,27 @@ where
         self.selected.replace(Some(Box::new(selected)));
     }
 
+    pub fn get_selected_index(&self) -> Option<usize> {
+        match self.widget.get_selected_rows().first() {
+            Some(row) => match row.get_child() {
+                Some(child) => Some(
+                    child
+                        .downcast::<SelectorRow>()
+                        .unwrap()
+                        .get_index()
+                        .try_into()
+                        .unwrap(),
+                ),
+                None => None,
+            },
+            None => None,
+        }
+    }
+
+    pub fn select_index(&self, index: usize) {
+        self.widget.select_row(self.widget.get_row_at_index(index.try_into().unwrap()).as_ref());
+    }
+
     pub fn show_items(&self, items: Vec<T>) {
         self.items.replace(items);
 
