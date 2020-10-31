@@ -314,8 +314,8 @@ impl Backend {
         receiver.await?
     }
 
-    pub fn set_music_library_path(&self, path: &str) {
-        self.music_library_path.replace(Some(PathBuf::from(path)));
+    pub fn set_music_library_path(&self, path: PathBuf) {
+        self.music_library_path.replace(Some(path.clone()));
     }
 
     pub fn get_music_library_path(&self) -> Option<PathBuf> {

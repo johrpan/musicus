@@ -24,10 +24,14 @@ impl Window {
 
         get_widget!(builder, libhandy::ApplicationWindow, window);
         get_widget!(builder, libhandy::Leaflet, leaflet);
+        get_widget!(builder, gtk::Button, add_button);
         get_widget!(builder, gtk::Box, sidebar_box);
         get_widget!(builder, gtk::Box, empty_screen);
 
-        let backend = Rc::new(Backend::new("test.sqlite", std::env::current_dir().unwrap()));
+        let backend = Rc::new(Backend::new(
+            "test.sqlite",
+            std::env::current_dir().unwrap(),
+        ));
         let poe_list = PoeList::new(backend.clone());
         let navigator = Navigator::new(&empty_screen);
 
@@ -59,6 +63,20 @@ impl Window {
             .sidebar_box
             .pack_start(&result.poe_list.widget, true, true, 0);
         result.window.set_application(Some(app));
+
+        add_button.connect_clicked(clone!(@strong result => move |_| {
+            TracksEditor::new(result.backend.clone(), &result.window, clone!(@strong result => move || {
+                result.reload();
+            })).show();
+        }));
+
+        action!(
+            result.window,
+            "preferences",
+            clone!(@strong result => move |_, _| {
+                Preferences::new(result.backend.clone(), &result.window).show();
+            })
+        );
 
         action!(
             result.window,

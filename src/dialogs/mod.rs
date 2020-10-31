@@ -22,6 +22,9 @@ pub use person_editor::*;
 pub mod person_selector;
 pub use person_selector::*;
 
+pub mod preferences;
+pub use preferences::*;
+
 pub mod recording_editor;
 pub use recording_editor::*;
 

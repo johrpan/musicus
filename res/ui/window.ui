@@ -106,11 +106,10 @@
                 <property name="can-focus">False</property>
                 <property name="show-close-button" bind-source="leaflet" bind-property="folded" bind-flags="sync-create">False</property>
                 <child>
-                  <object class="GtkMenuButton">
+                  <object class="GtkButton" id="add_button">
                     <property name="visible">True</property>
                     <property name="can-focus">True</property>
                     <property name="receives-default">True</property>
-                    <property name="menu-model">add_menu</property>
                     <child>
                       <object class="GtkImage">
                         <property name="visible">True</property>
@@ -126,7 +125,7 @@
                     <property name="can-focus">True</property>
                     <property name="focus-on-click">False</property>
                     <property name="receives-default">True</property>
-                    <property name="menu-model">add_menu</property>
+                    <property name="menu-model">menu</property>
                     <child>
                       <object class="GtkImage">
                         <property name="visible">True</property>
@@ -171,31 +170,11 @@
       </object>
     </child>
   </object>
-  <menu id="add_menu">
+  <menu id="menu">
     <section>
       <item>
-        <attribute name="label" translatable="yes">Add person</attribute>
-        <attribute name="action">win.add-person</attribute>
-      </item>
-      <item>
-        <attribute name="label" translatable="yes">Add instrument</attribute>
-        <attribute name="action">win.add-instrument</attribute>
-      </item>
-      <item>
-        <attribute name="label" translatable="yes">Add work</attribute>
-        <attribute name="action">win.add-work</attribute>
-      </item>
-      <item>
-        <attribute name="label" translatable="yes">Add ensemble</attribute>
-        <attribute name="action">win.add-ensemble</attribute>
-      </item>
-      <item>
-        <attribute name="label" translatable="yes">Add recording</attribute>
-        <attribute name="action">win.add-recording</attribute>
-      </item>
-      <item>
-        <attribute name="label" translatable="yes">Add tracks</attribute>
-        <attribute name="action">win.add-tracks</attribute>
+        <attribute name="label" translatable="yes">Preferences</attribute>
+        <attribute name="action">win.preferences</attribute>
       </item>
     </section>
   </menu>
