@@ -192,7 +192,9 @@ impl From<Track> for TrackDescription {
     fn from(track: Track) -> Self {
         let mut work_parts = Vec::<usize>::new();
         for part in track.work_parts.split(",") {
-            work_parts.push(part.parse().unwrap());
+            if !part.is_empty() {
+                work_parts.push(part.parse().unwrap());
+            }
         }
 
         TrackDescription {
