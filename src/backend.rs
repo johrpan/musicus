@@ -34,6 +34,8 @@ enum BackendAction {
     GetRecordingsForPerson(i64, Sender<Result<Vec<RecordingDescription>>>),
     GetRecordingsForEnsemble(i64, Sender<Result<Vec<RecordingDescription>>>),
     GetRecordingsForWork(i64, Sender<Result<Vec<RecordingDescription>>>),
+    AddTracks(i64, Vec<TrackDescription>, Sender<Result<()>>),
+    GetTracks(i64, Sender<Result<Vec<TrackDescription>>>),
     Stop,
 }
 
@@ -212,6 +214,20 @@ impl Backend {
         receiver.await?
     }
 
+    pub async fn add_tracks(&self, recording_id: i64, tracks: Vec<TrackDescription>) -> Result<()> {
+        let (sender, receiver) = oneshot::channel();
+        self.unwrap_action_sender()?
+            .send(AddTracks(recording_id, tracks, sender))?;
+        receiver.await?
+    }
+
+    pub async fn get_tracks(&self, recording_id: i64) -> Result<Vec<TrackDescription>> {
+        let (sender, receiver) = oneshot::channel();
+        self.unwrap_action_sender()?
+            .send(GetTracks(recording_id, sender))?;
+        receiver.await?
+    }
+
     pub async fn set_music_library_path(&self, path: PathBuf) -> Result<()> {
         self.music_library_path.replace(Some(path.clone()));
         self.set_state(BackendState::Loading);
@@ -367,6 +383,16 @@ impl Backend {
                     GetRecordingsForWork(id, sender) => {
                         sender
                             .send(db.get_recordings_for_work(id))
+                            .expect("Failed to send result from database thread!");
+                    }
+                    AddTracks(recording_id, tracks, sender) => {
+                        sender
+                            .send(db.add_tracks(recording_id, tracks))
+                            .expect("Failed to send result from database thread!");
+                    }
+                    GetTracks(recording_id, sender) => {
+                        sender
+                            .send(db.get_tracks(recording_id))
                             .expect("Failed to send result from database thread!");
                     }
                     Stop => {

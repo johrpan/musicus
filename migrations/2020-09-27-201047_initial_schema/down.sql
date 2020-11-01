@@ -17,3 +17,5 @@ DROP TABLE ensembles;
 DROP TABLE recordings;
 
 DROP TABLE performances;
+
+DROP TABLE tracks;

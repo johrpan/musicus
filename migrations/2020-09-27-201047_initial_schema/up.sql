@@ -60,3 +60,11 @@ CREATE TABLE performances (
     ensemble BIGINT REFERENCES ensembles(id),
     role BIGINT REFERENCES instruments(id)
 );
+
+CREATE TABLE tracks (
+    id BIGINT NOT NULL PRIMARY KEY,
+    file_name TEXT NOT NULL,
+    recording BIGINT NOT NULL REFERENCES recordings(id) ON DELETE CASCADE,
+    track_index INTEGER NOT NULL,
+    work_parts TEXT NOT NULL
+);

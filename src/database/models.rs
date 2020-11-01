@@ -183,7 +183,21 @@ impl From<RecordingDescription> for RecordingInsertion {
 }
 
 #[derive(Debug, Clone)]
-pub struct Track {
+pub struct TrackDescription {
     pub work_parts: Vec<usize>,
     pub file_name: String,
+}
+
+impl From<Track> for TrackDescription {
+    fn from(track: Track) -> Self {
+        let mut work_parts = Vec::<usize>::new();
+        for part in track.work_parts.split(",") {
+            work_parts.push(part.parse().unwrap());
+        }
+
+        TrackDescription {
+            work_parts,
+            file_name: track.file_name,
+        }
+    }
 }

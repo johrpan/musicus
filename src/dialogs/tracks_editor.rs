@@ -41,10 +41,10 @@ impl TracksEditor {
         }));
 
         let recording = Rc::new(RefCell::new(None::<RecordingDescription>));
-        let tracks = Rc::new(RefCell::new(Vec::<Track>::new()));
+        let tracks = Rc::new(RefCell::new(Vec::<TrackDescription>::new()));
 
         let track_list = List::new(
-            clone!(@strong recording => move |track: &Track| {
+            clone!(@strong recording => move |track: &TrackDescription| {
                 let mut title_parts = Vec::<String>::new();
                 for part in &track.work_parts {
                     if let Some(recording) = &*recording.borrow() {
@@ -122,9 +122,20 @@ impl TracksEditor {
             }
         ));
 
-        save_button.connect_clicked(clone!(@strong window => move |_| {
-            window.close();
-            callback();
+        let callback = Rc::new(callback);
+        save_button.connect_clicked(clone!(@strong window, @strong backend, @strong recording, @strong tracks, @strong callback => move |_| {
+            let context = glib::MainContext::default();
+            let window = window.clone();
+            let backend = backend.clone();
+            let recording = recording.clone();
+            let tracks = tracks.clone();
+            let callback = callback.clone();
+            context.spawn_local(async move {
+                backend.add_tracks(recording.borrow().as_ref().unwrap().id, tracks.borrow().clone()).await.unwrap();
+                callback();
+                window.close();
+            });
+
         }));
 
         add_track_button.connect_clicked(clone!(@strong window, @strong tracks, @strong track_list, @strong autofill_parts => move |_| {
@@ -144,7 +155,7 @@ impl TracksEditor {
                     let mut tracks = tracks.borrow_mut();
                     for file_name in dialog.get_filenames() {
                         let file_name = file_name.strip_prefix(&music_library_path).unwrap();
-                        tracks.insert(index, Track {
+                        tracks.insert(index, TrackDescription {
                             work_parts: Vec::new(),
                             file_name: String::from(file_name.to_str().unwrap()),
                         });

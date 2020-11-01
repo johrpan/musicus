@@ -55,6 +55,16 @@ table! {
 }
 
 table! {
+    tracks (id) {
+        id -> BigInt,
+        file_name -> Text,
+        recording -> BigInt,
+        track_index -> Integer,
+        work_parts -> Text,
+    }
+}
+
+table! {
     work_parts (id) {
         id -> BigInt,
         work -> BigInt,
@@ -90,6 +100,7 @@ joinable!(performances -> instruments (role));
 joinable!(performances -> persons (person));
 joinable!(performances -> recordings (recording));
 joinable!(recordings -> works (work));
+joinable!(tracks -> recordings (recording));
 joinable!(work_parts -> persons (composer));
 joinable!(work_parts -> works (work));
 joinable!(work_sections -> works (work));
@@ -103,6 +114,7 @@ allow_tables_to_appear_in_same_query!(
     performances,
     persons,
     recordings,
+    tracks,
     work_parts,
     work_sections,
     works,

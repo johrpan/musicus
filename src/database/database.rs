@@ -3,6 +3,7 @@ use super::schema::*;
 use super::tables::*;
 use anyhow::{anyhow, Error, Result};
 use diesel::prelude::*;
+use std::convert::TryInto;
 
 embed_migrations!();
 
@@ -397,6 +398,38 @@ impl Database {
             .load::<Recording>(&self.c)?;
 
         Ok(recordings)
+    }
+
+    pub fn add_tracks(&self, recording_id: i64, tracks: Vec<TrackDescription>) -> Result<()> {
+        for (index, track_description) in tracks.iter().enumerate() {
+            let track = Track {
+                id: rand::random(),
+                file_name: track_description.file_name.clone(),
+                recording: recording_id,
+                track_index: index.try_into().unwrap(),
+                work_parts: track_description
+                    .work_parts
+                    .iter()
+                    .map(|i| i.to_string())
+                    .collect::<Vec<String>>()
+                    .join(","),
+            };
+
+            diesel::insert_into(tracks::table)
+                .values(track)
+                .execute(&self.c)?;
+        }
+
+        Ok(())
+    }
+
+    pub fn get_tracks(&self, recording_id: i64) -> Result<Vec<TrackDescription>> {
+        let tracks = tracks::table
+            .filter(tracks::recording.eq(recording_id))
+            .order_by(tracks::track_index)
+            .load::<Track>(&self.c)?;
+
+        Ok(tracks.iter().map(|track| track.clone().into()).collect())
     }
 
     fn defer_foreign_keys(&self) {

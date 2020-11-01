@@ -83,3 +83,12 @@ pub struct Performance {
     pub ensemble: Option<i64>,
     pub role: Option<i64>,
 }
+
+#[derive(Insertable, Queryable, Debug, Clone)]
+pub struct Track {
+    pub id: i64,
+    pub file_name: String,
+    pub recording: i64,
+    pub track_index: i32,
+    pub work_parts: String,
+}
