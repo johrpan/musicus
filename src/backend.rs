@@ -2,8 +2,10 @@ use super::database::*;
 use anyhow::{anyhow, Result};
 use futures_channel::oneshot::Sender;
 use futures_channel::{mpsc, oneshot};
+use gio::prelude::*;
 use std::cell::RefCell;
 use std::path::PathBuf;
+use std::rc::Rc;
 
 pub enum BackendState {
     NoMusicLibrary,
@@ -45,6 +47,7 @@ pub struct Backend {
     pub state_stream: RefCell<mpsc::Receiver<BackendState>>,
     state_sender: RefCell<mpsc::Sender<BackendState>>,
     action_sender: RefCell<Option<std::sync::mpsc::Sender<BackendAction>>>,
+    settings: gio::Settings,
     music_library_path: RefCell<Option<PathBuf>>,
 }
 
@@ -56,7 +59,21 @@ impl Backend {
             state_stream: RefCell::new(state_stream),
             state_sender: RefCell::new(state_sender),
             action_sender: RefCell::new(None),
+            settings: gio::Settings::new("de.johrpan.musicus"),
             music_library_path: RefCell::new(None),
+        }
+    }
+
+    pub fn init(self: Rc<Backend>) {
+        if let Some(path) = self.settings.get_string("music-library-path") {
+            if !path.is_empty() {
+                let context = glib::MainContext::default();
+                context.spawn_local(async move {
+                    self.set_music_library_path_priv(PathBuf::from(path.to_string()))
+                        .await
+                        .unwrap();
+                });
+            }
         }
     }
 
@@ -229,6 +246,16 @@ impl Backend {
     }
 
     pub async fn set_music_library_path(&self, path: PathBuf) -> Result<()> {
+        self.settings
+            .set_string("music-library-path", path.to_str().unwrap())?;
+        self.set_music_library_path_priv(path).await
+    }
+
+    pub fn get_music_library_path(&self) -> Option<PathBuf> {
+        self.music_library_path.borrow().clone()
+    }
+
+    async fn set_music_library_path_priv(&self, path: PathBuf) -> Result<()> {
         self.music_library_path.replace(Some(path.clone()));
         self.set_state(BackendState::Loading);
 
@@ -245,10 +272,6 @@ impl Backend {
         self.set_state(BackendState::Ready);
 
         Ok(())
-    }
-
-    pub fn get_music_library_path(&self) -> Option<PathBuf> {
-        self.music_library_path.borrow().clone()
     }
 
     fn set_state(&self, state: BackendState) {

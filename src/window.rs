@@ -33,6 +33,8 @@ impl Window {
         get_widget!(builder, gtk::Box, empty_screen);
 
         let backend = Rc::new(Backend::new());
+        backend.clone().init();
+
         let poe_list = PoeList::new(backend.clone());
         let navigator = Navigator::new(&empty_screen);
 
