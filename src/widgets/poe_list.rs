@@ -64,8 +64,6 @@ impl PoeList {
             result.list.invalidate_filter();
         }));
 
-        result.clone().reload();
-
         result
     }
 

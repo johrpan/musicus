@@ -1,9 +1,15 @@
 use super::database::*;
-use anyhow::Result;
-use futures_channel::oneshot;
+use anyhow::{anyhow, Result};
 use futures_channel::oneshot::Sender;
+use futures_channel::{mpsc, oneshot};
 use std::cell::RefCell;
 use std::path::PathBuf;
+
+pub enum BackendState {
+    NoMusicLibrary,
+    Loading,
+    Ready,
+}
 
 enum BackendAction {
     UpdatePerson(Person, Sender<Result<()>>),
@@ -28,23 +34,228 @@ enum BackendAction {
     GetRecordingsForPerson(i64, Sender<Result<Vec<RecordingDescription>>>),
     GetRecordingsForEnsemble(i64, Sender<Result<Vec<RecordingDescription>>>),
     GetRecordingsForWork(i64, Sender<Result<Vec<RecordingDescription>>>),
+    Stop,
 }
 
 use BackendAction::*;
 
 pub struct Backend {
-    action_sender: std::sync::mpsc::Sender<BackendAction>,
+    pub state_stream: RefCell<mpsc::Receiver<BackendState>>,
+    state_sender: RefCell<mpsc::Sender<BackendState>>,
+    action_sender: RefCell<Option<std::sync::mpsc::Sender<BackendAction>>>,
     music_library_path: RefCell<Option<PathBuf>>,
 }
 
 impl Backend {
-    pub fn new(url: &str, music_library_path: PathBuf) -> Self {
-        let url = url.to_string();
+    pub fn new() -> Self {
+        let (state_sender, state_stream) = mpsc::channel(1024);
 
+        Backend {
+            state_stream: RefCell::new(state_stream),
+            state_sender: RefCell::new(state_sender),
+            action_sender: RefCell::new(None),
+            music_library_path: RefCell::new(None),
+        }
+    }
+
+    pub async fn update_person(&self, person: Person) -> Result<()> {
+        let (sender, receiver) = oneshot::channel();
+        self.unwrap_action_sender()?
+            .send(UpdatePerson(person, sender))?;
+        receiver.await?
+    }
+
+    pub async fn get_person(&self, id: i64) -> Result<Person> {
+        let (sender, receiver) = oneshot::channel();
+        self.unwrap_action_sender()?.send(GetPerson(id, sender))?;
+        receiver.await?
+    }
+
+    pub async fn delete_person(&self, id: i64) -> Result<()> {
+        let (sender, receiver) = oneshot::channel();
+        self.unwrap_action_sender()?
+            .send(DeletePerson(id, sender))?;
+        receiver.await?
+    }
+
+    pub async fn get_persons(&self) -> Result<Vec<Person>> {
+        let (sender, receiver) = oneshot::channel();
+        self.unwrap_action_sender()?.send(GetPersons(sender))?;
+        receiver.await?
+    }
+
+    pub async fn update_instrument(&self, instrument: Instrument) -> Result<()> {
+        let (sender, receiver) = oneshot::channel();
+        self.unwrap_action_sender()?
+            .send(UpdateInstrument(instrument, sender))?;
+        receiver.await?
+    }
+
+    pub async fn get_instrument(&self, id: i64) -> Result<Instrument> {
+        let (sender, receiver) = oneshot::channel();
+        self.unwrap_action_sender()?
+            .send(GetInstrument(id, sender))?;
+        receiver.await?
+    }
+
+    pub async fn delete_instrument(&self, id: i64) -> Result<()> {
+        let (sender, receiver) = oneshot::channel();
+        self.unwrap_action_sender()?
+            .send(DeleteInstrument(id, sender))?;
+        receiver.await?
+    }
+
+    pub async fn get_instruments(&self) -> Result<Vec<Instrument>> {
+        let (sender, receiver) = oneshot::channel();
+        self.unwrap_action_sender()?.send(GetInstruments(sender))?;
+        receiver.await?
+    }
+
+    pub async fn update_work(&self, work_insertion: WorkInsertion) -> Result<()> {
+        let (sender, receiver) = oneshot::channel();
+        self.unwrap_action_sender()?
+            .send(UpdateWork(work_insertion, sender))?;
+        receiver.await?
+    }
+
+    pub async fn get_work_description(&self, id: i64) -> Result<WorkDescription> {
+        let (sender, receiver) = oneshot::channel();
+        self.unwrap_action_sender()?
+            .send(GetWorkDescription(id, sender))?;
+        receiver.await?
+    }
+
+    pub async fn delete_work(&self, id: i64) -> Result<()> {
+        let (sender, receiver) = oneshot::channel();
+        self.unwrap_action_sender()?.send(DeleteWork(id, sender))?;
+        receiver.await?
+    }
+
+    pub async fn get_work_descriptions(&self, person_id: i64) -> Result<Vec<WorkDescription>> {
+        let (sender, receiver) = oneshot::channel();
+        self.unwrap_action_sender()?
+            .send(GetWorkDescriptions(person_id, sender))?;
+        receiver.await?
+    }
+
+    pub async fn update_ensemble(&self, ensemble: Ensemble) -> Result<()> {
+        let (sender, receiver) = oneshot::channel();
+        self.unwrap_action_sender()?
+            .send(UpdateEnsemble(ensemble, sender))?;
+        receiver.await?
+    }
+
+    pub async fn get_ensemble(&self, id: i64) -> Result<Ensemble> {
+        let (sender, receiver) = oneshot::channel();
+        self.unwrap_action_sender()?.send(GetEnsemble(id, sender))?;
+        receiver.await?
+    }
+
+    pub async fn delete_ensemble(&self, id: i64) -> Result<()> {
+        let (sender, receiver) = oneshot::channel();
+        self.unwrap_action_sender()?
+            .send(DeleteEnsemble(id, sender))?;
+        receiver.await?
+    }
+
+    pub async fn get_ensembles(&self) -> Result<Vec<Ensemble>> {
+        let (sender, receiver) = oneshot::channel();
+        self.unwrap_action_sender()?.send(GetEnsembles(sender))?;
+        receiver.await?
+    }
+
+    pub async fn update_recording(&self, recording_insertion: RecordingInsertion) -> Result<()> {
+        let (sender, receiver) = oneshot::channel();
+        self.unwrap_action_sender()?
+            .send(UpdateRecording(recording_insertion, sender))?;
+        receiver.await?
+    }
+
+    pub async fn get_recording_description(&self, id: i64) -> Result<RecordingDescription> {
+        let (sender, receiver) = oneshot::channel();
+        self.unwrap_action_sender()?
+            .send(GetRecordingDescription(id, sender))?;
+        receiver.await?
+    }
+
+    pub async fn delete_recording(&self, id: i64) -> Result<()> {
+        let (sender, receiver) = oneshot::channel();
+        self.unwrap_action_sender()?
+            .send(DeleteRecording(id, sender))?;
+        receiver.await?
+    }
+
+    pub async fn get_recordings_for_person(
+        &self,
+        person_id: i64,
+    ) -> Result<Vec<RecordingDescription>> {
+        let (sender, receiver) = oneshot::channel();
+        self.unwrap_action_sender()?
+            .send(GetRecordingsForPerson(person_id, sender))?;
+        receiver.await?
+    }
+
+    pub async fn get_recordings_for_ensemble(
+        &self,
+        ensemble_id: i64,
+    ) -> Result<Vec<RecordingDescription>> {
+        let (sender, receiver) = oneshot::channel();
+        self.unwrap_action_sender()?
+            .send(GetRecordingsForEnsemble(ensemble_id, sender))?;
+        receiver.await?
+    }
+
+    pub async fn get_recordings_for_work(&self, work_id: i64) -> Result<Vec<RecordingDescription>> {
+        let (sender, receiver) = oneshot::channel();
+        self.unwrap_action_sender()?
+            .send(GetRecordingsForWork(work_id, sender))?;
+        receiver.await?
+    }
+
+    pub async fn set_music_library_path(&self, path: PathBuf) -> Result<()> {
+        self.music_library_path.replace(Some(path.clone()));
+        self.set_state(BackendState::Loading);
+
+        if let Some(action_sender) = self.action_sender.borrow_mut().take() {
+            action_sender.send(Stop)?;
+        }
+
+        let mut db_path = path.clone();
+        db_path.push("musicus.db");
+
+        self.start_db_thread(String::from(db_path.to_str().unwrap()))
+            .await?;
+
+        self.set_state(BackendState::Ready);
+
+        Ok(())
+    }
+
+    pub fn get_music_library_path(&self) -> Option<PathBuf> {
+        self.music_library_path.borrow().clone()
+    }
+
+    fn set_state(&self, state: BackendState) {
+        self.state_sender.borrow_mut().try_send(state).unwrap();
+    }
+
+    fn unwrap_action_sender(&self) -> Result<std::sync::mpsc::Sender<BackendAction>> {
+        match &*self.action_sender.borrow() {
+            Some(action_sender) => Ok(action_sender.clone()),
+            None => Err(anyhow!("Database thread is not running!")),
+        }
+    }
+
+    async fn start_db_thread(&self, url: String) -> Result<()> {
+        let (ready_sender, ready_receiver) = oneshot::channel();
         let (action_sender, action_receiver) = std::sync::mpsc::channel::<BackendAction>();
 
         std::thread::spawn(move || {
             let db = Database::new(&url).expect("Failed to open database!");
+
+            ready_sender
+                .send(())
+                .expect("Failed to communicate to main thread!");
 
             for action in action_receiver {
                 match action {
@@ -158,167 +369,15 @@ impl Backend {
                             .send(db.get_recordings_for_work(id))
                             .expect("Failed to send result from database thread!");
                     }
+                    Stop => {
+                        break;
+                    }
                 }
             }
         });
 
-        Backend {
-            action_sender: action_sender,
-            music_library_path: RefCell::new(Some(music_library_path)),
-        }
-    }
-
-    pub async fn update_person(&self, person: Person) -> Result<()> {
-        let (sender, receiver) = oneshot::channel();
-        self.action_sender.send(UpdatePerson(person, sender))?;
-        receiver.await?
-    }
-
-    pub async fn get_person(&self, id: i64) -> Result<Person> {
-        let (sender, receiver) = oneshot::channel();
-        self.action_sender.send(GetPerson(id, sender))?;
-        receiver.await?
-    }
-
-    pub async fn delete_person(&self, id: i64) -> Result<()> {
-        let (sender, receiver) = oneshot::channel();
-        self.action_sender.send(DeletePerson(id, sender))?;
-        receiver.await?
-    }
-
-    pub async fn get_persons(&self) -> Result<Vec<Person>> {
-        let (sender, receiver) = oneshot::channel();
-        self.action_sender.send(GetPersons(sender))?;
-        receiver.await?
-    }
-
-    pub async fn update_instrument(&self, instrument: Instrument) -> Result<()> {
-        let (sender, receiver) = oneshot::channel();
-        self.action_sender
-            .send(UpdateInstrument(instrument, sender))?;
-        receiver.await?
-    }
-
-    pub async fn get_instrument(&self, id: i64) -> Result<Instrument> {
-        let (sender, receiver) = oneshot::channel();
-        self.action_sender.send(GetInstrument(id, sender))?;
-        receiver.await?
-    }
-
-    pub async fn delete_instrument(&self, id: i64) -> Result<()> {
-        let (sender, receiver) = oneshot::channel();
-        self.action_sender.send(DeleteInstrument(id, sender))?;
-        receiver.await?
-    }
-
-    pub async fn get_instruments(&self) -> Result<Vec<Instrument>> {
-        let (sender, receiver) = oneshot::channel();
-        self.action_sender.send(GetInstruments(sender))?;
-        receiver.await?
-    }
-
-    pub async fn update_work(&self, work_insertion: WorkInsertion) -> Result<()> {
-        let (sender, receiver) = oneshot::channel();
-        self.action_sender
-            .send(UpdateWork(work_insertion, sender))?;
-        receiver.await?
-    }
-
-    pub async fn get_work_description(&self, id: i64) -> Result<WorkDescription> {
-        let (sender, receiver) = oneshot::channel();
-        self.action_sender.send(GetWorkDescription(id, sender))?;
-        receiver.await?
-    }
-
-    pub async fn delete_work(&self, id: i64) -> Result<()> {
-        let (sender, receiver) = oneshot::channel();
-        self.action_sender.send(DeleteWork(id, sender))?;
-        receiver.await?
-    }
-
-    pub async fn get_work_descriptions(&self, person_id: i64) -> Result<Vec<WorkDescription>> {
-        let (sender, receiver) = oneshot::channel();
-        self.action_sender
-            .send(GetWorkDescriptions(person_id, sender))?;
-        receiver.await?
-    }
-
-    pub async fn update_ensemble(&self, ensemble: Ensemble) -> Result<()> {
-        let (sender, receiver) = oneshot::channel();
-        self.action_sender.send(UpdateEnsemble(ensemble, sender))?;
-        receiver.await?
-    }
-
-    pub async fn get_ensemble(&self, id: i64) -> Result<Ensemble> {
-        let (sender, receiver) = oneshot::channel();
-        self.action_sender.send(GetEnsemble(id, sender))?;
-        receiver.await?
-    }
-
-    pub async fn delete_ensemble(&self, id: i64) -> Result<()> {
-        let (sender, receiver) = oneshot::channel();
-        self.action_sender.send(DeleteEnsemble(id, sender))?;
-        receiver.await?
-    }
-
-    pub async fn get_ensembles(&self) -> Result<Vec<Ensemble>> {
-        let (sender, receiver) = oneshot::channel();
-        self.action_sender.send(GetEnsembles(sender))?;
-        receiver.await?
-    }
-
-    pub async fn update_recording(&self, recording_insertion: RecordingInsertion) -> Result<()> {
-        let (sender, receiver) = oneshot::channel();
-        self.action_sender
-            .send(UpdateRecording(recording_insertion, sender))?;
-        receiver.await?
-    }
-
-    pub async fn get_recording_description(&self, id: i64) -> Result<RecordingDescription> {
-        let (sender, receiver) = oneshot::channel();
-        self.action_sender
-            .send(GetRecordingDescription(id, sender))?;
-        receiver.await?
-    }
-
-    pub async fn delete_recording(&self, id: i64) -> Result<()> {
-        let (sender, receiver) = oneshot::channel();
-        self.action_sender.send(DeleteRecording(id, sender))?;
-        receiver.await?
-    }
-
-    pub async fn get_recordings_for_person(
-        &self,
-        person_id: i64,
-    ) -> Result<Vec<RecordingDescription>> {
-        let (sender, receiver) = oneshot::channel();
-        self.action_sender
-            .send(GetRecordingsForPerson(person_id, sender))?;
-        receiver.await?
-    }
-
-    pub async fn get_recordings_for_ensemble(
-        &self,
-        ensemble_id: i64,
-    ) -> Result<Vec<RecordingDescription>> {
-        let (sender, receiver) = oneshot::channel();
-        self.action_sender
-            .send(GetRecordingsForEnsemble(ensemble_id, sender))?;
-        receiver.await?
-    }
-
-    pub async fn get_recordings_for_work(&self, work_id: i64) -> Result<Vec<RecordingDescription>> {
-        let (sender, receiver) = oneshot::channel();
-        self.action_sender
-            .send(GetRecordingsForWork(work_id, sender))?;
-        receiver.await?
-    }
-
-    pub fn set_music_library_path(&self, path: PathBuf) {
-        self.music_library_path.replace(Some(path.clone()));
-    }
-
-    pub fn get_music_library_path(&self) -> Option<PathBuf> {
-        self.music_library_path.borrow().clone()
+        ready_receiver.await?;
+        self.action_sender.replace(Some(action_sender));
+        Ok(())
     }
 }

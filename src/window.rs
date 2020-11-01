@@ -2,6 +2,7 @@ use crate::backend::*;
 use crate::dialogs::*;
 use crate::screens::*;
 use crate::widgets::*;
+use futures::prelude::*;
 use gio::prelude::*;
 use glib::clone;
 use gtk::prelude::*;
@@ -12,6 +13,7 @@ use std::rc::Rc;
 pub struct Window {
     backend: Rc<Backend>,
     window: libhandy::ApplicationWindow,
+    stack: gtk::Stack,
     leaflet: libhandy::Leaflet,
     sidebar_box: gtk::Box,
     poe_list: Rc<PoeList>,
@@ -23,46 +25,42 @@ impl Window {
         let builder = gtk::Builder::from_resource("/de/johrpan/musicus_editor/ui/window.ui");
 
         get_widget!(builder, libhandy::ApplicationWindow, window);
+        get_widget!(builder, gtk::Stack, stack);
+        get_widget!(builder, gtk::Button, select_music_library_path_button);
         get_widget!(builder, libhandy::Leaflet, leaflet);
         get_widget!(builder, gtk::Button, add_button);
         get_widget!(builder, gtk::Box, sidebar_box);
         get_widget!(builder, gtk::Box, empty_screen);
 
-        let backend = Rc::new(Backend::new(
-            "test.sqlite",
-            std::env::current_dir().unwrap(),
-        ));
+        let backend = Rc::new(Backend::new());
         let poe_list = PoeList::new(backend.clone());
         let navigator = Navigator::new(&empty_screen);
 
         let result = Rc::new(Self {
             backend,
             window,
+            stack,
             leaflet,
             sidebar_box,
             poe_list,
             navigator,
         });
 
-        result
-            .poe_list
-            .set_selected(clone!(@strong result => move |poe| {
-                result.leaflet.set_visible_child(&result.navigator.widget);
-                match poe {
-                    PersonOrEnsemble::Person(person) => {
-                        result.navigator.clone().replace(PersonScreen::new(result.backend.clone(), person.clone()));
-                    }
-                    PersonOrEnsemble::Ensemble(ensemble) => {
-                        result.navigator.clone().replace(EnsembleScreen::new(result.backend.clone(), ensemble.clone()));
-                    }
-                }
-            }));
-
-        result.leaflet.add(&result.navigator.widget);
-        result
-            .sidebar_box
-            .pack_start(&result.poe_list.widget, true, true, 0);
         result.window.set_application(Some(app));
+
+        select_music_library_path_button.connect_clicked(clone!(@strong result => move |_| {
+            let dialog = gtk::FileChooserNative::new(Some("Select music library folder"), Some(&result.window), gtk::FileChooserAction::SelectFolder, None, None);
+
+            if let gtk::ResponseType::Accept = dialog.run() {
+                if let Some(path) = dialog.get_filename() {                    
+                    let context = glib::MainContext::default();
+                    let backend = result.backend.clone();
+                    context.spawn_local(async move {
+                        backend.set_music_library_path(path).await.unwrap();
+                    });
+                }
+            }
+        }));
 
         add_button.connect_clicked(clone!(@strong result => move |_| {
             TracksEditor::new(result.backend.clone(), &result.window, clone!(@strong result => move || {
@@ -265,6 +263,46 @@ impl Window {
                 });
             })
         );
+
+        let context = glib::MainContext::default();
+        let clone = result.clone();
+        context.spawn_local(async move {
+            let mut state_stream = clone.backend.state_stream.borrow_mut();
+            while let Some(state) = state_stream.next().await {
+                match state {
+                    BackendState::NoMusicLibrary => {
+                        clone.stack.set_visible_child_name("empty");
+                    }
+                    BackendState::Loading => {
+                        clone.stack.set_visible_child_name("loading");
+                    }
+                    BackendState::Ready => {
+                        clone.stack.set_visible_child_name("content");
+                        clone.poe_list.clone().reload();
+                    }
+                }
+            }
+        });
+
+        result.leaflet.add(&result.navigator.widget);
+
+        result
+            .poe_list
+            .set_selected(clone!(@strong result => move |poe| {
+                result.leaflet.set_visible_child(&result.navigator.widget);
+                match poe {
+                    PersonOrEnsemble::Person(person) => {
+                        result.navigator.clone().replace(PersonScreen::new(result.backend.clone(), person.clone()));
+                    }
+                    PersonOrEnsemble::Ensemble(ensemble) => {
+                        result.navigator.clone().replace(EnsembleScreen::new(result.backend.clone(), ensemble.clone()));
+                    }
+                }
+            }));
+
+        result
+            .sidebar_box
+            .pack_start(&result.poe_list.widget, true, true, 0);
 
         result
     }

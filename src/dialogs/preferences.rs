@@ -29,7 +29,12 @@ impl Preferences {
             if let gtk::ResponseType::Accept = dialog.run() {
                 if let Some(path) = dialog.get_filename() {
                     music_library_path_row.set_subtitle(Some(path.to_str().unwrap()));
-                    backend.set_music_library_path(path);
+                    
+                    let context = glib::MainContext::default();
+                    let backend = backend.clone();
+                    context.spawn_local(async move {
+                        backend.set_music_library_path(path).await.unwrap();
+                    });
                 }
             }
         }));
