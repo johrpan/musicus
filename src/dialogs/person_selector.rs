@@ -19,7 +19,7 @@ impl PersonSelector {
         F: Fn(Person) -> () + 'static,
     {
         let builder =
-            gtk::Builder::from_resource("/de/johrpan/musicus_editor/ui/person_selector.ui");
+            gtk::Builder::from_resource("/de/johrpan/musicus/ui/person_selector.ui");
 
         get_widget!(builder, gtk::Window, window);
         get_widget!(builder, gtk::Button, add_button);

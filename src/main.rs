@@ -29,7 +29,7 @@ fn main() {
     gio::resources_register(&resource);
 
     let app = gtk::Application::new(
-        Some("de.johrpan.musicus_desktop"),
+        Some("de.johrpan.musicus"),
         gio::ApplicationFlags::empty(),
     )
     .expect("Failed to initialize GTK application!");

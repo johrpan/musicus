@@ -26,7 +26,7 @@ impl RecordingSelector {
         F: Fn(RecordingDescription) -> () + 'static,
     {
         let builder =
-            gtk::Builder::from_resource("/de/johrpan/musicus_editor/ui/recording_selector.ui");
+            gtk::Builder::from_resource("/de/johrpan/musicus/ui/recording_selector.ui");
 
         get_widget!(builder, gtk::Window, window);
         get_widget!(builder, libhandy::Leaflet, leaflet);
@@ -93,7 +93,7 @@ struct RecordingSelectorPersonScreen {
 impl RecordingSelectorPersonScreen {
     pub fn new(backend: Rc<Backend>, selector: Rc<RecordingSelector>, person: Person) -> Rc<Self> {
         let builder = gtk::Builder::from_resource(
-            "/de/johrpan/musicus_editor/ui/recording_selector_screen.ui",
+            "/de/johrpan/musicus/ui/recording_selector_screen.ui",
         );
 
         get_widget!(builder, gtk::Box, widget);
@@ -187,7 +187,7 @@ impl RecordingSelectorWorkScreen {
         work: WorkDescription,
     ) -> Rc<Self> {
         let builder = gtk::Builder::from_resource(
-            "/de/johrpan/musicus_editor/ui/recording_selector_screen.ui",
+            "/de/johrpan/musicus/ui/recording_selector_screen.ui",
         );
 
         get_widget!(builder, gtk::Box, widget);

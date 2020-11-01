@@ -18,7 +18,7 @@ impl TracksEditor {
         parent: &P,
         callback: F,
     ) -> Self {
-        let builder = gtk::Builder::from_resource("/de/johrpan/musicus_editor/ui/tracks_editor.ui");
+        let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/tracks_editor.ui");
 
         get_widget!(builder, gtk::Window, window);
         get_widget!(builder, gtk::Button, cancel_button);

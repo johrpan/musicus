@@ -46,7 +46,7 @@ where
     pub fn new<P: IsA<gtk::Window>>(backend: Rc<Backend>, parent: &P, callback: F) -> Rc<Self> {
         use WorkSelectorState::*;
 
-        let builder = gtk::Builder::from_resource("/de/johrpan/musicus_editor/ui/work_selector.ui");
+        let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/work_selector.ui");
 
         get_widget!(builder, libhandy::Window, window);
         get_widget!(builder, libhandy::Leaflet, leaflet);

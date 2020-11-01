@@ -15,7 +15,7 @@ pub struct PersonList {
 
 impl PersonList {
     pub fn new(backend: Rc<Backend>) -> Rc<Self> {
-        let builder = gtk::Builder::from_resource("/de/johrpan/musicus_editor/ui/person_list.ui");
+        let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/person_list.ui");
 
         get_widget!(builder, gtk::Box, widget);
         get_widget!(builder, gtk::SearchEntry, search_entry);

@@ -20,7 +20,7 @@ pub struct PersonScreen {
 
 impl PersonScreen {
     pub fn new(backend: Rc<Backend>, person: Person) -> Rc<Self> {
-        let builder = gtk::Builder::from_resource("/de/johrpan/musicus_editor/ui/person_screen.ui");
+        let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/person_screen.ui");
 
         get_widget!(builder, gtk::Box, widget);
         get_widget!(builder, libhandy::HeaderBar, header);

@@ -20,7 +20,7 @@ pub struct EnsembleScreen {
 impl EnsembleScreen {
     pub fn new(backend: Rc<Backend>, ensemble: Ensemble) -> Rc<Self> {
         let builder =
-            gtk::Builder::from_resource("/de/johrpan/musicus_editor/ui/ensemble_screen.ui");
+            gtk::Builder::from_resource("/de/johrpan/musicus/ui/ensemble_screen.ui");
 
         get_widget!(builder, gtk::Box, widget);
         get_widget!(builder, libhandy::HeaderBar, header);

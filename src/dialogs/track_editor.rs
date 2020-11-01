@@ -16,7 +16,7 @@ impl TrackEditor {
         W: IsA<gtk::Window>,
         F: Fn(TrackDescription) -> () + 'static,
     {
-        let builder = gtk::Builder::from_resource("/de/johrpan/musicus_editor/ui/track_editor.ui");
+        let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/track_editor.ui");
 
         get_widget!(builder, gtk::Window, window);
         get_widget!(builder, gtk::Button, cancel_button);

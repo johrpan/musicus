@@ -34,7 +34,7 @@ where
         callback: F,
     ) -> Rc<Self> {
         let builder =
-            gtk::Builder::from_resource("/de/johrpan/musicus_editor/ui/performance_editor.ui");
+            gtk::Builder::from_resource("/de/johrpan/musicus/ui/performance_editor.ui");
 
         get_widget!(builder, gtk::Window, window);
         get_widget!(builder, gtk::Button, cancel_button);

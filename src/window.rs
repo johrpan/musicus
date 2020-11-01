@@ -22,7 +22,7 @@ pub struct Window {
 
 impl Window {
     pub fn new(app: &gtk::Application) -> Rc<Self> {
-        let builder = gtk::Builder::from_resource("/de/johrpan/musicus_editor/ui/window.ui");
+        let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/window.ui");
 
         get_widget!(builder, libhandy::ApplicationWindow, window);
         get_widget!(builder, gtk::Stack, stack);

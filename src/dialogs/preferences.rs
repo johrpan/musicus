@@ -11,7 +11,7 @@ pub struct Preferences {
 
 impl Preferences {
     pub fn new<P: IsA<gtk::Window>>(backend: Rc<Backend>, parent: &P) -> Self {
-        let builder = gtk::Builder::from_resource("/de/johrpan/musicus_editor/ui/preferences.ui");
+        let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/preferences.ui");
 
         get_widget!(builder, gtk::Window, window);
         get_widget!(builder, libhandy::ActionRow, music_library_path_row);

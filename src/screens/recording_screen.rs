@@ -18,7 +18,7 @@ pub struct RecordingScreen {
 impl RecordingScreen {
     pub fn new(backend: Rc<Backend>, recording: RecordingDescription) -> Rc<Self> {
         let builder =
-            gtk::Builder::from_resource("/de/johrpan/musicus_editor/ui/recording_screen.ui");
+            gtk::Builder::from_resource("/de/johrpan/musicus/ui/recording_screen.ui");
 
         get_widget!(builder, gtk::Box, widget);
         get_widget!(builder, libhandy::HeaderBar, header);

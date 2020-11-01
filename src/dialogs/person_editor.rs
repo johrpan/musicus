@@ -27,7 +27,7 @@ where
         person: Option<Person>,
         callback: F,
     ) -> Rc<Self> {
-        let builder = gtk::Builder::from_resource("/de/johrpan/musicus_editor/ui/person_editor.ui");
+        let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/person_editor.ui");
 
         get_widget!(builder, gtk::Window, window);
         get_widget!(builder, gtk::Button, cancel_button);
