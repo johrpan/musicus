@@ -1,5 +1,6 @@
 [Desktop Entry]
 Name=Musicus
+Icon=de.johrpan.musicus
 Exec=musicus
 Terminal=false
 Type=Application
