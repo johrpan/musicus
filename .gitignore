@@ -1,4 +1,7 @@
+/.flatpak-builder
 /build
+/builddir
+/flatpak
 /src/resources.rs
 /target
 Cargo.lock
