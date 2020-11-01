@@ -6,18 +6,16 @@ https://musicus.org
 
 ## Hacking
 
-For now you have to generate the static resources manually before the first
-compilation and after changes to them. Use the following command line:
+Musicus uses the [Meson build system](https://mesonbuild.com/). You can build
+it using the following commands:
 
 ```
-$ cd res && glib-compile-resources resources.xml && cd ..
+$ meson build
+$ ninja -C build
 ```
 
-Afterwards you can compile and run the program using:
-
-```
-$ cargo run
-```
+Afterwards the resulting binary executable is under
+`build/target/debug/musicus`.
 
 This program uses [Diesel](https://diesel.rs) as its ORM. After installing
 the Diesel command line utility, you will be able to create a new schema

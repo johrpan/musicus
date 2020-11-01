@@ -1,0 +1,9 @@
+use anyhow::Result;
+
+pub fn init() -> Result<()> {
+    let bytes = glib::Bytes::from(include_bytes!(@RESOURCEFILE@).as_ref());
+    let resource = gio::Resource::from_data(&bytes)?;
+    gio::resources_register(&resource);
+
+    Ok(())
+}

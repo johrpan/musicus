@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist gettext-domain="musicus">
+	<schema id="de.johrpan.musicus" path="/de/johrpan/musicus/">
+		<key name="music-library-path" type="s">
+			<default>""</default>
+			<summary>Path to the music library folder</summary>
+		</key>
+	</schema>
+</schemalist>

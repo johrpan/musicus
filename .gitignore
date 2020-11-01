@@ -1,4 +1,5 @@
+/build
+/src/resources.rs
+/target
 Cargo.lock
 test.sqlite
-/res/resources.gresource
-/target
