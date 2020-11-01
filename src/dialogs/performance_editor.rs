@@ -1,6 +1,7 @@
 use super::*;
 use crate::backend::Backend;
 use crate::database::*;
+use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
@@ -108,7 +109,7 @@ where
                 result.person.replace(Some(person.clone()));
                 result.person_label.set_text(&person.name_fl());
                 result.ensemble.replace(None);
-                result.ensemble_label.set_text("Select …");
+                result.ensemble_label.set_text(&gettext("Select …"));
                 result.save_button.set_sensitive(true);
             })).show();
         }));
@@ -118,7 +119,7 @@ where
                 result.ensemble.replace(Some(ensemble.clone()));
                 result.ensemble_label.set_text(&ensemble.name);
                 result.person.replace(None);
-                result.person_label.set_text("Select …");
+                result.person_label.set_text(&gettext("Select …"));
                 result.save_button.set_sensitive(true);
             })).show();
         }));
@@ -132,7 +133,7 @@ where
 
         reset_role_button.connect_clicked(clone!(@strong result => move |_| {
             result.role.replace(None);
-            result.role_label.set_text("Select …");
+            result.role_label.set_text(&gettext("Select …"));
         }));
 
         result.window.set_transient_for(Some(parent));

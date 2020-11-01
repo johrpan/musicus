@@ -1,6 +1,7 @@
 use crate::backend::*;
 use crate::database::*;
 use crate::widgets::*;
+use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
@@ -30,13 +31,13 @@ impl RecordingScreen {
         header.set_title(Some(&recording.work.get_title()));
         header.set_subtitle(Some(&recording.get_performers()));
 
-        let edit_menu_item = gio::MenuItem::new(Some("Edit recording"), None);
+        let edit_menu_item = gio::MenuItem::new(Some(&gettext("Edit recording")), None);
         edit_menu_item.set_action_and_target_value(
             Some("win.edit-recording"),
             Some(&glib::Variant::from(recording.id)),
         );
 
-        let delete_menu_item = gio::MenuItem::new(Some("Delete recording"), None);
+        let delete_menu_item = gio::MenuItem::new(Some(&gettext("Delete recording")), None);
         delete_menu_item.set_action_and_target_value(
             Some("win.delete-recording"),
             Some(&glib::Variant::from(recording.id)),
@@ -57,7 +58,7 @@ impl RecordingScreen {
                 }
 
                 let title = if title_parts.is_empty() {
-                    String::from("Unknown")
+                    gettext("Unknown")
                 } else {
                     title_parts.join(", ")
                 };
@@ -78,7 +79,7 @@ impl RecordingScreen {
                 vbox.upcast()
             }),
             |_| true,
-            "No tracks found.",
+            &gettext("No tracks found."),
         );
 
         frame.add(&list.widget);

@@ -2,6 +2,7 @@ use super::{InstrumentSelector, PersonSelector};
 use crate::backend::*;
 use crate::database::*;
 use crate::widgets::*;
+use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
@@ -95,7 +96,7 @@ impl PartEditor {
 
         reset_composer_button.connect_clicked(clone!(@strong result => move |_| {
             result.composer.replace(None);
-            result.composer_label.set_text("Select …");
+            result.composer_label.set_text(&gettext("Select …"));
         }));
 
         add_instrument_button.connect_clicked(clone!(@strong result => move |_| {

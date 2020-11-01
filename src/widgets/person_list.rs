@@ -1,6 +1,7 @@
 use super::*;
 use crate::backend::Backend;
 use crate::database::*;
+use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
@@ -33,7 +34,7 @@ impl PersonList {
                 let name = person.name_fl().to_lowercase();
                 search.is_empty() || name.contains(&search)
             }),
-            "No persons found.",
+            &gettext("No persons found."),
         );
 
         scrolled_window.add(&list.widget);

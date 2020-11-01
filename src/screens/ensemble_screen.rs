@@ -2,6 +2,7 @@ use super::*;
 use crate::backend::*;
 use crate::database::*;
 use crate::widgets::*;
+use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
@@ -19,8 +20,7 @@ pub struct EnsembleScreen {
 
 impl EnsembleScreen {
     pub fn new(backend: Rc<Backend>, ensemble: Ensemble) -> Rc<Self> {
-        let builder =
-            gtk::Builder::from_resource("/de/johrpan/musicus/ui/ensemble_screen.ui");
+        let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/ensemble_screen.ui");
 
         get_widget!(builder, gtk::Box, widget);
         get_widget!(builder, libhandy::HeaderBar, header);
@@ -32,13 +32,13 @@ impl EnsembleScreen {
 
         header.set_title(Some(&ensemble.name));
 
-        let edit_menu_item = gio::MenuItem::new(Some("Edit ensemble"), None);
+        let edit_menu_item = gio::MenuItem::new(Some(&gettext("Edit ensemble")), None);
         edit_menu_item.set_action_and_target_value(
             Some("win.edit-ensemble"),
             Some(&glib::Variant::from(ensemble.id)),
         );
 
-        let delete_menu_item = gio::MenuItem::new(Some("Delete ensemble"), None);
+        let delete_menu_item = gio::MenuItem::new(Some(&gettext("Delete ensemble")), None);
         delete_menu_item.set_action_and_target_value(
             Some("win.delete-ensemble"),
             Some(&glib::Variant::from(ensemble.id)),
@@ -73,7 +73,7 @@ impl EnsembleScreen {
                 let text = recording.work.get_title() + &recording.get_performers();
                 search.is_empty() || text.contains(&search)
             }),
-            "No recordings found.",
+            &gettext("No recordings found."),
         );
 
         recording_frame.add(&recording_list.widget.clone());

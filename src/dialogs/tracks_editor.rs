@@ -2,6 +2,7 @@ use super::*;
 use crate::backend::*;
 use crate::database::*;
 use crate::widgets::*;
+use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
@@ -53,7 +54,7 @@ impl TracksEditor {
                 }
 
                 let title = if title_parts.is_empty() {
-                    String::from("Unknown")
+                    gettext("Unknown")
                 } else {
                     title_parts.join(", ")
                 };
@@ -74,7 +75,7 @@ impl TracksEditor {
                 vbox.upcast()
             }),
             |_| true,
-            "Add some tracks.",
+            &gettext("Add some tracks."),
         );
 
         let autofill_parts = Rc::new(clone!(@strong recording, @strong tracks, @strong track_list => move || {
@@ -141,7 +142,7 @@ impl TracksEditor {
         add_track_button.connect_clicked(clone!(@strong window, @strong tracks, @strong track_list, @strong autofill_parts => move |_| {
             let music_library_path = backend.get_music_library_path().unwrap();
 
-            let dialog = gtk::FileChooserNative::new(Some("Select audio files"), Some(&window), gtk::FileChooserAction::Open, None, None);
+            let dialog = gtk::FileChooserNative::new(Some(&gettext("Select audio files")), Some(&window), gtk::FileChooserAction::Open, None, None);
             dialog.set_select_multiple(true);
             dialog.set_current_folder(&music_library_path);
 

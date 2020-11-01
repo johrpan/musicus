@@ -2,6 +2,7 @@ use super::*;
 use crate::backend::*;
 use crate::database::*;
 use crate::widgets::*;
+use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
@@ -32,13 +33,13 @@ impl WorkScreen {
         header.set_title(Some(&work.title));
         header.set_subtitle(Some(&work.composer.name_fl()));
 
-        let edit_menu_item = gio::MenuItem::new(Some("Edit work"), None);
+        let edit_menu_item = gio::MenuItem::new(Some(&gettext("Edit work")), None);
         edit_menu_item.set_action_and_target_value(
             Some("win.edit-work"),
             Some(&glib::Variant::from(work.id)),
         );
 
-        let delete_menu_item = gio::MenuItem::new(Some("Delete work"), None);
+        let delete_menu_item = gio::MenuItem::new(Some(&gettext("Delete work")), None);
         delete_menu_item.set_action_and_target_value(
             Some("win.delete-work"),
             Some(&glib::Variant::from(work.id)),
@@ -73,7 +74,7 @@ impl WorkScreen {
                 let text = recording.work.get_title() + &recording.get_performers();
                 search.is_empty() || text.contains(&search)
             }),
-            "No recordings found.",
+            &gettext("No recordings found."),
         );
 
         recording_frame.add(&recording_list.widget);

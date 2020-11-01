@@ -2,6 +2,7 @@ use super::*;
 use crate::backend::Backend;
 use crate::database::*;
 use crate::widgets::*;
+use gettextrs::gettext;
 use gio::prelude::*;
 use glib::clone;
 use gtk::prelude::*;
@@ -25,8 +26,7 @@ impl RecordingSelector {
         P: IsA<gtk::Window>,
         F: Fn(RecordingDescription) -> () + 'static,
     {
-        let builder =
-            gtk::Builder::from_resource("/de/johrpan/musicus/ui/recording_selector.ui");
+        let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/recording_selector.ui");
 
         get_widget!(builder, gtk::Window, window);
         get_widget!(builder, libhandy::Leaflet, leaflet);
@@ -92,9 +92,8 @@ struct RecordingSelectorPersonScreen {
 
 impl RecordingSelectorPersonScreen {
     pub fn new(backend: Rc<Backend>, selector: Rc<RecordingSelector>, person: Person) -> Rc<Self> {
-        let builder = gtk::Builder::from_resource(
-            "/de/johrpan/musicus/ui/recording_selector_screen.ui",
-        );
+        let builder =
+            gtk::Builder::from_resource("/de/johrpan/musicus/ui/recording_selector_screen.ui");
 
         get_widget!(builder, gtk::Box, widget);
         get_widget!(builder, libhandy::HeaderBar, header);
@@ -110,7 +109,7 @@ impl RecordingSelectorPersonScreen {
                 label.upcast()
             },
             |_| true,
-            "No works found.",
+            &gettext("No works found."),
         );
 
         stack.add_named(&work_list.widget, "content");
@@ -186,9 +185,8 @@ impl RecordingSelectorWorkScreen {
         selector: Rc<RecordingSelector>,
         work: WorkDescription,
     ) -> Rc<Self> {
-        let builder = gtk::Builder::from_resource(
-            "/de/johrpan/musicus/ui/recording_selector_screen.ui",
-        );
+        let builder =
+            gtk::Builder::from_resource("/de/johrpan/musicus/ui/recording_selector_screen.ui");
 
         get_widget!(builder, gtk::Box, widget);
         get_widget!(builder, libhandy::HeaderBar, header);
@@ -217,7 +215,7 @@ impl RecordingSelectorWorkScreen {
                 vbox.upcast()
             },
             |_| true,
-            "No recordings found.",
+            &gettext("No recordings found."),
         );
 
         stack.add_named(&recording_list.widget, "content");

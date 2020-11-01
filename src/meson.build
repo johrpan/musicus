@@ -1,3 +1,21 @@
+prefix = get_option('prefix')
+localedir = join_paths(prefix, get_option('localedir'))
+
+global_conf = configuration_data()
+global_conf.set_quoted('LOCALEDIR', localedir)
+config_rs = configure_file(
+  input: 'config.rs.in',
+  output: 'config.rs',
+  configuration: global_conf
+)
+
+run_command(
+  'cp',
+  config_rs,
+  meson.current_source_dir(),
+  check: true
+)
+
 resource_conf = configuration_data()
 resource_conf.set_quoted('RESOURCEFILE', resources.full_path())
 resource_rs = configure_file(

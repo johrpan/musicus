@@ -1,6 +1,7 @@
 use super::*;
 use crate::backend::Backend;
 use crate::database::*;
+use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
@@ -48,7 +49,7 @@ impl PoeList {
                 let title = poe.get_title().to_lowercase();
                 search.is_empty() || title.contains(&search)
             }),
-            "No persons or ensembles found.",
+            &gettext("No persons or ensembles found."),
         );
 
         scrolled_window.add(&list.widget);

@@ -1,4 +1,5 @@
 use crate::backend::Backend;
+use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
@@ -23,21 +24,25 @@ impl Preferences {
             music_library_path_row.set_subtitle(Some(path.to_str().unwrap()));
         }
 
-        select_music_library_path_button.connect_clicked(clone!(@strong window, @strong backend, @strong music_library_path_row => move |_| {
-            let dialog = gtk::FileChooserNative::new(Some("Select music library folder"), Some(&window), gtk::FileChooserAction::SelectFolder, None, None);
+        select_music_library_path_button.connect_clicked(
+            clone!(@strong window, @strong backend, @strong music_library_path_row => move |_| {
+                let dialog = gtk::FileChooserNative::new(
+                    Some(&gettext("Select music library folder")),
+                    Some(&window), gtk::FileChooserAction::SelectFolder,None, None);
 
-            if let gtk::ResponseType::Accept = dialog.run() {
-                if let Some(path) = dialog.get_filename() {
-                    music_library_path_row.set_subtitle(Some(path.to_str().unwrap()));
-                    
-                    let context = glib::MainContext::default();
-                    let backend = backend.clone();
-                    context.spawn_local(async move {
-                        backend.set_music_library_path(path).await.unwrap();
-                    });
+                if let gtk::ResponseType::Accept = dialog.run() {
+                    if let Some(path) = dialog.get_filename() {
+                        music_library_path_row.set_subtitle(Some(path.to_str().unwrap()));
+
+                        let context = glib::MainContext::default();
+                        let backend = backend.clone();
+                        context.spawn_local(async move {
+                            backend.set_music_library_path(path).await.unwrap();
+                        });
+                    }
                 }
-            }
-        }));
+            }),
+        );
 
         Self { window }
     }

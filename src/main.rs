@@ -11,6 +11,7 @@ use glib::clone;
 use std::cell::RefCell;
 use std::rc::Rc;
 
+mod config;
 mod backend;
 mod database;
 mod dialogs;
@@ -23,6 +24,10 @@ use window::Window;
 mod resources;
 
 fn main() {
+    gettextrs::setlocale(gettextrs::LocaleCategory::LcAll, "");
+    gettextrs::bindtextdomain("musicus", config::LOCALEDIR);
+    gettextrs::textdomain("musicus");
+
     gtk::init().expect("Failed to initialize GTK!");
     libhandy::init();
     resources::init().expect("Failed to initialize resources!");

@@ -3,6 +3,7 @@ use crate::dialogs::*;
 use crate::screens::*;
 use crate::widgets::*;
 use futures::prelude::*;
+use gettextrs::gettext;
 use gio::prelude::*;
 use glib::clone;
 use gtk::prelude::*;
@@ -51,10 +52,15 @@ impl Window {
         result.window.set_application(Some(app));
 
         select_music_library_path_button.connect_clicked(clone!(@strong result => move |_| {
-            let dialog = gtk::FileChooserNative::new(Some("Select music library folder"), Some(&result.window), gtk::FileChooserAction::SelectFolder, None, None);
+            let dialog = gtk::FileChooserNative::new(
+                Some(&gettext("Select music library folder")),
+                Some(&result.window),
+                gtk::FileChooserAction::SelectFolder,
+                None,
+                None);
 
             if let gtk::ResponseType::Accept = dialog.run() {
-                if let Some(path) = dialog.get_filename() {                    
+                if let Some(path) = dialog.get_filename() {
                     let context = glib::MainContext::default();
                     let backend = result.backend.clone();
                     context.spawn_local(async move {

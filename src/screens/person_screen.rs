@@ -2,6 +2,7 @@ use super::*;
 use crate::backend::*;
 use crate::database::*;
 use crate::widgets::*;
+use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
@@ -35,13 +36,13 @@ impl PersonScreen {
 
         header.set_title(Some(&person.name_fl()));
 
-        let edit_menu_item = gio::MenuItem::new(Some("Edit person"), None);
+        let edit_menu_item = gio::MenuItem::new(Some(&gettext("Edit person")), None);
         edit_menu_item.set_action_and_target_value(
             Some("win.edit-person"),
             Some(&glib::Variant::from(person.id)),
         );
 
-        let delete_menu_item = gio::MenuItem::new(Some("Delete person"), None);
+        let delete_menu_item = gio::MenuItem::new(Some(&gettext("Delete person")), None);
         delete_menu_item.set_action_and_target_value(
             Some("win.delete-person"),
             Some(&glib::Variant::from(person.id)),
@@ -64,7 +65,7 @@ impl PersonScreen {
                 let title = work.title.to_lowercase();
                 search.is_empty() || title.contains(&search)
             }),
-            "No works found.",
+            &gettext("No works found."),
         );
 
         let recording_list = List::new(
@@ -90,7 +91,7 @@ impl PersonScreen {
                 let text = recording.work.get_title() + &recording.get_performers();
                 search.is_empty() || text.contains(&search)
             }),
-            "No recordings found.",
+            &gettext("No recordings found."),
         );
 
         work_frame.add(&work_list.widget);
