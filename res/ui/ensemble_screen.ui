@@ -123,12 +123,14 @@
                 <property name="can-focus">False</property>
                 <property name="shadow-type">none</property>
                 <child>
-                  <object class="GtkBox">
+                  <object class="HdyClamp">
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
-                    <property name="border-width">18</property>
-                    <property name="orientation">vertical</property>
-                    <property name="spacing">18</property>
+                    <property name="margin-start">12</property>
+                    <property name="margin-end">12</property>
+                    <property name="margin-top">18</property>
+                    <property name="margin-bottom">12</property>
+                    <property name="maximum-size">800</property>
                     <child>
                       <object class="GtkBox" id="recording_box">
                         <property name="visible">True</property>
@@ -142,7 +144,7 @@
                             <property name="halign">start</property>
                             <property name="label" translatable="yes">Recordings</property>
                             <attributes>
-                              <attribute name="size" value="12288"/>
+                              <attribute name="weight" value="bold"/>
                             </attributes>
                           </object>
                           <packing>
@@ -168,11 +170,6 @@
                           </packing>
                         </child>
                       </object>
-                      <packing>
-                        <property name="expand">False</property>
-                        <property name="fill">True</property>
-                        <property name="position">1</property>
-                      </packing>
                     </child>
                   </object>
                 </child>
