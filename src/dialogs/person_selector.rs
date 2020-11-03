@@ -9,7 +9,7 @@ use gtk_macros::get_widget;
 use std::rc::Rc;
 
 pub struct PersonSelector {
-    window: gtk::Window,
+    window: libhandy::Window,
 }
 
 impl PersonSelector {
@@ -18,10 +18,10 @@ impl PersonSelector {
         P: IsA<gtk::Window>,
         F: Fn(Person) -> () + 'static,
     {
-        let builder =
-            gtk::Builder::from_resource("/de/johrpan/musicus/ui/person_selector.ui");
+        let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/person_selector.ui");
 
-        get_widget!(builder, gtk::Window, window);
+        get_widget!(builder, libhandy::Window, window);
+        get_widget!(builder, gtk::Box, vbox);
         get_widget!(builder, gtk::Button, add_button);
 
         let callback = Rc::new(callback);
@@ -33,8 +33,8 @@ impl PersonSelector {
             callback(person.clone());
         }));
 
+        vbox.pack_start(&list.widget, true, true, 0);
         window.set_transient_for(Some(parent));
-        window.add(&list.widget);
 
         add_button.connect_clicked(
             clone!(@strong backend, @strong window, @strong callback => move |_| {

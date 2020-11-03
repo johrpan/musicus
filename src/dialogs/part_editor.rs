@@ -12,7 +12,7 @@ use std::rc::Rc;
 
 pub struct PartEditor {
     backend: Rc<Backend>,
-    window: gtk::Window,
+    window: libhandy::Window,
     title_entry: gtk::Entry,
     composer: RefCell<Option<Person>>,
     composer_label: gtk::Label,
@@ -29,7 +29,7 @@ impl PartEditor {
     ) -> Rc<Self> {
         let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/part_editor.ui");
 
-        get_widget!(builder, gtk::Window, window);
+        get_widget!(builder, libhandy::Window, window);
         get_widget!(builder, gtk::Button, cancel_button);
         get_widget!(builder, gtk::Button, save_button);
         get_widget!(builder, gtk::Entry, title_entry);

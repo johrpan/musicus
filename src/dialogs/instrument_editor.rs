@@ -10,7 +10,7 @@ where
     F: Fn(Instrument) -> () + 'static,
 {
     backend: Rc<Backend>,
-    window: gtk::Window,
+    window: libhandy::Window,
     callback: F,
     id: i64,
     name_entry: gtk::Entry,
@@ -29,7 +29,7 @@ where
         let builder =
             gtk::Builder::from_resource("/de/johrpan/musicus/ui/instrument_editor.ui");
 
-        get_widget!(builder, gtk::Window, window);
+        get_widget!(builder, libhandy::Window, window);
         get_widget!(builder, gtk::Button, cancel_button);
         get_widget!(builder, gtk::Button, save_button);
         get_widget!(builder, gtk::Entry, name_entry);

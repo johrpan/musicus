@@ -13,7 +13,7 @@ where
     F: Fn(PerformanceDescription) -> () + 'static,
 {
     backend: Rc<Backend>,
-    window: gtk::Window,
+    window: libhandy::Window,
     callback: F,
     save_button: gtk::Button,
     person_label: gtk::Label,
@@ -37,7 +37,7 @@ where
         let builder =
             gtk::Builder::from_resource("/de/johrpan/musicus/ui/performance_editor.ui");
 
-        get_widget!(builder, gtk::Window, window);
+        get_widget!(builder, libhandy::Window, window);
         get_widget!(builder, gtk::Button, cancel_button);
         get_widget!(builder, gtk::Button, save_button);
         get_widget!(builder, gtk::Button, person_button);

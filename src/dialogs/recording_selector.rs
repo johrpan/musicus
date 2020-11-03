@@ -14,7 +14,7 @@ use std::rc::Rc;
 
 pub struct RecordingSelector {
     backend: Rc<Backend>,
-    window: gtk::Window,
+    window: libhandy::Window,
     callback: Box<dyn Fn(RecordingDescription) -> () + 'static>,
     leaflet: libhandy::Leaflet,
     navigator: Rc<Navigator>,
@@ -28,7 +28,7 @@ impl RecordingSelector {
     {
         let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/recording_selector.ui");
 
-        get_widget!(builder, gtk::Window, window);
+        get_widget!(builder, libhandy::Window, window);
         get_widget!(builder, libhandy::Leaflet, leaflet);
         get_widget!(builder, gtk::Button, add_button);
         get_widget!(builder, gtk::Box, sidebar_box);

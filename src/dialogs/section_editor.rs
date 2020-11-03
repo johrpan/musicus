@@ -5,7 +5,7 @@ use gtk_macros::get_widget;
 use std::rc::Rc;
 
 pub struct SectionEditor {
-    window: gtk::Window,
+    window: libhandy::Window,
     title_entry: gtk::Entry,
 }
 
@@ -18,7 +18,7 @@ impl SectionEditor {
         let builder =
             gtk::Builder::from_resource("/de/johrpan/musicus/ui/section_editor.ui");
 
-        get_widget!(builder, gtk::Window, window);
+        get_widget!(builder, libhandy::Window, window);
         get_widget!(builder, gtk::Button, cancel_button);
         get_widget!(builder, gtk::Button, save_button);
         get_widget!(builder, gtk::Entry, title_entry);

@@ -54,7 +54,7 @@ pub struct WorkEditor<F>
 where
     F: Fn(WorkDescription) -> () + 'static, {
     backend: Rc<Backend>,
-    window: gtk::Window,
+    window: libhandy::Window,
     callback: F,
     save_button: gtk::Button,
     id: i64,
@@ -78,7 +78,7 @@ where
     ) -> Rc<Self> {
         let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/work_editor.ui");
 
-        get_widget!(builder, gtk::Window, window);
+        get_widget!(builder, libhandy::Window, window);
         get_widget!(builder, gtk::Button, cancel_button);
         get_widget!(builder, gtk::Button, save_button);
         get_widget!(builder, gtk::Entry, title_entry);

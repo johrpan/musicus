@@ -7,14 +7,14 @@ use libhandy::prelude::*;
 use std::rc::Rc;
 
 pub struct Preferences {
-    window: gtk::Window,
+    window: libhandy::Window,
 }
 
 impl Preferences {
     pub fn new<P: IsA<gtk::Window>>(backend: Rc<Backend>, parent: &P) -> Self {
         let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/preferences.ui");
 
-        get_widget!(builder, gtk::Window, window);
+        get_widget!(builder, libhandy::Window, window);
         get_widget!(builder, libhandy::ActionRow, music_library_path_row);
         get_widget!(builder, gtk::Button, select_music_library_path_button);
 

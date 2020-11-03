@@ -14,7 +14,7 @@ where
     F: Fn(RecordingDescription) -> () + 'static,
 {
     backend: Rc<Backend>,
-    window: gtk::Window,
+    window: libhandy::Window,
     callback: F,
     id: i64,
     save_button: gtk::Button,
@@ -38,7 +38,7 @@ where
         let builder =
             gtk::Builder::from_resource("/de/johrpan/musicus/ui/recording_editor.ui");
 
-        get_widget!(builder, gtk::Window, window);
+        get_widget!(builder, libhandy::Window, window);
         get_widget!(builder, gtk::Button, cancel_button);
         get_widget!(builder, gtk::Button, save_button);
         get_widget!(builder, gtk::Button, work_button);

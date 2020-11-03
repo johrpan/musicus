@@ -7,7 +7,7 @@ use std::convert::TryInto;
 use std::rc::Rc;
 
 pub struct TrackEditor {
-    window: gtk::Window,
+    window: libhandy::Window,
 }
 
 impl TrackEditor {
@@ -18,7 +18,7 @@ impl TrackEditor {
     {
         let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/track_editor.ui");
 
-        get_widget!(builder, gtk::Window, window);
+        get_widget!(builder, libhandy::Window, window);
         get_widget!(builder, gtk::Button, cancel_button);
         get_widget!(builder, gtk::Button, save_button);
         get_widget!(builder, gtk::ListBox, list);

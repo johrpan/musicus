@@ -10,7 +10,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 pub struct TracksEditor {
-    window: gtk::Window,
+    window: libhandy::Window,
 }
 
 impl TracksEditor {
@@ -21,7 +21,7 @@ impl TracksEditor {
     ) -> Self {
         let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/tracks_editor.ui");
 
-        get_widget!(builder, gtk::Window, window);
+        get_widget!(builder, libhandy::Window, window);
         get_widget!(builder, gtk::Button, cancel_button);
         get_widget!(builder, gtk::Button, save_button);
         get_widget!(builder, gtk::Button, recording_button);

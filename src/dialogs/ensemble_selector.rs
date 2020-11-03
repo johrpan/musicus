@@ -14,7 +14,7 @@ where
     F: Fn(Ensemble) -> () + 'static,
 {
     backend: Rc<Backend>,
-    window: gtk::Window,
+    window: libhandy::Window,
     callback: F,
     list: gtk::ListBox,
     search_entry: gtk::SearchEntry,
@@ -28,7 +28,7 @@ where
         let builder =
             gtk::Builder::from_resource("/de/johrpan/musicus/ui/ensemble_selector.ui");
 
-        get_widget!(builder, gtk::Window, window);
+        get_widget!(builder, libhandy::Window, window);
         get_widget!(builder, gtk::Button, add_button);
         get_widget!(builder, gtk::SearchEntry, search_entry);
         get_widget!(builder, gtk::ListBox, list);
