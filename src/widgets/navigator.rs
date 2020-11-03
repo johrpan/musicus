@@ -13,6 +13,7 @@ pub struct Navigator {
     pub widget: gtk::Stack,
     screens: RefCell<Vec<Rc<dyn NavigatorScreen>>>,
     old_screens: RefCell<Vec<Rc<dyn NavigatorScreen>>>,
+    back_cb: RefCell<Option<Box<dyn Fn() -> ()>>>,
 }
 
 impl Navigator {
@@ -30,6 +31,7 @@ impl Navigator {
             widget,
             screens: RefCell::new(Vec::new()),
             old_screens: RefCell::new(Vec::new()),
+            back_cb: RefCell::new(None),
         });
 
         unsafe {
@@ -44,6 +46,10 @@ impl Navigator {
         }
 
         result
+    }
+
+    pub fn set_back_cb<F>(&self, cb: F) where F: Fn() -> () + 'static {
+        self.back_cb.replace(Some(Box::new(cb)));
     }
 
     pub fn push<S>(self: Rc<Self>, screen: Rc<S>)
@@ -80,6 +86,9 @@ impl Navigator {
                 screen.attach_navigator(self.clone());
             } else {
                 self.widget.set_visible_child_name("empty_screen");
+                if let Some(cb) = &*self.back_cb.borrow() {
+                    cb()
+                }
             }
 
             if !self.widget.get_transition_running() {

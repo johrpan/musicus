@@ -38,6 +38,9 @@ impl Window {
 
         let poe_list = PoeList::new(backend.clone());
         let navigator = Navigator::new(&empty_screen);
+        navigator.set_back_cb(clone!(@strong leaflet, @strong sidebar_box => move || {
+            leaflet.set_visible_child(&sidebar_box);
+        }));
 
         let result = Rc::new(Self {
             backend,

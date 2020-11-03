@@ -40,6 +40,10 @@ impl RecordingSelector {
         let navigator = Navigator::new(&empty_screen);
         leaflet.add(&navigator.widget);
 
+        navigator.set_back_cb(clone!(@strong leaflet, @strong sidebar_box => move || {
+            leaflet.set_visible_child(&sidebar_box);
+        }));
+
         let result = Rc::new(Self {
             backend: backend,
             window: window,

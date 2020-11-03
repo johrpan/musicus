@@ -233,7 +233,6 @@
           <object class="HdyLeaflet" id="leaflet">
             <property name="visible">True</property>
             <property name="can-focus">False</property>
-            <property name="can-swipe-back">True</property>
             <child>
               <object class="GtkBox" id="sidebar_box">
                 <property name="width-request">250</property>
