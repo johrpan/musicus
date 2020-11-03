@@ -12,7 +12,6 @@
         <property name="visible">True</property>
         <property name="can-focus">False</property>
         <property name="hexpand">True</property>
-        <property name="title" translatable="yes">Musicus</property>
         <property name="show-close-button">True</property>
       </object>
       <packing>
@@ -29,6 +28,7 @@
         <property name="valign">center</property>
         <property name="orientation">vertical</property>
         <property name="spacing">18</property>
+        <property name="border-width">18</property>
         <child>
           <object class="GtkImage">
             <property name="visible">True</property>
@@ -116,9 +116,9 @@
                 <property name="can-focus">False</property>
                 <property name="halign">center</property>
                 <property name="valign">center</property>
+                <property name="border-width">18</property>
                 <property name="orientation">vertical</property>
                 <property name="spacing">18</property>
-                <property name="border-width">18</property>
                 <child>
                   <object class="GtkImage">
                     <property name="visible">True</property>
@@ -203,7 +203,6 @@
               <object class="HdyHeaderBar">
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
-                <property name="title" translatable="yes">Musicus</property>
                 <property name="show-close-button">True</property>
               </object>
               <packing>
@@ -246,6 +245,7 @@
                   <object class="HdyHeaderBar">
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
+                    <property name="title" translatable="yes">Musicus</property>
                     <child>
                       <object class="GtkButton" id="add_button">
                         <property name="visible">True</property>
