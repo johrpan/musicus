@@ -74,7 +74,7 @@ impl Window {
         }));
 
         add_button.connect_clicked(clone!(@strong result => move |_| {
-            TracksEditor::new(result.backend.clone(), &result.window, clone!(@strong result => move || {
+            TracksEditor::new(result.backend.clone(), &result.window, None, Vec::new(), clone!(@strong result => move || {
                 result.reload();
             })).show();
         }));
@@ -141,7 +141,7 @@ impl Window {
             result.window,
             "add-tracks",
             clone!(@strong result => move |_, _| {
-                TracksEditor::new(result.backend.clone(), &result.window, clone!(@strong result => move || {
+                TracksEditor::new(result.backend.clone(), &result.window, None, Vec::new(), clone!(@strong result => move || {
                     result.reload();
                 })).show();
             })

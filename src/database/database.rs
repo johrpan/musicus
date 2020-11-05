@@ -400,7 +400,9 @@ impl Database {
         Ok(recordings)
     }
 
-    pub fn add_tracks(&self, recording_id: i64, tracks: Vec<TrackDescription>) -> Result<()> {
+    pub fn update_tracks(&self, recording_id: i64, tracks: Vec<TrackDescription>) -> Result<()> {
+        self.delete_tracks(recording_id)?;
+
         for (index, track_description) in tracks.iter().enumerate() {
             let track = Track {
                 id: rand::random(),
@@ -420,6 +422,11 @@ impl Database {
                 .execute(&self.c)?;
         }
 
+        Ok(())
+    }
+
+    pub fn delete_tracks(&self, recording_id: i64) -> Result<()> {
+        diesel::delete(tracks::table.filter(tracks::recording.eq(recording_id))).execute(&self.c)?;
         Ok(())
     }
 

@@ -17,6 +17,8 @@ impl TracksEditor {
     pub fn new<F: Fn() -> () + 'static, P: IsA<gtk::Window>>(
         backend: Rc<Backend>,
         parent: &P,
+        recording: Option<RecordingDescription>,
+        tracks: Vec<TrackDescription>,
         callback: F,
     ) -> Self {
         let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/tracks_editor.ui");
@@ -41,8 +43,8 @@ impl TracksEditor {
             window.close();
         }));
 
-        let recording = Rc::new(RefCell::new(None::<RecordingDescription>));
-        let tracks = Rc::new(RefCell::new(Vec::<TrackDescription>::new()));
+        let recording = Rc::new(RefCell::new(recording));
+        let tracks = Rc::new(RefCell::new(tracks));
 
         let track_list = List::new(
             clone!(@strong recording => move |track: &TrackDescription| {
@@ -132,7 +134,7 @@ impl TracksEditor {
             let tracks = tracks.clone();
             let callback = callback.clone();
             context.spawn_local(async move {
-                backend.add_tracks(recording.borrow().as_ref().unwrap().id, tracks.borrow().clone()).await.unwrap();
+                backend.update_tracks(recording.borrow().as_ref().unwrap().id, tracks.borrow().clone()).await.unwrap();
                 callback();
                 window.close();
             });

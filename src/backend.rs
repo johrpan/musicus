@@ -36,7 +36,8 @@ enum BackendAction {
     GetRecordingsForPerson(i64, Sender<Result<Vec<RecordingDescription>>>),
     GetRecordingsForEnsemble(i64, Sender<Result<Vec<RecordingDescription>>>),
     GetRecordingsForWork(i64, Sender<Result<Vec<RecordingDescription>>>),
-    AddTracks(i64, Vec<TrackDescription>, Sender<Result<()>>),
+    UpdateTracks(i64, Vec<TrackDescription>, Sender<Result<()>>),
+    DeleteTracks(i64, Sender<Result<()>>),
     GetTracks(i64, Sender<Result<Vec<TrackDescription>>>),
     Stop,
 }
@@ -231,10 +232,21 @@ impl Backend {
         receiver.await?
     }
 
-    pub async fn add_tracks(&self, recording_id: i64, tracks: Vec<TrackDescription>) -> Result<()> {
+    pub async fn update_tracks(
+        &self,
+        recording_id: i64,
+        tracks: Vec<TrackDescription>,
+    ) -> Result<()> {
         let (sender, receiver) = oneshot::channel();
         self.unwrap_action_sender()?
-            .send(AddTracks(recording_id, tracks, sender))?;
+            .send(UpdateTracks(recording_id, tracks, sender))?;
+        receiver.await?
+    }
+
+    pub async fn delete_tracks(&self, recording_id: i64) -> Result<()> {
+        let (sender, receiver) = oneshot::channel();
+        self.unwrap_action_sender()?
+            .send(DeleteTracks(recording_id, sender))?;
         receiver.await?
     }
 
@@ -408,9 +420,14 @@ impl Backend {
                             .send(db.get_recordings_for_work(id))
                             .expect("Failed to send result from database thread!");
                     }
-                    AddTracks(recording_id, tracks, sender) => {
+                    UpdateTracks(recording_id, tracks, sender) => {
                         sender
-                            .send(db.add_tracks(recording_id, tracks))
+                            .send(db.update_tracks(recording_id, tracks))
+                            .expect("Failed to send result from database thread!");
+                    }
+                    DeleteTracks(recording_id, sender) => {
+                        sender
+                            .send(db.delete_tracks(recording_id))
                             .expect("Failed to send result from database thread!");
                     }
                     GetTracks(recording_id, sender) => {
