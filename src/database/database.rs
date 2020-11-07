@@ -388,6 +388,7 @@ impl Database {
     }
 
     pub fn delete_recording(&self, id: i64) -> Result<()> {
+        self.delete_tracks(id)?;
         diesel::delete(recordings::table.filter(recordings::id.eq(id))).execute(&self.c)?;
         Ok(())
     }
