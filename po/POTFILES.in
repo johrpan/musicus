@@ -9,6 +9,8 @@ res/ui/person_editor.ui
 res/ui/person_list.ui
 res/ui/person_screen.ui
 res/ui/person_selector.ui
+res/ui/player_bar.ui
+res/ui/player_screen.ui
 res/ui/poe_list.ui
 res/ui/preferences.ui
 res/ui/recording_editor.ui
@@ -48,14 +50,17 @@ src/dialogs/work_selector.rs
 src/screens/ensemble_screen.rs
 src/screens/mod.rs
 src/screens/person_screen.rs
+src/screens/player_screen.rs
 src/screens/recording_screen.rs
 src/screens/work_screen.rs
 src/widgets/list.rs
 src/widgets/mod.rs
 src/widgets/navigator.rs
 src/widgets/person_list.rs
+src/widgets/player_bar.rs
 src/widgets/poe_list.rs
 src/widgets/selector_row.rs
 src/backend.rs
 src/main.rs
+src/player.rs
 src/window.rs
