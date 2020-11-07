@@ -30,6 +30,7 @@ src/database/models.rs
 src/database/mod.rs
 src/database/schema.rs
 src/database/tables.rs
+src/dialogs/about.rs
 src/dialogs/ensemble_editor.rs
 src/dialogs/ensemble_selector.rs
 src/dialogs/instrument_editor.rs

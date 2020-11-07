@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: musicus\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-11-07 20:26+0100\n"
+"POT-Creation-Date: 2020-11-08 00:09+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -263,7 +263,7 @@ msgid ""
 "your library using the button in the top left corner."
 msgstr ""
 
-#: res/ui/window.ui:104 res/ui/window.ui:252
+#: res/ui/window.ui:104 res/ui/window.ui:252 src/dialogs/about.rs:10
 msgid "Musicus"
 msgstr ""
 
@@ -279,6 +279,10 @@ msgstr ""
 
 #: res/ui/window.ui:331
 msgid "Preferences"
+msgstr ""
+
+#: res/ui/window.ui:335
+msgid "About Musicus"
 msgstr ""
 
 #: res/ui/work_editor.ui:264
@@ -299,6 +303,14 @@ msgstr ""
 
 #: res/ui/work_selector.ui:268
 msgid "Search works …"
+msgstr ""
+
+#: src/dialogs/about.rs:12
+msgid "The classical music player and organizer."
+msgstr ""
+
+#: src/dialogs/about.rs:14
+msgid "Further information and source code"
 msgstr ""
 
 #: src/dialogs/preferences.rs:30 src/window.rs:70

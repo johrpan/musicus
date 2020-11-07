@@ -112,6 +112,14 @@ impl Window {
 
         action!(
             result.window,
+            "about",
+            clone!(@strong result => move |_, _| {
+                show_about_dialog(&result.window);
+            })
+        );
+
+        action!(
+            result.window,
             "add-person",
             clone!(@strong result => move |_, _| {
                 PersonEditor::new(result.backend.clone(), &result.window, None, clone!(@strong result => move |_| {

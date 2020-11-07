@@ -3,6 +3,7 @@ localedir = join_paths(prefix, get_option('localedir'))
 
 global_conf = configuration_data()
 global_conf.set_quoted('LOCALEDIR', localedir)
+global_conf.set_quoted('VERSION', meson.project_version())
 config_rs = configure_file(
   input: 'config.rs.in',
   output: 'config.rs',
@@ -37,6 +38,7 @@ sources = files(
   'database/models.rs',
   'database/schema.rs',
   'database/tables.rs',
+  'dialogs/about.rs',
   'dialogs/ensemble_editor.rs',
   'dialogs/ensemble_selector.rs',
   'dialogs/instrument_editor.rs',

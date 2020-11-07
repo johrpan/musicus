@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-11-07 20:26+0100\n"
-"PO-Revision-Date: 2020-11-07 20:27+0100\n"
+"POT-Creation-Date: 2020-11-08 00:09+0100\n"
+"PO-Revision-Date: 2020-11-08 00:12+0100\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "Language: de\n"
@@ -266,7 +266,7 @@ msgstr ""
 "Legen Sie los, indem Sie etwas in der Seitenleiste auswählen oder fügen Sie "
 "mit dem Knopf oben links neue Aufnahmen zu Ihrer Musikbibliothek hinzu."
 
-#: res/ui/window.ui:104 res/ui/window.ui:252
+#: res/ui/window.ui:104 res/ui/window.ui:252 src/dialogs/about.rs:10
 msgid "Musicus"
 msgstr "Musicus"
 
@@ -287,6 +287,10 @@ msgstr "Ordner auswählen"
 msgid "Preferences"
 msgstr "Einstellungen"
 
+#: res/ui/window.ui:335
+msgid "About Musicus"
+msgstr "Über Musicus"
+
 #: res/ui/work_editor.ui:264
 msgid "No work parts added."
 msgstr "Keine Werkabschnitte hinzugefügt."
@@ -306,6 +310,14 @@ msgstr "Werk auswählen"
 #: res/ui/work_selector.ui:268
 msgid "Search works …"
 msgstr "Werke durchsuchen …"
+
+#: src/dialogs/about.rs:12
+msgid "The classical music player and organizer."
+msgstr "Das Programm zum Abspielen und Organisieren von Klassik."
+
+#: src/dialogs/about.rs:14
+msgid "Further information and source code"
+msgstr "Weitere Informationen und Quellcode"
 
 #: src/dialogs/preferences.rs:30 src/window.rs:70
 msgid "Select music library folder"

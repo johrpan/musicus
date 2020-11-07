@@ -331,6 +331,10 @@
         <attribute name="label" translatable="yes">Preferences</attribute>
         <attribute name="action">win.preferences</attribute>
       </item>
+      <item>
+        <attribute name="label" translatable="yes">About Musicus</attribute>
+        <attribute name="action">win.about</attribute>
+      </item>
     </section>
   </menu>
 </interface>

@@ -1,3 +1,6 @@
+pub mod about;
+pub use about::*;
+
 pub mod ensemble_editor;
 pub use ensemble_editor::*;
 
