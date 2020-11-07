@@ -72,7 +72,7 @@ impl WorkScreen {
             },
             clone!(@strong search_entry => move |recording: &RecordingDescription| {
                 let search = search_entry.get_text().to_string().to_lowercase();
-                let text = recording.work.get_title() + &recording.get_performers();
+                let text = recording.work.get_title().to_lowercase() + &recording.get_performers().to_lowercase();
                 search.is_empty() || text.contains(&search)
             }),
             &gettext("No recordings found."),
