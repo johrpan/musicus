@@ -26,9 +26,9 @@
         <property name="can-focus">False</property>
         <property name="halign">center</property>
         <property name="valign">center</property>
+        <property name="border-width">18</property>
         <property name="orientation">vertical</property>
         <property name="spacing">18</property>
-        <property name="border-width">18</property>
         <child>
           <object class="GtkImage">
             <property name="visible">True</property>
@@ -230,78 +230,90 @@
           </packing>
         </child>
         <child>
-          <object class="HdyLeaflet" id="leaflet">
+          <object class="GtkBox" id="content_box">
             <property name="visible">True</property>
             <property name="can-focus">False</property>
+            <property name="orientation">vertical</property>
             <child>
-              <object class="GtkBox" id="sidebar_box">
-                <property name="width-request">250</property>
+              <object class="HdyLeaflet" id="leaflet">
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
-                <property name="hexpand">False</property>
-                <property name="orientation">vertical</property>
                 <child>
-                  <object class="HdyHeaderBar">
+                  <object class="GtkBox" id="sidebar_box">
+                    <property name="width-request">250</property>
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
-                    <property name="title" translatable="yes">Musicus</property>
+                    <property name="hexpand">False</property>
+                    <property name="orientation">vertical</property>
                     <child>
-                      <object class="GtkButton" id="add_button">
+                      <object class="HdyHeaderBar">
                         <property name="visible">True</property>
-                        <property name="can-focus">True</property>
-                        <property name="receives-default">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="title" translatable="yes">Musicus</property>
                         <child>
-                          <object class="GtkImage">
+                          <object class="GtkButton" id="add_button">
                             <property name="visible">True</property>
-                            <property name="can-focus">False</property>
-                            <property name="icon-name">list-add-symbolic</property>
+                            <property name="can-focus">True</property>
+                            <property name="receives-default">True</property>
+                            <child>
+                              <object class="GtkImage">
+                                <property name="visible">True</property>
+                                <property name="can-focus">False</property>
+                                <property name="icon-name">list-add-symbolic</property>
+                              </object>
+                            </child>
                           </object>
                         </child>
-                      </object>
-                    </child>
-                    <child>
-                      <object class="GtkMenuButton">
-                        <property name="visible">True</property>
-                        <property name="can-focus">True</property>
-                        <property name="focus-on-click">False</property>
-                        <property name="receives-default">True</property>
-                        <property name="menu-model">menu</property>
                         <child>
-                          <object class="GtkImage">
+                          <object class="GtkMenuButton">
                             <property name="visible">True</property>
-                            <property name="can-focus">False</property>
-                            <property name="icon-name">open-menu-symbolic</property>
+                            <property name="can-focus">True</property>
+                            <property name="focus-on-click">False</property>
+                            <property name="receives-default">True</property>
+                            <property name="menu-model">menu</property>
+                            <child>
+                              <object class="GtkImage">
+                                <property name="visible">True</property>
+                                <property name="can-focus">False</property>
+                                <property name="icon-name">open-menu-symbolic</property>
+                              </object>
+                            </child>
                           </object>
+                          <packing>
+                            <property name="pack-type">end</property>
+                            <property name="position">1</property>
+                          </packing>
                         </child>
                       </object>
                       <packing>
-                        <property name="pack-type">end</property>
-                        <property name="position">1</property>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="position">0</property>
                       </packing>
                     </child>
                   </object>
                   <packing>
-                    <property name="expand">False</property>
-                    <property name="fill">True</property>
-                    <property name="position">0</property>
+                    <property name="name">sidebar</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkSeparator">
+                    <property name="visible">True</property>
+                    <property name="can-focus">False</property>
+                    <property name="orientation">vertical</property>
+                    <style>
+                      <class name="sidebar" />
+                    </style>
+                  </object>
+                  <packing>
+                    <property name="navigatable">False</property>
                   </packing>
                 </child>
               </object>
               <packing>
-                <property name="name">sidebar</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkSeparator">
-                <property name="visible">True</property>
-                <property name="can-focus">False</property>
-                <property name="orientation">vertical</property>
-                <style>
-                  <class name="sidebar" />
-                </style>
-              </object>
-              <packing>
-                <property name="navigatable">False</property>
+                <property name="expand">True</property>
+                <property name="fill">True</property>
+                <property name="position">0</property>
               </packing>
             </child>
           </object>

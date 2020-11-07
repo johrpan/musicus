@@ -1,4 +1,5 @@
 use super::database::*;
+use crate::player::*;
 use anyhow::{anyhow, Result};
 use futures_channel::oneshot::Sender;
 use futures_channel::{mpsc, oneshot};
@@ -50,6 +51,7 @@ pub struct Backend {
     action_sender: RefCell<Option<std::sync::mpsc::Sender<BackendAction>>>,
     settings: gio::Settings,
     music_library_path: RefCell<Option<PathBuf>>,
+    player: RefCell<Option<Rc<Player>>>,
 }
 
 impl Backend {
@@ -62,6 +64,7 @@ impl Backend {
             action_sender: RefCell::new(None),
             settings: gio::Settings::new("de.johrpan.musicus"),
             music_library_path: RefCell::new(None),
+            player: RefCell::new(None),
         }
     }
 
@@ -267,9 +270,15 @@ impl Backend {
         self.music_library_path.borrow().clone()
     }
 
+    pub fn get_player(&self) -> Option<Rc<Player>> {
+        self.player.borrow().clone()
+    }
+
     async fn set_music_library_path_priv(&self, path: PathBuf) -> Result<()> {
-        self.music_library_path.replace(Some(path.clone()));
         self.set_state(BackendState::Loading);
+
+        self.music_library_path.replace(Some(path.clone()));
+        self.player.replace(Some(Player::new(path.clone())));
 
         if let Some(action_sender) = self.action_sender.borrow_mut().take() {
             action_sender.send(Stop)?;

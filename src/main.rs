@@ -15,6 +15,7 @@ mod config;
 mod backend;
 mod database;
 mod dialogs;
+mod player;
 mod screens;
 mod widgets;
 

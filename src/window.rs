@@ -19,6 +19,7 @@ pub struct Window {
     sidebar_box: gtk::Box,
     poe_list: Rc<PoeList>,
     navigator: Rc<Navigator>,
+    player_bar: PlayerBar,
 }
 
 impl Window {
@@ -28,6 +29,7 @@ impl Window {
         get_widget!(builder, libhandy::ApplicationWindow, window);
         get_widget!(builder, gtk::Stack, stack);
         get_widget!(builder, gtk::Button, select_music_library_path_button);
+        get_widget!(builder, gtk::Box, content_box);
         get_widget!(builder, libhandy::Leaflet, leaflet);
         get_widget!(builder, gtk::Button, add_button);
         get_widget!(builder, gtk::Box, sidebar_box);
@@ -42,6 +44,9 @@ impl Window {
             leaflet.set_visible_child(&sidebar_box);
         }));
 
+        let player_bar = PlayerBar::new();
+        content_box.add(&player_bar.widget);
+
         let result = Rc::new(Self {
             backend,
             window,
@@ -50,6 +55,7 @@ impl Window {
             sidebar_box,
             poe_list,
             navigator,
+            player_bar,
         });
 
         result.window.set_application(Some(app));
@@ -290,6 +296,9 @@ impl Window {
                     BackendState::Ready => {
                         clone.stack.set_visible_child_name("content");
                         clone.poe_list.clone().reload();
+
+                        let player = clone.backend.get_player().unwrap();
+                        clone.player_bar.set_player(Some(player));
                     }
                 }
             }

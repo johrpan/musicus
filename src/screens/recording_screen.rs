@@ -1,5 +1,6 @@
 use crate::backend::*;
 use crate::database::*;
+use crate::player::*;
 use crate::widgets::*;
 use gettextrs::gettext;
 use glib::clone;
@@ -13,13 +14,13 @@ pub struct RecordingScreen {
     backend: Rc<Backend>,
     widget: gtk::Box,
     stack: gtk::Stack,
+    tracks: RefCell<Vec<TrackDescription>>,
     navigator: RefCell<Option<Rc<Navigator>>>,
 }
 
 impl RecordingScreen {
     pub fn new(backend: Rc<Backend>, recording: RecordingDescription) -> Rc<Self> {
-        let builder =
-            gtk::Builder::from_resource("/de/johrpan/musicus/ui/recording_screen.ui");
+        let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/recording_screen.ui");
 
         get_widget!(builder, gtk::Box, widget);
         get_widget!(builder, libhandy::HeaderBar, header);
@@ -27,6 +28,7 @@ impl RecordingScreen {
         get_widget!(builder, gtk::MenuButton, menu_button);
         get_widget!(builder, gtk::Stack, stack);
         get_widget!(builder, gtk::Frame, frame);
+        get_widget!(builder, gtk::Button, add_to_playlist_button);
 
         header.set_title(Some(&recording.work.get_title()));
         header.set_subtitle(Some(&recording.get_performers()));
@@ -88,6 +90,7 @@ impl RecordingScreen {
             backend,
             widget,
             stack,
+            tracks: RefCell::new(Vec::new()),
             navigator: RefCell::new(None),
         });
 
@@ -98,13 +101,25 @@ impl RecordingScreen {
             }
         }));
 
+        add_to_playlist_button.connect_clicked(
+            clone!(@strong result, @strong recording => move |_| {
+                if let Some(player) = result.backend.get_player() {
+                    player.add_item(PlaylistItem {
+                        recording: (*recording).clone(),
+                        tracks: result.tracks.borrow().clone(),
+                    }).unwrap();
+                }
+            }),
+        );
+
         let context = glib::MainContext::default();
         let clone = result.clone();
         let id = recording.id;
         context.spawn_local(async move {
             let tracks = clone.backend.get_tracks(id).await.unwrap();
-            list.show_items(tracks);
+            list.show_items(tracks.clone());
             clone.stack.set_visible_child_name("content");
+            clone.tracks.replace(tracks);
         });
 
         result
