@@ -277,6 +277,10 @@ impl Backend {
     async fn set_music_library_path_priv(&self, path: PathBuf) -> Result<()> {
         self.set_state(BackendState::Loading);
 
+        if let Some(player) = &*self.player.borrow() {
+            player.clear();
+        }
+
         self.music_library_path.replace(Some(path.clone()));
         self.player.replace(Some(Player::new(path.clone())));
 

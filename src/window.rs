@@ -313,6 +313,7 @@ impl Window {
                     BackendState::Ready => {
                         clone.stack.set_visible_child_name("content");
                         clone.poe_list.clone().reload();
+                        clone.navigator.reset();
 
                         let player = clone.backend.get_player().unwrap();
                         clone.player_bar.set_player(Some(player.clone()));
