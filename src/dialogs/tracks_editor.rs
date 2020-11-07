@@ -71,6 +71,7 @@ impl TracksEditor {
                 file_name_label.set_halign(gtk::Align::Start);
 
                 let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
+                vbox.set_border_width(6);
                 vbox.add(&title_label);
                 vbox.add(&file_name_label);
 

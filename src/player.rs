@@ -19,11 +19,11 @@ pub struct Player {
     current_item: Cell<Option<usize>>,
     current_track: Cell<Option<usize>>,
     playing: Cell<bool>,
-    playlist_cb: RefCell<Option<Box<dyn Fn(Vec<PlaylistItem>) -> ()>>>,
-    track_cb: RefCell<Option<Box<dyn Fn(usize, usize) -> ()>>>,
-    duration_cb: RefCell<Option<Box<dyn Fn(u64) -> ()>>>,
-    playing_cb: RefCell<Option<Box<dyn Fn(bool) -> ()>>>,
-    position_cb: RefCell<Option<Box<dyn Fn(u64) -> ()>>>,
+    playlist_cbs: RefCell<Vec<Box<dyn Fn(Vec<PlaylistItem>) -> ()>>>,
+    track_cbs: RefCell<Vec<Box<dyn Fn(usize, usize) -> ()>>>,
+    duration_cbs: RefCell<Vec<Box<dyn Fn(u64) -> ()>>>,
+    playing_cbs: RefCell<Vec<Box<dyn Fn(bool) -> ()>>>,
+    position_cbs: RefCell<Vec<Box<dyn Fn(u64) -> ()>>>,
 }
 
 impl Player {
@@ -42,11 +42,11 @@ impl Player {
             current_item: Cell::new(None),
             current_track: Cell::new(None),
             playing: Cell::new(false),
-            playlist_cb: RefCell::new(None),
-            track_cb: RefCell::new(None),
-            duration_cb: RefCell::new(None),
-            playing_cb: RefCell::new(None),
-            position_cb: RefCell::new(None),
+            playlist_cbs: RefCell::new(Vec::new()),
+            track_cbs: RefCell::new(Vec::new()),
+            duration_cbs: RefCell::new(Vec::new()),
+            playing_cbs: RefCell::new(Vec::new()),
+            position_cbs: RefCell::new(Vec::new()),
         });
 
         let clone = fragile::Fragile::new(result.clone());
@@ -56,8 +56,8 @@ impl Player {
                 clone.next().unwrap();
             } else {
                 clone.player.stop();
-
-                if let Some(cb) = &*clone.playing_cb.borrow() {
+                clone.playing.replace(false);
+                for cb in &*clone.playing_cbs.borrow() {
                     cb(false);
                 }
             }
@@ -65,14 +65,14 @@ impl Player {
 
         let clone = fragile::Fragile::new(result.clone());
         player.connect_position_updated(move |_, position| {
-            if let Some(cb) = &*clone.get().position_cb.borrow() {
+            for cb in &*clone.get().position_cbs.borrow() {
                 cb(position.mseconds().unwrap());
             }
         });
 
         let clone = fragile::Fragile::new(result.clone());
         player.connect_duration_changed(move |_, duration| {
-            if let Some(cb) = &*clone.get().duration_cb.borrow() {
+            for cb in &*clone.get().duration_cbs.borrow() {
                 cb(duration.mseconds().unwrap());
             }
         });
@@ -80,24 +80,24 @@ impl Player {
         result
     }
 
-    pub fn set_playlist_cb<F: Fn(Vec<PlaylistItem>) -> () + 'static>(&self, cb: F) {
-        self.playlist_cb.replace(Some(Box::new(cb)));
+    pub fn add_playlist_cb<F: Fn(Vec<PlaylistItem>) -> () + 'static>(&self, cb: F) {
+        self.playlist_cbs.borrow_mut().push(Box::new(cb));
     }
 
-    pub fn set_track_cb<F: Fn(usize, usize) -> () + 'static>(&self, cb: F) {
-        self.track_cb.replace(Some(Box::new(cb)));
+    pub fn add_track_cb<F: Fn(usize, usize) -> () + 'static>(&self, cb: F) {
+        self.track_cbs.borrow_mut().push(Box::new(cb));
     }
 
-    pub fn set_duration_cb<F: Fn(u64) -> () + 'static>(&self, cb: F) {
-        self.duration_cb.replace(Some(Box::new(cb)));
+    pub fn add_duration_cb<F: Fn(u64) -> () + 'static>(&self, cb: F) {
+        self.duration_cbs.borrow_mut().push(Box::new(cb));
     }
 
-    pub fn set_playing_cb<F: Fn(bool) -> () + 'static>(&self, cb: F) {
-        self.playing_cb.replace(Some(Box::new(cb)));
+    pub fn add_playing_cb<F: Fn(bool) -> () + 'static>(&self, cb: F) {
+        self.playing_cbs.borrow_mut().push(Box::new(cb));
     }
 
-    pub fn set_position_cb<F: Fn(u64) -> () + 'static>(&self, cb: F) {
-        self.position_cb.replace(Some(Box::new(cb)));
+    pub fn add_position_cb<F: Fn(u64) -> () + 'static>(&self, cb: F) {
+        self.position_cbs.borrow_mut().push(Box::new(cb));
     }
 
     pub fn get_playlist(&self) -> Vec<PlaylistItem> {
@@ -135,7 +135,7 @@ impl Player {
                 was_empty
             };
 
-            if let Some(cb) = &*self.playlist_cb.borrow() {
+            for cb in &*self.playlist_cbs.borrow() {
                 cb(self.playlist.borrow().clone());
             }
 
@@ -144,7 +144,7 @@ impl Player {
                 self.player.play();
                 self.playing.set(true);
 
-                if let Some(cb) = &*self.playing_cb.borrow() {
+                for cb in &*self.playing_cbs.borrow() {
                     cb(true);
                 }
             }
@@ -158,17 +158,21 @@ impl Player {
             self.player.pause();
             self.playing.set(false);
 
-            if let Some(cb) = &*self.playing_cb.borrow() {
+            for cb in &*self.playing_cbs.borrow() {
                 cb(false);
             }
         } else {
             self.player.play();
             self.playing.set(true);
 
-            if let Some(cb) = &*self.playing_cb.borrow() {
+            for cb in &*self.playing_cbs.borrow() {
                 cb(true);
             }
         }
+    }
+
+    pub fn seek(&self, ms: u64) {
+        self.player.seek(gstreamer::ClockTime::from_mseconds(ms));
     }
 
     pub fn has_previous(&self) -> bool {
@@ -266,7 +270,7 @@ impl Player {
         self.current_item.set(Some(current_item));
         self.current_track.set(Some(current_track));
 
-        if let Some(cb) = &*self.track_cb.borrow() {
+        for cb in &*self.track_cbs.borrow() {
             cb(current_item, current_track);
         }
 
@@ -280,11 +284,11 @@ impl Player {
         self.current_track.set(None);
         self.playlist.replace(Vec::new());
 
-        if let Some(cb) = &*self.playing_cb.borrow() {
+        for cb in &*self.playing_cbs.borrow() {
             cb(false);
         }
 
-        if let Some(cb) = &*self.playlist_cb.borrow() {
+        for cb in &*self.playlist_cbs.borrow() {
             cb(Vec::new());
         }
     }

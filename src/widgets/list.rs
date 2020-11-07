@@ -88,12 +88,23 @@ where
     }
 
     pub fn select_index(&self, index: usize) {
-        self.widget.select_row(self.widget.get_row_at_index(index.try_into().unwrap()).as_ref());
+        self.widget.select_row(
+            self.widget
+                .get_row_at_index(index.try_into().unwrap())
+                .as_ref(),
+        );
     }
 
     pub fn show_items(&self, items: Vec<T>) {
         self.items.replace(items);
+        self.update();
+    }
 
+    pub fn invalidate_filter(&self) {
+        self.widget.invalidate_filter();
+    }
+
+    pub fn update(&self) {
         for child in self.widget.get_children() {
             self.widget.remove(&child);
         }
@@ -103,10 +114,6 @@ where
             row.show_all();
             self.widget.insert(&row, -1);
         }
-    }
-
-    pub fn invalidate_filter(&self) {
-        self.widget.invalidate_filter();
     }
 
     pub fn clear_selection(&self) {

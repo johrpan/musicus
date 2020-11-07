@@ -63,6 +63,7 @@ impl EnsembleScreen {
                 performers_label.set_halign(gtk::Align::Start);
 
                 let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
+                vbox.set_border_width(6);
                 vbox.add(&work_label);
                 vbox.add(&performers_label);
 

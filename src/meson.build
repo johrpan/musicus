@@ -57,6 +57,7 @@ sources = files(
   'screens/ensemble_screen.rs',
   'screens/mod.rs',
   'screens/person_screen.rs',
+  'screens/player_screen.rs',
   'screens/recording_screen.rs',
   'screens/work_screen.rs',
   'widgets/list.rs',

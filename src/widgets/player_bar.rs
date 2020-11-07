@@ -17,6 +17,7 @@ pub struct PlayerBar {
     play_image: gtk::Image,
     pause_image: gtk::Image,
     player: Rc<RefCell<Option<Rc<Player>>>>,
+    playlist_cb: Rc<RefCell<Option<Box<dyn Fn() -> ()>>>>,
 }
 
 impl PlayerBar {
@@ -31,10 +32,12 @@ impl PlayerBar {
         get_widget!(builder, gtk::Button, next_button);
         get_widget!(builder, gtk::Label, position_label);
         get_widget!(builder, gtk::Label, duration_label);
+        get_widget!(builder, gtk::Button, playlist_button);
         get_widget!(builder, gtk::Image, play_image);
         get_widget!(builder, gtk::Image, pause_image);
 
         let player = Rc::new(RefCell::new(None::<Rc<Player>>));
+        let playlist_cb = Rc::new(RefCell::new(None::<Box<dyn Fn() -> ()>>));
 
         previous_button.connect_clicked(clone!(@strong player => move |_| {
             if let Some(player) = &*player.borrow() {
@@ -54,6 +57,12 @@ impl PlayerBar {
             }
         }));
 
+        playlist_button.connect_clicked(clone!(@strong playlist_cb => move |_| {
+            if let Some(cb) = &*playlist_cb.borrow() {
+                cb();
+            }
+        }));
+
         Self {
             widget,
             title_label,
@@ -66,6 +75,7 @@ impl PlayerBar {
             play_image,
             pause_image,
             player: player,
+            playlist_cb: playlist_cb,
         }
     }
 
@@ -75,7 +85,7 @@ impl PlayerBar {
         if let Some(player) = player {
             let playlist = Rc::new(RefCell::new(Vec::<PlaylistItem>::new()));
 
-            player.set_playlist_cb(clone!(
+            player.add_playlist_cb(clone!(
                 @strong player,
                 @strong self.widget as widget,
                 @strong self.previous_button as previous_button,
@@ -89,7 +99,7 @@ impl PlayerBar {
                 }
             ));
 
-            player.set_track_cb(clone!(
+            player.add_track_cb(clone!(
                 @strong player,
                 @strong playlist,
                 @strong self.previous_button as previous_button,
@@ -120,7 +130,7 @@ impl PlayerBar {
                 }
             ));
 
-            player.set_duration_cb(clone!(
+            player.add_duration_cb(clone!(
                 @strong self.duration_label as duration_label
                 => move |ms| {
                     let min = ms / 60000;
@@ -129,7 +139,7 @@ impl PlayerBar {
                 }
             ));
 
-            player.set_playing_cb(clone!(
+            player.add_playing_cb(clone!(
                 @strong self.play_button as play_button,
                 @strong self.play_image as play_image,
                 @strong self.pause_image as pause_image
@@ -146,7 +156,7 @@ impl PlayerBar {
                 }
             ));
 
-            player.set_position_cb(clone!(
+            player.add_position_cb(clone!(
                 @strong self.position_label as position_label
                 => move |ms| {
                     let min = ms / 60000;
@@ -157,5 +167,9 @@ impl PlayerBar {
         } else {
             self.widget.set_reveal_child(false);
         }
+    }
+
+    pub fn set_playlist_cb<F: Fn() -> () + 'static>(&self, cb: F) {
+        self.playlist_cb.replace(Some(Box::new(cb)));
     }
 }

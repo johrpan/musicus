@@ -58,6 +58,10 @@ impl PersonScreen {
             |work: &WorkDescription| {
                 let label = gtk::Label::new(Some(&work.title));
                 label.set_halign(gtk::Align::Start);
+                label.set_margin_start(6);
+                label.set_margin_end(6);
+                label.set_margin_top(6);
+                label.set_margin_bottom(6);
                 label.upcast()
             },
             clone!(@strong search_entry => move |work: &WorkDescription| {
@@ -81,6 +85,7 @@ impl PersonScreen {
                 performers_label.set_halign(gtk::Align::Start);
 
                 let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
+                vbox.set_border_width(6);
                 vbox.add(&work_label);
                 vbox.add(&performers_label);
 

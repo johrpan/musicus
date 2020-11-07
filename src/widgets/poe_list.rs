@@ -42,6 +42,10 @@ impl PoeList {
             |poe: &PersonOrEnsemble| {
                 let label = gtk::Label::new(Some(&poe.get_title()));
                 label.set_halign(gtk::Align::Start);
+                label.set_margin_start(6);
+                label.set_margin_end(6);
+                label.set_margin_top(6);
+                label.set_margin_bottom(6);
                 label.upcast()
             },
             clone!(@strong search_entry => move |poe: &PersonOrEnsemble| {

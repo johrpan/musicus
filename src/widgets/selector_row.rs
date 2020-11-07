@@ -90,7 +90,6 @@ impl ObjectImpl for SelectorRowPriv {
         self.parent_constructed(object);
 
         let row = object.downcast_ref::<SelectorRow>().unwrap();
-        row.set_border_width(6);
 
         let child = self.child.borrow();
         match child.as_ref() {

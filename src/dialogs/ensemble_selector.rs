@@ -49,6 +49,11 @@ where
             for (index, ensemble) in ensembles.iter().enumerate() {
                 let label = gtk::Label::new(Some(&ensemble.name));
                 label.set_halign(gtk::Align::Start);
+                label.set_margin_start(6);
+                label.set_margin_end(6);
+                label.set_margin_top(6);
+                label.set_margin_bottom(6);
+
                 let row = SelectorRow::new(index.try_into().unwrap(), &label);
                 row.show_all();
                 clone.list.insert(&row, -1);

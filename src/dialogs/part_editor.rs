@@ -140,6 +140,11 @@ impl PartEditor {
         for (index, instrument) in self.instruments.borrow().iter().enumerate() {
             let label = gtk::Label::new(Some(&instrument.name));
             label.set_halign(gtk::Align::Start);
+            label.set_margin_start(6);
+            label.set_margin_end(6);
+            label.set_margin_top(6);
+            label.set_margin_bottom(6);
+
             let row = SelectorRow::new(index.try_into().unwrap(), &label);
             row.show_all();
             self.instrument_list.insert(&row, -1);

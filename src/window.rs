@@ -20,6 +20,7 @@ pub struct Window {
     poe_list: Rc<PoeList>,
     navigator: Rc<Navigator>,
     player_bar: PlayerBar,
+    player_screen: PlayerScreen,
 }
 
 impl Window {
@@ -37,6 +38,9 @@ impl Window {
 
         let backend = Rc::new(Backend::new());
         backend.clone().init();
+
+        let player_screen = PlayerScreen::new();
+        stack.add_named(&player_screen.widget, "player_screen");
 
         let poe_list = PoeList::new(backend.clone());
         let navigator = Navigator::new(&empty_screen);
@@ -56,6 +60,7 @@ impl Window {
             poe_list,
             navigator,
             player_bar,
+            player_screen,
         });
 
         result.window.set_application(Some(app));
@@ -84,6 +89,18 @@ impl Window {
                 result.reload();
             })).show();
         }));
+
+        result
+            .player_bar
+            .set_playlist_cb(clone!(@strong result => move || {
+                result.stack.set_visible_child_name("player_screen");
+            }));
+
+        result
+            .player_screen
+            .set_back_cb(clone!(@strong result => move || {
+                result.stack.set_visible_child_name("content");
+            }));
 
         action!(
             result.window,
@@ -298,7 +315,8 @@ impl Window {
                         clone.poe_list.clone().reload();
 
                         let player = clone.backend.get_player().unwrap();
-                        clone.player_bar.set_player(Some(player));
+                        clone.player_bar.set_player(Some(player.clone()));
+                        clone.player_screen.set_player(Some(player));
                     }
                 }
             }
