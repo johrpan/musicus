@@ -64,7 +64,7 @@ CREATE TABLE performances (
 CREATE TABLE tracks (
     id BIGINT NOT NULL PRIMARY KEY,
     file_name TEXT NOT NULL,
-    recording BIGINT NOT NULL REFERENCES recordings(id) ON DELETE CASCADE,
+    recording BIGINT NOT NULL REFERENCES recordings(id),
     track_index INTEGER NOT NULL,
     work_parts TEXT NOT NULL
 );
