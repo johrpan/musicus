@@ -166,9 +166,13 @@ impl Window {
             result.window,
             "add-recording",
             clone!(@strong result => move |_, _| {
-                RecordingEditor::new(result.backend.clone(), &result.window, None, clone!(@strong result => move |_| {
+                let dialog = RecordingDialog::new(result.backend.clone(), &result.window);
+
+                dialog.set_selected_cb(clone!(@strong result => move |_| {
                     result.reload();
-                })).show();
+                }));
+
+                dialog.show();
             })
         );
 
@@ -292,9 +296,13 @@ impl Window {
                 let c = glib::MainContext::default();
                 c.spawn_local(async move {
                     let recording = result.backend.get_recording_description(id).await.unwrap();
-                    RecordingEditor::new(result.backend.clone(), &result.window, Some(recording), clone!(@strong result => move |_| {
+                    let dialog = RecordingEditorDialog::new(result.backend.clone(), &result.window, Some(recording));
+
+                    dialog.set_selected_cb(clone!(@strong result => move |_| {
                         result.reload();
-                    })).show();
+                    }));
+
+                    dialog.show();
                 });
             })
         );

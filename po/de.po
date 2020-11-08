@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-11-08 02:37+0100\n"
+"POT-Creation-Date: 2020-11-08 12:11+0100\n"
 "PO-Revision-Date: 2020-11-08 02:37+0100\n"
 "Last-Translator: \n"
 "Language-Team: \n"
@@ -18,14 +18,14 @@ msgstr ""
 "X-Generator: Poedit 2.4.1\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: res/ui/ensemble_editor.ui:20 res/ui/performance_editor.ui:197
-#: res/ui/performance_editor.ui:228
+#: res/ui/ensemble_editor.ui:20 res/ui/performance_editor.ui:196
+#: res/ui/performance_editor.ui:227
 msgid "Ensemble"
 msgstr "Ensemble"
 
 #: res/ui/ensemble_editor.ui:23 res/ui/instrument_editor.ui:23
 #: res/ui/part_editor.ui:25 res/ui/performance_editor.ui:23
-#: res/ui/person_editor.ui:23 res/ui/recording_editor.ui:25
+#: res/ui/person_editor.ui:23 res/ui/recording_editor.ui:17
 #: res/ui/section_editor.ui:23 res/ui/track_editor.ui:24
 #: res/ui/tracks_editor.ui:39 res/ui/work_editor.ui:25
 msgid "Cancel"
@@ -33,7 +33,7 @@ msgstr "Abbrechen"
 
 #: res/ui/ensemble_editor.ui:31 res/ui/instrument_editor.ui:31
 #: res/ui/part_editor.ui:33 res/ui/performance_editor.ui:31
-#: res/ui/person_editor.ui:31 res/ui/recording_editor.ui:33
+#: res/ui/person_editor.ui:31 res/ui/recording_editor.ui:25
 #: res/ui/section_editor.ui:31 res/ui/track_editor.ui:32
 #: res/ui/tracks_editor.ui:24 res/ui/work_editor.ui:33
 msgid "Save"
@@ -53,8 +53,9 @@ msgid "Recordings"
 msgstr "Aufnahmen"
 
 #: res/ui/ensemble_screen.ui:188 res/ui/work_screen.ui:188
-#: src/dialogs/recording_selector.rs:205 src/screens/ensemble_screen.rs:53
-#: src/screens/person_screen.rs:77 src/screens/work_screen.rs:54
+#: src/dialogs/recording/recording_selector_work_screen.rs:38
+#: src/screens/ensemble_screen.rs:53 src/screens/person_screen.rs:77
+#: src/screens/work_screen.rs:54
 msgid "No recordings found."
 msgstr "Keine Aufnahmen gefunden."
 
@@ -93,15 +94,16 @@ msgid "Title"
 msgstr "Titel"
 
 #: res/ui/part_editor.ui:116 res/ui/performance_editor.ui:87
-#: res/ui/performance_editor.ui:171 res/ui/performance_editor.ui:215
-#: res/ui/recording_editor.ui:89 res/ui/tracks_editor.ui:93
+#: res/ui/performance_editor.ui:170 res/ui/performance_editor.ui:214
+#: res/ui/recording_editor.ui:81 res/ui/tracks_editor.ui:93
 #: res/ui/work_editor.ui:77 src/dialogs/part_editor.rs:99
-#: src/dialogs/performance_editor.rs:112 src/dialogs/performance_editor.rs:122
-#: src/dialogs/performance_editor.rs:136
+#: src/dialogs/recording/performance_editor.rs:150
+#: src/dialogs/recording/performance_editor.rs:160
+#: src/dialogs/recording/performance_editor.rs:170
 msgid "Select …"
 msgstr "Auswählen …"
 
-#: res/ui/part_editor.ui:160 res/ui/recording_editor.ui:126
+#: res/ui/part_editor.ui:160 res/ui/recording_editor.ui:119
 #: res/ui/work_editor.ui:126
 msgid "Overview"
 msgstr "Überblick"
@@ -122,11 +124,11 @@ msgstr "Auftritt"
 msgid "Role"
 msgstr "Rolle"
 
-#: res/ui/performance_editor.ui:129
+#: res/ui/performance_editor.ui:128
 msgid "Type"
 msgstr "Typ"
 
-#: res/ui/performance_editor.ui:152 res/ui/performance_editor.ui:184
+#: res/ui/performance_editor.ui:151 res/ui/performance_editor.ui:183
 #: res/ui/person_editor.ui:20
 msgid "Person"
 msgstr "Person"
@@ -200,24 +202,20 @@ msgstr "Keiner ausgewählt"
 msgid "Select"
 msgstr "Auswählen"
 
-#: res/ui/recording_editor.ui:22 res/ui/tracks_editor.ui:68
+#: res/ui/recording_editor.ui:14 res/ui/tracks_editor.ui:68
 msgid "Recording"
 msgstr "Aufnahme"
 
-#: res/ui/recording_editor.ui:71
+#: res/ui/recording_editor.ui:63
 msgid "Comment"
 msgstr "Kommentar"
 
-#: res/ui/recording_editor.ui:113 res/ui/tracks_editor.ui:109
+#: res/ui/recording_editor.ui:106 res/ui/tracks_editor.ui:109
 #: res/ui/work_editor.ui:22
 msgid "Work"
 msgstr "Werk"
 
-#: res/ui/recording_editor.ui:157
-msgid "No performers added."
-msgstr "Keine Interpreten hinzugefügt."
-
-#: res/ui/recording_editor.ui:251 res/ui/tracks_editor.ui:127
+#: res/ui/recording_editor.ui:226 res/ui/tracks_editor.ui:127
 msgid "Performers"
 msgstr "Interpreten"
 
@@ -233,12 +231,7 @@ msgstr "Zur Wiedergabeliste hinzufügen"
 msgid "Select a composer on the left."
 msgstr "Wählen Sie einen Komponisten aus."
 
-#: res/ui/recording_selector.ui:71 res/ui/recording_selector.ui:186
-#: src/dialogs/recording_selector.rs:109 src/screens/person_screen.rs:57
-msgid "No works found."
-msgstr "Keine Werke gefunden."
-
-#: res/ui/recording_selector.ui:108
+#: res/ui/recording_selector.ui:51
 msgid "Select a recording"
 msgstr "Aufnahme auswählen"
 
@@ -322,6 +315,15 @@ msgstr "Weitere Informationen und Quellcode"
 #: src/dialogs/preferences.rs:30 src/window.rs:70
 msgid "Select music library folder"
 msgstr "Ordner der Musikbibliothek auswählen"
+
+#: src/dialogs/recording/recording_editor.rs:54
+msgid "No performers added."
+msgstr "Keine Interpreten hinzugefügt."
+
+#: src/dialogs/recording/recording_selector_person_screen.rs:39
+#: src/screens/person_screen.rs:57
+msgid "No works found."
+msgstr "Keine Werke gefunden."
 
 #: src/dialogs/tracks_editor.rs:60
 msgid "Add some tracks."

@@ -95,14 +95,14 @@ impl TracksEditor {
             }));
 
         recording_button.connect_clicked(clone!(@strong this => move |_| {
-                RecordingSelector::new(
-                    this.backend.clone(),
-                    &this.window,
-                    clone!(@strong this => move |recording| {
-                        this.recording_selected(&recording);
-                        this.recording.replace(Some(recording));
-                    }),
-                ).show();
+            let dialog = RecordingDialog::new(this.backend.clone(), &this.window);
+
+            dialog.set_selected_cb(clone!(@strong this => move |recording| {
+                this.recording_selected(&recording);
+                this.recording.replace(Some(recording));
+            }));
+
+            dialog.show();
             }
         ));
 

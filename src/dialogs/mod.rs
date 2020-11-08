@@ -16,9 +16,6 @@ pub use instrument_selector::*;
 pub mod part_editor;
 pub use part_editor::*;
 
-pub mod performance_editor;
-pub use performance_editor::*;
-
 pub mod person_editor;
 pub use person_editor::*;
 
@@ -28,11 +25,8 @@ pub use person_selector::*;
 pub mod preferences;
 pub use preferences::*;
 
-pub mod recording_editor;
-pub use recording_editor::*;
-
-pub mod recording_selector;
-pub use recording_selector::*;
+pub mod recording;
+pub use recording::*;
 
 pub mod section_editor;
 pub use section_editor::*;
