@@ -105,10 +105,14 @@ impl RecordingEditor {
             }));
 
         work_button.connect_clicked(clone!(@strong this => move |_| {
-            WorkSelector::new(this.backend.clone(), &this.parent, clone!(@strong this => move |work| {
+            let dialog = WorkDialog::new(this.backend.clone(), &this.parent);
+
+            dialog.set_selected_cb(clone!(@strong this => move |work| {
                 this.work_selected(&work);
                 this.work.replace(Some(work));
-            })).show();
+            }));
+
+            dialog.show();
         }));
 
         this.performance_list.set_make_widget(|performance| {

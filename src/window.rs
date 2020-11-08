@@ -146,9 +146,13 @@ impl Window {
             result.window,
             "add-work",
             clone!(@strong result => move |_, _| {
-                WorkEditor::new(result.backend.clone(), &result.window, None, clone!(@strong result => move |_| {
+                let dialog = WorkDialog::new(result.backend.clone(), &result.window);
+
+                dialog.set_selected_cb(clone!(@strong result => move |_| {
                     result.reload();
-                })).show();
+                }));
+
+                dialog.show();
             })
         );
 
@@ -264,9 +268,13 @@ impl Window {
                 let c = glib::MainContext::default();
                 c.spawn_local(async move {
                     let work = result.backend.get_work_description(id).await.unwrap();
-                    WorkEditor::new(result.backend.clone(), &result.window, Some(work), clone!(@strong result => move |_| {
+                    let dialog = WorkEditorDialog::new(result.backend.clone(), &result.window, Some(work));
+
+                    dialog.set_saved_cb(clone!(@strong result => move |_| {
                         result.reload();
-                    })).show();
+                    }));
+
+                    dialog.show();
                 });
             })
         );

@@ -24,6 +24,7 @@ res/ui/window.ui
 res/ui/work_editor.ui
 res/ui/work_screen.ui
 res/ui/work_selector.ui
+res/ui/work_selector_screen.ui
 
 src/database/database.rs
 src/database/models.rs
@@ -36,7 +37,6 @@ src/dialogs/ensemble_selector.rs
 src/dialogs/instrument_editor.rs
 src/dialogs/instrument_selector.rs
 src/dialogs/mod.rs
-src/dialogs/part_editor.rs
 src/dialogs/person_editor.rs
 src/dialogs/person_selector.rs
 src/dialogs/preferences.rs
@@ -48,11 +48,16 @@ src/dialogs/recording/recording_editor.rs
 src/dialogs/recording/recording_selector_person_screen.rs
 src/dialogs/recording/recording_selector.rs
 src/dialogs/recording/recording_selector_work_screen.rs
-src/dialogs/section_editor.rs
 src/dialogs/track_editor.rs
 src/dialogs/tracks_editor.rs
-src/dialogs/work_editor.rs
-src/dialogs/work_selector.rs
+src/dialogs/work/mod.rs
+src/dialogs/work/part_editor.rs
+src/dialogs/work/section_editor.rs
+src/dialogs/work/work_dialog.rs
+src/dialogs/work/work_editor_dialog.rs
+src/dialogs/work/work_editor.rs
+src/dialogs/work/work_selector_person_screen.rs
+src/dialogs/work/work_selector.rs
 src/screens/ensemble_screen.rs
 src/screens/mod.rs
 src/screens/person_screen.rs

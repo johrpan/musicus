@@ -1,4 +1,3 @@
-use super::recording_selector_work_screen::*;
 use crate::backend::*;
 use crate::database::*;
 use crate::widgets::*;
@@ -10,24 +9,22 @@ use libhandy::HeaderBarExt;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-/// A screen within the recording selector that presents a list of works and switches to a work
-/// screen on selection.
-pub struct RecordingSelectorPersonScreen {
+/// A screen within the work selector that presents a list of works by a person.
+pub struct WorkSelectorPersonScreen {
     backend: Rc<Backend>,
     widget: gtk::Box,
     stack: gtk::Stack,
     work_list: Rc<List<WorkDescription>>,
-    selected_cb: RefCell<Option<Box<dyn Fn(RecordingDescription) -> ()>>>,
+    selected_cb: RefCell<Option<Box<dyn Fn(WorkDescription) -> ()>>>,
     navigator: RefCell<Option<Rc<Navigator>>>,
 }
 
-impl RecordingSelectorPersonScreen {
-    /// Create a new recording selector person screen.
+impl WorkSelectorPersonScreen {
+    /// Create a new work selector person screen.
     pub fn new(backend: Rc<Backend>, person: Person) -> Rc<Self> {
         // Create UI
 
-        let builder =
-            gtk::Builder::from_resource("/de/johrpan/musicus/ui/recording_selector_screen.ui");
+        let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/work_selector_screen.ui");
 
         get_widget!(builder, gtk::Box, widget);
         get_widget!(builder, libhandy::HeaderBar, header);
@@ -72,18 +69,9 @@ impl RecordingSelectorPersonScreen {
             .set_selected(clone!(@strong this => move |work| {
                 let navigator = this.navigator.borrow().clone();
                 if let Some(navigator) = navigator {
-                    let work_screen = RecordingSelectorWorkScreen::new(
-                        this.backend.clone(),
-                        work.clone(),
-                    );
-
-                    work_screen.set_selected_cb(clone!(@strong this => move |recording| {
-                        if let Some(cb) = &*this.selected_cb.borrow() {
-                            cb(recording);
-                        }
-                    }));
-
-                    navigator.push(work_screen);
+                    if let Some(cb) = &*this.selected_cb.borrow() {
+                        cb(work.clone());
+                    }
                 }
             }));
 
@@ -105,13 +93,13 @@ impl RecordingSelectorPersonScreen {
         this
     }
 
-    /// Sets a closure to be called when the user has selected a recording.
-    pub fn set_selected_cb<F: Fn(RecordingDescription) -> () + 'static>(&self, cb: F) {
+    /// Sets a closure to be called when the user has selected a work.
+    pub fn set_selected_cb<F: Fn(WorkDescription) -> () + 'static>(&self, cb: F) {
         self.selected_cb.replace(Some(Box::new(cb)));
     }
 }
 
-impl NavigatorScreen for RecordingSelectorPersonScreen {
+impl NavigatorScreen for WorkSelectorPersonScreen {
     fn attach_navigator(&self, navigator: Rc<Navigator>) {
         self.navigator.replace(Some(navigator));
     }

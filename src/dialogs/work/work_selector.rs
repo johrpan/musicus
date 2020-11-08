@@ -1,4 +1,4 @@
-use super::recording_selector_person_screen::*;
+use super::work_selector_person_screen::*;
 use crate::backend::Backend;
 use crate::database::*;
 use crate::widgets::*;
@@ -9,22 +9,22 @@ use libhandy::prelude::*;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-/// A widget for selecting a recording from a list of existing ones.
-pub struct RecordingSelector {
+/// A widget for selecting a work from a list of existing ones.
+pub struct WorkSelector {
     pub widget: libhandy::Leaflet,
     backend: Rc<Backend>,
     sidebar_box: gtk::Box,
-    selected_cb: RefCell<Option<Box<dyn Fn(RecordingDescription) -> ()>>>,
+    selected_cb: RefCell<Option<Box<dyn Fn(WorkDescription) -> ()>>>,
     add_cb: RefCell<Option<Box<dyn Fn() -> ()>>>,
     navigator: Rc<Navigator>,
 }
 
-impl RecordingSelector {
-    /// Create a new recording selector.
+impl WorkSelector {
+    /// Create a new work selector.
     pub fn new(backend: Rc<Backend>) -> Rc<Self> {
         // Create UI
 
-        let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/recording_selector.ui");
+        let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/work_selector.ui");
 
         get_widget!(builder, libhandy::Leaflet, widget);
         get_widget!(builder, gtk::Button, add_button);
@@ -55,14 +55,14 @@ impl RecordingSelector {
         }));
 
         person_list.set_selected(clone!(@strong this => move |person| {
-            let person_screen = RecordingSelectorPersonScreen::new(
+            let person_screen = WorkSelectorPersonScreen::new(
                 this.backend.clone(),
                 person.clone(),
             );
 
-            person_screen.set_selected_cb(clone!(@strong this => move |recording| {
+            person_screen.set_selected_cb(clone!(@strong this => move |work| {
                 if let Some(cb) = &*this.selected_cb.borrow() {
-                    cb(recording);
+                    cb(work);
                 }
             }));
 
@@ -77,13 +77,13 @@ impl RecordingSelector {
         this
     }
 
-    /// Set the closure to be called if the user wants to add a new recording.
+    /// Set the closure to be called if the user wants to add a new work.
     pub fn set_add_cb<F: Fn() -> () + 'static>(&self, cb: F) {
         self.add_cb.replace(Some(Box::new(cb)));
     }
 
-    /// Set the closure to be called when the user has selected a recording.
-    pub fn set_selected_cb<F: Fn(RecordingDescription) -> () + 'static>(&self, cb: F) {
+    /// Set the closure to be called when the user has selected a work.
+    pub fn set_selected_cb<F: Fn(WorkDescription) -> () + 'static>(&self, cb: F) {
         self.selected_cb.replace(Some(Box::new(cb)));
     }
 }

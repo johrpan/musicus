@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-11-08 12:11+0100\n"
-"PO-Revision-Date: 2020-11-08 02:37+0100\n"
+"POT-Creation-Date: 2020-11-08 20:12+0100\n"
+"PO-Revision-Date: 2020-11-08 20:13+0100\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "Language: de\n"
@@ -27,7 +27,7 @@ msgstr "Ensemble"
 #: res/ui/part_editor.ui:25 res/ui/performance_editor.ui:23
 #: res/ui/person_editor.ui:23 res/ui/recording_editor.ui:17
 #: res/ui/section_editor.ui:23 res/ui/track_editor.ui:24
-#: res/ui/tracks_editor.ui:39 res/ui/work_editor.ui:25
+#: res/ui/tracks_editor.ui:39 res/ui/work_editor.ui:17
 msgid "Cancel"
 msgstr "Abbrechen"
 
@@ -35,7 +35,7 @@ msgstr "Abbrechen"
 #: res/ui/part_editor.ui:33 res/ui/performance_editor.ui:31
 #: res/ui/person_editor.ui:31 res/ui/recording_editor.ui:25
 #: res/ui/section_editor.ui:31 res/ui/track_editor.ui:32
-#: res/ui/tracks_editor.ui:24 res/ui/work_editor.ui:33
+#: res/ui/tracks_editor.ui:24 res/ui/work_editor.ui:25
 msgid "Save"
 msgstr "Speichern"
 
@@ -83,36 +83,32 @@ msgstr "Keine Instrumente gefunden."
 msgid "Work part"
 msgstr "Werkabschnitt"
 
-#: res/ui/part_editor.ui:70 res/ui/work_editor.ui:91
+#: res/ui/part_editor.ui:70 res/ui/work_editor.ui:84
 msgid "Composer"
 msgstr "Komponist"
 
 #: res/ui/part_editor.ui:93 res/ui/player_bar.ui:118
 #: res/ui/player_screen.ui:160 res/ui/section_editor.ui:64
-#: res/ui/work_editor.ui:113
+#: res/ui/work_editor.ui:106
 msgid "Title"
 msgstr "Titel"
 
 #: res/ui/part_editor.ui:116 res/ui/performance_editor.ui:87
 #: res/ui/performance_editor.ui:170 res/ui/performance_editor.ui:214
 #: res/ui/recording_editor.ui:81 res/ui/tracks_editor.ui:93
-#: res/ui/work_editor.ui:77 src/dialogs/part_editor.rs:99
-#: src/dialogs/recording/performance_editor.rs:150
+#: res/ui/work_editor.ui:69 src/dialogs/recording/performance_editor.rs:150
 #: src/dialogs/recording/performance_editor.rs:160
 #: src/dialogs/recording/performance_editor.rs:170
+#: src/dialogs/work/part_editor.rs:166
 msgid "Select …"
 msgstr "Auswählen …"
 
-#: res/ui/part_editor.ui:160 res/ui/recording_editor.ui:119
-#: res/ui/work_editor.ui:126
+#: res/ui/part_editor.ui:159 res/ui/recording_editor.ui:119
+#: res/ui/work_editor.ui:119
 msgid "Overview"
 msgstr "Überblick"
 
-#: res/ui/part_editor.ui:191 res/ui/work_editor.ui:157
-msgid "No instruments added."
-msgstr "Keine Instrumente hinzugefügt."
-
-#: res/ui/part_editor.ui:266 res/ui/work_editor.ui:232
+#: res/ui/part_editor.ui:247 res/ui/work_editor.ui:207
 msgid "Instruments"
 msgstr "Instrumente"
 
@@ -141,7 +137,7 @@ msgstr "Vorname"
 msgid "Last name"
 msgstr "Nachname"
 
-#: res/ui/person_list.ui:28 res/ui/work_selector.ui:69
+#: res/ui/person_list.ui:28
 msgid "Search persons …"
 msgstr "Personen durchsuchen …"
 
@@ -211,7 +207,7 @@ msgid "Comment"
 msgstr "Kommentar"
 
 #: res/ui/recording_editor.ui:106 res/ui/tracks_editor.ui:109
-#: res/ui/work_editor.ui:22
+#: res/ui/work_editor.ui:14
 msgid "Work"
 msgstr "Werk"
 
@@ -227,7 +223,7 @@ msgstr "Tracks"
 msgid "Add to playlist"
 msgstr "Zur Wiedergabeliste hinzufügen"
 
-#: res/ui/recording_selector.ui:27 res/ui/work_selector.ui:180
+#: res/ui/recording_selector.ui:27 res/ui/work_selector.ui:26
 msgid "Select a composer on the left."
 msgstr "Wählen Sie einen Komponisten aus."
 
@@ -284,25 +280,13 @@ msgstr "Einstellungen"
 msgid "About Musicus"
 msgstr "Über Musicus"
 
-#: res/ui/work_editor.ui:264
-msgid "No work parts added."
-msgstr "Keine Werkabschnitte hinzugefügt."
-
-#: res/ui/work_editor.ui:416
+#: res/ui/work_editor.ui:373
 msgid "Structure"
 msgstr "Struktur"
 
-#: res/ui/work_selector.ui:113 src/widgets/person_list.rs:26
-msgid "No persons found."
-msgstr "Keine Personen gefunden."
-
-#: res/ui/work_selector.ui:167
-msgid "Select work"
+#: res/ui/work_selector.ui:51
+msgid "Select a work"
 msgstr "Werk auswählen"
-
-#: res/ui/work_selector.ui:268
-msgid "Search works …"
-msgstr "Werke durchsuchen …"
 
 #: src/dialogs/about.rs:12
 msgid "The classical music player and organizer."
@@ -321,6 +305,7 @@ msgid "No performers added."
 msgstr "Keine Interpreten hinzugefügt."
 
 #: src/dialogs/recording/recording_selector_person_screen.rs:39
+#: src/dialogs/work/work_selector_person_screen.rs:36
 #: src/screens/person_screen.rs:57
 msgid "No works found."
 msgstr "Keine Werke gefunden."
@@ -337,6 +322,14 @@ msgstr "Audiodateien auswählen"
 #: src/screens/recording_screen.rs:79
 msgid "Unknown"
 msgstr "Unbekannt"
+
+#: src/dialogs/work/part_editor.rs:49 src/dialogs/work/work_editor.rs:69
+msgid "No instruments added."
+msgstr "Keine Instrumente hinzugefügt."
+
+#: src/dialogs/work/work_editor.rs:72
+msgid "No work parts added."
+msgstr "Keine Werkabschnitte hinzugefügt."
 
 #: src/screens/ensemble_screen.rs:35
 msgid "Edit ensemble"
@@ -382,6 +375,13 @@ msgstr "Werk bearbeiten"
 msgid "Delete work"
 msgstr "Werk löschen"
 
+#: src/widgets/person_list.rs:26
+msgid "No persons found."
+msgstr "Keine Personen gefunden."
+
 #: src/widgets/poe_list.rs:41
 msgid "No persons or ensembles found."
 msgstr "Keine Personen oder Ensembles gefunden."
+
+#~ msgid "Search works …"
+#~ msgstr "Werke durchsuchen …"
