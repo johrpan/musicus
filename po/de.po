@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-11-08 00:09+0100\n"
-"PO-Revision-Date: 2020-11-08 00:12+0100\n"
+"POT-Creation-Date: 2020-11-08 02:37+0100\n"
+"PO-Revision-Date: 2020-11-08 02:37+0100\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "Language: de\n"
@@ -53,8 +53,8 @@ msgid "Recordings"
 msgstr "Aufnahmen"
 
 #: res/ui/ensemble_screen.ui:188 res/ui/work_screen.ui:188
-#: src/dialogs/recording_selector.rs:227 src/screens/ensemble_screen.rs:77
-#: src/screens/person_screen.rs:99 src/screens/work_screen.rs:78
+#: src/dialogs/recording_selector.rs:205 src/screens/ensemble_screen.rs:53
+#: src/screens/person_screen.rs:77 src/screens/work_screen.rs:54
 msgid "No recordings found."
 msgstr "Keine Aufnahmen gefunden."
 
@@ -234,7 +234,7 @@ msgid "Select a composer on the left."
 msgstr "Wählen Sie einen Komponisten aus."
 
 #: res/ui/recording_selector.ui:71 res/ui/recording_selector.ui:186
-#: src/dialogs/recording_selector.rs:120 src/screens/person_screen.rs:72
+#: src/dialogs/recording_selector.rs:109 src/screens/person_screen.rs:57
 msgid "No works found."
 msgstr "Keine Werke gefunden."
 
@@ -299,7 +299,7 @@ msgstr "Keine Werkabschnitte hinzugefügt."
 msgid "Structure"
 msgstr "Struktur"
 
-#: res/ui/work_selector.ui:113 src/widgets/person_list.rs:41
+#: res/ui/work_selector.ui:113 src/widgets/person_list.rs:26
 msgid "No persons found."
 msgstr "Keine Personen gefunden."
 
@@ -323,18 +323,18 @@ msgstr "Weitere Informationen und Quellcode"
 msgid "Select music library folder"
 msgstr "Ordner der Musikbibliothek auswählen"
 
-#: src/dialogs/tracks_editor.rs:59 src/screens/player_screen.rs:232
-#: src/screens/recording_screen.rs:63
-msgid "Unknown"
-msgstr "Unbekannt"
-
-#: src/dialogs/tracks_editor.rs:81
+#: src/dialogs/tracks_editor.rs:60
 msgid "Add some tracks."
 msgstr "Fügen Sie Tracks hinzu."
 
-#: src/dialogs/tracks_editor.rs:148
+#: src/dialogs/tracks_editor.rs:118
 msgid "Select audio files"
 msgstr "Audiodateien auswählen"
+
+#: src/dialogs/tracks_editor.rs:236 src/screens/player_screen.rs:230
+#: src/screens/recording_screen.rs:79
+msgid "Unknown"
+msgstr "Unbekannt"
 
 #: src/screens/ensemble_screen.rs:35
 msgid "Edit ensemble"
@@ -360,7 +360,15 @@ msgstr "Aufnahme bearbeiten"
 msgid "Delete recording"
 msgstr "Aufnahme löschen"
 
-#: src/screens/recording_screen.rs:85
+#: src/screens/recording_screen.rs:48
+msgid "Edit tracks"
+msgstr "Tracks bearbeiten"
+
+#: src/screens/recording_screen.rs:54
+msgid "Delete tracks"
+msgstr "Tracks löschen"
+
+#: src/screens/recording_screen.rs:69
 msgid "No tracks found."
 msgstr "Keine Tracks gefunden."
 
@@ -372,6 +380,6 @@ msgstr "Werk bearbeiten"
 msgid "Delete work"
 msgstr "Werk löschen"
 
-#: src/widgets/poe_list.rs:56
+#: src/widgets/poe_list.rs:41
 msgid "No persons or ensembles found."
 msgstr "Keine Personen oder Ensembles gefunden."

@@ -85,9 +85,13 @@ impl Window {
         }));
 
         add_button.connect_clicked(clone!(@strong result => move |_| {
-            TracksEditor::new(result.backend.clone(), &result.window, None, Vec::new(), clone!(@strong result => move || {
+            let editor = TracksEditor::new(result.backend.clone(), &result.window, None, Vec::new());
+
+            editor.set_callback(clone!(@strong result => move || {
                 result.reload();
-            })).show();
+            }));
+
+            editor.show();
         }));
 
         result
@@ -172,9 +176,13 @@ impl Window {
             result.window,
             "add-tracks",
             clone!(@strong result => move |_, _| {
-                TracksEditor::new(result.backend.clone(), &result.window, None, Vec::new(), clone!(@strong result => move || {
+                let editor = TracksEditor::new(result.backend.clone(), &result.window, None, Vec::new());
+
+                editor.set_callback(clone!(@strong result => move || {
                     result.reload();
-                })).show();
+                }));
+
+                editor.show();
             })
         );
 
@@ -301,6 +309,44 @@ impl Window {
                 let c = glib::MainContext::default();
                 c.spawn_local(async move {
                     result.backend.delete_recording(id).await.unwrap();
+                    result.reload();
+                });
+            })
+        );
+
+        action!(
+            result.window,
+            "edit-tracks",
+            Some(glib::VariantTy::new("x").unwrap()),
+            clone!(@strong result => move |_, id| {
+                let id = id.unwrap().get().unwrap();
+                let result = result.clone();
+                let c = glib::MainContext::default();
+                c.spawn_local(async move {
+                    let recording = result.backend.get_recording_description(id).await.unwrap();
+                    let tracks = result.backend.get_tracks(id).await.unwrap();
+
+                    let editor = TracksEditor::new(result.backend.clone(), &result.window, Some(recording), tracks);
+
+                    editor.set_callback(clone!(@strong result => move || {
+                        result.reload();
+                    }));
+
+                    editor.show();
+                });
+            })
+        );
+
+        action!(
+            result.window,
+            "delete-tracks",
+            Some(glib::VariantTy::new("x").unwrap()),
+            clone!(@strong result => move |_, id| {
+                let id = id.unwrap().get().unwrap();
+                let result = result.clone();
+                let c = glib::MainContext::default();
+                c.spawn_local(async move {
+                    result.backend.delete_tracks(id).await.unwrap();
                     result.reload();
                 });
             })

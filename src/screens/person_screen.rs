@@ -54,49 +54,53 @@ impl PersonScreen {
 
         menu_button.set_menu_model(Some(&menu));
 
-        let work_list = List::new(
-            |work: &WorkDescription| {
-                let label = gtk::Label::new(Some(&work.title));
-                label.set_halign(gtk::Align::Start);
-                label.set_margin_start(6);
-                label.set_margin_end(6);
-                label.set_margin_top(6);
-                label.set_margin_bottom(6);
-                label.upcast()
-            },
+        let work_list = List::new(&gettext("No works found."));
+
+        work_list.set_make_widget(|work: &WorkDescription| {
+            let label = gtk::Label::new(Some(&work.title));
+            label.set_halign(gtk::Align::Start);
+            label.set_margin_start(6);
+            label.set_margin_end(6);
+            label.set_margin_top(6);
+            label.set_margin_bottom(6);
+            label.upcast()
+        });
+
+        work_list.set_filter(
             clone!(@strong search_entry => move |work: &WorkDescription| {
                 let search = search_entry.get_text().to_string().to_lowercase();
                 let title = work.title.to_lowercase();
                 search.is_empty() || title.contains(&search)
             }),
-            &gettext("No works found."),
         );
 
-        let recording_list = List::new(
-            |recording: &RecordingDescription| {
-                let work_label = gtk::Label::new(Some(&recording.work.get_title()));
+        let recording_list = List::new(&gettext("No recordings found."));
 
-                work_label.set_ellipsize(pango::EllipsizeMode::End);
-                work_label.set_halign(gtk::Align::Start);
+        recording_list.set_make_widget(|recording: &RecordingDescription| {
+            let work_label = gtk::Label::new(Some(&recording.work.get_title()));
 
-                let performers_label = gtk::Label::new(Some(&recording.get_performers()));
-                performers_label.set_ellipsize(pango::EllipsizeMode::End);
-                performers_label.set_opacity(0.5);
-                performers_label.set_halign(gtk::Align::Start);
+            work_label.set_ellipsize(pango::EllipsizeMode::End);
+            work_label.set_halign(gtk::Align::Start);
 
-                let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
-                vbox.set_border_width(6);
-                vbox.add(&work_label);
-                vbox.add(&performers_label);
+            let performers_label = gtk::Label::new(Some(&recording.get_performers()));
+            performers_label.set_ellipsize(pango::EllipsizeMode::End);
+            performers_label.set_opacity(0.5);
+            performers_label.set_halign(gtk::Align::Start);
 
-                vbox.upcast()
-            },
+            let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
+            vbox.set_border_width(6);
+            vbox.add(&work_label);
+            vbox.add(&performers_label);
+
+            vbox.upcast()
+        });
+
+        recording_list.set_filter(
             clone!(@strong search_entry => move |recording: &RecordingDescription| {
                 let search = search_entry.get_text().to_string().to_lowercase();
                 let text = recording.work.get_title() + &recording.get_performers();
                 search.is_empty() || text.contains(&search)
             }),
-            &gettext("No recordings found."),
         );
 
         work_frame.add(&work_list.widget);

@@ -51,32 +51,32 @@ impl WorkScreen {
 
         menu_button.set_menu_model(Some(&menu));
 
-        let recording_list = List::new(
-            |recording: &RecordingDescription| {
-                let work_label = gtk::Label::new(Some(&recording.work.get_title()));
+        let recording_list = List::new(&gettext("No recordings found."));
 
-                work_label.set_ellipsize(pango::EllipsizeMode::End);
-                work_label.set_halign(gtk::Align::Start);
+        recording_list.set_make_widget(|recording: &RecordingDescription| {
+            let work_label = gtk::Label::new(Some(&recording.work.get_title()));
 
-                let performers_label = gtk::Label::new(Some(&recording.get_performers()));
-                performers_label.set_ellipsize(pango::EllipsizeMode::End);
-                performers_label.set_opacity(0.5);
-                performers_label.set_halign(gtk::Align::Start);
+            work_label.set_ellipsize(pango::EllipsizeMode::End);
+            work_label.set_halign(gtk::Align::Start);
 
-                let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
-                vbox.set_border_width(6);
-                vbox.add(&work_label);
-                vbox.add(&performers_label);
+            let performers_label = gtk::Label::new(Some(&recording.get_performers()));
+            performers_label.set_ellipsize(pango::EllipsizeMode::End);
+            performers_label.set_opacity(0.5);
+            performers_label.set_halign(gtk::Align::Start);
 
-                vbox.upcast()
-            },
-            clone!(@strong search_entry => move |recording: &RecordingDescription| {
-                let search = search_entry.get_text().to_string().to_lowercase();
-                let text = recording.work.get_title().to_lowercase() + &recording.get_performers().to_lowercase();
-                search.is_empty() || text.contains(&search)
-            }),
-            &gettext("No recordings found."),
-        );
+            let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
+            vbox.set_border_width(6);
+            vbox.add(&work_label);
+            vbox.add(&performers_label);
+
+            vbox.upcast()
+        });
+
+        recording_list.set_filter(clone!(@strong search_entry => move |recording: &RecordingDescription| {
+            let search = search_entry.get_text().to_string().to_lowercase();
+            let text = recording.work.get_title().to_lowercase() + &recording.get_performers().to_lowercase();
+            search.is_empty() || text.contains(&search)
+        }),);
 
         recording_frame.add(&recording_list.widget);
 

@@ -23,23 +23,23 @@ impl PersonList {
         get_widget!(builder, gtk::Stack, stack);
         get_widget!(builder, gtk::ScrolledWindow, scrolled_window);
 
-        let list = List::new(
-            |person: &Person| {
-                let label = gtk::Label::new(Some(&person.name_lf()));
-                label.set_halign(gtk::Align::Start);
-                label.set_margin_start(6);
-                label.set_margin_end(6);
-                label.set_margin_top(6);
-                label.set_margin_bottom(6);
-                label.upcast()
-            },
-            clone!(@strong search_entry => move |person: &Person| {
-                let search = search_entry.get_text().to_string().to_lowercase();
-                let name = person.name_fl().to_lowercase();
-                search.is_empty() || name.contains(&search)
-            }),
-            &gettext("No persons found."),
-        );
+        let list = List::new(&gettext("No persons found."));
+
+        list.set_make_widget(|person: &Person| {
+            let label = gtk::Label::new(Some(&person.name_lf()));
+            label.set_halign(gtk::Align::Start);
+            label.set_margin_start(6);
+            label.set_margin_end(6);
+            label.set_margin_top(6);
+            label.set_margin_bottom(6);
+            label.upcast()
+        });
+
+        list.set_filter(clone!(@strong search_entry => move |person: &Person| {
+            let search = search_entry.get_text().to_string().to_lowercase();
+            let name = person.name_fl().to_lowercase();
+            search.is_empty() || name.contains(&search)
+        }));
 
         scrolled_window.add(&list.widget);
 

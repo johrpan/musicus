@@ -123,48 +123,46 @@ impl PlayerScreen {
 
         let current_item = Rc::new(Cell::<usize>::new(0));
         let current_track = Rc::new(Cell::<usize>::new(0));
-        let list = List::new(
-            clone!(
-                @strong current_item,
-                @strong current_track
-                => move |element: &PlaylistElement| {
-                    let title_label = gtk::Label::new(Some(&element.title));
-                    title_label.set_ellipsize(pango::EllipsizeMode::End);
-                    title_label.set_halign(gtk::Align::Start);
-                    let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
-                    vbox.add(&title_label);
-                    if let Some(subtitle) = &element.subtitle {
-                        let subtitle_label = gtk::Label::new(Some(&subtitle));
-                        subtitle_label.set_ellipsize(pango::EllipsizeMode::End);
-                        subtitle_label.set_halign(gtk::Align::Start);
-                        subtitle_label.set_opacity(0.5);
-                        vbox.add(&subtitle_label);
-                    }
+        let list = List::new("");
 
-                    let hbox = gtk::Box::new(gtk::Orientation::Horizontal, 6);
-                    hbox.set_border_width(6);
-
-                    if element.playable {
-                        let image = gtk::Image::new();
-
-                        if element.item == current_item.get() && element.track == current_track.get() {
-                            image.set_from_icon_name(
-                                Some("media-playback-start-symbolic"),
-                                gtk::IconSize::Button,
-                            );
-                        }
-
-                        hbox.add(&image);
-                    } else if element.item > 0 {
-                        hbox.set_margin_top(18);
-                    }
-                    hbox.add(&vbox);
-                    hbox.upcast()
+        list.set_make_widget(clone!(
+            @strong current_item,
+            @strong current_track
+            => move |element: &PlaylistElement| {
+                let title_label = gtk::Label::new(Some(&element.title));
+                title_label.set_ellipsize(pango::EllipsizeMode::End);
+                title_label.set_halign(gtk::Align::Start);
+                let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
+                vbox.add(&title_label);
+                if let Some(subtitle) = &element.subtitle {
+                    let subtitle_label = gtk::Label::new(Some(&subtitle));
+                    subtitle_label.set_ellipsize(pango::EllipsizeMode::End);
+                    subtitle_label.set_halign(gtk::Align::Start);
+                    subtitle_label.set_opacity(0.5);
+                    vbox.add(&subtitle_label);
                 }
-            ),
-            |_| true,
-            "",
-        );
+
+                let hbox = gtk::Box::new(gtk::Orientation::Horizontal, 6);
+                hbox.set_border_width(6);
+
+                if element.playable {
+                    let image = gtk::Image::new();
+
+                    if element.item == current_item.get() && element.track == current_track.get() {
+                        image.set_from_icon_name(
+                            Some("media-playback-start-symbolic"),
+                            gtk::IconSize::Button,
+                        );
+                    }
+
+                    hbox.add(&image);
+                } else if element.item > 0 {
+                    hbox.set_margin_top(18);
+                }
+                hbox.add(&vbox);
+                hbox.upcast()
+            }
+        ));
 
         list.set_selected(clone!(@strong player => move |element| {
             if let Some(player) = &*player.borrow() {

@@ -45,14 +45,30 @@ impl RecordingScreen {
             Some(&glib::Variant::from(recording.id)),
         );
 
+        let edit_tracks_menu_item = gio::MenuItem::new(Some(&gettext("Edit tracks")), None);
+        edit_tracks_menu_item.set_action_and_target_value(
+            Some("win.edit-tracks"),
+            Some(&glib::Variant::from(recording.id)),
+        );
+
+        let delete_tracks_menu_item = gio::MenuItem::new(Some(&gettext("Delete tracks")), None);
+        delete_tracks_menu_item.set_action_and_target_value(
+            Some("win.delete-tracks"),
+            Some(&glib::Variant::from(recording.id)),
+        );
+
         let menu = gio::Menu::new();
         menu.append_item(&edit_menu_item);
         menu.append_item(&delete_menu_item);
+        menu.append_item(&edit_tracks_menu_item);
+        menu.append_item(&delete_tracks_menu_item);
 
         menu_button.set_menu_model(Some(&menu));
 
         let recording = Rc::new(recording);
-        let list = List::new(
+        let list = List::new(&gettext("No tracks found."));
+
+        list.set_make_widget(
             clone!(@strong recording => move |track: &TrackDescription| {
                 let mut title_parts = Vec::<String>::new();
                 for part in &track.work_parts {
@@ -81,8 +97,6 @@ impl RecordingScreen {
 
                 vbox.upcast()
             }),
-            |_| true,
-            &gettext("No tracks found."),
         );
 
         frame.add(&list.widget);

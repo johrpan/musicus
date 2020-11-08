@@ -9,18 +9,32 @@ use gtk_macros::get_widget;
 use std::cell::RefCell;
 use std::rc::Rc;
 
+/// A dialog for editing a set of tracks.
+// TODO: Disable buttons if no track is selected.
 pub struct TracksEditor {
+    backend: Rc<Backend>,
     window: libhandy::Window,
+    save_button: gtk::Button,
+    recording_stack: gtk::Stack,
+    work_label: gtk::Label,
+    performers_label: gtk::Label,
+    track_list: Rc<List<TrackDescription>>,
+    recording: RefCell<Option<RecordingDescription>>,
+    tracks: RefCell<Vec<TrackDescription>>,
+    callback: RefCell<Option<Box<dyn Fn() -> ()>>>,
 }
 
 impl TracksEditor {
-    pub fn new<F: Fn() -> () + 'static, P: IsA<gtk::Window>>(
+    /// Create a new track editor an optionally initialize it with a recording and a list of
+    /// tracks.
+    pub fn new<P: IsA<gtk::Window>>(
         backend: Rc<Backend>,
         parent: &P,
         recording: Option<RecordingDescription>,
         tracks: Vec<TrackDescription>,
-        callback: F,
-    ) -> Self {
+    ) -> Rc<Self> {
+        // UI setup
+
         let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/tracks_editor.ui");
 
         get_widget!(builder, libhandy::Window, window);
@@ -43,120 +57,82 @@ impl TracksEditor {
             window.close();
         }));
 
-        let recording = Rc::new(RefCell::new(recording));
-        let tracks = Rc::new(RefCell::new(tracks));
+        let track_list = List::new(&gettext("Add some tracks."));
+        scroll.add(&track_list.widget);
 
-        let track_list = List::new(
-            clone!(@strong recording => move |track: &TrackDescription| {
-                let mut title_parts = Vec::<String>::new();
-                for part in &track.work_parts {
-                    if let Some(recording) = &*recording.borrow() {
-                        title_parts.push(recording.work.parts[*part].title.clone());
+        let this = Rc::new(Self {
+            backend,
+            window,
+            save_button,
+            recording_stack,
+            work_label,
+            performers_label,
+            track_list,
+            recording: RefCell::new(recording),
+            tracks: RefCell::new(tracks),
+            callback: RefCell::new(None),
+        });
+
+        // Signals and callbacks
+
+        this.save_button
+            .connect_clicked(clone!(@strong this => move |_| {
+                let context = glib::MainContext::default();
+                let this = this.clone();
+                context.spawn_local(async move {
+                    this.backend.update_tracks(
+                        this.recording.borrow().as_ref().unwrap().id,
+                        this.tracks.borrow().clone(),
+                    ).await.unwrap();
+
+                    if let Some(callback) = &*this.callback.borrow() {
+                        callback();
                     }
-                }
 
-                let title = if title_parts.is_empty() {
-                    gettext("Unknown")
-                } else {
-                    title_parts.join(", ")
-                };
+                    this.window.close();
+                });
 
-                let title_label = gtk::Label::new(Some(&title));
-                title_label.set_ellipsize(pango::EllipsizeMode::End);
-                title_label.set_halign(gtk::Align::Start);
+            }));
 
-                let file_name_label = gtk::Label::new(Some(&track.file_name));
-                file_name_label.set_ellipsize(pango::EllipsizeMode::End);
-                file_name_label.set_opacity(0.5);
-                file_name_label.set_halign(gtk::Align::Start);
-
-                let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
-                vbox.set_border_width(6);
-                vbox.add(&title_label);
-                vbox.add(&file_name_label);
-
-                vbox.upcast()
-            }),
-            |_| true,
-            &gettext("Add some tracks."),
-        );
-
-        let autofill_parts = Rc::new(clone!(@strong recording, @strong tracks, @strong track_list => move || {
-            if let Some(recording) = &*recording.borrow() {
-                let mut tracks = tracks.borrow_mut();
-                for (index, _) in recording.work.parts.iter().enumerate() {
-                    if let Some(mut track) = tracks.get_mut(index) {
-                        track.work_parts = vec!(index);
-                    } else {
-                        break;
-                    }
-                }
-
-                track_list.show_items(tracks.clone());
-            }
-        }));
-
-        recording_button.connect_clicked(clone!(
-            @strong backend,
-            @strong window,
-            @strong save_button,
-            @strong work_label,
-            @strong performers_label,
-            @strong recording_stack,
-            @strong recording,
-            @strong autofill_parts => move |_| {
+        recording_button.connect_clicked(clone!(@strong this => move |_| {
                 RecordingSelector::new(
-                    backend.clone(),
-                    &window,
-                    clone!(
-                        @strong save_button,
-                        @strong work_label,
-                        @strong performers_label,
-                        @strong recording_stack,
-                        @strong recording,
-                        @strong autofill_parts => move |r| {
-                            work_label.set_text(&r.work.get_title());
-                            performers_label.set_text(&r.get_performers());
-                            recording_stack.set_visible_child_name("selected");
-                            recording.replace(Some(r));
-                            save_button.set_sensitive(true);
-                            autofill_parts();
-                        }
-                    )).show();
+                    this.backend.clone(),
+                    &this.window,
+                    clone!(@strong this => move |recording| {
+                        this.recording_selected(&recording);
+                        this.recording.replace(Some(recording));
+                    }),
+                ).show();
             }
         ));
 
-        let callback = Rc::new(callback);
-        save_button.connect_clicked(clone!(@strong window, @strong backend, @strong recording, @strong tracks, @strong callback => move |_| {
-            let context = glib::MainContext::default();
-            let window = window.clone();
-            let backend = backend.clone();
-            let recording = recording.clone();
-            let tracks = tracks.clone();
-            let callback = callback.clone();
-            context.spawn_local(async move {
-                backend.update_tracks(recording.borrow().as_ref().unwrap().id, tracks.borrow().clone()).await.unwrap();
-                callback();
-                window.close();
-            });
+        this.track_list
+            .set_make_widget(clone!(@strong this => move |track| {
+                this.build_track_row(track)
+            }));
 
-        }));
+        add_track_button.connect_clicked(clone!(@strong this => move |_| {
+            let music_library_path = this.backend.get_music_library_path().unwrap();
 
-        add_track_button.connect_clicked(clone!(@strong window, @strong tracks, @strong track_list, @strong autofill_parts => move |_| {
-            let music_library_path = backend.get_music_library_path().unwrap();
+            let dialog = gtk::FileChooserNative::new(
+                Some(&gettext("Select audio files")),
+                Some(&this.window),
+                gtk::FileChooserAction::Open,
+                None,
+                None,
+            );
 
-            let dialog = gtk::FileChooserNative::new(Some(&gettext("Select audio files")), Some(&window), gtk::FileChooserAction::Open, None, None);
             dialog.set_select_multiple(true);
             dialog.set_current_folder(&music_library_path);
 
             if let gtk::ResponseType::Accept = dialog.run() {
-                let mut index = match track_list.get_selected_index() {
+                let mut index = match this.track_list.get_selected_index() {
                     Some(index) => index + 1,
-                    None => tracks.borrow().len(),
+                    None => this.tracks.borrow().len(),
                 };
 
                 {
-                    let mut tracks = tracks.borrow_mut();
+                    let mut tracks = this.tracks.borrow_mut();
                     for file_name in dialog.get_filenames() {
                         let file_name = file_name.strip_prefix(&music_library_path).unwrap();
                         tracks.insert(index, TrackDescription {
@@ -166,75 +142,143 @@ impl TracksEditor {
                         index += 1;
                     }
                 }
-                
-                track_list.show_items(tracks.borrow().clone());
-                autofill_parts();
-                track_list.select_index(index);
+
+                this.track_list.show_items(this.tracks.borrow().clone());
+                this.autofill_parts();
+                this.track_list.select_index(index);
             }
         }));
 
-        remove_track_button.connect_clicked(
-            clone!(@strong tracks, @strong track_list => move |_| {
-                match track_list.get_selected_index() {
-                    Some(index) => {
-                        tracks.borrow_mut().remove(index);
-                        track_list.show_items(tracks.borrow().clone());
-                        track_list.select_index(index);
-                    }
-                    None => (),
+        remove_track_button.connect_clicked(clone!(@strong this => move |_| {
+            match this.track_list.get_selected_index() {
+                Some(index) => {
+                    let mut tracks = this.tracks.borrow_mut();
+                    tracks.remove(index);
+                    this.track_list.show_items(tracks.clone());
+                    this.track_list.select_index(index);
                 }
-            }),
-        );
+                None => (),
+            }
+        }));
 
-        move_track_up_button.connect_clicked(
-            clone!(@strong tracks, @strong track_list => move |_| {
-                match track_list.get_selected_index() {
-                    Some(index) => {
-                        if index > 0 {
-                            tracks.borrow_mut().swap(index - 1, index);
-                            track_list.show_items(tracks.borrow().clone());
-                            track_list.select_index(index - 1);
-                        }
+        move_track_up_button.connect_clicked(clone!(@strong this => move |_| {
+            match this.track_list.get_selected_index() {
+                Some(index) => {
+                    if index > 0 {
+                        let mut tracks = this.tracks.borrow_mut();
+                        tracks.swap(index - 1, index);
+                        this.track_list.show_items(tracks.clone());
+                        this.track_list.select_index(index - 1);
                     }
-                    None => (),
                 }
-            }),
-        );
+                None => (),
+            }
+        }));
 
-        move_track_down_button.connect_clicked(
-            clone!(@strong tracks, @strong track_list => move |_| {
-                match track_list.get_selected_index() {
-                    Some(index) => {
-                        if index < tracks.borrow().len() - 1 {
-                            tracks.borrow_mut().swap(index, index + 1);
-                            track_list.show_items(tracks.borrow().clone());
-                            track_list.select_index(index + 1);
-                        }
+        move_track_down_button.connect_clicked(clone!(@strong this => move |_| {
+            match this.track_list.get_selected_index() {
+                Some(index) => {
+                    let mut tracks = this.tracks.borrow_mut();
+                    if index < tracks.len() - 1 {
+                        tracks.swap(index, index + 1);
+                        this.track_list.show_items(tracks.clone());
+                        this.track_list.select_index(index + 1);
                     }
-                    None => (),
                 }
-            }),
-        );
+                None => (),
+            }
+        }));
 
-        edit_track_button.connect_clicked(clone!(@strong window, @strong tracks, @strong track_list, @strong recording => move |_| {
-            if let Some(index) = track_list.get_selected_index() {
-                if let Some(recording) = &*recording.borrow() {
-                    TrackEditor::new(&window, tracks.borrow()[index].clone(), recording.work.clone(), clone!(@strong tracks, @strong track_list => move |track| {
-                        let mut tracks = tracks.borrow_mut();
+        edit_track_button.connect_clicked(clone!(@strong this => move |_| {
+            if let Some(index) = this.track_list.get_selected_index() {
+                if let Some(recording) = &*this.recording.borrow() {
+                    TrackEditor::new(&this.window, this.tracks.borrow()[index].clone(), recording.work.clone(), clone!(@strong this => move |track| {
+                        let mut tracks = this.tracks.borrow_mut();
                         tracks[index] = track;
-                        track_list.show_items(tracks.clone());
-                        track_list.select_index(index);
+                        this.track_list.show_items(tracks.clone());
+                        this.track_list.select_index(index);
                     })).show();
                 }
             }
         }));
 
-        scroll.add(&track_list.widget);
+        // Initialization
 
-        Self { window }
+        if let Some(recording) = &*this.recording.borrow() {
+            this.recording_selected(recording);
+        }
+
+        this.track_list.show_items(this.tracks.borrow().clone());
+
+        this
     }
 
+    /// Set a callback to be called when the tracks are saved.
+    pub fn set_callback<F: Fn() -> () + 'static>(&self, cb: F) {
+        self.callback.replace(Some(Box::new(cb)));
+    }
+
+    /// Open the track editor.
     pub fn show(&self) {
         self.window.show();
+    }
+
+    /// Create a widget representing a track.
+    fn build_track_row(&self, track: &TrackDescription) -> gtk::Widget {
+        let mut title_parts = Vec::<String>::new();
+        for part in &track.work_parts {
+            if let Some(recording) = &*self.recording.borrow() {
+                title_parts.push(recording.work.parts[*part].title.clone());
+            }
+        }
+
+        let title = if title_parts.is_empty() {
+            gettext("Unknown")
+        } else {
+            title_parts.join(", ")
+        };
+
+        let title_label = gtk::Label::new(Some(&title));
+        title_label.set_ellipsize(pango::EllipsizeMode::End);
+        title_label.set_halign(gtk::Align::Start);
+
+        let file_name_label = gtk::Label::new(Some(&track.file_name));
+        file_name_label.set_ellipsize(pango::EllipsizeMode::End);
+        file_name_label.set_opacity(0.5);
+        file_name_label.set_halign(gtk::Align::Start);
+
+        let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
+        vbox.set_border_width(6);
+        vbox.add(&title_label);
+        vbox.add(&file_name_label);
+
+        vbox.upcast()
+    }
+
+    /// Set everything up after selecting a recording.
+    fn recording_selected(&self, recording: &RecordingDescription) {
+        self.work_label.set_text(&recording.work.get_title());
+        self.performers_label.set_text(&recording.get_performers());
+        self.recording_stack.set_visible_child_name("selected");
+        self.save_button.set_sensitive(true);
+        self.autofill_parts();
+    }
+
+    /// Automatically try to put work part information from the selected recording into the
+    /// selected tracks.
+    fn autofill_parts(&self) {
+        if let Some(recording) = &*self.recording.borrow() {
+            let mut tracks = self.tracks.borrow_mut();
+
+            for (index, _) in recording.work.parts.iter().enumerate() {
+                if let Some(mut track) = tracks.get_mut(index) {
+                    track.work_parts = vec![index];
+                } else {
+                    break;
+                }
+            }
+
+            self.track_list.show_items(tracks.clone());
+        }
     }
 }

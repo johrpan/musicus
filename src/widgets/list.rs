@@ -11,19 +11,16 @@ where
 {
     pub widget: gtk::ListBox,
     items: RefCell<Vec<T>>,
-    make_widget: Box<dyn Fn(&T) -> gtk::Widget + 'static>,
-    selected: RefCell<Option<Box<dyn Fn(&T) -> () + 'static>>>,
+    make_widget: RefCell<Option<Box<dyn Fn(&T) -> gtk::Widget>>>,
+    filter: RefCell<Option<Box<dyn Fn(&T) -> bool>>>,
+    selected: RefCell<Option<Box<dyn Fn(&T) -> ()>>>,
 }
 
 impl<T> List<T>
 where
     T: 'static,
 {
-    pub fn new<M, F>(make_widget: M, filter: F, placeholder_text: &str) -> Rc<Self>
-    where
-        M: Fn(&T) -> gtk::Widget + 'static,
-        F: Fn(&T) -> bool + 'static,
-    {
+    pub fn new(placeholder_text: &str) -> Rc<Self> {
         let placeholder_label = gtk::Label::new(Some(placeholder_text));
         placeholder_label.set_margin_top(6);
         placeholder_label.set_margin_bottom(6);
@@ -35,38 +32,46 @@ where
         widget.set_placeholder(Some(&placeholder_label));
         widget.show();
 
-        let result = Rc::new(Self {
+        let this = Rc::new(Self {
             widget,
             items: RefCell::new(Vec::new()),
-            make_widget: Box::new(make_widget),
+            make_widget: RefCell::new(None),
+            filter: RefCell::new(None),
             selected: RefCell::new(None),
         });
 
-        result
-            .widget
-            .connect_row_activated(clone!(@strong result => move |_, row| {
-                if let Some(selected) = &*result.selected.borrow() {
+        this.widget
+            .connect_row_activated(clone!(@strong this => move |_, row| {
+                if let Some(selected) = &*this.selected.borrow() {
                     let row = row.get_child().unwrap().downcast::<SelectorRow>().unwrap();
                     let index: usize = row.get_index().try_into().unwrap();
-                    selected(&result.items.borrow()[index]);
+                    selected(&this.items.borrow()[index]);
                 }
             }));
 
-        result
-            .widget
-            .set_filter_func(Some(Box::new(clone!(@strong result => move |row| {
-                let row = row.get_child().unwrap().downcast::<SelectorRow>().unwrap();
-                let index: usize = row.get_index().try_into().unwrap();
-                filter(&result.items.borrow()[index])
+        this.widget
+            .set_filter_func(Some(Box::new(clone!(@strong this => move |row| {
+                if let Some(filter) = &*this.filter.borrow() {
+                    let row = row.get_child().unwrap().downcast::<SelectorRow>().unwrap();
+                    let index: usize = row.get_index().try_into().unwrap();
+                    filter(&this.items.borrow()[index])
+                } else {
+                    true
+                }
             }))));
 
-        result
+        this
     }
 
-    pub fn set_selected<S>(&self, selected: S)
-    where
-        S: Fn(&T) -> () + 'static,
-    {
+    pub fn set_make_widget<F: Fn(&T) -> gtk::Widget + 'static>(&self, make_widget: F) {
+        self.make_widget.replace(Some(Box::new(make_widget)));
+    }
+
+    pub fn set_filter<F: Fn(&T) -> bool + 'static>(&self, filter: F) {
+        self.filter.replace(Some(Box::new(filter)));
+    }
+
+    pub fn set_selected<S: Fn(&T) -> () + 'static>(&self, selected: S) {
         self.selected.replace(Some(Box::new(selected)));
     }
 
@@ -109,10 +114,12 @@ where
             self.widget.remove(&child);
         }
 
-        for (index, item) in self.items.borrow().iter().enumerate() {
-            let row = SelectorRow::new(index.try_into().unwrap(), &(self.make_widget)(item));
-            row.show_all();
-            self.widget.insert(&row, -1);
+        if let Some(make_widget) = &*self.make_widget.borrow() {
+            for (index, item) in self.items.borrow().iter().enumerate() {
+                let row = SelectorRow::new(index.try_into().unwrap(), &make_widget(item));
+                row.show_all();
+                self.widget.insert(&row, -1);
+            }
         }
     }
 
