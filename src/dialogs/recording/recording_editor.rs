@@ -12,7 +12,6 @@ use std::rc::Rc;
 
 /// A widget for creating or editing a recording.
 // TODO: Disable buttons if no performance is selected.
-// TODO: Initialize comment entry.
 pub struct RecordingEditor {
     pub widget: gtk::Box,
     backend: Rc<Backend>,
@@ -56,7 +55,10 @@ impl RecordingEditor {
         scroll.add(&performance_list.widget);
 
         let (id, work, performances) = match recording {
-            Some(recording) => (recording.id, Some(recording.work), recording.performances),
+            Some(recording) => {
+                comment_entry.set_text(&recording.comment);
+                (recording.id, Some(recording.work), recording.performances)
+            }
             None => (rand::random::<u32>().into(), None, Vec::new()),
         };
 
