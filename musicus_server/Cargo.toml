@@ -1,0 +1,19 @@
+[package]
+name = "musicus_server"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+actix-web = "3.2.0"
+actix-web-httpauth = "0.5.0"
+anyhow = "1.0.34"
+derive_more = "0.99.11"
+diesel = { version = "1.4.4", features = ["postgres", "r2d2"] }
+dotenv = "0.15.0"
+env_logger = "0.8.1"
+jsonwebtoken = "7.2.0"
+r2d2 = "0.8.9"
+rand = "0.7.3"
+serde = { version = "1.0.117", features = ["derive"] }
+serde_json = "1.0.59"
+sodiumoxide = "0.2.6"

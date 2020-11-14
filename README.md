@@ -7,8 +7,10 @@ https://musicus.org
 ## Repository structure
 
 The subdirectories contain toplevel components of the Musicus system. Currently
-you will only find a Musicus desktop app under `musicus`. The component READMEs
-provide more detailed information.
+you will find:
+
+ * `musicus` – Musicus desktop app for Linux
+ * `musicus_server` – Musicus server
 
 ## License
 
