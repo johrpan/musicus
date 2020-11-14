@@ -13,6 +13,9 @@ pub use instrument_editor::*;
 pub mod instrument_selector;
 pub use instrument_selector::*;
 
+pub mod login_dialog;
+pub use login_dialog::*;
+
 pub mod person_editor;
 pub use person_editor::*;
 
@@ -21,6 +24,9 @@ pub use person_selector::*;
 
 pub mod preferences;
 pub use preferences::*;
+
+pub mod server_dialog;
+pub use server_dialog::*;
 
 pub mod recording;
 pub use recording::*;

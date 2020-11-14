@@ -5,5 +5,9 @@
 			<default>""</default>
 			<summary>Path to the music library folder</summary>
 		</key>
+		<key name="server-url" type="s">
+			<default>"https://musicus.johrpan.de"</default>
+			<summary>URL of the Musicus server to use</summary>
+		</key>
 	</schema>
 </schemalist>

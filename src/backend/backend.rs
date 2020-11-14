@@ -1,12 +1,22 @@
-use super::database::*;
+use super::secure;
+use crate::database::*;
 use crate::player::*;
 use anyhow::{anyhow, Result};
 use futures_channel::oneshot::Sender;
 use futures_channel::{mpsc, oneshot};
 use gio::prelude::*;
+use serde::Serialize;
 use std::cell::RefCell;
 use std::path::PathBuf;
 use std::rc::Rc;
+
+/// Credentials used for login.
+#[derive(Serialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct LoginData {
+    pub username: String,
+    pub password: String,
+}
 
 pub enum BackendState {
     NoMusicLibrary,
@@ -50,6 +60,10 @@ pub struct Backend {
     state_sender: RefCell<mpsc::Sender<BackendState>>,
     action_sender: RefCell<Option<std::sync::mpsc::Sender<BackendAction>>>,
     settings: gio::Settings,
+    secrets: secret_service::SecretService,
+    server_url: RefCell<Option<String>>,
+    login_data: RefCell<Option<LoginData>>,
+    token: RefCell<Option<String>>,
     music_library_path: RefCell<Option<PathBuf>>,
     player: RefCell<Option<Rc<Player>>>,
 }
@@ -57,13 +71,19 @@ pub struct Backend {
 impl Backend {
     pub fn new() -> Self {
         let (state_sender, state_stream) = mpsc::channel(1024);
+        let secrets = secret_service::SecretService::new(secret_service::EncryptionType::Dh)
+            .expect("Failed to connect to SecretsService!");
 
         Backend {
             state_stream: RefCell::new(state_stream),
             state_sender: RefCell::new(state_sender),
             action_sender: RefCell::new(None),
             settings: gio::Settings::new("de.johrpan.musicus"),
+            secrets,
             music_library_path: RefCell::new(None),
+            server_url: RefCell::new(None),
+            login_data: RefCell::new(None),
+            token: RefCell::new(None),
             player: RefCell::new(None),
         }
     }
@@ -72,11 +92,23 @@ impl Backend {
         if let Some(path) = self.settings.get_string("music-library-path") {
             if !path.is_empty() {
                 let context = glib::MainContext::default();
+                let clone = self.clone();
                 context.spawn_local(async move {
-                    self.set_music_library_path_priv(PathBuf::from(path.to_string()))
+                    clone
+                        .set_music_library_path_priv(PathBuf::from(path.to_string()))
                         .await
                         .unwrap();
                 });
+            }
+        }
+
+        if let Some(data) = secure::load_login_data().unwrap() {
+            self.login_data.replace(Some(data));
+        }
+
+        if let Some(url) = self.settings.get_string("server-url") {
+            if !url.is_empty() {
+                self.server_url.replace(Some(url.to_string()));
             }
         }
     }
@@ -268,6 +300,40 @@ impl Backend {
 
     pub fn get_music_library_path(&self) -> Option<PathBuf> {
         self.music_library_path.borrow().clone()
+    }
+
+    /// Get the currently stored login credentials.
+    pub fn get_login_data(&self) -> Option<LoginData> {
+        self.login_data.borrow().clone()
+    }
+
+    /// Set the URL of the Musicus server to connect to.
+    pub fn set_server_url(&self, url: &str) -> Result<()> {
+        self.settings.set_string("server-url", url)?;
+        self.server_url.replace(Some(url.to_string()));
+        Ok(())
+    }
+
+    /// Get the currently used login token.
+    pub fn get_token(&self) -> Option<String> {
+        self.token.borrow().clone()
+    }
+
+    /// Set the login token to use. This will be done automatically by the login method.
+    pub fn set_token(&self, token: &str) {
+        self.token.replace(Some(token.to_string()));
+    }
+
+    /// Get the currently set server URL.
+    pub fn get_server_url(&self) -> Option<String> {
+        self.server_url.borrow().clone()
+    }
+
+    /// Set the user credentials to use.
+    pub async fn set_login_data(&self, data: LoginData) -> Result<()> {
+        secure::store_login_data(data.clone()).await?;
+        self.login_data.replace(Some(data));
+        Ok(())
     }
 
     pub fn get_player(&self) -> Option<Rc<Player>> {

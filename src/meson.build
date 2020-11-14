@@ -33,6 +33,10 @@ run_command(
 )
 
 sources = files(
+  'backend/backend.rs',
+  'backend/client.rs',
+  'backend/mod.rs',
+  'backend/secure.rs',
   'database/database.rs',
   'database/mod.rs',
   'database/models.rs',
@@ -43,10 +47,12 @@ sources = files(
   'dialogs/ensemble_selector.rs',
   'dialogs/instrument_editor.rs',
   'dialogs/instrument_selector.rs',
+  'dialogs/login_dialog.rs',
   'dialogs/mod.rs',
   'dialogs/person_editor.rs',
   'dialogs/person_selector.rs',
   'dialogs/preferences.rs',
+  'dialogs/server_dialog.rs',
   'dialogs/recording/mod.rs',
   'dialogs/recording/performance_editor.rs',
   'dialogs/recording/recording_dialog.rs',
@@ -78,7 +84,6 @@ sources = files(
   'widgets/player_bar.rs',
   'widgets/poe_list.rs',
   'widgets/selector_row.rs',
-  'backend.rs',
   'config.rs',
   'config.rs.in',
   'main.rs',
