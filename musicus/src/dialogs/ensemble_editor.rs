@@ -63,8 +63,8 @@ where
             let c = glib::MainContext::default();
             c.spawn_local(async move {
                 clone.backend.db().update_ensemble(ensemble.clone()).await.unwrap();
-                clone.window.close();
                 (clone.callback)(ensemble.clone());
+                clone.window.close();
             });
         }));
 

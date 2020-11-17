@@ -44,8 +44,9 @@ impl WorkEditorDialog {
         editor.set_saved_cb(clone!(@strong this => move |work| {
             if let Some(cb) = &*this.saved_cb.borrow() {
                 cb(work);
-                this.window.close();
             }
+
+            this.window.close();
         }));
 
         this

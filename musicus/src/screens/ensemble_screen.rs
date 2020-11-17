@@ -1,8 +1,10 @@
 use super::*;
 use crate::backend::*;
 use crate::database::*;
+use crate::dialogs::EnsembleEditor;
 use crate::widgets::*;
 use gettextrs::gettext;
+use gio::prelude::*;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
@@ -12,6 +14,8 @@ use std::rc::Rc;
 
 pub struct EnsembleScreen {
     backend: Rc<Backend>,
+    window: gtk::Window,
+    ensemble: Ensemble,
     widget: gtk::Box,
     stack: gtk::Stack,
     recording_list: Rc<List<Recording>>,
@@ -19,36 +23,29 @@ pub struct EnsembleScreen {
 }
 
 impl EnsembleScreen {
-    pub fn new(backend: Rc<Backend>, ensemble: Ensemble) -> Rc<Self> {
+    pub fn new<W>(backend: Rc<Backend>, window: &W, ensemble: Ensemble) -> Rc<Self>
+    where
+        W: IsA<gtk::Window>,
+    {
         let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/ensemble_screen.ui");
 
         get_widget!(builder, gtk::Box, widget);
         get_widget!(builder, libhandy::HeaderBar, header);
         get_widget!(builder, gtk::Button, back_button);
-        get_widget!(builder, gtk::MenuButton, menu_button);
         get_widget!(builder, gtk::SearchEntry, search_entry);
         get_widget!(builder, gtk::Stack, stack);
         get_widget!(builder, gtk::Frame, recording_frame);
 
         header.set_title(Some(&ensemble.name));
 
-        let edit_menu_item = gio::MenuItem::new(Some(&gettext("Edit ensemble")), None);
-        edit_menu_item.set_action_and_target_value(
-            Some("win.edit-ensemble"),
-            Some(&glib::Variant::from(ensemble.id)),
-        );
+        let edit_action = gio::SimpleAction::new("edit", None);
+        let delete_action = gio::SimpleAction::new("delete", None);
 
-        let delete_menu_item = gio::MenuItem::new(Some(&gettext("Delete ensemble")), None);
-        delete_menu_item.set_action_and_target_value(
-            Some("win.delete-ensemble"),
-            Some(&glib::Variant::from(ensemble.id)),
-        );
+        let actions = gio::SimpleActionGroup::new();
+        actions.add_action(&edit_action);
+        actions.add_action(&delete_action);
 
-        let menu = gio::Menu::new();
-        menu.append_item(&edit_menu_item);
-        menu.append_item(&delete_menu_item);
-
-        menu_button.set_menu_model(Some(&menu));
+        widget.insert_action_group("widget", Some(&actions));
 
         let recording_list = List::new(&gettext("No recordings found."));
 
@@ -83,6 +80,8 @@ impl EnsembleScreen {
 
         let result = Rc::new(Self {
             backend,
+            window: window.clone().upcast(),
+            ensemble,
             widget,
             stack,
             recording_list,
@@ -105,9 +104,21 @@ impl EnsembleScreen {
             .set_selected(clone!(@strong result => move |recording| {
                 let navigator = result.navigator.borrow().clone();
                 if let Some(navigator) = navigator {
-                    navigator.push(RecordingScreen::new(result.backend.clone(), recording.clone()));
+                    navigator.push(RecordingScreen::new(result.backend.clone(), &result.window, recording.clone()));
                 }
             }));
+
+        edit_action.connect_activate(clone!(@strong result => move |_, _| {
+            EnsembleEditor::new(result.backend.clone(), &result.window, Some(result.ensemble.clone()), |_| {}).show();
+        }));
+
+        delete_action.connect_activate(clone!(@strong result => move |_, _| {
+            let context = glib::MainContext::default();
+            let clone = result.clone();
+            context.spawn_local(async move {
+                clone.backend.db().delete_ensemble(clone.ensemble.id).await.unwrap();
+            });
+        }));
 
         let context = glib::MainContext::default();
         let clone = result.clone();
@@ -115,7 +126,7 @@ impl EnsembleScreen {
             let recordings = clone
                 .backend
                 .db()
-                .get_recordings_for_ensemble(ensemble.id as u32)
+                .get_recordings_for_ensemble(clone.ensemble.id)
                 .await
                 .unwrap();
 

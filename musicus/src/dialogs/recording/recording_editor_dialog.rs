@@ -44,8 +44,9 @@ impl RecordingEditorDialog {
         editor.set_selected_cb(clone!(@strong this => move |recording| {
             if let Some(cb) = &*this.selected_cb.borrow() {
                 cb(recording);
-                this.window.close();
             }
+            
+            this.window.close();
         }));
 
         this

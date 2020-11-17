@@ -27,11 +27,12 @@
           </object>
         </child>
         <child>
-          <object class="GtkMenuButton" id="menu_button">
+          <object class="GtkMenuButton">
             <property name="visible">True</property>
             <property name="can-focus">True</property>
             <property name="focus-on-click">False</property>
             <property name="receives-default">True</property>
+            <property name="menu-model">menu</property>
             <child>
               <object class="GtkImage">
                 <property name="visible">True</property>
@@ -200,4 +201,16 @@
       </packing>
     </child>
   </object>
+  <menu id="menu">
+    <section>
+      <item>
+        <attribute name="label" translatable="yes">Edit work</attribute>
+        <attribute name="action">widget.edit</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">Delete work</attribute>
+        <attribute name="action">widget.delete</attribute>
+      </item>
+    </section>
+  </menu>
 </interface>

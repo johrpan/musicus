@@ -1,8 +1,10 @@
 use super::*;
 use crate::backend::*;
 use crate::database::*;
+use crate::dialogs::PersonEditor;
 use crate::widgets::*;
 use gettextrs::gettext;
+use gio::prelude::*;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
@@ -12,6 +14,8 @@ use std::rc::Rc;
 
 pub struct PersonScreen {
     backend: Rc<Backend>,
+    window: gtk::Window,
+    person: Person,
     widget: gtk::Box,
     stack: gtk::Stack,
     work_list: Rc<List<Work>>,
@@ -20,13 +24,15 @@ pub struct PersonScreen {
 }
 
 impl PersonScreen {
-    pub fn new(backend: Rc<Backend>, person: Person) -> Rc<Self> {
+    pub fn new<W>(backend: Rc<Backend>, window: &W, person: Person) -> Rc<Self>
+    where
+        W: IsA<gtk::Window>,
+    {
         let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/person_screen.ui");
 
         get_widget!(builder, gtk::Box, widget);
         get_widget!(builder, libhandy::HeaderBar, header);
         get_widget!(builder, gtk::Button, back_button);
-        get_widget!(builder, gtk::MenuButton, menu_button);
         get_widget!(builder, gtk::SearchEntry, search_entry);
         get_widget!(builder, gtk::Stack, stack);
         get_widget!(builder, gtk::Box, work_box);
@@ -36,23 +42,14 @@ impl PersonScreen {
 
         header.set_title(Some(&person.name_fl()));
 
-        let edit_menu_item = gio::MenuItem::new(Some(&gettext("Edit person")), None);
-        edit_menu_item.set_action_and_target_value(
-            Some("win.edit-person"),
-            Some(&glib::Variant::from(person.id)),
-        );
+        let edit_action = gio::SimpleAction::new("edit", None);
+        let delete_action = gio::SimpleAction::new("delete", None);
 
-        let delete_menu_item = gio::MenuItem::new(Some(&gettext("Delete person")), None);
-        delete_menu_item.set_action_and_target_value(
-            Some("win.delete-person"),
-            Some(&glib::Variant::from(person.id)),
-        );
+        let actions = gio::SimpleActionGroup::new();
+        actions.add_action(&edit_action);
+        actions.add_action(&delete_action);
 
-        let menu = gio::Menu::new();
-        menu.append_item(&edit_menu_item);
-        menu.append_item(&delete_menu_item);
-
-        menu_button.set_menu_model(Some(&menu));
+        widget.insert_action_group("widget", Some(&actions));
 
         let work_list = List::new(&gettext("No works found."));
 
@@ -106,6 +103,8 @@ impl PersonScreen {
 
         let result = Rc::new(Self {
             backend,
+            window: window.clone().upcast(),
+            person,
             widget,
             stack,
             work_list,
@@ -131,7 +130,7 @@ impl PersonScreen {
                 result.recording_list.clear_selection();
                 let navigator = result.navigator.borrow().clone();
                 if let Some(navigator) = navigator {
-                    navigator.push(WorkScreen::new(result.backend.clone(), work.clone()));
+                    navigator.push(WorkScreen::new(result.backend.clone(), &result.window, work.clone()));
                 }
             }));
 
@@ -141,9 +140,21 @@ impl PersonScreen {
                 result.work_list.clear_selection();
                 let navigator = result.navigator.borrow().clone();
                 if let Some(navigator) = navigator {
-                    navigator.push(RecordingScreen::new(result.backend.clone(), recording.clone()));
+                    navigator.push(RecordingScreen::new(result.backend.clone(), &result.window, recording.clone()));
                 }
             }));
+
+        edit_action.connect_activate(clone!(@strong result => move |_, _| {
+            PersonEditor::new(result.backend.clone(), &result.window, Some(result.person.clone()), |_| {}).show();
+        }));
+
+        delete_action.connect_activate(clone!(@strong result => move |_, _| {
+            let context = glib::MainContext::default();
+            let clone = result.clone();
+            context.spawn_local(async move {
+                clone.backend.db().delete_person(clone.person.id).await.unwrap();
+            });
+        }));
 
         let context = glib::MainContext::default();
         let clone = result.clone();
@@ -151,13 +162,13 @@ impl PersonScreen {
             let works = clone
                 .backend
                 .db()
-                .get_works(person.id as u32)
+                .get_works(clone.person.id as u32)
                 .await
                 .unwrap();
             let recordings = clone
                 .backend
                 .db()
-                .get_recordings_for_person(person.id as u32)
+                .get_recordings_for_person(clone.person.id as u32)
                 .await
                 .unwrap();
 
