@@ -13,7 +13,7 @@ pub struct WorkDialog {
     stack: gtk::Stack,
     selector: Rc<WorkSelector>,
     editor: Rc<WorkEditor>,
-    selected_cb: RefCell<Option<Box<dyn Fn(WorkDescription) -> ()>>>,
+    selected_cb: RefCell<Option<Box<dyn Fn(Work) -> ()>>>,
 }
 
 impl WorkDialog {
@@ -75,7 +75,7 @@ impl WorkDialog {
     }
 
     /// Set the closure to be called when the user has selected or created a work.
-    pub fn set_selected_cb<F: Fn(WorkDescription) -> () + 'static>(&self, cb: F) {
+    pub fn set_selected_cb<F: Fn(Work) -> () + 'static>(&self, cb: F) {
         self.selected_cb.replace(Some(Box::new(cb)));
     }
 

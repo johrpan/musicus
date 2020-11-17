@@ -18,9 +18,9 @@ pub struct TracksEditor {
     recording_stack: gtk::Stack,
     work_label: gtk::Label,
     performers_label: gtk::Label,
-    track_list: Rc<List<TrackDescription>>,
-    recording: RefCell<Option<RecordingDescription>>,
-    tracks: RefCell<Vec<TrackDescription>>,
+    track_list: Rc<List<Track>>,
+    recording: RefCell<Option<Recording>>,
+    tracks: RefCell<Vec<Track>>,
     callback: RefCell<Option<Box<dyn Fn() -> ()>>>,
 }
 
@@ -30,8 +30,8 @@ impl TracksEditor {
     pub fn new<P: IsA<gtk::Window>>(
         backend: Rc<Backend>,
         parent: &P,
-        recording: Option<RecordingDescription>,
-        tracks: Vec<TrackDescription>,
+        recording: Option<Recording>,
+        tracks: Vec<Track>,
     ) -> Rc<Self> {
         // UI setup
 
@@ -80,8 +80,8 @@ impl TracksEditor {
                 let context = glib::MainContext::default();
                 let this = this.clone();
                 context.spawn_local(async move {
-                    this.backend.update_tracks(
-                        this.recording.borrow().as_ref().unwrap().id,
+                    this.backend.db().update_tracks(
+                        this.recording.borrow().as_ref().unwrap().id as u32,
                         this.tracks.borrow().clone(),
                     ).await.unwrap();
 
@@ -135,7 +135,7 @@ impl TracksEditor {
                     let mut tracks = this.tracks.borrow_mut();
                     for file_name in dialog.get_filenames() {
                         let file_name = file_name.strip_prefix(&music_library_path).unwrap();
-                        tracks.insert(index, TrackDescription {
+                        tracks.insert(index, Track {
                             work_parts: Vec::new(),
                             file_name: String::from(file_name.to_str().unwrap()),
                         });
@@ -224,7 +224,7 @@ impl TracksEditor {
     }
 
     /// Create a widget representing a track.
-    fn build_track_row(&self, track: &TrackDescription) -> gtk::Widget {
+    fn build_track_row(&self, track: &Track) -> gtk::Widget {
         let mut title_parts = Vec::<String>::new();
         for part in &track.work_parts {
             if let Some(recording) = &*self.recording.borrow() {
@@ -256,7 +256,7 @@ impl TracksEditor {
     }
 
     /// Set everything up after selecting a recording.
-    fn recording_selected(&self, recording: &RecordingDescription) {
+    fn recording_selected(&self, recording: &Recording) {
         self.work_label.set_text(&recording.work.get_title());
         self.performers_label.set_text(&recording.get_performers());
         self.recording_stack.set_visible_child_name("selected");

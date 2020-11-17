@@ -14,8 +14,8 @@ pub struct WorkSelectorPersonScreen {
     backend: Rc<Backend>,
     widget: gtk::Box,
     stack: gtk::Stack,
-    work_list: Rc<List<WorkDescription>>,
-    selected_cb: RefCell<Option<Box<dyn Fn(WorkDescription) -> ()>>>,
+    work_list: Rc<List<Work>>,
+    selected_cb: RefCell<Option<Box<dyn Fn(Work) -> ()>>>,
     navigator: RefCell<Option<Rc<Navigator>>>,
 }
 
@@ -54,7 +54,7 @@ impl WorkSelectorPersonScreen {
             }
         }));
 
-        this.work_list.set_make_widget(|work: &WorkDescription| {
+        this.work_list.set_make_widget(|work: &Work| {
             let label = gtk::Label::new(Some(&work.title));
             label.set_ellipsize(pango::EllipsizeMode::End);
             label.set_halign(gtk::Align::Start);
@@ -80,11 +80,7 @@ impl WorkSelectorPersonScreen {
         let context = glib::MainContext::default();
         let clone = this.clone();
         context.spawn_local(async move {
-            let works = clone
-                .backend
-                .get_work_descriptions(person.id)
-                .await
-                .unwrap();
+            let works = clone.backend.db().get_works(person.id).await.unwrap();
 
             clone.work_list.show_items(works);
             clone.stack.set_visible_child_name("content");
@@ -94,7 +90,7 @@ impl WorkSelectorPersonScreen {
     }
 
     /// Sets a closure to be called when the user has selected a work.
-    pub fn set_selected_cb<F: Fn(WorkDescription) -> () + 'static>(&self, cb: F) {
+    pub fn set_selected_cb<F: Fn(Work) -> () + 'static>(&self, cb: F) {
         self.selected_cb.replace(Some(Box::new(cb)));
     }
 }

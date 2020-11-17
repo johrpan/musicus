@@ -8,8 +8,6 @@ DROP TABLE instrumentations;
 
 DROP TABLE work_parts;
 
-DROP TABLE part_instrumentations;
-
 DROP TABLE work_sections;
 
 DROP TABLE ensembles;

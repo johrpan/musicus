@@ -14,7 +14,7 @@ pub struct RecordingSelector {
     pub widget: libhandy::Leaflet,
     backend: Rc<Backend>,
     sidebar_box: gtk::Box,
-    selected_cb: RefCell<Option<Box<dyn Fn(RecordingDescription) -> ()>>>,
+    selected_cb: RefCell<Option<Box<dyn Fn(Recording) -> ()>>>,
     add_cb: RefCell<Option<Box<dyn Fn() -> ()>>>,
     navigator: Rc<Navigator>,
 }
@@ -83,7 +83,7 @@ impl RecordingSelector {
     }
 
     /// Set the closure to be called when the user has selected a recording.
-    pub fn set_selected_cb<F: Fn(RecordingDescription) -> () + 'static>(&self, cb: F) {
+    pub fn set_selected_cb<F: Fn(Recording) -> () + 'static>(&self, cb: F) {
         self.selected_cb.replace(Some(Box::new(cb)));
     }
 }

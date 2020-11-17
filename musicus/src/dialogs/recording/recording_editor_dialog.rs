@@ -9,7 +9,7 @@ use std::rc::Rc;
 /// A dialog for creating or editing a recording.
 pub struct RecordingEditorDialog {
     pub window: libhandy::Window,
-    selected_cb: RefCell<Option<Box<dyn Fn(RecordingDescription) -> ()>>>,
+    selected_cb: RefCell<Option<Box<dyn Fn(Recording) -> ()>>>,
 }
 
 impl RecordingEditorDialog {
@@ -17,7 +17,7 @@ impl RecordingEditorDialog {
     pub fn new<W: IsA<gtk::Window>>(
         backend: Rc<Backend>,
         parent: &W,
-        recording: Option<RecordingDescription>,
+        recording: Option<Recording>,
     ) -> Rc<Self> {
         // Create UI
 
@@ -52,7 +52,7 @@ impl RecordingEditorDialog {
     }
 
     /// Set the closure to be called when the user edited or created a recording.
-    pub fn set_selected_cb<F: Fn(RecordingDescription) -> () + 'static>(&self, cb: F) {
+    pub fn set_selected_cb<F: Fn(Recording) -> () + 'static>(&self, cb: F) {
         self.selected_cb.replace(Some(Box::new(cb)));
     }
 

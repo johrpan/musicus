@@ -20,7 +20,7 @@ pub struct PerformanceEditor {
     person: RefCell<Option<Person>>,
     ensemble: RefCell<Option<Ensemble>>,
     role: RefCell<Option<Instrument>>,
-    selected_cb: RefCell<Option<Box<dyn Fn(PerformanceDescription) -> ()>>>,
+    selected_cb: RefCell<Option<Box<dyn Fn(Performance) -> ()>>>,
 }
 
 impl PerformanceEditor {
@@ -28,7 +28,7 @@ impl PerformanceEditor {
     pub fn new<P: IsA<gtk::Window>>(
         backend: Rc<Backend>,
         parent: &P,
-        performance: Option<PerformanceDescription>,
+        performance: Option<Performance>,
     ) -> Rc<Self> {
         // Create UI
 
@@ -70,7 +70,7 @@ impl PerformanceEditor {
         this.save_button
             .connect_clicked(clone!(@strong this => move |_| {
                 if let Some(cb) = &*this.selected_cb.borrow() {
-                    cb(PerformanceDescription {
+                    cb(Performance {
                         person: this.person.borrow().clone(),
                         ensemble: this.ensemble.borrow().clone(),
                         role: this.role.borrow().clone(),
@@ -132,7 +132,7 @@ impl PerformanceEditor {
     }
 
     /// Set a closure to be called when the user has chosen to save the performance.
-    pub fn set_selected_cb<F: Fn(PerformanceDescription) -> () + 'static>(&self, cb: F) {
+    pub fn set_selected_cb<F: Fn(Performance) -> () + 'static>(&self, cb: F) {
         self.selected_cb.replace(Some(Box::new(cb)));
     }
 

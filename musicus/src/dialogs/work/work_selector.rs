@@ -14,7 +14,7 @@ pub struct WorkSelector {
     pub widget: libhandy::Leaflet,
     backend: Rc<Backend>,
     sidebar_box: gtk::Box,
-    selected_cb: RefCell<Option<Box<dyn Fn(WorkDescription) -> ()>>>,
+    selected_cb: RefCell<Option<Box<dyn Fn(Work) -> ()>>>,
     add_cb: RefCell<Option<Box<dyn Fn() -> ()>>>,
     navigator: Rc<Navigator>,
 }
@@ -83,7 +83,7 @@ impl WorkSelector {
     }
 
     /// Set the closure to be called when the user has selected a work.
-    pub fn set_selected_cb<F: Fn(WorkDescription) -> () + 'static>(&self, cb: F) {
+    pub fn set_selected_cb<F: Fn(Work) -> () + 'static>(&self, cb: F) {
         self.selected_cb.replace(Some(Box::new(cb)));
     }
 }

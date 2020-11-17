@@ -74,7 +74,7 @@ impl PersonList {
         let list = self.list.clone();
 
         context.spawn_local(async move {
-            let persons = backend.get_persons().await.unwrap();
+            let persons = backend.db().get_persons().await.unwrap();
             list.show_items(persons);
             self.stack.set_visible_child_name("content");
         });

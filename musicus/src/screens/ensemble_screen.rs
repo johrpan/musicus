@@ -14,7 +14,7 @@ pub struct EnsembleScreen {
     backend: Rc<Backend>,
     widget: gtk::Box,
     stack: gtk::Stack,
-    recording_list: Rc<List<RecordingDescription>>,
+    recording_list: Rc<List<Recording>>,
     navigator: RefCell<Option<Rc<Navigator>>>,
 }
 
@@ -52,7 +52,7 @@ impl EnsembleScreen {
 
         let recording_list = List::new(&gettext("No recordings found."));
 
-        recording_list.set_make_widget(|recording: &RecordingDescription| {
+        recording_list.set_make_widget(|recording: &Recording| {
             let work_label = gtk::Label::new(Some(&recording.work.get_title()));
 
             work_label.set_ellipsize(pango::EllipsizeMode::End);
@@ -72,7 +72,7 @@ impl EnsembleScreen {
         });
 
         recording_list.set_filter(
-            clone!(@strong search_entry => move |recording: &RecordingDescription| {
+            clone!(@strong search_entry => move |recording: &Recording| {
                 let search = search_entry.get_text().to_string().to_lowercase();
                 let text = recording.work.get_title() + &recording.get_performers();
                 search.is_empty() || text.contains(&search)
@@ -114,7 +114,8 @@ impl EnsembleScreen {
         context.spawn_local(async move {
             let recordings = clone
                 .backend
-                .get_recordings_for_ensemble(ensemble.id)
+                .db()
+                .get_recordings_for_ensemble(ensemble.id as u32)
                 .await
                 .unwrap();
 

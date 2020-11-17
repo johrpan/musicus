@@ -37,7 +37,6 @@ impl Window {
         get_widget!(builder, gtk::Box, empty_screen);
 
         let backend = Rc::new(Backend::new());
-        backend.clone().init();
 
         let player_screen = PlayerScreen::new();
         stack.add_named(&player_screen.widget, "player_screen");
@@ -122,252 +121,6 @@ impl Window {
             })
         );
 
-        action!(
-            result.window,
-            "add-person",
-            clone!(@strong result => move |_, _| {
-                PersonEditor::new(result.backend.clone(), &result.window, None, clone!(@strong result => move |_| {
-                   result.reload();
-                })).show();
-            })
-        );
-
-        action!(
-            result.window,
-            "add-instrument",
-            clone!(@strong result => move |_, _| {
-                InstrumentEditor::new(result.backend.clone(), &result.window, None, |instrument| {
-                    println!("{:?}", instrument);
-                }).show();
-            })
-        );
-
-        action!(
-            result.window,
-            "add-work",
-            clone!(@strong result => move |_, _| {
-                let dialog = WorkDialog::new(result.backend.clone(), &result.window);
-
-                dialog.set_selected_cb(clone!(@strong result => move |_| {
-                    result.reload();
-                }));
-
-                dialog.show();
-            })
-        );
-
-        action!(
-            result.window,
-            "add-ensemble",
-            clone!(@strong result => move |_, _| {
-                EnsembleEditor::new(result.backend.clone(), &result.window, None, clone!(@strong result => move |_| {
-                    result.reload();
-                })).show();
-            })
-        );
-
-        action!(
-            result.window,
-            "add-recording",
-            clone!(@strong result => move |_, _| {
-                let dialog = RecordingDialog::new(result.backend.clone(), &result.window);
-
-                dialog.set_selected_cb(clone!(@strong result => move |_| {
-                    result.reload();
-                }));
-
-                dialog.show();
-            })
-        );
-
-        action!(
-            result.window,
-            "add-tracks",
-            clone!(@strong result => move |_, _| {
-                let editor = TracksEditor::new(result.backend.clone(), &result.window, None, Vec::new());
-
-                editor.set_callback(clone!(@strong result => move || {
-                    result.reload();
-                }));
-
-                editor.show();
-            })
-        );
-
-        action!(
-            result.window,
-            "edit-person",
-            Some(glib::VariantTy::new("x").unwrap()),
-            clone!(@strong result => move |_, id| {
-                let id = id.unwrap().get().unwrap();
-                let result = result.clone();
-                let c = glib::MainContext::default();
-                c.spawn_local(async move {
-                    let person = result.backend.get_person(id).await.unwrap();
-                    PersonEditor::new(result.backend.clone(), &result.window, Some(person), clone!(@strong result => move |_| {
-                        result.reload();
-                    })).show();
-                });
-            })
-        );
-
-        action!(
-            result.window,
-            "delete-person",
-            Some(glib::VariantTy::new("x").unwrap()),
-            clone!(@strong result => move |_, id| {
-                let id = id.unwrap().get().unwrap();
-                let result = result.clone();
-                let c = glib::MainContext::default();
-                c.spawn_local(async move {
-                    result.backend.delete_person(id).await.unwrap();
-                    result.reload();
-                });
-            })
-        );
-
-        action!(
-            result.window,
-            "edit-ensemble",
-            Some(glib::VariantTy::new("x").unwrap()),
-            clone!(@strong result => move |_, id| {
-                let id = id.unwrap().get().unwrap();
-                let result = result.clone();
-                let c = glib::MainContext::default();
-                c.spawn_local(async move {
-                    let ensemble = result.backend.get_ensemble(id).await.unwrap();
-                    EnsembleEditor::new(result.backend.clone(), &result.window, Some(ensemble), clone!(@strong result => move |_| {
-                        result.reload();
-                    })).show();
-                });
-            })
-        );
-
-        action!(
-            result.window,
-            "delete-ensemble",
-            Some(glib::VariantTy::new("x").unwrap()),
-            clone!(@strong result => move |_, id| {
-                let id = id.unwrap().get().unwrap();
-                let result = result.clone();
-                let c = glib::MainContext::default();
-                c.spawn_local(async move {
-                    result.backend.delete_ensemble(id).await.unwrap();
-                    result.reload();
-                });
-            })
-        );
-
-        action!(
-            result.window,
-            "edit-work",
-            Some(glib::VariantTy::new("x").unwrap()),
-            clone!(@strong result => move |_, id| {
-                let id = id.unwrap().get().unwrap();
-                let result = result.clone();
-                let c = glib::MainContext::default();
-                c.spawn_local(async move {
-                    let work = result.backend.get_work_description(id).await.unwrap();
-                    let dialog = WorkEditorDialog::new(result.backend.clone(), &result.window, Some(work));
-
-                    dialog.set_saved_cb(clone!(@strong result => move |_| {
-                        result.reload();
-                    }));
-
-                    dialog.show();
-                });
-            })
-        );
-
-        action!(
-            result.window,
-            "delete-work",
-            Some(glib::VariantTy::new("x").unwrap()),
-            clone!(@strong result => move |_, id| {
-                let id = id.unwrap().get().unwrap();
-                let result = result.clone();
-                let c = glib::MainContext::default();
-                c.spawn_local(async move {
-                    result.backend.delete_work(id).await.unwrap();
-                    result.reload();
-                });
-            })
-        );
-
-        action!(
-            result.window,
-            "edit-recording",
-            Some(glib::VariantTy::new("x").unwrap()),
-            clone!(@strong result => move |_, id| {
-                let id = id.unwrap().get().unwrap();
-                let result = result.clone();
-                let c = glib::MainContext::default();
-                c.spawn_local(async move {
-                    let recording = result.backend.get_recording_description(id).await.unwrap();
-                    let dialog = RecordingEditorDialog::new(result.backend.clone(), &result.window, Some(recording));
-
-                    dialog.set_selected_cb(clone!(@strong result => move |_| {
-                        result.reload();
-                    }));
-
-                    dialog.show();
-                });
-            })
-        );
-
-        action!(
-            result.window,
-            "delete-recording",
-            Some(glib::VariantTy::new("x").unwrap()),
-            clone!(@strong result => move |_, id| {
-                let id = id.unwrap().get().unwrap();
-                let result = result.clone();
-                let c = glib::MainContext::default();
-                c.spawn_local(async move {
-                    result.backend.delete_recording(id).await.unwrap();
-                    result.reload();
-                });
-            })
-        );
-
-        action!(
-            result.window,
-            "edit-tracks",
-            Some(glib::VariantTy::new("x").unwrap()),
-            clone!(@strong result => move |_, id| {
-                let id = id.unwrap().get().unwrap();
-                let result = result.clone();
-                let c = glib::MainContext::default();
-                c.spawn_local(async move {
-                    let recording = result.backend.get_recording_description(id).await.unwrap();
-                    let tracks = result.backend.get_tracks(id).await.unwrap();
-
-                    let editor = TracksEditor::new(result.backend.clone(), &result.window, Some(recording), tracks);
-
-                    editor.set_callback(clone!(@strong result => move || {
-                        result.reload();
-                    }));
-
-                    editor.show();
-                });
-            })
-        );
-
-        action!(
-            result.window,
-            "delete-tracks",
-            Some(glib::VariantTy::new("x").unwrap()),
-            clone!(@strong result => move |_, id| {
-                let id = id.unwrap().get().unwrap();
-                let result = result.clone();
-                let c = glib::MainContext::default();
-                c.spawn_local(async move {
-                    result.backend.delete_tracks(id).await.unwrap();
-                    result.reload();
-                });
-            })
-        );
-
         let context = glib::MainContext::default();
         let clone = result.clone();
         context.spawn_local(async move {
@@ -391,6 +144,13 @@ impl Window {
                     }
                 }
             }
+        });
+
+        let clone = result.clone();
+        context.spawn_local(async move {
+            // This is not done in the async block below, because backend state changes may happen
+            // while this method is running.
+            clone.backend.clone().init().await.unwrap();
         });
 
         result.leaflet.add(&result.navigator.widget);

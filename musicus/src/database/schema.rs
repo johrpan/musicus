@@ -21,14 +21,6 @@ table! {
 }
 
 table! {
-    part_instrumentations (id) {
-        id -> BigInt,
-        work_part -> BigInt,
-        instrument -> BigInt,
-    }
-}
-
-table! {
     performances (id) {
         id -> BigInt,
         recording -> BigInt,
@@ -69,8 +61,8 @@ table! {
         id -> BigInt,
         work -> BigInt,
         part_index -> BigInt,
-        composer -> Nullable<BigInt>,
         title -> Text,
+        composer -> Nullable<BigInt>,
     }
 }
 
@@ -93,8 +85,6 @@ table! {
 
 joinable!(instrumentations -> instruments (instrument));
 joinable!(instrumentations -> works (work));
-joinable!(part_instrumentations -> instruments (instrument));
-joinable!(part_instrumentations -> works (work_part));
 joinable!(performances -> ensembles (ensemble));
 joinable!(performances -> instruments (role));
 joinable!(performances -> persons (person));
@@ -110,7 +100,6 @@ allow_tables_to_appear_in_same_query!(
     ensembles,
     instrumentations,
     instruments,
-    part_instrumentations,
     performances,
     persons,
     recordings,

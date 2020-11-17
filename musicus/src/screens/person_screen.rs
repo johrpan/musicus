@@ -14,8 +14,8 @@ pub struct PersonScreen {
     backend: Rc<Backend>,
     widget: gtk::Box,
     stack: gtk::Stack,
-    work_list: Rc<List<WorkDescription>>,
-    recording_list: Rc<List<RecordingDescription>>,
+    work_list: Rc<List<Work>>,
+    recording_list: Rc<List<Recording>>,
     navigator: RefCell<Option<Rc<Navigator>>>,
 }
 
@@ -56,7 +56,7 @@ impl PersonScreen {
 
         let work_list = List::new(&gettext("No works found."));
 
-        work_list.set_make_widget(|work: &WorkDescription| {
+        work_list.set_make_widget(|work: &Work| {
             let label = gtk::Label::new(Some(&work.title));
             label.set_halign(gtk::Align::Start);
             label.set_margin_start(6);
@@ -66,17 +66,15 @@ impl PersonScreen {
             label.upcast()
         });
 
-        work_list.set_filter(
-            clone!(@strong search_entry => move |work: &WorkDescription| {
-                let search = search_entry.get_text().to_string().to_lowercase();
-                let title = work.title.to_lowercase();
-                search.is_empty() || title.contains(&search)
-            }),
-        );
+        work_list.set_filter(clone!(@strong search_entry => move |work: &Work| {
+            let search = search_entry.get_text().to_string().to_lowercase();
+            let title = work.title.to_lowercase();
+            search.is_empty() || title.contains(&search)
+        }));
 
         let recording_list = List::new(&gettext("No recordings found."));
 
-        recording_list.set_make_widget(|recording: &RecordingDescription| {
+        recording_list.set_make_widget(|recording: &Recording| {
             let work_label = gtk::Label::new(Some(&recording.work.get_title()));
 
             work_label.set_ellipsize(pango::EllipsizeMode::End);
@@ -96,7 +94,7 @@ impl PersonScreen {
         });
 
         recording_list.set_filter(
-            clone!(@strong search_entry => move |recording: &RecordingDescription| {
+            clone!(@strong search_entry => move |recording: &Recording| {
                 let search = search_entry.get_text().to_string().to_lowercase();
                 let text = recording.work.get_title() + &recording.get_performers();
                 search.is_empty() || text.contains(&search)
@@ -152,12 +150,14 @@ impl PersonScreen {
         context.spawn_local(async move {
             let works = clone
                 .backend
-                .get_work_descriptions(person.id)
+                .db()
+                .get_works(person.id as u32)
                 .await
                 .unwrap();
             let recordings = clone
                 .backend
-                .get_recordings_for_person(person.id)
+                .db()
+                .get_recordings_for_person(person.id as u32)
                 .await
                 .unwrap();
 

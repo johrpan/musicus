@@ -14,12 +14,12 @@ pub struct RecordingScreen {
     backend: Rc<Backend>,
     widget: gtk::Box,
     stack: gtk::Stack,
-    tracks: RefCell<Vec<TrackDescription>>,
+    tracks: RefCell<Vec<Track>>,
     navigator: RefCell<Option<Rc<Navigator>>>,
 }
 
 impl RecordingScreen {
-    pub fn new(backend: Rc<Backend>, recording: RecordingDescription) -> Rc<Self> {
+    pub fn new(backend: Rc<Backend>, recording: Recording) -> Rc<Self> {
         let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/recording_screen.ui");
 
         get_widget!(builder, gtk::Box, widget);
@@ -69,7 +69,7 @@ impl RecordingScreen {
         let list = List::new(&gettext("No tracks found."));
 
         list.set_make_widget(
-            clone!(@strong recording => move |track: &TrackDescription| {
+            clone!(@strong recording => move |track: &Track| {
                 let mut title_parts = Vec::<String>::new();
                 for part in &track.work_parts {
                     title_parts.push(recording.work.parts[*part].title.clone());
@@ -131,7 +131,7 @@ impl RecordingScreen {
         let clone = result.clone();
         let id = recording.id;
         context.spawn_local(async move {
-            let tracks = clone.backend.get_tracks(id).await.unwrap();
+            let tracks = clone.backend.db().get_tracks(id as u32).await.unwrap();
             list.show_items(tracks.clone());
             clone.stack.set_visible_child_name("content");
             clone.tracks.replace(tracks);

@@ -8,8 +8,8 @@ use std::rc::Rc;
 
 #[derive(Clone)]
 pub struct PlaylistItem {
-    pub recording: RecordingDescription,
-    pub tracks: Vec<TrackDescription>,
+    pub recording: Recording,
+    pub tracks: Vec<Track>,
 }
 
 pub struct Player {

@@ -13,7 +13,7 @@ pub struct RecordingDialog {
     stack: gtk::Stack,
     selector: Rc<RecordingSelector>,
     editor: Rc<RecordingEditor>,
-    selected_cb: RefCell<Option<Box<dyn Fn(RecordingDescription) -> ()>>>,
+    selected_cb: RefCell<Option<Box<dyn Fn(Recording) -> ()>>>,
 }
 
 impl RecordingDialog {
@@ -75,7 +75,7 @@ impl RecordingDialog {
     }
 
     /// Set the closure to be called when the user has selected or created a recording.
-    pub fn set_selected_cb<F: Fn(RecordingDescription) -> () + 'static>(&self, cb: F) {
+    pub fn set_selected_cb<F: Fn(Recording) -> () + 'static>(&self, cb: F) {
         self.selected_cb.replace(Some(Box::new(cb)));
     }
 

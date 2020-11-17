@@ -1,10 +1,51 @@
-pub mod database;
-pub use database::*;
+use anyhow::Result;
+use diesel::prelude::*;
 
-pub mod models;
-pub use models::*;
+pub mod ensembles;
+pub use ensembles::*;
 
-pub mod schema;
+pub mod instruments;
+pub use instruments::*;
 
-pub mod tables;
-pub use tables::*;
+pub mod persons;
+pub use persons::*;
+
+pub mod recordings;
+pub use recordings::*;
+
+pub mod thread;
+pub use thread::*;
+
+pub mod tracks;
+pub use tracks::*;
+
+pub mod works;
+pub use works::*;
+
+mod schema;
+
+// This makes the SQL migration scripts accessible from the code.
+embed_migrations!();
+
+/// Interface to a Musicus database.
+pub struct Database {
+    connection: SqliteConnection,
+}
+
+impl Database {
+    /// Create a new database interface and run migrations if necessary.
+    pub fn new(file_name: &str) -> Result<Database> {
+        let connection = SqliteConnection::establish(file_name)?;
+
+        diesel::sql_query("PRAGMA foreign_keys = ON").execute(&connection)?;
+        embedded_migrations::run(&connection)?;
+
+        Ok(Database { connection })
+    }
+
+    /// Defer all foreign keys for the next transaction.
+    fn defer_foreign_keys(&self) -> Result<()> {
+        diesel::sql_query("PRAGMA defer_foreign_keys = ON").execute(&self.connection)?;
+        Ok(())
+    }
+}

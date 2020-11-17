@@ -15,8 +15,8 @@ use std::rc::Rc;
 /// Either a work part or a work section.
 #[derive(Clone)]
 enum PartOrSection {
-    Part(WorkPartDescription),
-    Section(WorkSectionDescription),
+    Part(WorkPart),
+    Section(WorkSection),
 }
 
 /// A widget for editing and creating works.
@@ -29,12 +29,12 @@ pub struct WorkEditor {
     composer_label: gtk::Label,
     instrument_list: Rc<List<Instrument>>,
     part_list: Rc<List<PartOrSection>>,
-    id: i64,
+    id: u32,
     composer: RefCell<Option<Person>>,
     instruments: RefCell<Vec<Instrument>>,
     structure: RefCell<Vec<PartOrSection>>,
     cancel_cb: RefCell<Option<Box<dyn Fn() -> ()>>>,
-    saved_cb: RefCell<Option<Box<dyn Fn(WorkDescription) -> ()>>>,
+    saved_cb: RefCell<Option<Box<dyn Fn(Work) -> ()>>>,
 }
 
 impl WorkEditor {
@@ -43,7 +43,7 @@ impl WorkEditor {
     pub fn new<P: IsA<gtk::Window>>(
         backend: Rc<Backend>,
         parent: &P,
-        work: Option<WorkDescription>,
+        work: Option<Work>,
     ) -> Rc<Self> {
         // Create UI
 
@@ -120,7 +120,7 @@ impl WorkEditor {
         }));
 
         this.save_button.connect_clicked(clone!(@strong this => move |_| {
-            let mut section_count = 0;
+            let mut section_count: usize = 0;
             let mut parts = Vec::new();
             let mut sections = Vec::new();
 
@@ -129,7 +129,6 @@ impl WorkEditor {
                     PartOrSection::Part(part) => parts.push(part.clone()),
                     PartOrSection::Section(section) => {
                         let mut section = section.clone();
-                        let index: i64 = index.try_into().unwrap();
                         section.before_index = index - section_count;
                         sections.push(section);
                         section_count += 1;
@@ -137,7 +136,7 @@ impl WorkEditor {
                 }
             }
 
-            let work = WorkDescription {
+            let work = Work {
                 id: this.id,
                 title: this.title_entry.get_text().to_string(),
                 composer: this.composer.borrow().clone().expect("Tried to create work without composer!"),
@@ -149,7 +148,7 @@ impl WorkEditor {
             let c = glib::MainContext::default();
             let clone = this.clone();
             c.spawn_local(async move {
-                clone.backend.update_work(work.clone().into()).await.unwrap();
+                clone.backend.db().update_work(work.clone().into()).await.unwrap();
                 if let Some(cb) = &*clone.saved_cb.borrow() {
                     cb(work);
                 }
@@ -333,7 +332,8 @@ impl WorkEditor {
             this.show_composer(composer);
         }
 
-        this.instrument_list.show_items(this.instruments.borrow().clone());
+        this.instrument_list
+            .show_items(this.instruments.borrow().clone());
         this.part_list.show_items(this.structure.borrow().clone());
 
         this
@@ -345,7 +345,7 @@ impl WorkEditor {
     }
 
     /// The closure to call when a work was created.
-    pub fn set_saved_cb<F: Fn(WorkDescription) -> () + 'static>(&self, cb: F) {
+    pub fn set_saved_cb<F: Fn(Work) -> () + 'static>(&self, cb: F) {
         self.saved_cb.replace(Some(Box::new(cb)));
     }
 

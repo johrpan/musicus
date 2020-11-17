@@ -19,11 +19,11 @@ pub struct RecordingEditor {
     save_button: gtk::Button,
     work_label: gtk::Label,
     comment_entry: gtk::Entry,
-    performance_list: Rc<List<PerformanceDescription>>,
-    id: i64,
-    work: RefCell<Option<WorkDescription>>,
-    performances: RefCell<Vec<PerformanceDescription>>,
-    selected_cb: RefCell<Option<Box<dyn Fn(RecordingDescription) -> ()>>>,
+    performance_list: Rc<List<Performance>>,
+    id: u32,
+    work: RefCell<Option<Work>>,
+    performances: RefCell<Vec<Performance>>,
+    selected_cb: RefCell<Option<Box<dyn Fn(Recording) -> ()>>>,
     back_cb: RefCell<Option<Box<dyn Fn() -> ()>>>,
 }
 
@@ -33,7 +33,7 @@ impl RecordingEditor {
     pub fn new<W: IsA<gtk::Window>>(
         backend: Rc<Backend>,
         parent: &W,
-        recording: Option<RecordingDescription>,
+        recording: Option<Recording>,
     ) -> Rc<Self> {
         // Create UI
 
@@ -87,7 +87,7 @@ impl RecordingEditor {
 
         this.save_button
             .connect_clicked(clone!(@strong this => move |_| {
-                let recording = RecordingDescription {
+                let recording = Recording {
                     id: this.id,
                     work: this.work.borrow().clone().expect("Tried to create recording without work!"),
                     comment: this.comment_entry.get_text().to_string(),
@@ -97,7 +97,7 @@ impl RecordingEditor {
                 let c = glib::MainContext::default();
                 let clone = this.clone();
                 c.spawn_local(async move {
-                    clone.backend.update_recording(recording.clone().into()).await.unwrap();
+                    clone.backend.db().update_recording(recording.clone().into()).await.unwrap();
                     if let Some(cb) = &*clone.selected_cb.borrow() {
                         cb(recording.clone());
                     }
@@ -192,12 +192,12 @@ impl RecordingEditor {
     }
 
     /// Set the closure to be called if the recording was created.
-    pub fn set_selected_cb<F: Fn(RecordingDescription) -> () + 'static>(&self, cb: F) {
+    pub fn set_selected_cb<F: Fn(Recording) -> () + 'static>(&self, cb: F) {
         self.selected_cb.replace(Some(Box::new(cb)));
     }
 
     /// Update the UI according to work.    
-    fn work_selected(&self, work: &WorkDescription) {
+    fn work_selected(&self, work: &Work) {
         self.work_label.set_text(&format!("{}: {}", work.composer.name_fl(), work.title));
         self.save_button.set_sensitive(true);
     }

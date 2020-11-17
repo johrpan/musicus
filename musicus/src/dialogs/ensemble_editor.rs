@@ -12,7 +12,7 @@ where
     backend: Rc<Backend>,
     window: libhandy::Window,
     callback: F,
-    id: i64,
+    id: u32,
     name_entry: gtk::Entry,
 }
 
@@ -26,8 +26,7 @@ where
         ensemble: Option<Ensemble>,
         callback: F,
     ) -> Rc<Self> {
-        let builder =
-            gtk::Builder::from_resource("/de/johrpan/musicus/ui/ensemble_editor.ui");
+        let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/ensemble_editor.ui");
 
         get_widget!(builder, libhandy::Window, window);
         get_widget!(builder, gtk::Button, cancel_button);
@@ -63,7 +62,7 @@ where
             let clone = result.clone();
             let c = glib::MainContext::default();
             c.spawn_local(async move {
-                clone.backend.update_ensemble(ensemble.clone()).await.unwrap();
+                clone.backend.db().update_ensemble(ensemble.clone()).await.unwrap();
                 clone.window.close();
                 (clone.callback)(ensemble.clone());
             });

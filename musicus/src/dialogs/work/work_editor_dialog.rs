@@ -9,7 +9,7 @@ use std::rc::Rc;
 /// A dialog for creating or editing a work.
 pub struct WorkEditorDialog {
     pub window: libhandy::Window,
-    saved_cb: RefCell<Option<Box<dyn Fn(WorkDescription) -> ()>>>,
+    saved_cb: RefCell<Option<Box<dyn Fn(Work) -> ()>>>,
 }
 
 impl WorkEditorDialog {
@@ -17,7 +17,7 @@ impl WorkEditorDialog {
     pub fn new<W: IsA<gtk::Window>>(
         backend: Rc<Backend>,
         parent: &W,
-        work: Option<WorkDescription>,
+        work: Option<Work>,
     ) -> Rc<Self> {
         // Create UI
 
@@ -52,7 +52,7 @@ impl WorkEditorDialog {
     }
 
     /// Set the closure to be called when the user edited or created a work.
-    pub fn set_saved_cb<F: Fn(WorkDescription) -> () + 'static>(&self, cb: F) {
+    pub fn set_saved_cb<F: Fn(Work) -> () + 'static>(&self, cb: F) {
         self.saved_cb.replace(Some(Box::new(cb)));
     }
 

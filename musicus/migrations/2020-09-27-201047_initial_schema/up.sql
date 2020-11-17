@@ -18,21 +18,15 @@ CREATE TABLE works (
 CREATE TABLE instrumentations (
     id BIGINT NOT NULL PRIMARY KEY,
     work BIGINT NOT NULL REFERENCES works(id) ON DELETE CASCADE,
-    instrument BIGINT NOT NULL REFERENCES instruments(id)
+    instrument BIGINT NOT NULL REFERENCES instruments(id) ON DELETE CASCADE
 );
 
 CREATE TABLE work_parts (
     id BIGINT NOT NULL PRIMARY KEY,
     work BIGINT NOT NULL REFERENCES works(id) ON DELETE CASCADE,
     part_index BIGINT NOT NULL,
-    composer BIGINT REFERENCES persons(id),
-    title TEXT NOT NULL
-);
-
-CREATE TABLE part_instrumentations (
-    id BIGINT NOT NULL PRIMARY KEY,
-    work_part BIGINT NOT NULL REFERENCES works(id) ON DELETE CASCADE,
-    instrument BIGINT NOT NULL REFERENCES instruments(id)
+    title TEXT NOT NULL,
+    composer BIGINT REFERENCES persons(id)
 );
 
 CREATE TABLE work_sections (

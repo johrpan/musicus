@@ -9,15 +9,12 @@ use std::rc::Rc;
 pub struct SectionEditor {
     window: libhandy::Window,
     title_entry: gtk::Entry,
-    ready_cb: RefCell<Option<Box<dyn Fn(WorkSectionDescription) -> ()>>>,
+    ready_cb: RefCell<Option<Box<dyn Fn(WorkSection) -> ()>>>,
 }
 
 impl SectionEditor {
     /// Create a new section editor and optionally initialize it.
-    pub fn new<P: IsA<gtk::Window>>(
-        parent: &P,
-        section: Option<WorkSectionDescription>,
-    ) -> Rc<Self> {
+    pub fn new<P: IsA<gtk::Window>>(parent: &P, section: Option<WorkSection>) -> Rc<Self> {
         // Create UI
 
         let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/section_editor.ui");
@@ -47,7 +44,7 @@ impl SectionEditor {
 
         save_button.connect_clicked(clone!(@strong this => move |_| {
             if let Some(cb) = &*this.ready_cb.borrow() {
-                cb(WorkSectionDescription {
+                cb(WorkSection {
                     before_index: 0,
                     title: this.title_entry.get_text().to_string(),
                 });
@@ -62,7 +59,7 @@ impl SectionEditor {
     /// Set the closure to be called when the user wants to save the section. Note that the
     /// resulting object will always have `before_index` set to 0. The caller is expected to
     /// change that later before adding the section to the database.
-    pub fn set_ready_cb<F: Fn(WorkSectionDescription) -> () + 'static>(&self, cb: F) {
+    pub fn set_ready_cb<F: Fn(WorkSection) -> () + 'static>(&self, cb: F) {
         self.ready_cb.replace(Some(Box::new(cb)));
     }
 

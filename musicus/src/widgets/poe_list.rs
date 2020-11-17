@@ -89,8 +89,8 @@ impl PoeList {
         let list = self.list.clone();
 
         context.spawn_local(async move {
-            let persons = backend.get_persons().await.unwrap();
-            let ensembles = backend.get_ensembles().await.unwrap();
+            let persons = backend.db().get_persons().await.unwrap();
+            let ensembles = backend.db().get_ensembles().await.unwrap();
             let mut poes: Vec<PersonOrEnsemble> = Vec::new();
 
             for person in persons {

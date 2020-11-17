@@ -12,7 +12,7 @@ where
     backend: Rc<Backend>,
     window: libhandy::Window,
     callback: F,
-    id: i64,
+    id: u32,
     first_name_entry: gtk::Entry,
     last_name_entry: gtk::Entry,
 }
@@ -67,7 +67,7 @@ where
             let c = glib::MainContext::default();
             let clone = result.clone();
             c.spawn_local(async move {
-                clone.backend.update_person(person.clone()).await.unwrap();
+                clone.backend.db().update_person(person.clone()).await.unwrap();
                 clone.window.close();
                 (clone.callback)(person.clone());
             });

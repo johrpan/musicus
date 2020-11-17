@@ -33,15 +33,19 @@ run_command(
 )
 
 sources = files(
-  'backend/backend.rs',
   'backend/client.rs',
+  'backend/library.rs',
   'backend/mod.rs',
   'backend/secure.rs',
-  'database/database.rs',
+  'database/ensembles.rs',
+  'database/instruments.rs',
   'database/mod.rs',
-  'database/models.rs',
+  'database/persons.rs',
+  'database/recordings.rs',
   'database/schema.rs',
-  'database/tables.rs',
+  'database/thread.rs',
+  'database/tracks.rs',
+  'database/works.rs',
   'dialogs/about.rs',
   'dialogs/ensemble_editor.rs',
   'dialogs/ensemble_selector.rs',

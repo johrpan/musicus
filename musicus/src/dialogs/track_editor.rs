@@ -11,10 +11,10 @@ pub struct TrackEditor {
 }
 
 impl TrackEditor {
-    pub fn new<W, F>(parent: &W, track: TrackDescription, work: WorkDescription, callback: F) -> Self
+    pub fn new<W, F>(parent: &W, track: Track, work: Work, callback: F) -> Self
     where
         W: IsA<gtk::Window>,
-        F: Fn(TrackDescription) -> () + 'static,
+        F: Fn(Track) -> () + 'static,
     {
         let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/track_editor.ui");
 
@@ -37,7 +37,7 @@ impl TrackEditor {
             let mut work_parts = work_parts.borrow_mut();
             work_parts.sort();
 
-            callback(TrackDescription {
+            callback(Track {
                 work_parts: work_parts.clone(),
                 file_name: file_name.clone(),
             });

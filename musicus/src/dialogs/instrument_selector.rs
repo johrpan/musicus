@@ -25,8 +25,7 @@ where
     F: Fn(Instrument) -> () + 'static,
 {
     pub fn new<P: IsA<gtk::Window>>(backend: Rc<Backend>, parent: &P, callback: F) -> Rc<Self> {
-        let builder =
-            gtk::Builder::from_resource("/de/johrpan/musicus/ui/instrument_selector.ui");
+        let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/instrument_selector.ui");
 
         get_widget!(builder, libhandy::Window, window);
         get_widget!(builder, gtk::Button, add_button);
@@ -44,7 +43,7 @@ where
         let c = glib::MainContext::default();
         let clone = result.clone();
         c.spawn_local(async move {
-            let instruments = clone.backend.get_instruments().await.unwrap();
+            let instruments = clone.backend.db().get_instruments().await.unwrap();
 
             for (index, instrument) in instruments.iter().enumerate() {
                 let label = gtk::Label::new(Some(&instrument.name));

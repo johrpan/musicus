@@ -14,14 +14,14 @@ pub struct RecordingSelectorWorkScreen {
     backend: Rc<Backend>,
     widget: gtk::Box,
     stack: gtk::Stack,
-    recording_list: Rc<List<RecordingDescription>>,
-    selected_cb: RefCell<Option<Box<dyn Fn(RecordingDescription) -> ()>>>,
+    recording_list: Rc<List<Recording>>,
+    selected_cb: RefCell<Option<Box<dyn Fn(Recording) -> ()>>>,
     navigator: RefCell<Option<Rc<Navigator>>>,
 }
 
 impl RecordingSelectorWorkScreen {
     /// Create a new recording selector work screen.
-    pub fn new(backend: Rc<Backend>, work: WorkDescription) -> Rc<Self> {
+    pub fn new(backend: Rc<Backend>, work: Work) -> Rc<Self> {
         // Create UI
 
         let builder =
@@ -56,23 +56,24 @@ impl RecordingSelectorWorkScreen {
             }
         }));
 
-        this.recording_list.set_make_widget(|recording: &RecordingDescription| {
-            let work_label = gtk::Label::new(Some(&recording.work.get_title()));
-            work_label.set_ellipsize(pango::EllipsizeMode::End);
-            work_label.set_halign(gtk::Align::Start);
+        this.recording_list
+            .set_make_widget(|recording: &Recording| {
+                let work_label = gtk::Label::new(Some(&recording.work.get_title()));
+                work_label.set_ellipsize(pango::EllipsizeMode::End);
+                work_label.set_halign(gtk::Align::Start);
 
-            let performers_label = gtk::Label::new(Some(&recording.get_performers()));
-            performers_label.set_ellipsize(pango::EllipsizeMode::End);
-            performers_label.set_opacity(0.5);
-            performers_label.set_halign(gtk::Align::Start);
+                let performers_label = gtk::Label::new(Some(&recording.get_performers()));
+                performers_label.set_ellipsize(pango::EllipsizeMode::End);
+                performers_label.set_opacity(0.5);
+                performers_label.set_halign(gtk::Align::Start);
 
-            let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
-            vbox.set_border_width(6);
-            vbox.add(&work_label);
-            vbox.add(&performers_label);
+                let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
+                vbox.set_border_width(6);
+                vbox.add(&work_label);
+                vbox.add(&performers_label);
 
-            vbox.upcast()
-        });
+                vbox.upcast()
+            });
 
         this.recording_list
             .set_selected(clone!(@strong this => move |recording| {
@@ -88,6 +89,7 @@ impl RecordingSelectorWorkScreen {
         context.spawn_local(async move {
             let recordings = clone
                 .backend
+                .db()
                 .get_recordings_for_work(work.id)
                 .await
                 .unwrap();
@@ -100,7 +102,7 @@ impl RecordingSelectorWorkScreen {
     }
 
     /// Sets a closure to be called when the user has selected a recording.
-    pub fn set_selected_cb<F: Fn(RecordingDescription) -> () + 'static>(&self, cb: F) {
+    pub fn set_selected_cb<F: Fn(Recording) -> () + 'static>(&self, cb: F) {
         self.selected_cb.replace(Some(Box::new(cb)));
     }
 }

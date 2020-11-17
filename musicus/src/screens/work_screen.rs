@@ -14,12 +14,12 @@ pub struct WorkScreen {
     backend: Rc<Backend>,
     widget: gtk::Box,
     stack: gtk::Stack,
-    recording_list: Rc<List<RecordingDescription>>,
+    recording_list: Rc<List<Recording>>,
     navigator: RefCell<Option<Rc<Navigator>>>,
 }
 
 impl WorkScreen {
-    pub fn new(backend: Rc<Backend>, work: WorkDescription) -> Rc<Self> {
+    pub fn new(backend: Rc<Backend>, work: Work) -> Rc<Self> {
         let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/work_screen.ui");
 
         get_widget!(builder, gtk::Box, widget);
@@ -53,7 +53,7 @@ impl WorkScreen {
 
         let recording_list = List::new(&gettext("No recordings found."));
 
-        recording_list.set_make_widget(|recording: &RecordingDescription| {
+        recording_list.set_make_widget(|recording: &Recording| {
             let work_label = gtk::Label::new(Some(&recording.work.get_title()));
 
             work_label.set_ellipsize(pango::EllipsizeMode::End);
@@ -72,7 +72,7 @@ impl WorkScreen {
             vbox.upcast()
         });
 
-        recording_list.set_filter(clone!(@strong search_entry => move |recording: &RecordingDescription| {
+        recording_list.set_filter(clone!(@strong search_entry => move |recording: &Recording| {
             let search = search_entry.get_text().to_string().to_lowercase();
             let text = recording.work.get_title().to_lowercase() + &recording.get_performers().to_lowercase();
             search.is_empty() || text.contains(&search)
@@ -113,7 +113,8 @@ impl WorkScreen {
         context.spawn_local(async move {
             let recordings = clone
                 .backend
-                .get_recordings_for_work(work.id)
+                .db()
+                .get_recordings_for_work(work.id as u32)
                 .await
                 .unwrap();
 
