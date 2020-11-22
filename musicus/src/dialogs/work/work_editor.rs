@@ -156,10 +156,14 @@ impl WorkEditor {
         }));
 
         composer_button.connect_clicked(clone!(@strong this => move |_| {
-            PersonSelector::new(this.backend.clone(), &this.parent, clone!(@strong this => move |person| {
+            let dialog = PersonSelector::new(this.backend.clone(), &this.parent);
+
+            dialog.set_selected_cb(clone!(@strong this => move |person| {
                 this.show_composer(&person);
                 this.composer.replace(Some(person));
-            })).show();
+            }));
+
+            dialog.show();
         }));
 
         this.instrument_list.set_make_widget(|instrument| {

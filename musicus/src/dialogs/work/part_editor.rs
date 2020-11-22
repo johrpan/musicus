@@ -76,10 +76,14 @@ impl PartEditor {
         }));
 
         composer_button.connect_clicked(clone!(@strong this => move |_| {
-            PersonSelector::new(this.backend.clone(), &this.window, clone!(@strong this => move |person| {
+            let dialog = PersonSelector::new(this.backend.clone(), &this.window);
+
+            dialog.set_selected_cb(clone!(@strong this => move |person| {
                 this.show_composer(Some(&person));
                 this.composer.replace(Some(person));
-            })).show();
+            }));
+
+            dialog.show();
         }));
 
         this.reset_composer_button

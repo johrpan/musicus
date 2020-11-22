@@ -33,7 +33,8 @@ run_command(
 )
 
 sources = files(
-  'backend/client.rs',
+  'backend/client/mod.rs',
+  'backend/client/persons.rs',
   'backend/library.rs',
   'backend/mod.rs',
   'backend/secure.rs',

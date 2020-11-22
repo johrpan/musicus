@@ -81,12 +81,16 @@ impl PerformanceEditor {
             }));
 
         person_button.connect_clicked(clone!(@strong this => move |_| {
-            PersonSelector::new(this.backend.clone(), &this.window, clone!(@strong this => move |person| {
+            let dialog = PersonSelector::new(this.backend.clone(), &this.window);
+
+            dialog.set_selected_cb(clone!(@strong this => move |person| {
                 this.show_person(Some(&person));
                 this.person.replace(Some(person));
                 this.show_ensemble(None);
                 this.ensemble.replace(None);
-            })).show();
+            }));
+
+            dialog.show();
         }));
 
         ensemble_button.connect_clicked(clone!(@strong this => move |_| {

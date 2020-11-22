@@ -6,6 +6,9 @@ use isahc::http::StatusCode;
 use isahc::prelude::*;
 use serde::Serialize;
 
+pub mod persons;
+pub use persons::*;
+
 /// Credentials used for login.
 #[derive(Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
