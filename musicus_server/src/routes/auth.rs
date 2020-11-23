@@ -167,30 +167,19 @@ pub fn authenticate(conn: &DbConn, token: &str) -> Result<User> {
     database::get_user(conn, &username)?.ok_or(anyhow!("User doesn't exist: {}", &username))
 }
 
-/// Check whether a token allows the user to create a new item.
-pub fn may_create(conn: &DbConn, token: &str) -> Result<bool> {
-    let user = authenticate(conn, token)?;
-
-    let result = if user.is_banned { false } else { false };
-
-    Ok(result)
+/// Check whether the user is allowed to create a new item.
+pub fn may_create(user: &User) -> bool {
+    !user.is_banned
 }
 
-/// Check whether a token allows the user to edit an item created by him or somebody else.
-pub fn may_edit(conn: &DbConn, token: &str, created_by: &str) -> Result<bool> {
-    let user = authenticate(conn, token)?;
+/// Check whether the user is allowed to edit an item created by him or somebody else.
+pub fn may_edit(user: &User, created_by: &str) -> bool {
+    !user.is_banned && (user.username == created_by || user.is_editor)
+}
 
-    let result = if user.is_banned {
-        false
-    } else if user.username == created_by {
-        true
-    } else if user.is_editor {
-        true
-    } else {
-        false
-    };
-
-    Ok(result)
+/// Check whether the user is allowed to delete an item.
+pub fn may_delete(user: &User) -> bool {
+    !user.is_banned && user.is_editor
 }
 
 /// Return a hash for a password that can be stored in the database.

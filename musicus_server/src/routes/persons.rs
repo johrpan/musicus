@@ -1,4 +1,4 @@
-use super::{authenticate, ServerError};
+use super::{authenticate, may_create, may_delete, may_edit, ServerError};
 use crate::database;
 use crate::database::{DbPool, PersonInsertion};
 use actix_web::{delete, get, post, put, web, HttpResponse};
@@ -31,10 +31,12 @@ pub async fn post_person(
     web::block(move || {
         let conn = db.into_inner().get()?;
         let user = authenticate(&conn, auth.token()).or(Err(ServerError::Unauthorized))?;
-
-        database::insert_person(&conn, id, &data.into_inner(), &user.username)?;
-
-        Ok(())
+        if may_create(&user) {
+            database::insert_person(&conn, id, &data.into_inner(), &user.username)?;
+            Ok(())
+        } else {
+            Err(ServerError::Forbidden)
+        }
     })
     .await?;
 
@@ -56,13 +58,12 @@ pub async fn put_person(
         let id = id.into_inner();
         let old_person = database::get_person(&conn, id)?.ok_or(ServerError::NotFound)?;
 
-        if user.username != old_person.created_by {
-            Err(ServerError::Forbidden)?;
+        if may_edit(&user, &old_person.created_by) {
+            database::update_person(&conn, id, &data.into_inner())?;
+            Ok(())
+        } else {
+            Err(ServerError::Forbidden)
         }
-
-        database::update_person(&conn, id, &data.into_inner())?;
-
-        Ok(())
     })
     .await?;
 
@@ -90,7 +91,7 @@ pub async fn delete_person(
         let conn = db.into_inner().get()?;
         let user = authenticate(&conn, auth.token()).or(Err(ServerError::Unauthorized))?;
 
-        if user.is_editor {
+        if may_delete(&user) {
             database::delete_person(&conn, id.into_inner())?;
             Ok(())
         } else {
