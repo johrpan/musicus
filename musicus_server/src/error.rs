@@ -26,14 +26,17 @@ impl error::ResponseError for ServerError {
 }
 
 impl From<r2d2::Error> for ServerError {
-    fn from(error: r2d2::Error) -> Self {
+    fn from(_: r2d2::Error) -> Self {
         ServerError::Internal
     }
 }
 
 impl From<anyhow::Error> for ServerError {
     fn from(error: anyhow::Error) -> Self {
-        ServerError::Internal
+        match error.downcast() {
+            Ok(error) => error,
+            Err(_) => ServerError::Internal,
+        }
     }
 }
 

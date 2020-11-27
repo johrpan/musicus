@@ -1,6 +1,6 @@
-use super::ServerError;
 use crate::database;
 use crate::database::{DbConn, DbPool, User, UserInsertion};
+use crate::error::ServerError;
 use actix_web::{get, post, put, web, HttpResponse};
 use actix_web_httpauth::extractors::bearer::BearerAuth;
 use anyhow::{anyhow, Result};
@@ -165,21 +165,6 @@ pub async fn login_user(
 pub fn authenticate(conn: &DbConn, token: &str) -> Result<User> {
     let username = verify_jwt(token)?.username;
     database::get_user(conn, &username)?.ok_or(anyhow!("User doesn't exist: {}", &username))
-}
-
-/// Check whether the user is allowed to create a new item.
-pub fn may_create(user: &User) -> bool {
-    !user.is_banned
-}
-
-/// Check whether the user is allowed to edit an item created by him or somebody else.
-pub fn may_edit(user: &User, created_by: &str) -> bool {
-    !user.is_banned && (user.username == created_by || user.is_editor)
-}
-
-/// Check whether the user is allowed to delete an item.
-pub fn may_delete(user: &User) -> bool {
-    !user.is_banned && user.is_editor
 }
 
 /// Return a hash for a password that can be stored in the database.

@@ -1,31 +1,62 @@
-use super::schema::{instrumentations, instruments, persons, work_parts, work_sections, works};
-use super::{get_person, DbConn, Instrument, Person};
+use super::schema::{instrumentations, work_parts, work_sections, works};
+use super::{get_instrument, get_person, DbConn, Instrument, Person, User};
+use crate::error::ServerError;
 use anyhow::{anyhow, Error, Result};
 use diesel::prelude::*;
-use diesel::{Insertable, Queryable};
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 
-/// A composition by a composer.
-#[derive(Insertable, Queryable, Debug, Clone)]
+/// A specific work by a composer.
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct Work {
+    pub id: u32,
+    pub title: String,
+    pub composer: Person,
+    pub instruments: Vec<Instrument>,
+    pub parts: Vec<WorkPart>,
+    pub sections: Vec<WorkSection>,
+}
+
+/// A playable part of a work.
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkPart {
+    pub title: String,
+    pub composer: Option<Person>,
+}
+
+/// A heading within the work structure.
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkSection {
+    pub title: String,
+    pub before_index: i64,
+}
+
+/// Table data for a work.
+#[derive(Insertable, Queryable, Debug, Clone)]
+#[table_name = "works"]
+struct WorkRow {
     pub id: i64,
     pub composer: i64,
     pub title: String,
     pub created_by: String,
 }
 
-/// Definition that a work uses an instrument.
+/// Table data for an instrumentation.
 #[derive(Insertable, Queryable, Debug, Clone)]
-pub struct Instrumentation {
+#[table_name = "instrumentations"]
+struct InstrumentationRow {
     pub id: i64,
     pub work: i64,
     pub instrument: i64,
 }
 
-/// A concrete work part that can be recorded.
+/// Table data for a work part.
 #[derive(Insertable, Queryable, Debug, Clone)]
-pub struct WorkPart {
+#[table_name = "work_parts"]
+struct WorkPartRow {
     pub id: i64,
     pub work: i64,
     pub part_index: i64,
@@ -33,275 +64,194 @@ pub struct WorkPart {
     pub composer: Option<i64>,
 }
 
-/// A heading between work parts.
+/// Table data for a work section.
+#[table_name = "work_sections"]
 #[derive(Insertable, Queryable, Debug, Clone)]
-pub struct WorkSection {
+struct WorkSectionRow {
     pub id: i64,
     pub work: i64,
     pub title: String,
     pub before_index: i64,
 }
-/// A structure for collecting all available information on a work part.
-#[derive(Serialize, Debug, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct WorkPartDescription {
-    pub title: String,
-    pub composer: Option<Person>,
-}
 
-/// A structure for collecting all available information on a work section.
-#[derive(Serialize, Debug, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct WorkSectionDescription {
-    pub title: String,
-    pub before_index: i64,
-}
-
-/// A structure for collecting all available information on a work.
-#[derive(Serialize, Debug, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct WorkDescription {
-    pub id: i64,
-    pub title: String,
-    pub composer: Person,
-    pub instruments: Vec<Instrument>,
-    pub parts: Vec<WorkPartDescription>,
-    pub sections: Vec<WorkSectionDescription>,
-}
-
-/// A structure representing data on a work part.
-#[derive(Deserialize, Debug, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct WorkPartInsertion {
-    pub title: String,
-    pub composer: Option<i64>,
-}
-
-/// A structure representing data on a work section.
-#[derive(Deserialize, Debug, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct WorkSectionInsertion {
-    pub title: String,
-    pub before_index: i64,
-}
-
-/// A structure representing data on a work.
-#[derive(Deserialize, Debug, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct WorkInsertion {
-    pub composer: i64,
-    pub title: String,
-    pub instruments: Vec<i64>,
-    pub parts: Vec<WorkPartInsertion>,
-    pub sections: Vec<WorkSectionInsertion>,
-}
-
-/// Insert a new work.
-pub fn insert_work(conn: &DbConn, id: u32, data: &WorkInsertion, created_by: &str) -> Result<()> {
+/// Update an existing work or insert a new one. This will only succeed, if the user is allowed to
+/// do that.
+// TODO: Also add newly created associated items.
+pub fn update_work(conn: &DbConn, work: &Work, user: &User) -> Result<()> {
     conn.transaction::<(), Error, _>(|| {
-        let id = id as i64;
+        let old_row = get_work_row(conn, work.id)?;
 
-        diesel::insert_into(works::table)
-            .values(Work {
+        let allowed = match old_row {
+            Some(row) => user.may_edit(&row.created_by),
+            None => user.may_create(),
+        };
+
+        if allowed {
+            let id = work.id as i64;
+
+            // This will also delete rows from associated tables.
+            diesel::delete(works::table)
+                .filter(works::id.eq(id))
+                .execute(conn)?;
+
+            let row = WorkRow {
                 id,
-                composer: data.composer.clone(),
-                title: data.title.clone(),
-                created_by: created_by.to_string(),
-            })
-            .execute(conn)?;
+                composer: work.composer.id as i64,
+                title: work.title.clone(),
+                created_by: user.username.clone(),
+            };
 
-        insert_work_data(conn, id, data)?;
+            diesel::insert_into(works::table)
+                .values(row)
+                .execute(conn)?;
 
-        Ok(())
+            for instrument in &work.instruments {
+                diesel::insert_into(instrumentations::table)
+                    .values(InstrumentationRow {
+                        id: rand::random(),
+                        work: id,
+                        instrument: instrument.id as i64,
+                    })
+                    .execute(conn)?;
+            }
+
+            for (index, part) in work.parts.iter().enumerate() {
+                let row = WorkPartRow {
+                    id: rand::random(),
+                    work: id,
+                    part_index: index.try_into()?,
+                    title: part.title.clone(),
+                    composer: part.composer.as_ref().map(|person| person.id as i64),
+                };
+
+                diesel::insert_into(work_parts::table)
+                    .values(row)
+                    .execute(conn)?;
+            }
+
+            for section in &work.sections {
+                let row = WorkSectionRow {
+                    id: rand::random(),
+                    work: id,
+                    title: section.title.clone(),
+                    before_index: section.before_index,
+                };
+
+                diesel::insert_into(work_sections::table)
+                    .values(row)
+                    .execute(conn)?;
+            }
+
+            Ok(())
+        } else {
+            Err(Error::new(ServerError::Forbidden))
+        }
     })?;
 
     Ok(())
 }
 
-/// Update an existing work.
-pub fn update_work(conn: &DbConn, id: u32, data: &WorkInsertion) -> Result<()> {
-    conn.transaction::<(), Error, _>(|| {
-        let id = id as i64;
+/// Get an existing work and all available information from related tables.
+pub fn get_work(conn: &DbConn, id: u32) -> Result<Option<Work>> {
+    let work = match get_work_row(conn, id)? {
+        Some(row) => Some(get_description_for_work_row(conn, &row)?),
+        None => None,
+    };
 
-        diesel::delete(instrumentations::table)
-            .filter(instrumentations::work.eq(id))
-            .execute(conn)?;
-
-        diesel::delete(work_parts::table)
-            .filter(work_parts::work.eq(id))
-            .execute(conn)?;
-
-        diesel::delete(work_sections::table)
-            .filter(work_sections::work.eq(id))
-            .execute(conn)?;
-
-        diesel::update(works::table)
-            .filter(works::id.eq(id))
-            .set((
-                works::composer.eq(data.composer),
-                works::title.eq(data.title.clone()),
-            ))
-            .execute(conn)?;
-
-        insert_work_data(conn, id, data)?;
-
-        Ok(())
-    })?;
-
-    Ok(())
+    Ok(work)
 }
 
-/// Helper method to populate tables related to a work.
-fn insert_work_data(conn: &DbConn, id: i64, data: &WorkInsertion) -> Result<()> {
-    for instrument in &data.instruments {
-        diesel::insert_into(instrumentations::table)
-            .values(Instrumentation {
-                id: rand::random(),
-                work: id,
-                instrument: *instrument,
-            })
-            .execute(conn)?;
+/// Delete an existing work. This will fail if there are still other tables that relate to
+/// this work except for the things that are part of the information on the work itself. Also,
+/// this will only succeed, if the provided user is allowed to delete the work.
+pub fn delete_work(conn: &DbConn, id: u32, user: &User) -> Result<()> {
+    if user.may_delete() {
+        diesel::delete(works::table.filter(works::id.eq(id as i64))).execute(conn)?;
+        Ok(())
+    } else {
+        Err(Error::new(ServerError::Forbidden))
+    }
+}
+
+/// Get all existing works by a composer and related information from other tables.
+pub fn get_works(conn: &DbConn, composer_id: u32) -> Result<Vec<Work>> {
+    let mut works: Vec<Work> = Vec::new();
+
+    let rows = works::table
+        .filter(works::composer.eq(composer_id as i64))
+        .load::<WorkRow>(conn)?;
+
+    for row in rows {
+        works.push(get_description_for_work_row(conn, &row)?);
     }
 
-    for (index, part) in data.parts.iter().enumerate() {
-        let part = WorkPart {
-            id: rand::random(),
-            work: id,
-            part_index: index.try_into()?,
-            title: part.title.clone(),
-            composer: part.composer,
-        };
-
-        diesel::insert_into(work_parts::table)
-            .values(part)
-            .execute(conn)?;
-    }
-
-    for section in &data.sections {
-        let section = WorkSection {
-            id: rand::random(),
-            work: id,
-            title: section.title.clone(),
-            before_index: section.before_index,
-        };
-
-        diesel::insert_into(work_sections::table)
-            .values(section)
-            .execute(conn)?;
-    }
-
-    Ok(())
+    Ok(works)
 }
 
 /// Get an already existing work without related rows from other tables.
-fn get_work(conn: &DbConn, id: u32) -> Result<Option<Work>> {
+fn get_work_row(conn: &DbConn, id: u32) -> Result<Option<WorkRow>> {
     Ok(works::table
         .filter(works::id.eq(id as i64))
-        .load::<Work>(conn)?
-        .first()
-        .cloned())
+        .load::<WorkRow>(conn)?
+        .into_iter()
+        .next())
 }
 
 /// Retrieve all available information on a work from related tables.
-fn get_description_for_work(conn: &DbConn, work: &Work) -> Result<WorkDescription> {
+fn get_description_for_work_row(conn: &DbConn, row: &WorkRow) -> Result<Work> {
     let mut instruments: Vec<Instrument> = Vec::new();
 
     let instrumentations = instrumentations::table
-        .filter(instrumentations::work.eq(work.id))
-        .load::<Instrumentation>(conn)?;
+        .filter(instrumentations::work.eq(row.id))
+        .load::<InstrumentationRow>(conn)?;
 
     for instrumentation in instrumentations {
-        instruments.push(
-            instruments::table
-                .filter(instruments::id.eq(instrumentation.instrument))
-                .load::<Instrument>(conn)?
-                .first()
-                .cloned()
-                .ok_or(anyhow!(
-                    "No instrument with ID: {}",
-                    instrumentation.instrument
-                ))?,
-        );
+        let id = instrumentation.instrument as u32;
+        instruments
+            .push(get_instrument(conn, id)?.ok_or(anyhow!("No instrument with ID: {}", id))?);
     }
 
-    let mut part_descriptions: Vec<WorkPartDescription> = Vec::new();
+    let mut parts: Vec<WorkPart> = Vec::new();
 
-    let work_parts = work_parts::table
-        .filter(work_parts::work.eq(work.id))
-        .load::<WorkPart>(conn)?;
+    let part_rows = work_parts::table
+        .filter(work_parts::work.eq(row.id))
+        .load::<WorkPartRow>(conn)?;
 
-    for work_part in work_parts {
-        part_descriptions.push(WorkPartDescription {
-            title: work_part.title,
-            composer: match work_part.composer {
-                Some(composer) => Some(
-                    persons::table
-                        .filter(persons::id.eq(composer))
-                        .load::<Person>(conn)?
-                        .first()
-                        .cloned()
-                        .ok_or(anyhow!("No person with ID: {}", composer))?,
-                ),
+    for part_row in part_rows {
+        parts.push(WorkPart {
+            title: part_row.title,
+            composer: match part_row.composer {
+                Some(id) => {
+                    let id = id as u32;
+                    Some(get_person(conn, id)?.ok_or(anyhow!("No person with ID: {}", id))?)
+                }
                 None => None,
             },
         });
     }
 
-    let mut section_descriptions: Vec<WorkSectionDescription> = Vec::new();
+    let mut sections: Vec<WorkSection> = Vec::new();
 
-    let sections = work_sections::table
-        .filter(work_sections::work.eq(work.id))
-        .load::<WorkSection>(conn)?;
+    let section_rows = work_sections::table
+        .filter(work_sections::work.eq(row.id))
+        .load::<WorkSectionRow>(conn)?;
 
-    for section in sections {
-        section_descriptions.push(WorkSectionDescription {
+    for section in section_rows {
+        sections.push(WorkSection {
             title: section.title,
             before_index: section.before_index,
         });
     }
 
-    let person_id = work.composer.try_into()?;
-    let person =
-        get_person(conn, person_id)?.ok_or(anyhow!("Person doesn't exist: {}", person_id))?;
+    let id = row.composer as u32;
+    let composer = get_person(conn, id)?.ok_or(anyhow!("No person with ID: {}", id))?;
 
-    Ok(WorkDescription {
-        id: work.id,
-        composer: person,
-        title: work.title.clone(),
+    Ok(Work {
+        id: row.id as u32,
+        composer,
+        title: row.title.clone(),
         instruments,
-        parts: part_descriptions,
-        sections: section_descriptions,
+        parts,
+        sections,
     })
-}
-
-/// Get an existing work and all available information from related tables.
-pub fn get_work_description(conn: &DbConn, id: u32) -> Result<Option<WorkDescription>> {
-    let work_description = match get_work(conn, id)? {
-        Some(work) => Some(get_description_for_work(conn, &work)?),
-        None => None,
-    };
-
-    Ok(work_description)
-}
-
-/// Delete an existing work. This will fail if there are still other tables that relate to
-/// this work except for the things that are part of the information on the work it
-pub fn delete_work(conn: &DbConn, id: u32) -> Result<()> {
-    diesel::delete(works::table.filter(works::id.eq(id as i64))).execute(conn)?;
-    Ok(())
-}
-
-/// Get all existing works by a composer and related information from other tables.
-pub fn get_work_descriptions(conn: &DbConn, composer_id: u32) -> Result<Vec<WorkDescription>> {
-    let mut work_descriptions: Vec<WorkDescription> = Vec::new();
-
-    let works = works::table
-        .filter(works::composer.eq(composer_id as i64))
-        .load::<Work>(conn)?;
-
-    for work in works {
-        work_descriptions.push(get_description_for_work(conn, &work)?);
-    }
-
-    Ok(work_descriptions)
 }

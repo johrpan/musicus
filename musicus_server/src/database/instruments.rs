@@ -1,75 +1,99 @@
 use super::schema::instruments;
-use super::DbConn;
-use anyhow::Result;
+use super::{DbConn, User};
+use crate::error::ServerError;
+use anyhow::{Error, Result};
 use diesel::prelude::*;
-use diesel::{Insertable, Queryable};
 use serde::{Deserialize, Serialize};
 
-/// An instrument or any other possible role within a recording.
-#[derive(Insertable, Queryable, Serialize, Debug, Clone)]
+/// A instrument as represented within the API.
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Instrument {
+    pub id: u32,
+    pub name: String,
+}
+
+/// A instrument as represented in the database.
+#[derive(Insertable, Queryable, AsChangeset, Debug, Clone)]
+#[table_name = "instruments"]
+struct InstrumentRow {
     pub id: i64,
     pub name: String,
-
-    #[serde(skip)]
     pub created_by: String,
 }
 
-/// A structure representing data on an instrument.
-#[derive(AsChangeset, Deserialize, Debug, Clone)]
-#[table_name = "instruments"]
-#[serde(rename_all = "camelCase")]
-pub struct InstrumentInsertion {
-    pub name: String,
+impl From<InstrumentRow> for Instrument {
+    fn from(row: InstrumentRow) -> Instrument {
+        Instrument {
+            id: row.id as u32,
+            name: row.name,
+        }
+    }
 }
 
-/// Insert a new instrument.
-pub fn insert_instrument(
-    conn: &DbConn,
-    id: u32,
-    data: &InstrumentInsertion,
-    created_by: &str,
-) -> Result<()> {
-    let instrument = Instrument {
-        id: id as i64,
-        name: data.name.clone(),
-        created_by: created_by.to_string(),
+/// Update an existing instrument or insert a new one. This will only work, if the provided user is
+/// allowed to do that.
+pub fn update_instrument(conn: &DbConn, instrument: &Instrument, user: &User) -> Result<()> {
+    let old_row = get_instrument_row(conn, instrument.id)?;
+
+    let allowed = match old_row {
+        Some(row) => user.may_edit(&row.created_by),
+        None => user.may_create(),
     };
 
-    diesel::insert_into(instruments::table)
-        .values(instrument)
-        .execute(conn)?;
+    if allowed {
+        let new_row = InstrumentRow {
+            id: instrument.id as i64,
+            name: instrument.name.clone(),
+            created_by: user.username.clone(),
+        };
 
-    Ok(())
-}
+        diesel::insert_into(instruments::table)
+            .values(&new_row)
+            .on_conflict(instruments::id)
+            .do_update()
+            .set(&new_row)
+            .execute(conn)?;
 
-/// Update an existing instrument.
-pub fn update_instrument(conn: &DbConn, id: u32, data: &InstrumentInsertion) -> Result<()> {
-    diesel::update(instruments::table)
-        .filter(instruments::id.eq(id as i64))
-        .set(data)
-        .execute(conn)?;
-
-    Ok(())
+        Ok(())
+    } else {
+        Err(Error::new(ServerError::Forbidden))
+    }
 }
 
 /// Get an existing instrument.
 pub fn get_instrument(conn: &DbConn, id: u32) -> Result<Option<Instrument>> {
-    Ok(instruments::table
-        .filter(instruments::id.eq(id as i64))
-        .load::<Instrument>(conn)?
-        .first()
-        .cloned())
+    let row = get_instrument_row(conn, id)?;
+    let instrument = row.map(|row| row.into());
+
+    Ok(instrument)
 }
 
-/// Delete an existing instrument.
-pub fn delete_instrument(conn: &DbConn, id: u32) -> Result<()> {
-    diesel::delete(instruments::table.filter(instruments::id.eq(id as i64))).execute(conn)?;
-    Ok(())
+/// Delete an existing instrument. This will only work if the provided user is allowed to do that.
+pub fn delete_instrument(conn: &DbConn, id: u32, user: &User) -> Result<()> {
+    if user.may_delete() {
+        diesel::delete(instruments::table.filter(instruments::id.eq(id as i64))).execute(conn)?;
+        Ok(())
+    } else {
+        Err(Error::new(ServerError::Forbidden))
+    }
 }
 
 /// Get all existing instruments.
 pub fn get_instruments(conn: &DbConn) -> Result<Vec<Instrument>> {
-    Ok(instruments::table.load::<Instrument>(conn)?)
+    let rows = instruments::table.load::<InstrumentRow>(conn)?;
+    let instruments: Vec<Instrument> = rows.into_iter().map(|row| row.into()).collect();
+
+    Ok(instruments)
+}
+
+/// Get a instrument row if it exists.
+fn get_instrument_row(conn: &DbConn, id: u32) -> Result<Option<InstrumentRow>> {
+    let row = instruments::table
+        .filter(instruments::id.eq(id as i64))
+        .load::<InstrumentRow>(conn)?
+        .into_iter()
+        .next();
+
+    Ok(row)
 }

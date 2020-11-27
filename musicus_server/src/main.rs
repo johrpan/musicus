@@ -5,6 +5,7 @@ extern crate diesel;
 use actix_web::{App, HttpServer};
 
 mod database;
+mod error;
 
 mod routes;
 use routes::*;
@@ -27,9 +28,9 @@ async fn main() -> std::io::Result<()> {
             .service(put_user)
             .service(get_user)
             .service(get_person)
-            .service(post_person)
-            .service(put_person)
+            .service(update_person)
             .service(get_persons)
+            .service(delete_person)
     });
 
     server.bind("127.0.0.1:8087")?.run().await

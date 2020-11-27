@@ -15,6 +15,23 @@ pub struct User {
     pub is_banned: bool,
 }
 
+impl User {
+    /// Check whether the user is allowed to create a new item.
+    pub fn may_create(&self) -> bool {
+        !self.is_banned
+    }
+
+    /// Check whether the user is allowed to edit an item created by him or somebody else.
+    pub fn may_edit(&self, creator: &str) -> bool {
+        !self.is_banned && (self.username == creator || self.is_editor)
+    }
+
+    /// Check whether the user is allowed to delete an item.
+    pub fn may_delete(&self) -> bool {
+        !self.is_banned && self.is_editor
+    }
+}
+
 /// A structure representing data on a user.
 #[derive(AsChangeset, Deserialize, Debug, Clone)]
 #[table_name = "users"]
