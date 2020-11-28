@@ -145,14 +145,14 @@ impl PersonScreen {
             }));
 
         edit_action.connect_activate(clone!(@strong result => move |_, _| {
-            PersonEditor::new(result.backend.clone(), &result.window, Some(result.person.clone()), |_| {}).show();
+            PersonEditor::new(result.backend.clone(), &result.window, Some(result.person.clone())).show();
         }));
 
         delete_action.connect_activate(clone!(@strong result => move |_, _| {
             let context = glib::MainContext::default();
             let clone = result.clone();
             context.spawn_local(async move {
-                clone.backend.db().delete_person(clone.person.id).await.unwrap();
+                clone.backend.db().delete_person(&clone.person.id).await.unwrap();
             });
         }));
 
@@ -162,13 +162,13 @@ impl PersonScreen {
             let works = clone
                 .backend
                 .db()
-                .get_works(clone.person.id as u32)
+                .get_works(&clone.person.id)
                 .await
                 .unwrap();
             let recordings = clone
                 .backend
                 .db()
-                .get_recordings_for_person(clone.person.id as u32)
+                .get_recordings_for_person(&clone.person.id)
                 .await
                 .unwrap();
 

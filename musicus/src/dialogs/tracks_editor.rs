@@ -81,7 +81,7 @@ impl TracksEditor {
                 let this = this.clone();
                 context.spawn_local(async move {
                     this.backend.db().update_tracks(
-                        this.recording.borrow().as_ref().unwrap().id as u32,
+                        &this.recording.borrow().as_ref().unwrap().id,
                         this.tracks.borrow().clone(),
                     ).await.unwrap();
 

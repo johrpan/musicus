@@ -1,6 +1,6 @@
 table! {
     ensembles (id) {
-        id -> BigInt,
+        id -> Text,
         name -> Text,
     }
 }
@@ -8,14 +8,14 @@ table! {
 table! {
     instrumentations (id) {
         id -> BigInt,
-        work -> BigInt,
-        instrument -> BigInt,
+        work -> Text,
+        instrument -> Text,
     }
 }
 
 table! {
     instruments (id) {
-        id -> BigInt,
+        id -> Text,
         name -> Text,
     }
 }
@@ -23,16 +23,16 @@ table! {
 table! {
     performances (id) {
         id -> BigInt,
-        recording -> BigInt,
-        person -> Nullable<BigInt>,
-        ensemble -> Nullable<BigInt>,
-        role -> Nullable<BigInt>,
+        recording -> Text,
+        person -> Nullable<Text>,
+        ensemble -> Nullable<Text>,
+        role -> Nullable<Text>,
     }
 }
 
 table! {
     persons (id) {
-        id -> BigInt,
+        id -> Text,
         first_name -> Text,
         last_name -> Text,
     }
@@ -40,8 +40,8 @@ table! {
 
 table! {
     recordings (id) {
-        id -> BigInt,
-        work -> BigInt,
+        id -> Text,
+        work -> Text,
         comment -> Text,
     }
 }
@@ -50,7 +50,7 @@ table! {
     tracks (id) {
         id -> BigInt,
         file_name -> Text,
-        recording -> BigInt,
+        recording -> Text,
         track_index -> Integer,
         work_parts -> Text,
     }
@@ -59,17 +59,17 @@ table! {
 table! {
     work_parts (id) {
         id -> BigInt,
-        work -> BigInt,
+        work -> Text,
         part_index -> BigInt,
         title -> Text,
-        composer -> Nullable<BigInt>,
+        composer -> Nullable<Text>,
     }
 }
 
 table! {
     work_sections (id) {
         id -> BigInt,
-        work -> BigInt,
+        work -> Text,
         title -> Text,
         before_index -> BigInt,
     }
@@ -77,8 +77,8 @@ table! {
 
 table! {
     works (id) {
-        id -> BigInt,
-        composer -> BigInt,
+        id -> Text,
+        composer -> Text,
         title -> Text,
     }
 }

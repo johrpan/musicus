@@ -27,6 +27,14 @@ mod schema;
 // This makes the SQL migration scripts accessible from the code.
 embed_migrations!();
 
+/// Generate a random string suitable as an item ID.
+pub fn generate_id() -> String {
+    let mut buffer = uuid::Uuid::encode_buffer();
+    let id = uuid::Uuid::new_v4().to_simple().encode_lower(&mut buffer);
+
+    id.to_string()
+}
+
 /// Interface to a Musicus database.
 pub struct Database {
     connection: SqliteConnection,

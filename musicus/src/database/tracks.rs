@@ -10,7 +10,7 @@ use std::convert::{TryFrom, TryInto};
 struct TrackRow {
     pub id: i64,
     pub file_name: String,
-    pub recording: i64,
+    pub recording: String,
     pub track_index: i32,
     pub work_parts: String,
 }
@@ -43,14 +43,14 @@ impl TryFrom<TrackRow> for Track {
 
 impl Database {
     /// Insert or update tracks for the specified recording.
-    pub fn update_tracks(&self, recording_id: u32, tracks: Vec<Track>) -> Result<()> {
+    pub fn update_tracks(&self, recording_id: &str, tracks: Vec<Track>) -> Result<()> {
         self.delete_tracks(recording_id)?;
 
         for (index, track) in tracks.iter().enumerate() {
             let row = TrackRow {
                 id: rand::random(),
                 file_name: track.file_name.clone(),
-                recording: recording_id as i64,
+                recording: recording_id.to_string(),
                 track_index: index.try_into()?,
                 work_parts: track
                     .work_parts
@@ -69,19 +69,19 @@ impl Database {
     }
 
     /// Delete all tracks for the specified recording.
-    pub fn delete_tracks(&self, recording_id: u32) -> Result<()> {
-        diesel::delete(tracks::table.filter(tracks::recording.eq(recording_id as i64)))
+    pub fn delete_tracks(&self, recording_id: &str) -> Result<()> {
+        diesel::delete(tracks::table.filter(tracks::recording.eq(recording_id)))
             .execute(&self.connection)?;
 
         Ok(())
     }
 
     /// Get all tracks of the specified recording.
-    pub fn get_tracks(&self, recording_id: u32) -> Result<Vec<Track>> {
+    pub fn get_tracks(&self, recording_id: &str) -> Result<Vec<Track>> {
         let mut tracks = Vec::<Track>::new();
 
         let rows = tracks::table
-            .filter(tracks::recording.eq(recording_id as i64))
+            .filter(tracks::recording.eq(recording_id))
             .order_by(tracks::track_index)
             .load::<TrackRow>(&self.connection)?;
 

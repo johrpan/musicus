@@ -20,7 +20,7 @@ pub struct RecordingEditor {
     work_label: gtk::Label,
     comment_entry: gtk::Entry,
     performance_list: Rc<List<Performance>>,
-    id: u32,
+    id: String,
     work: RefCell<Option<Work>>,
     performances: RefCell<Vec<Performance>>,
     selected_cb: RefCell<Option<Box<dyn Fn(Recording) -> ()>>>,
@@ -59,7 +59,7 @@ impl RecordingEditor {
                 comment_entry.set_text(&recording.comment);
                 (recording.id, Some(recording.work), recording.performances)
             }
-            None => (rand::random::<u32>().into(), None, Vec::new()),
+            None => (generate_id(), None, Vec::new()),
         };
 
         let this = Rc::new(RecordingEditor {
@@ -88,7 +88,7 @@ impl RecordingEditor {
         this.save_button
             .connect_clicked(clone!(@strong this => move |_| {
                 let recording = Recording {
-                    id: this.id,
+                    id: this.id.clone(),
                     work: this.work.borrow().clone().expect("Tried to create recording without work!"),
                     comment: this.comment_entry.get_text().to_string(),
                     performances: this.performances.borrow().clone(),

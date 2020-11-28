@@ -12,7 +12,7 @@ where
     backend: Rc<Backend>,
     window: libhandy::Window,
     callback: F,
-    id: u32,
+    id: String,
     name_entry: gtk::Entry,
 }
 
@@ -26,8 +26,7 @@ where
         instrument: Option<Instrument>,
         callback: F,
     ) -> Rc<Self> {
-        let builder =
-            gtk::Builder::from_resource("/de/johrpan/musicus/ui/instrument_editor.ui");
+        let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/instrument_editor.ui");
 
         get_widget!(builder, libhandy::Window, window);
         get_widget!(builder, gtk::Button, cancel_button);
@@ -39,7 +38,7 @@ where
                 name_entry.set_text(&instrument.name);
                 instrument.id
             }
-            None => rand::random::<u32>().into(),
+            None => generate_id(),
         };
 
         let result = Rc::new(InstrumentEditor {
@@ -56,7 +55,7 @@ where
 
         save_button.connect_clicked(clone!(@strong result => move |_| {
             let instrument = Instrument {
-                id: result.id,
+                id: result.id.clone(),
                 name: result.name_entry.get_text().to_string(),
             };
 

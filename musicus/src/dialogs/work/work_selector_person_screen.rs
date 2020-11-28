@@ -80,7 +80,7 @@ impl WorkSelectorPersonScreen {
         let context = glib::MainContext::default();
         let clone = this.clone();
         context.spawn_local(async move {
-            let works = clone.backend.db().get_works(person.id).await.unwrap();
+            let works = clone.backend.db().get_works(&person.id).await.unwrap();
 
             clone.work_list.show_items(works);
             clone.stack.set_visible_child_name("content");

@@ -115,7 +115,7 @@ impl WorkScreen {
             let context = glib::MainContext::default();
             let clone = result.clone();
             context.spawn_local(async move {
-                clone.backend.db().delete_work(clone.work.id).await.unwrap();
+                clone.backend.db().delete_work(&clone.work.id).await.unwrap();
             });
         }));
 
@@ -125,7 +125,7 @@ impl WorkScreen {
             let recordings = clone
                 .backend
                 .db()
-                .get_recordings_for_work(clone.work.id as u32)
+                .get_recordings_for_work(&clone.work.id)
                 .await
                 .unwrap();
 

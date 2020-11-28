@@ -116,7 +116,7 @@ impl EnsembleScreen {
             let context = glib::MainContext::default();
             let clone = result.clone();
             context.spawn_local(async move {
-                clone.backend.db().delete_ensemble(clone.ensemble.id).await.unwrap();
+                clone.backend.db().delete_ensemble(&clone.ensemble.id).await.unwrap();
             });
         }));
 
@@ -126,7 +126,7 @@ impl EnsembleScreen {
             let recordings = clone
                 .backend
                 .db()
-                .get_recordings_for_ensemble(clone.ensemble.id)
+                .get_recordings_for_ensemble(&clone.ensemble.id)
                 .await
                 .unwrap();
 

@@ -10,6 +10,7 @@ where
     F: Fn(Person) -> () + 'static,
 {
     backend: Rc<Backend>,
+    id: String,
     window: libhandy::Window,
     callback: F,
     id: u32,

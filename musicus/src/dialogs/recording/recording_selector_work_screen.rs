@@ -90,7 +90,7 @@ impl RecordingSelectorWorkScreen {
             let recordings = clone
                 .backend
                 .db()
-                .get_recordings_for_work(work.id)
+                .get_recordings_for_work(&work.id)
                 .await
                 .unwrap();
 

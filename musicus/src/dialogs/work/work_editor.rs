@@ -29,7 +29,7 @@ pub struct WorkEditor {
     composer_label: gtk::Label,
     instrument_list: Rc<List<Instrument>>,
     part_list: Rc<List<PartOrSection>>,
-    id: u32,
+    id: String,
     composer: RefCell<Option<Person>>,
     instruments: RefCell<Vec<Instrument>>,
     structure: RefCell<Vec<PartOrSection>>,
@@ -91,7 +91,7 @@ impl WorkEditor {
 
                 (work.id, Some(work.composer), work.instruments, structure)
             }
-            None => (rand::random::<u32>().into(), None, Vec::new(), Vec::new()),
+            None => (generate_id(), None, Vec::new(), Vec::new()),
         };
 
         let this = Rc::new(Self {
@@ -137,7 +137,7 @@ impl WorkEditor {
             }
 
             let work = Work {
-                id: this.id,
+                id: this.id.clone(),
                 title: this.title_entry.get_text().to_string(),
                 composer: this.composer.borrow().clone().expect("Tried to create work without composer!"),
                 instruments: this.instruments.borrow().clone(),

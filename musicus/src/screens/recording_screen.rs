@@ -118,7 +118,7 @@ impl RecordingScreen {
             let context = glib::MainContext::default();
             let clone = result.clone();
             context.spawn_local(async move {
-                clone.backend.db().delete_recording(clone.recording.id).await.unwrap();
+                clone.backend.db().delete_recording(&clone.recording.id).await.unwrap();
             });
         }));
 
@@ -130,7 +130,7 @@ impl RecordingScreen {
             let context = glib::MainContext::default();
             let clone = result.clone();
             context.spawn_local(async move {
-                clone.backend.db().delete_tracks(clone.recording.id).await.unwrap();
+                clone.backend.db().delete_tracks(&clone.recording.id).await.unwrap();
             });
         }));
 
@@ -140,7 +140,7 @@ impl RecordingScreen {
             let tracks = clone
                 .backend
                 .db()
-                .get_tracks(clone.recording.id)
+                .get_tracks(&clone.recording.id)
                 .await
                 .unwrap();
 

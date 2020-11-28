@@ -12,7 +12,7 @@ where
     backend: Rc<Backend>,
     window: libhandy::Window,
     callback: F,
-    id: u32,
+    id: String,
     name_entry: gtk::Entry,
 }
 
@@ -38,7 +38,7 @@ where
                 name_entry.set_text(&ensemble.name);
                 ensemble.id
             }
-            None => rand::random::<u32>().into(),
+            None => generate_id(),
         };
 
         let result = Rc::new(EnsembleEditor {
@@ -55,7 +55,7 @@ where
 
         save_button.connect_clicked(clone!(@strong result => move |_| {
             let ensemble = Ensemble {
-                id: result.id,
+                id: result.id.clone(),
                 name: result.name_entry.get_text().to_string(),
             };
 
