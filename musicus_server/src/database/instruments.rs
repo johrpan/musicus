@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Instrument {
-    pub id: u32,
+    pub id: String,
     pub name: String,
 }
 
@@ -17,7 +17,7 @@ pub struct Instrument {
 #[derive(Insertable, Queryable, AsChangeset, Debug, Clone)]
 #[table_name = "instruments"]
 struct InstrumentRow {
-    pub id: i64,
+    pub id: String,
     pub name: String,
     pub created_by: String,
 }
@@ -25,7 +25,7 @@ struct InstrumentRow {
 impl From<InstrumentRow> for Instrument {
     fn from(row: InstrumentRow) -> Instrument {
         Instrument {
-            id: row.id as u32,
+            id: row.id,
             name: row.name,
         }
     }
@@ -34,7 +34,7 @@ impl From<InstrumentRow> for Instrument {
 /// Update an existing instrument or insert a new one. This will only work, if the provided user is
 /// allowed to do that.
 pub fn update_instrument(conn: &DbConn, instrument: &Instrument, user: &User) -> Result<()> {
-    let old_row = get_instrument_row(conn, instrument.id)?;
+    let old_row = get_instrument_row(conn, &instrument.id)?;
 
     let allowed = match old_row {
         Some(row) => user.may_edit(&row.created_by),
@@ -43,7 +43,7 @@ pub fn update_instrument(conn: &DbConn, instrument: &Instrument, user: &User) ->
 
     if allowed {
         let new_row = InstrumentRow {
-            id: instrument.id as i64,
+            id: instrument.id.clone(),
             name: instrument.name.clone(),
             created_by: user.username.clone(),
         };
@@ -62,7 +62,7 @@ pub fn update_instrument(conn: &DbConn, instrument: &Instrument, user: &User) ->
 }
 
 /// Get an existing instrument.
-pub fn get_instrument(conn: &DbConn, id: u32) -> Result<Option<Instrument>> {
+pub fn get_instrument(conn: &DbConn, id: &str) -> Result<Option<Instrument>> {
     let row = get_instrument_row(conn, id)?;
     let instrument = row.map(|row| row.into());
 
@@ -70,9 +70,9 @@ pub fn get_instrument(conn: &DbConn, id: u32) -> Result<Option<Instrument>> {
 }
 
 /// Delete an existing instrument. This will only work if the provided user is allowed to do that.
-pub fn delete_instrument(conn: &DbConn, id: u32, user: &User) -> Result<()> {
+pub fn delete_instrument(conn: &DbConn, id: &str, user: &User) -> Result<()> {
     if user.may_delete() {
-        diesel::delete(instruments::table.filter(instruments::id.eq(id as i64))).execute(conn)?;
+        diesel::delete(instruments::table.filter(instruments::id.eq(id))).execute(conn)?;
         Ok(())
     } else {
         Err(Error::new(ServerError::Forbidden))
@@ -88,9 +88,9 @@ pub fn get_instruments(conn: &DbConn) -> Result<Vec<Instrument>> {
 }
 
 /// Get a instrument row if it exists.
-fn get_instrument_row(conn: &DbConn, id: u32) -> Result<Option<InstrumentRow>> {
+fn get_instrument_row(conn: &DbConn, id: &str) -> Result<Option<InstrumentRow>> {
     let row = instruments::table
-        .filter(instruments::id.eq(id as i64))
+        .filter(instruments::id.eq(id))
         .load::<InstrumentRow>(conn)?
         .into_iter()
         .next();

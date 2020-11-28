@@ -10,7 +10,7 @@ use std::convert::TryInto;
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Work {
-    pub id: u32,
+    pub id: String,
     pub title: String,
     pub composer: Person,
     pub instruments: Vec<Instrument>,
@@ -38,8 +38,8 @@ pub struct WorkSection {
 #[derive(Insertable, Queryable, Debug, Clone)]
 #[table_name = "works"]
 struct WorkRow {
-    pub id: i64,
-    pub composer: i64,
+    pub id: String,
+    pub composer: String,
     pub title: String,
     pub created_by: String,
 }
@@ -49,8 +49,8 @@ struct WorkRow {
 #[table_name = "instrumentations"]
 struct InstrumentationRow {
     pub id: i64,
-    pub work: i64,
-    pub instrument: i64,
+    pub work: String,
+    pub instrument: String,
 }
 
 /// Table data for a work part.
@@ -58,10 +58,10 @@ struct InstrumentationRow {
 #[table_name = "work_parts"]
 struct WorkPartRow {
     pub id: i64,
-    pub work: i64,
+    pub work: String,
     pub part_index: i64,
     pub title: String,
-    pub composer: Option<i64>,
+    pub composer: Option<String>,
 }
 
 /// Table data for a work section.
@@ -69,7 +69,7 @@ struct WorkPartRow {
 #[derive(Insertable, Queryable, Debug, Clone)]
 struct WorkSectionRow {
     pub id: i64,
-    pub work: i64,
+    pub work: String,
     pub title: String,
     pub before_index: i64,
 }
@@ -79,7 +79,7 @@ struct WorkSectionRow {
 // TODO: Also add newly created associated items.
 pub fn update_work(conn: &DbConn, work: &Work, user: &User) -> Result<()> {
     conn.transaction::<(), Error, _>(|| {
-        let old_row = get_work_row(conn, work.id)?;
+        let old_row = get_work_row(conn, &work.id)?;
 
         let allowed = match old_row {
             Some(row) => user.may_edit(&row.created_by),
@@ -87,7 +87,7 @@ pub fn update_work(conn: &DbConn, work: &Work, user: &User) -> Result<()> {
         };
 
         if allowed {
-            let id = work.id as i64;
+            let id = &work.id;
 
             // This will also delete rows from associated tables.
             diesel::delete(works::table)
@@ -95,8 +95,8 @@ pub fn update_work(conn: &DbConn, work: &Work, user: &User) -> Result<()> {
                 .execute(conn)?;
 
             let row = WorkRow {
-                id,
-                composer: work.composer.id as i64,
+                id: id.clone(),
+                composer: work.composer.id.clone(),
                 title: work.title.clone(),
                 created_by: user.username.clone(),
             };
@@ -109,8 +109,8 @@ pub fn update_work(conn: &DbConn, work: &Work, user: &User) -> Result<()> {
                 diesel::insert_into(instrumentations::table)
                     .values(InstrumentationRow {
                         id: rand::random(),
-                        work: id,
-                        instrument: instrument.id as i64,
+                        work: id.clone(),
+                        instrument: instrument.id.clone(),
                     })
                     .execute(conn)?;
             }
@@ -118,10 +118,10 @@ pub fn update_work(conn: &DbConn, work: &Work, user: &User) -> Result<()> {
             for (index, part) in work.parts.iter().enumerate() {
                 let row = WorkPartRow {
                     id: rand::random(),
-                    work: id,
+                    work: id.clone(),
                     part_index: index.try_into()?,
                     title: part.title.clone(),
-                    composer: part.composer.as_ref().map(|person| person.id as i64),
+                    composer: part.composer.as_ref().map(|person| person.id.clone()),
                 };
 
                 diesel::insert_into(work_parts::table)
@@ -132,7 +132,7 @@ pub fn update_work(conn: &DbConn, work: &Work, user: &User) -> Result<()> {
             for section in &work.sections {
                 let row = WorkSectionRow {
                     id: rand::random(),
-                    work: id,
+                    work: id.clone(),
                     title: section.title.clone(),
                     before_index: section.before_index,
                 };
@@ -152,7 +152,7 @@ pub fn update_work(conn: &DbConn, work: &Work, user: &User) -> Result<()> {
 }
 
 /// Get an existing work and all available information from related tables.
-pub fn get_work(conn: &DbConn, id: u32) -> Result<Option<Work>> {
+pub fn get_work(conn: &DbConn, id: &str) -> Result<Option<Work>> {
     let work = match get_work_row(conn, id)? {
         Some(row) => Some(get_description_for_work_row(conn, &row)?),
         None => None,
@@ -164,9 +164,9 @@ pub fn get_work(conn: &DbConn, id: u32) -> Result<Option<Work>> {
 /// Delete an existing work. This will fail if there are still other tables that relate to
 /// this work except for the things that are part of the information on the work itself. Also,
 /// this will only succeed, if the provided user is allowed to delete the work.
-pub fn delete_work(conn: &DbConn, id: u32, user: &User) -> Result<()> {
+pub fn delete_work(conn: &DbConn, id: &str, user: &User) -> Result<()> {
     if user.may_delete() {
-        diesel::delete(works::table.filter(works::id.eq(id as i64))).execute(conn)?;
+        diesel::delete(works::table.filter(works::id.eq(id))).execute(conn)?;
         Ok(())
     } else {
         Err(Error::new(ServerError::Forbidden))
@@ -174,11 +174,11 @@ pub fn delete_work(conn: &DbConn, id: u32, user: &User) -> Result<()> {
 }
 
 /// Get all existing works by a composer and related information from other tables.
-pub fn get_works(conn: &DbConn, composer_id: u32) -> Result<Vec<Work>> {
+pub fn get_works(conn: &DbConn, composer_id: &str) -> Result<Vec<Work>> {
     let mut works: Vec<Work> = Vec::new();
 
     let rows = works::table
-        .filter(works::composer.eq(composer_id as i64))
+        .filter(works::composer.eq(composer_id))
         .load::<WorkRow>(conn)?;
 
     for row in rows {
@@ -189,9 +189,9 @@ pub fn get_works(conn: &DbConn, composer_id: u32) -> Result<Vec<Work>> {
 }
 
 /// Get an already existing work without related rows from other tables.
-fn get_work_row(conn: &DbConn, id: u32) -> Result<Option<WorkRow>> {
+fn get_work_row(conn: &DbConn, id: &str) -> Result<Option<WorkRow>> {
     Ok(works::table
-        .filter(works::id.eq(id as i64))
+        .filter(works::id.eq(id))
         .load::<WorkRow>(conn)?
         .into_iter()
         .next())
@@ -202,19 +202,19 @@ fn get_description_for_work_row(conn: &DbConn, row: &WorkRow) -> Result<Work> {
     let mut instruments: Vec<Instrument> = Vec::new();
 
     let instrumentations = instrumentations::table
-        .filter(instrumentations::work.eq(row.id))
+        .filter(instrumentations::work.eq(&row.id))
         .load::<InstrumentationRow>(conn)?;
 
     for instrumentation in instrumentations {
-        let id = instrumentation.instrument as u32;
+        let id = instrumentation.instrument.clone();
         instruments
-            .push(get_instrument(conn, id)?.ok_or(anyhow!("No instrument with ID: {}", id))?);
+            .push(get_instrument(conn, &id)?.ok_or(anyhow!("No instrument with ID: {}", id))?);
     }
 
     let mut parts: Vec<WorkPart> = Vec::new();
 
     let part_rows = work_parts::table
-        .filter(work_parts::work.eq(row.id))
+        .filter(work_parts::work.eq(&row.id))
         .load::<WorkPartRow>(conn)?;
 
     for part_row in part_rows {
@@ -222,8 +222,7 @@ fn get_description_for_work_row(conn: &DbConn, row: &WorkRow) -> Result<Work> {
             title: part_row.title,
             composer: match part_row.composer {
                 Some(id) => {
-                    let id = id as u32;
-                    Some(get_person(conn, id)?.ok_or(anyhow!("No person with ID: {}", id))?)
+                    Some(get_person(conn, &id)?.ok_or(anyhow!("No person with ID: {}", id))?)
                 }
                 None => None,
             },
@@ -233,7 +232,7 @@ fn get_description_for_work_row(conn: &DbConn, row: &WorkRow) -> Result<Work> {
     let mut sections: Vec<WorkSection> = Vec::new();
 
     let section_rows = work_sections::table
-        .filter(work_sections::work.eq(row.id))
+        .filter(work_sections::work.eq(&row.id))
         .load::<WorkSectionRow>(conn)?;
 
     for section in section_rows {
@@ -243,11 +242,11 @@ fn get_description_for_work_row(conn: &DbConn, row: &WorkRow) -> Result<Work> {
         });
     }
 
-    let id = row.composer as u32;
+    let id = &row.composer;
     let composer = get_person(conn, id)?.ok_or(anyhow!("No person with ID: {}", id))?;
 
     Ok(Work {
-        id: row.id as u32,
+        id: row.id.clone(),
         composer,
         title: row.title.clone(),
         instruments,

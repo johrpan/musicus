@@ -9,11 +9,11 @@ use actix_web_httpauth::extractors::bearer::BearerAuth;
 #[get("/persons/{id}")]
 pub async fn get_person(
     db: web::Data<DbPool>,
-    id: web::Path<u32>,
+    id: web::Path<String>,
 ) -> Result<HttpResponse, ServerError> {
     let data = web::block(move || {
         let conn = db.into_inner().get()?;
-        database::get_person(&conn, id.into_inner())?.ok_or(ServerError::NotFound)
+        database::get_person(&conn, &id.into_inner())?.ok_or(ServerError::NotFound)
     })
     .await?;
 
@@ -55,13 +55,13 @@ pub async fn get_persons(db: web::Data<DbPool>) -> Result<HttpResponse, ServerEr
 pub async fn delete_person(
     auth: BearerAuth,
     db: web::Data<DbPool>,
-    id: web::Path<u32>,
+    id: web::Path<String>,
 ) -> Result<HttpResponse, ServerError> {
     web::block(move || {
         let conn = db.into_inner().get()?;
         let user = authenticate(&conn, auth.token()).or(Err(ServerError::Unauthorized))?;
 
-        database::delete_person(&conn, id.into_inner(), &user)?;
+        database::delete_person(&conn, &id.into_inner(), &user)?;
 
         Ok(())
     })

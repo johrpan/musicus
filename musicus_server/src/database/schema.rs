@@ -1,6 +1,6 @@
 table! {
     ensembles (id) {
-        id -> Int8,
+        id -> Text,
         name -> Text,
         created_by -> Text,
     }
@@ -9,14 +9,14 @@ table! {
 table! {
     instrumentations (id) {
         id -> Int8,
-        work -> Int8,
-        instrument -> Int8,
+        work -> Text,
+        instrument -> Text,
     }
 }
 
 table! {
     instruments (id) {
-        id -> Int8,
+        id -> Text,
         name -> Text,
         created_by -> Text,
     }
@@ -25,16 +25,16 @@ table! {
 table! {
     performances (id) {
         id -> Int8,
-        recording -> Int8,
-        person -> Nullable<Int8>,
-        ensemble -> Nullable<Int8>,
-        role -> Nullable<Int8>,
+        recording -> Text,
+        person -> Nullable<Text>,
+        ensemble -> Nullable<Text>,
+        role -> Nullable<Text>,
     }
 }
 
 table! {
     persons (id) {
-        id -> Int8,
+        id -> Text,
         first_name -> Text,
         last_name -> Text,
         created_by -> Text,
@@ -43,8 +43,8 @@ table! {
 
 table! {
     recordings (id) {
-        id -> Int8,
-        work -> Int8,
+        id -> Text,
+        work -> Text,
         comment -> Text,
         created_by -> Text,
     }
@@ -64,17 +64,17 @@ table! {
 table! {
     work_parts (id) {
         id -> Int8,
-        work -> Int8,
+        work -> Text,
         part_index -> Int8,
         title -> Text,
-        composer -> Nullable<Int8>,
+        composer -> Nullable<Text>,
     }
 }
 
 table! {
     work_sections (id) {
         id -> Int8,
-        work -> Int8,
+        work -> Text,
         title -> Text,
         before_index -> Int8,
     }
@@ -82,8 +82,8 @@ table! {
 
 table! {
     works (id) {
-        id -> Int8,
-        composer -> Int8,
+        id -> Text,
+        composer -> Text,
         title -> Text,
         created_by -> Text,
     }
