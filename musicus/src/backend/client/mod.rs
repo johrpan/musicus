@@ -7,11 +7,14 @@ use isahc::prelude::*;
 use serde::Serialize;
 use std::time::Duration;
 
-pub mod persons;
-pub use persons::*;
-
 pub mod ensembles;
 pub use ensembles::*;
+
+pub mod instruments;
+pub use instruments::*;
+
+pub mod persons;
+pub use persons::*;
 
 /// Credentials used for login.
 #[derive(Serialize, Debug, Clone)]

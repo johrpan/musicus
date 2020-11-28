@@ -107,10 +107,14 @@ impl PerformanceEditor {
         }));
 
         role_button.connect_clicked(clone!(@strong this => move |_| {
-            InstrumentSelector::new(this.backend.clone(), &this.window, clone!(@strong this => move |role| {
+            let dialog = InstrumentSelector::new(this.backend.clone(), &this.window);
+
+            dialog.set_selected_cb(clone!(@strong this => move |role| {
                 this.show_role(Some(&role));
                 this.role.replace(Some(role));
-            })).show();
+            }));
+
+            dialog.show();
         }));
 
         this.reset_role_button

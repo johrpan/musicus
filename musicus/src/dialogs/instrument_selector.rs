@@ -1,111 +1,161 @@
 use super::InstrumentEditor;
 use crate::backend::Backend;
-use crate::database::*;
-use crate::widgets::*;
+use crate::database::Instrument;
+use crate::widgets::List;
+use gettextrs::gettext;
 use gio::prelude::*;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
-use std::convert::TryInto;
+use std::cell::RefCell;
 use std::rc::Rc;
 
-pub struct InstrumentSelector<F>
-where
-    F: Fn(Instrument) -> () + 'static,
-{
+/// A dialog for selecting a instrument.
+pub struct InstrumentSelector {
     backend: Rc<Backend>,
     window: libhandy::Window,
-    callback: F,
-    list: gtk::ListBox,
-    search_entry: gtk::SearchEntry,
+    server_check_button: gtk::CheckButton,
+    stack: gtk::Stack,
+    list: Rc<List<Instrument>>,
+    selected_cb: RefCell<Option<Box<dyn Fn(Instrument) -> ()>>>,
 }
 
-impl<F> InstrumentSelector<F>
-where
-    F: Fn(Instrument) -> () + 'static,
-{
-    pub fn new<P: IsA<gtk::Window>>(backend: Rc<Backend>, parent: &P, callback: F) -> Rc<Self> {
+impl InstrumentSelector {
+    pub fn new<P>(backend: Rc<Backend>, parent: &P) -> Rc<Self>
+    where
+        P: IsA<gtk::Window>,
+    {
+        // Create UI
+
         let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/instrument_selector.ui");
 
         get_widget!(builder, libhandy::Window, window);
         get_widget!(builder, gtk::Button, add_button);
+        get_widget!(builder, gtk::CheckButton, server_check_button);
         get_widget!(builder, gtk::SearchEntry, search_entry);
-        get_widget!(builder, gtk::ListBox, list);
+        get_widget!(builder, gtk::Stack, stack);
+        get_widget!(builder, gtk::ScrolledWindow, scroll);
+        get_widget!(builder, gtk::Button, try_again_button);
 
-        let result = Rc::new(InstrumentSelector {
-            backend: backend,
-            window: window,
-            callback: callback,
-            search_entry: search_entry,
-            list: list,
+        window.set_transient_for(Some(parent));
+
+        let list = List::<Instrument>::new(&gettext("No instruments found."));
+        scroll.add(&list.widget);
+
+        let this = Rc::new(Self {
+            backend,
+            window,
+            server_check_button,
+            stack,
+            list,
+            selected_cb: RefCell::new(None),
         });
 
-        let c = glib::MainContext::default();
-        let clone = result.clone();
-        c.spawn_local(async move {
-            let instruments = clone.backend.db().get_instruments().await.unwrap();
+        // Connect signals and callbacks
 
-            for (index, instrument) in instruments.iter().enumerate() {
-                let label = gtk::Label::new(Some(&instrument.name));
-                label.set_halign(gtk::Align::Start);
-                label.set_margin_start(6);
-                label.set_margin_end(6);
-                label.set_margin_top(6);
-                label.set_margin_bottom(6);
-
-                let row = SelectorRow::new(index.try_into().unwrap(), &label);
-                row.show_all();
-                clone.list.insert(&row, -1);
-            }
-
-            clone.list.connect_row_activated(
-                clone!(@strong clone, @strong instruments => move |_, row| {
-                    clone.window.close();
-                    let row = row.get_child().unwrap().downcast::<SelectorRow>().unwrap();
-                    let index: usize = row.get_index().try_into().unwrap();
-                    (clone.callback)(instruments[index].clone());
-                }),
-            );
-
-            clone
-                .list
-                .set_filter_func(Some(Box::new(clone!(@strong clone => move |row| {
-                    let row = row.get_child().unwrap().downcast::<SelectorRow>().unwrap();
-                    let index: usize = row.get_index().try_into().unwrap();
-                    let search = clone.search_entry.get_text().to_string();
-
-                    search.is_empty() || instruments[index]
-                        .name
-                        .to_lowercase()
-                        .contains(&clone.search_entry.get_text().to_string().to_lowercase())
-                }))));
-        });
-
-        result
-            .search_entry
-            .connect_search_changed(clone!(@strong result => move |_| {
-                result.list.invalidate_filter();
-            }));
-
-        add_button.connect_clicked(clone!(@strong result => move |_| {
+        add_button.connect_clicked(clone!(@strong this => move |_| {
             let editor = InstrumentEditor::new(
-                result.backend.clone(),
-                &result.window,
+                this.backend.clone(),
+                &this.window,
                 None,
-                clone!(@strong result => move |instrument| {
-                    result.window.close();
-                    (result.callback)(instrument);
-                }),
             );
+
+            editor.set_saved_cb(clone!(@strong this => move |instrument| {
+                if let Some(cb) = &*this.selected_cb.borrow() {
+                    cb(instrument);
+                }
+
+                this.window.close();
+            }));
 
             editor.show();
         }));
 
-        result.window.set_transient_for(Some(parent));
+        search_entry.connect_search_changed(clone!(@strong this => move |_| {
+            this.list.invalidate_filter();
+        }));
 
-        result
+        let load_online = Rc::new(clone!(@strong this => move || {
+            this.stack.set_visible_child_name("loading");
+
+            let context = glib::MainContext::default();
+            let clone = this.clone();
+            context.spawn_local(async move {
+                match clone.backend.get_instruments().await {
+                    Ok(instruments) => {
+                        clone.list.show_items(instruments);
+                        clone.stack.set_visible_child_name("content");
+                    }
+                    Err(_) => {
+                        clone.list.show_items(Vec::new());
+                        clone.stack.set_visible_child_name("error");
+                    }
+                }
+            });
+        }));
+
+        let load_local = Rc::new(clone!(@strong this => move || {
+            this.stack.set_visible_child_name("loading");
+
+            let context = glib::MainContext::default();
+            let clone = this.clone();
+            context.spawn_local(async move {
+                let instruments = clone.backend.db().get_instruments().await.unwrap();
+                clone.list.show_items(instruments);
+                clone.stack.set_visible_child_name("content");
+            });
+        }));
+
+        this.server_check_button.connect_toggled(
+            clone!(@strong this, @strong load_local, @strong load_online => move |_| {
+                if this.server_check_button.get_active() {
+                    load_online();
+                } else {
+                    load_local();
+                }
+            }),
+        );
+
+        this.list.set_make_widget(|instrument: &Instrument| {
+            let label = gtk::Label::new(Some(&instrument.name));
+            label.set_halign(gtk::Align::Start);
+            label.set_margin_start(6);
+            label.set_margin_end(6);
+            label.set_margin_top(6);
+            label.set_margin_bottom(6);
+            label.upcast()
+        });
+
+        this.list
+            .set_filter(clone!(@strong search_entry => move |instrument: &Instrument| {
+                let search = search_entry.get_text().to_string().to_lowercase();
+                search.is_empty() || instrument.name.contains(&search)
+            }));
+
+        this.list.set_selected(clone!(@strong this => move |work| {
+            if let Some(cb) = &*this.selected_cb.borrow() {
+                cb(work.clone());
+            }
+
+            this.window.close();
+        }));
+
+        try_again_button.connect_clicked(clone!(@strong load_online => move |_| {
+            load_online();
+        }));
+
+        // Initialize
+        load_online();
+
+        this
     }
 
+    /// Set the closure to be called when the user has selected a instrument.
+    pub fn set_selected_cb<F: Fn(Instrument) -> () + 'static>(&self, cb: F) {
+        self.selected_cb.replace(Some(Box::new(cb)));
+    }
+
+    /// Show the instrument selector.
     pub fn show(&self) {
         self.window.show();
     }

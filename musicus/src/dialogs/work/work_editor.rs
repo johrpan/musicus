@@ -178,7 +178,9 @@ impl WorkEditor {
         });
 
         add_instrument_button.connect_clicked(clone!(@strong this => move |_| {
-            InstrumentSelector::new(this.backend.clone(), &this.parent, clone!(@strong this => move |instrument| {
+            let dialog = InstrumentSelector::new(this.backend.clone(), &this.parent);
+
+            dialog.set_selected_cb(clone!(@strong this => move |instrument| {
                 let mut instruments = this.instruments.borrow_mut();
 
                 let index = match this.instrument_list.get_selected_index() {
@@ -189,7 +191,9 @@ impl WorkEditor {
                 instruments.insert(index, instrument);
                 this.instrument_list.show_items(instruments.clone());
                 this.instrument_list.select_index(index);
-            })).show();
+            }));
+
+            dialog.show();
         }));
 
         remove_instrument_button.connect_clicked(clone!(@strong this => move |_| {
