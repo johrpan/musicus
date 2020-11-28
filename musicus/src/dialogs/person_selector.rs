@@ -133,9 +133,9 @@ impl PersonSelector {
                 search.is_empty() || name.contains(&search)
             }));
 
-        this.list.set_selected(clone!(@strong this => move |work| {
+        this.list.set_selected(clone!(@strong this => move |person| {
             if let Some(cb) = &*this.selected_cb.borrow() {
-                cb(work.clone());
+                cb(person.clone());
             }
 
             this.window.close();

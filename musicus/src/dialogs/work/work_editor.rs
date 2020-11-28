@@ -4,6 +4,7 @@ use crate::backend::*;
 use crate::database::*;
 use crate::dialogs::*;
 use crate::widgets::*;
+use anyhow::Result;
 use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
@@ -21,12 +22,14 @@ enum PartOrSection {
 
 /// A widget for editing and creating works.
 pub struct WorkEditor {
-    pub widget: gtk::Box,
+    pub widget: gtk::Stack,
     backend: Rc<Backend>,
     parent: gtk::Window,
     save_button: gtk::Button,
     title_entry: gtk::Entry,
+    info_bar: gtk::InfoBar,
     composer_label: gtk::Label,
+    upload_switch: gtk::Switch,
     instrument_list: Rc<List<Instrument>>,
     part_list: Rc<List<PartOrSection>>,
     id: String,
@@ -49,12 +52,14 @@ impl WorkEditor {
 
         let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/work_editor.ui");
 
-        get_widget!(builder, gtk::Box, widget);
+        get_widget!(builder, gtk::Stack, widget);
         get_widget!(builder, gtk::Button, cancel_button);
         get_widget!(builder, gtk::Button, save_button);
+        get_widget!(builder, gtk::InfoBar, info_bar);
         get_widget!(builder, gtk::Entry, title_entry);
         get_widget!(builder, gtk::Button, composer_button);
         get_widget!(builder, gtk::Label, composer_label);
+        get_widget!(builder, gtk::Switch, upload_switch);
         get_widget!(builder, gtk::ScrolledWindow, instruments_scroll);
         get_widget!(builder, gtk::Button, add_instrument_button);
         get_widget!(builder, gtk::Button, remove_instrument_button);
@@ -100,8 +105,10 @@ impl WorkEditor {
             parent: parent.clone().upcast(),
             save_button,
             id,
+            info_bar,
             title_entry,
             composer_label,
+            upload_switch,
             instrument_list,
             part_list,
             composer: RefCell::new(composer),
@@ -119,41 +126,24 @@ impl WorkEditor {
             }
         }));
 
-        this.save_button.connect_clicked(clone!(@strong this => move |_| {
-            let mut section_count: usize = 0;
-            let mut parts = Vec::new();
-            let mut sections = Vec::new();
-
-            for (index, pos) in this.structure.borrow().iter().enumerate() {
-                match pos {
-                    PartOrSection::Part(part) => parts.push(part.clone()),
-                    PartOrSection::Section(section) => {
-                        let mut section = section.clone();
-                        section.before_index = index - section_count;
-                        sections.push(section);
-                        section_count += 1;
+        this.save_button
+            .connect_clicked(clone!(@strong this => move |_| {
+                let context = glib::MainContext::default();
+                let clone = this.clone();
+                context.spawn_local(async move {
+                    clone.widget.set_visible_child_name("loading");
+                    match clone.clone().save().await {
+                        Ok(_) => {
+                            // We already called the callback.
+                        }
+                        Err(_) => {
+                            clone.info_bar.set_revealed(true);
+                            clone.widget.set_visible_child_name("content");
+                        }
                     }
-                }
-            }
 
-            let work = Work {
-                id: this.id.clone(),
-                title: this.title_entry.get_text().to_string(),
-                composer: this.composer.borrow().clone().expect("Tried to create work without composer!"),
-                instruments: this.instruments.borrow().clone(),
-                parts: parts,
-                sections: sections,
-            };
-
-            let c = glib::MainContext::default();
-            let clone = this.clone();
-            c.spawn_local(async move {
-                clone.backend.db().update_work(work.clone().into()).await.unwrap();
-                if let Some(cb) = &*clone.saved_cb.borrow() {
-                    cb(work);
-                }
-            });
-        }));
+                });
+            }));
 
         composer_button.connect_clicked(clone!(@strong this => move |_| {
             let dialog = PersonSelector::new(this.backend.clone(), &this.parent);
@@ -361,5 +351,56 @@ impl WorkEditor {
     fn show_composer(&self, person: &Person) {
         self.composer_label.set_text(&person.name_fl());
         self.save_button.set_sensitive(true);
+    }
+
+    /// Save the work and possibly upload it to the server.
+    async fn save(self: Rc<Self>) -> Result<()> {
+        let mut section_count: usize = 0;
+        let mut parts = Vec::new();
+        let mut sections = Vec::new();
+
+        for (index, pos) in self.structure.borrow().iter().enumerate() {
+            match pos {
+                PartOrSection::Part(part) => parts.push(part.clone()),
+                PartOrSection::Section(section) => {
+                    let mut section = section.clone();
+                    section.before_index = index - section_count;
+                    sections.push(section);
+                    section_count += 1;
+                }
+            }
+        }
+
+        let work = Work {
+            id: self.id.clone(),
+            title: self.title_entry.get_text().to_string(),
+            composer: self
+                .composer
+                .borrow()
+                .clone()
+                .expect("Tried to create work without composer!"),
+            instruments: self.instruments.borrow().clone(),
+            parts: parts,
+            sections: sections,
+        };
+
+        let upload = self.upload_switch.get_active();
+        if upload {
+            self.backend.post_work(&work).await?;
+        }
+
+        self.backend
+            .db()
+            .update_work(work.clone().into())
+            .await
+            .unwrap();
+
+        self.backend.library_changed();
+
+        if let Some(cb) = &*self.saved_cb.borrow() {
+            cb(work.clone());
+        }
+
+        Ok(())
     }
 }

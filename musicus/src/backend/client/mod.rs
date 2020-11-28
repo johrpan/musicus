@@ -16,6 +16,9 @@ pub use instruments::*;
 pub mod persons;
 pub use persons::*;
 
+pub mod works;
+pub use works::*;
+
 /// Credentials used for login.
 #[derive(Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
