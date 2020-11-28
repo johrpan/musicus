@@ -58,14 +58,15 @@ impl PersonSelector {
                 this.backend.clone(),
                 &this.window,
                 None,
-                clone!(@strong this => move |person| {
-                    if let Some(cb) = &*this.selected_cb.borrow() {
-                        cb(person);
-                    }
-
-                    this.window.close();
-                }),
             );
+
+            editor.set_saved_cb(clone!(@strong this => move |person| {
+                if let Some(cb) = &*this.selected_cb.borrow() {
+                    cb(person);
+                }
+
+                this.window.close();
+            }));
 
             editor.show();
         }));

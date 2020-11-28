@@ -1,24 +1,18 @@
 use super::Backend;
 use crate::database::Person;
-use anyhow::{anyhow, Result};
-use isahc::prelude::*;
-use std::time::Duration;
+use anyhow::Result;
 
 impl Backend {
     /// Get all available persons from the server.
     pub async fn get_persons(&self) -> Result<Vec<Person>> {
-        let server_url = self.get_server_url().ok_or(anyhow!("No server URL set!"))?;
-
-        let mut response = Request::get(format!("{}/persons", server_url))
-            .timeout(Duration::from_secs(10))
-            .body(())?
-            .send_async()
-            .await?;
-
-        let body = response.text_async().await?;
-
+        let body = self.get("persons").await?;
         let persons: Vec<Person> = serde_json::from_str(&body)?;
-
         Ok(persons)
+    }
+
+    /// Post a new person to the server and return the ID.
+    pub async fn post_person(&self, data: &Person) -> Result<()> {
+        self.post("persons", serde_json::to_string(data)?).await?;
+        Ok(())
     }
 }

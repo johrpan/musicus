@@ -5,6 +5,7 @@ use gio::prelude::*;
 use isahc::http::StatusCode;
 use isahc::prelude::*;
 use serde::Serialize;
+use std::time::Duration;
 
 pub mod persons;
 pub use persons::*;
@@ -64,6 +65,7 @@ impl Backend {
     pub async fn set_login_data(&self, data: LoginData) -> Result<()> {
         secure::store_login_data(data.clone()).await?;
         self.login_data.replace(Some(data));
+        self.token.replace(None);
         Ok(())
     }
 
@@ -82,7 +84,6 @@ impl Backend {
             StatusCode::OK => {
                 let token = response.text_async().await?;
                 self.set_token(&token);
-                println!("{}", &token);
                 true
             }
             StatusCode::UNAUTHORIZED => false,
@@ -90,5 +91,66 @@ impl Backend {
         };
 
         Ok(success)
+    }
+
+    /// Make an unauthenticated get request to the server.
+    async fn get(&self, url: &str) -> Result<String> {
+        let server_url = self.get_server_url().ok_or(anyhow!("No server URL set!"))?;
+
+        let mut response = Request::get(format!("{}/{}", server_url, url))
+            .timeout(Duration::from_secs(10))
+            .body(())?
+            .send_async()
+            .await?;
+
+        let body = response.text_async().await?;
+
+        Ok(body)
+    }
+
+    /// Make an authenticated post request to the server.
+    async fn post(&self, url: &str, body: String) -> Result<String> {
+        let body = match self.get_token() {
+            Some(_) => {
+                let mut response = self.post_priv(url, body.clone()).await?;
+
+                // Try one more time (maybe the token was expired)
+                if response.status() == StatusCode::UNAUTHORIZED {
+                    if self.login().await? {
+                        response = self.post_priv(url, body).await?;
+                    } else {
+                        bail!("Login failed!");
+                    }
+                }
+
+                response.text_async().await?
+            }
+            None => {
+                let mut response = if self.login().await? {
+                    self.post_priv(url, body).await?
+                } else {
+                    bail!("Login failed!");
+                };
+
+                response.text_async().await?
+            }
+        };
+
+        Ok(body)
+    }
+
+    /// Post something to the server assuming there is a valid login token.
+    async fn post_priv(&self, url: &str, body: String) -> Result<Response<Body>> {
+        let server_url = self.get_server_url().ok_or(anyhow!("No server URL set!"))?;
+        let token = self.get_token().ok_or(anyhow!("No login token!"))?;
+
+        let response = Request::post(format!("{}/{}", server_url, url))
+            .header("Authorization", format!("Bearer {}", token))
+            .header("Content-Type", "application/json")
+            .body(body)?
+            .send_async()
+            .await?;
+
+        Ok(response)
     }
 }

@@ -2,9 +2,7 @@ use super::schema::{ensembles, performances, persons, recordings};
 use super::{Database, Ensemble, Instrument, Person, Work};
 use anyhow::{anyhow, Error, Result};
 use diesel::prelude::*;
-use diesel::{Insertable, Queryable};
 use serde::{Deserialize, Serialize};
-use std::convert::TryInto;
 
 /// Database table data for a recording.
 #[derive(Insertable, Queryable, Debug, Clone)]

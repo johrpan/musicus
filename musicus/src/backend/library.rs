@@ -30,6 +30,10 @@ impl Backend {
     pub async fn set_music_library_path_priv(&self, path: PathBuf) -> Result<()> {
         self.set_state(BackendState::Loading);
 
+        if let Some(db) = &*self.database.borrow() {
+            db.stop().await?;
+        }
+
         self.music_library_path.replace(Some(path.clone()));
 
         let mut db_path = path.clone();
@@ -64,6 +68,12 @@ impl Backend {
     /// Get an interface to the playback service.
     pub fn get_player(&self) -> Option<Rc<Player>> {
         self.player.borrow().clone()
+    }
+
+    /// Notify the frontend that the library was changed.
+    pub fn library_changed(&self) {
+        self.set_state(BackendState::Loading);
+        self.set_state(BackendState::Ready);
     }
 
     /// Get an interface to the player and panic if there is none.
