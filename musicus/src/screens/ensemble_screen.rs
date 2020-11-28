@@ -109,7 +109,7 @@ impl EnsembleScreen {
             }));
 
         edit_action.connect_activate(clone!(@strong result => move |_, _| {
-            EnsembleEditor::new(result.backend.clone(), &result.window, Some(result.ensemble.clone()), |_| {}).show();
+            EnsembleEditor::new(result.backend.clone(), &result.window, Some(result.ensemble.clone())).show();
         }));
 
         delete_action.connect_activate(clone!(@strong result => move |_, _| {
@@ -117,6 +117,7 @@ impl EnsembleScreen {
             let clone = result.clone();
             context.spawn_local(async move {
                 clone.backend.db().delete_ensemble(&clone.ensemble.id).await.unwrap();
+                clone.backend.library_changed();
             });
         }));
 

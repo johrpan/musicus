@@ -10,6 +10,9 @@ use std::time::Duration;
 pub mod persons;
 pub use persons::*;
 
+pub mod ensembles;
+pub use ensembles::*;
+
 /// Credentials used for login.
 #[derive(Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]

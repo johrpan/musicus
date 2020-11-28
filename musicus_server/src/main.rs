@@ -31,6 +31,10 @@ async fn main() -> std::io::Result<()> {
             .service(update_person)
             .service(get_persons)
             .service(delete_person)
+            .service(get_ensemble)
+            .service(update_ensemble)
+            .service(delete_ensemble)
+            .service(get_ensembles)
     });
 
     server.bind("127.0.0.1:8087")?.run().await

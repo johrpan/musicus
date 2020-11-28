@@ -94,12 +94,16 @@ impl PerformanceEditor {
         }));
 
         ensemble_button.connect_clicked(clone!(@strong this => move |_| {
-            EnsembleSelector::new(this.backend.clone(), &this.window, clone!(@strong this => move |ensemble| {
+            let dialog = EnsembleSelector::new(this.backend.clone(), &this.window);
+
+            dialog.set_selected_cb(clone!(@strong this => move |ensemble| {
                 this.show_person(None);
                 this.person.replace(None);
                 this.show_ensemble(Some(&ensemble));
                 this.ensemble.replace(Some(ensemble));
-            })).show();
+            }));
+
+            dialog.show();
         }));
 
         role_button.connect_clicked(clone!(@strong this => move |_| {

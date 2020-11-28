@@ -153,6 +153,7 @@ impl PersonScreen {
             let clone = result.clone();
             context.spawn_local(async move {
                 clone.backend.db().delete_person(&clone.person.id).await.unwrap();
+                clone.backend.library_changed();
             });
         }));
 
