@@ -87,6 +87,7 @@ impl Backend {
         let data = self.get_login_data().ok_or(anyhow!("No login data set!"))?;
 
         let request = Request::post(format!("{}/login", server_url))
+            .timeout(Duration::from_secs(10))
             .header("Content-Type", "application/json")
             .body(serde_json::to_string(&data)?)?;
 
@@ -157,6 +158,7 @@ impl Backend {
         let token = self.get_token().ok_or(anyhow!("No login token!"))?;
 
         let response = Request::post(format!("{}/{}", server_url, url))
+            .timeout(Duration::from_secs(10))
             .header("Authorization", format!("Bearer {}", token))
             .header("Content-Type", "application/json")
             .body(body)?
