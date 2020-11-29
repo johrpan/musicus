@@ -80,8 +80,18 @@ impl TracksEditor {
                 let context = glib::MainContext::default();
                 let this = this.clone();
                 context.spawn_local(async move {
+                    let recording = this.recording.borrow().as_ref().unwrap().clone();
+
+                    // Add the recording first, if it's from the server.
+
+                    if !this.backend.db().recording_exists(&recording.id).await.unwrap() {
+                        this.backend.db().update_recording(recording.clone()).await.unwrap();
+                    }
+
+                    // Add the actual tracks.
+
                     this.backend.db().update_tracks(
-                        &this.recording.borrow().as_ref().unwrap().id,
+                        &recording.id,
                         this.tracks.borrow().clone(),
                     ).await.unwrap();
 

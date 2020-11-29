@@ -27,6 +27,7 @@ enum Action {
     GetRecordingsForPerson(String, Sender<Result<Vec<Recording>>>),
     GetRecordingsForEnsemble(String, Sender<Result<Vec<Recording>>>),
     GetRecordingsForWork(String, Sender<Result<Vec<Recording>>>),
+    RecordingExists(String, Sender<Result<bool>>),
     UpdateTracks(String, Vec<Track>, Sender<Result<()>>),
     DeleteTracks(String, Sender<Result<()>>),
     GetTracks(String, Sender<Result<Vec<Track>>>),
@@ -119,6 +120,9 @@ impl DbThread {
                     }
                     GetRecordingsForWork(id, sender) => {
                         sender.send(db.get_recordings_for_work(&id)).unwrap();
+                    }
+                    RecordingExists(id, sender) => {
+                        sender.send(db.recording_exists(&id)).unwrap();
                     }
                     UpdateTracks(recording_id, tracks, sender) => {
                         sender
@@ -297,6 +301,14 @@ impl DbThread {
         let (sender, receiver) = oneshot::channel();
         self.action_sender
             .send(GetRecordingsForWork(work_id.to_string(), sender))?;
+        receiver.await?
+    }
+
+    /// Check whether a recording exists within the database.
+    pub async fn recording_exists(&self, id: &str) -> Result<bool> {
+        let (sender, receiver) = oneshot::channel();
+        self.action_sender
+            .send(RecordingExists(id.to_string(), sender))?;
         receiver.await?
     }
 

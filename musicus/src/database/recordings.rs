@@ -168,6 +168,17 @@ impl Database {
         Ok(())
     }
 
+    /// Check whether the database contains a recording.
+    pub fn recording_exists(&self, id: &str) -> Result<bool> {
+        let exists = recordings::table
+            .filter(recordings::id.eq(id))
+            .load::<RecordingRow>(&self.connection)?
+            .first()
+            .is_some();
+
+        Ok(exists)
+    }
+
     /// Retrieve all available information on a recording from related tables.
     fn get_recording_data(&self, row: RecordingRow) -> Result<Recording> {
         let mut performance_descriptions: Vec<Performance> = Vec::new();
