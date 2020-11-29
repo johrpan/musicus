@@ -1,5 +1,6 @@
 use super::schema::{ensembles, performances, persons, recordings};
 use super::{get_ensemble, get_instrument, get_person, get_work};
+use super::{update_ensemble, update_instrument, update_person, update_work};
 use super::{DbConn, Ensemble, Instrument, Person, User, Work};
 use crate::error::ServerError;
 use anyhow::{anyhow, Error, Result};
@@ -48,7 +49,6 @@ struct PerformanceRow {
 
 /// Update an existing recording or insert a new one. This will only work, if the provided user is
 /// allowed to do that.
-// TODO: Also add newly created associated items.
 pub fn update_recording(conn: &DbConn, recording: &Recording, user: &User) -> Result<()> {
     conn.transaction::<(), Error, _>(|| {
         let old_row = get_recording_row(conn, &recording.id)?;
@@ -65,6 +65,34 @@ pub fn update_recording(conn: &DbConn, recording: &Recording, user: &User) -> Re
             diesel::delete(recordings::table)
                 .filter(recordings::id.eq(id))
                 .execute(conn)?;
+
+            // Add associated items, if they don't already exist.
+
+            if get_work(conn, &recording.work.id)?.is_none() {
+                update_work(conn, &recording.work, &user)?;
+            }
+
+            for performance in &recording.performances {
+                if let Some(person) = &performance.person {
+                    if get_person(conn, &person.id)?.is_none() {
+                        update_person(conn, person, &user)?;
+                    }
+                }
+
+                if let Some(ensemble) = &performance.ensemble {
+                    if get_ensemble(conn, &ensemble.id)?.is_none() {
+                        update_ensemble(conn, ensemble, &user)?;
+                    }
+                }
+
+                if let Some(role) = &performance.role {
+                    if get_instrument(conn, &role.id)?.is_none() {
+                        update_instrument(conn, role, &user)?;
+                    }
+                }
+            }
+
+            // Add the actual recording.
 
             let row = RecordingRow {
                 id: id.clone(),

@@ -89,7 +89,6 @@ sources = files(
   'widgets/list.rs',
   'widgets/mod.rs',
   'widgets/navigator.rs',
-  'widgets/person_list.rs',
   'widgets/player_bar.rs',
   'widgets/poe_list.rs',
   'widgets/selector_row.rs',

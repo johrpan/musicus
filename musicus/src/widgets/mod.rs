@@ -4,9 +4,6 @@ pub use list::*;
 pub mod navigator;
 pub use navigator::*;
 
-pub mod person_list;
-pub use person_list::*;
-
 pub mod player_bar;
 pub use player_bar::*;
 

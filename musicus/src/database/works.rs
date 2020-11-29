@@ -100,6 +100,28 @@ impl Database {
             let work_id = &work.id;
             self.delete_work(work_id)?;
 
+            // Add associated items from the server, if they don't already exist.
+
+            if self.get_person(&work.composer.id)?.is_none() {
+                self.update_person(work.composer.clone())?;
+            }
+
+            for instrument in &work.instruments {
+                if self.get_instrument(&instrument.id)?.is_none() {
+                    self.update_instrument(instrument.clone())?;
+                }
+            }
+
+            for part in &work.parts {
+                if let Some(person) = &part.composer {
+                    if self.get_person(&person.id)?.is_none() {
+                        self.update_person(person.clone())?;
+                    }
+                }
+            }
+
+            // Add the actual work.
+
             let row: WorkRow = work.clone().into();
             diesel::insert_into(works::table)
                 .values(row)

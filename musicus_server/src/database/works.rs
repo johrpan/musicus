@@ -1,5 +1,6 @@
 use super::schema::{instrumentations, work_parts, work_sections, works};
-use super::{get_instrument, get_person, DbConn, Instrument, Person, User};
+use super::{get_instrument, get_person, update_instrument, update_person};
+use super::{DbConn, Instrument, Person, User};
 use crate::error::ServerError;
 use anyhow::{anyhow, Error, Result};
 use diesel::prelude::*;
@@ -76,7 +77,6 @@ struct WorkSectionRow {
 
 /// Update an existing work or insert a new one. This will only succeed, if the user is allowed to
 /// do that.
-// TODO: Also add newly created associated items.
 pub fn update_work(conn: &DbConn, work: &Work, user: &User) -> Result<()> {
     conn.transaction::<(), Error, _>(|| {
         let old_row = get_work_row(conn, &work.id)?;
@@ -93,6 +93,28 @@ pub fn update_work(conn: &DbConn, work: &Work, user: &User) -> Result<()> {
             diesel::delete(works::table)
                 .filter(works::id.eq(id))
                 .execute(conn)?;
+
+            // Add associated items, if they don't already exist.
+
+            if get_person(conn, &work.composer.id)?.is_none() {
+                update_person(conn, &work.composer, &user)?;
+            }
+
+            for instrument in &work.instruments {
+                if get_instrument(conn, &instrument.id)?.is_none() {
+                    update_instrument(conn, instrument, &user)?;
+                }
+            }
+
+            for part in &work.parts {
+                if let Some(person) = &part.composer {
+                    if get_person(conn, &person.id)?.is_none() {
+                        update_person(conn, person, &user)?;
+                    }
+                }
+            }
+
+            // Add the actual work.
 
             let row = WorkRow {
                 id: id.clone(),

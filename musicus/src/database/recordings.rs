@@ -115,6 +115,34 @@ impl Database {
             let recording_id = &recording.id;
             self.delete_recording(recording_id)?;
 
+            // Add associated items from the server, if they don't already exist.
+
+            if self.get_work(&recording.work.id)?.is_none() {
+                self.update_work(recording.work.clone())?;
+            }
+
+            for performance in &recording.performances {
+                if let Some(person) = &performance.person {
+                    if self.get_person(&person.id)?.is_none() {
+                        self.update_person(person.clone())?;
+                    }
+                }
+
+                if let Some(ensemble) = &performance.ensemble {
+                    if self.get_ensemble(&ensemble.id)?.is_none() {
+                        self.update_ensemble(ensemble.clone())?;
+                    }
+                }
+
+                if let Some(role) = &performance.role {
+                    if self.get_instrument(&role.id)?.is_none() {
+                        self.update_instrument(role.clone())?;
+                    }
+                }
+            }
+
+            // Add the actual recording.
+
             let row: RecordingRow = recording.clone().into();
             diesel::insert_into(recordings::table)
                 .values(row)
