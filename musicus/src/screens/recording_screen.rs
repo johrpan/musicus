@@ -119,6 +119,7 @@ impl RecordingScreen {
             let clone = result.clone();
             context.spawn_local(async move {
                 clone.backend.db().delete_recording(&clone.recording.id).await.unwrap();
+                clone.backend.library_changed();
             });
         }));
 
@@ -131,6 +132,7 @@ impl RecordingScreen {
             let clone = result.clone();
             context.spawn_local(async move {
                 clone.backend.db().delete_tracks(&clone.recording.id).await.unwrap();
+                clone.backend.library_changed();
             });
         }));
 

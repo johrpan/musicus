@@ -116,6 +116,7 @@ impl WorkScreen {
             let clone = result.clone();
             context.spawn_local(async move {
                 clone.backend.db().delete_work(&clone.work.id).await.unwrap();
+                clone.backend.library_changed();
             });
         }));
 
