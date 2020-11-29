@@ -54,6 +54,34 @@ pub async fn get_recordings_for_work(
     Ok(HttpResponse::Ok().json(data))
 }
 
+#[get("/persons/{id}/recordings")]
+pub async fn get_recordings_for_person(
+    db: web::Data<DbPool>,
+    person_id: web::Path<String>,
+) -> Result<HttpResponse, ServerError> {
+    let data = web::block(move || {
+        let conn = db.into_inner().get()?;
+        Ok(database::get_recordings_for_person(&conn, &person_id.into_inner())?)
+    })
+    .await?;
+
+    Ok(HttpResponse::Ok().json(data))
+}
+
+#[get("/ensembles/{id}/recordings")]
+pub async fn get_recordings_for_ensemble(
+    db: web::Data<DbPool>,
+    ensemble_id: web::Path<String>,
+) -> Result<HttpResponse, ServerError> {
+    let data = web::block(move || {
+        let conn = db.into_inner().get()?;
+        Ok(database::get_recordings_for_ensemble(&conn, &ensemble_id.into_inner())?)
+    })
+    .await?;
+
+    Ok(HttpResponse::Ok().json(data))
+}
+
 #[delete("/recordings/{id}")]
 pub async fn delete_recording(
     auth: BearerAuth,
