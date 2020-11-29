@@ -22,6 +22,9 @@ pub use works::*;
 
 mod schema;
 
+// This makes the SQL migration scripts accessible from the code.
+embed_migrations!();
+
 /// A pool of connections to the database.
 pub type DbPool = r2d2::Pool<r2d2::ConnectionManager<PgConnection>>;
 
@@ -34,6 +37,10 @@ pub fn connect() -> Result<DbPool> {
     let url = std::env::var("MUSICUS_DATABASE_URL")?;
     let manager = r2d2::ConnectionManager::<PgConnection>::new(url);
     let pool = r2d2::Pool::new(manager)?;
+
+    // Run embedded migrations.
+    let conn = pool.get()?;
+    embedded_migrations::run(&conn)?;
 
     Ok(pool)
 }

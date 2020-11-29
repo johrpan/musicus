@@ -9,6 +9,7 @@ actix-web-httpauth = "0.5.0"
 anyhow = "1.0.34"
 derive_more = "0.99.11"
 diesel = { version = "1.4.4", features = ["postgres", "r2d2"] }
+diesel_migrations = "1.4.0"
 dotenv = "0.15.0"
 env_logger = "0.8.1"
 jsonwebtoken = "7.2.0"

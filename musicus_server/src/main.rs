@@ -2,6 +2,10 @@
 #[macro_use]
 extern crate diesel;
 
+// Required for embed_migrations macro in database/mod.rs
+#[macro_use]
+extern crate diesel_migrations;
+
 use actix_web::{App, HttpServer};
 
 mod database;
