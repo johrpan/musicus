@@ -152,12 +152,12 @@ impl WorkSelector {
             load_online();
         }));
 
-        // Initialize
-        load_online();
-
         this.navigator.set_back_cb(clone!(@strong this => move || {
             this.widget.set_visible_child(&this.sidebar_box);
         }));
+
+        // Initialize
+        load_online();
 
         this
     }

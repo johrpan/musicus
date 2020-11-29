@@ -14,6 +14,8 @@ use std::rc::Rc;
 /// screen on selection.
 pub struct RecordingSelectorPersonScreen {
     backend: Rc<Backend>,
+    person: Person,
+    online: bool,
     widget: gtk::Box,
     stack: gtk::Stack,
     work_list: Rc<List<Work>>,
@@ -23,7 +25,7 @@ pub struct RecordingSelectorPersonScreen {
 
 impl RecordingSelectorPersonScreen {
     /// Create a new recording selector person screen.
-    pub fn new(backend: Rc<Backend>, person: Person) -> Rc<Self> {
+    pub fn new(backend: Rc<Backend>, person: Person, online: bool) -> Rc<Self> {
         // Create UI
 
         let builder =
@@ -33,14 +35,18 @@ impl RecordingSelectorPersonScreen {
         get_widget!(builder, libhandy::HeaderBar, header);
         get_widget!(builder, gtk::Button, back_button);
         get_widget!(builder, gtk::Stack, stack);
+        get_widget!(builder, gtk::ScrolledWindow, scroll);
+        get_widget!(builder, gtk::Button, try_again_button);
 
         header.set_title(Some(&person.name_fl()));
 
         let work_list = List::new(&gettext("No works found."));
-        stack.add_named(&work_list.widget, "content");
+        scroll.add(&work_list.widget);
 
         let this = Rc::new(Self {
             backend,
+            person,
+            online,
             widget,
             stack,
             work_list,
@@ -55,6 +61,37 @@ impl RecordingSelectorPersonScreen {
             if let Some(navigator) = navigator {
                 navigator.pop();
             }
+        }));
+
+        let load_online = Rc::new(clone!(@strong this => move || {
+            this.stack.set_visible_child_name("loading");
+
+            let context = glib::MainContext::default();
+            let clone = this.clone();
+            context.spawn_local(async move {
+                match clone.backend.get_works(&clone.person.id).await {
+                    Ok(works) => {
+                        clone.work_list.show_items(works);
+                        clone.stack.set_visible_child_name("content");
+                    }
+                    Err(_) => {
+                        clone.work_list.show_items(Vec::new());
+                        clone.stack.set_visible_child_name("error");
+                    }
+                }
+            });
+        }));
+
+        let load_local = Rc::new(clone!(@strong this => move || {
+            this.stack.set_visible_child_name("loading");
+
+            let context = glib::MainContext::default();
+            let clone = this.clone();
+            context.spawn_local(async move {
+                let works = clone.backend.db().get_works(&clone.person.id).await.unwrap();
+                clone.work_list.show_items(works);
+                clone.stack.set_visible_child_name("content");
+            });
         }));
 
         this.work_list.set_make_widget(|work: &Work| {
@@ -75,6 +112,7 @@ impl RecordingSelectorPersonScreen {
                     let work_screen = RecordingSelectorWorkScreen::new(
                         this.backend.clone(),
                         work.clone(),
+                        this.online,
                     );
 
                     work_screen.set_selected_cb(clone!(@strong this => move |recording| {
@@ -87,16 +125,17 @@ impl RecordingSelectorPersonScreen {
                 }
             }));
 
+        try_again_button.connect_clicked(clone!(@strong load_online => move |_| {
+            load_online();
+        }));
+
         // Initialize
 
-        let context = glib::MainContext::default();
-        let clone = this.clone();
-        context.spawn_local(async move {
-            let works = clone.backend.db().get_works(&person.id).await.unwrap();
-
-            clone.work_list.show_items(works);
-            clone.stack.set_visible_child_name("content");
-        });
+        if this.online {
+            load_online();
+        } else {
+            load_local();
+        }
 
         this
     }

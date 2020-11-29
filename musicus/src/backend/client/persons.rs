@@ -10,7 +10,7 @@ impl Backend {
         Ok(persons)
     }
 
-    /// Post a new person to the server and return the ID.
+    /// Post a new person to the server.
     pub async fn post_person(&self, data: &Person) -> Result<()> {
         self.post("persons", serde_json::to_string(data)?).await?;
         Ok(())

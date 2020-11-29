@@ -10,7 +10,7 @@ impl Backend {
         Ok(ensembles)
     }
 
-    /// Post a new ensemble to the server and return the ID.
+    /// Post a new ensemble to the server.
     pub async fn post_ensemble(&self, data: &Ensemble) -> Result<()> {
         self.post("ensembles", serde_json::to_string(data)?).await?;
         Ok(())

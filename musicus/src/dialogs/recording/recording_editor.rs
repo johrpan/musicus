@@ -3,6 +3,7 @@ use crate::backend::*;
 use crate::database::*;
 use crate::dialogs::*;
 use crate::widgets::*;
+use anyhow::Result;
 use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
@@ -13,12 +14,14 @@ use std::rc::Rc;
 /// A widget for creating or editing a recording.
 // TODO: Disable buttons if no performance is selected.
 pub struct RecordingEditor {
-    pub widget: gtk::Box,
+    pub widget: gtk::Stack,
     backend: Rc<Backend>,
     parent: gtk::Window,
     save_button: gtk::Button,
+    info_bar: gtk::InfoBar,
     work_label: gtk::Label,
     comment_entry: gtk::Entry,
+    upload_switch: gtk::Switch,
     performance_list: Rc<List<Performance>>,
     id: String,
     work: RefCell<Option<Work>>,
@@ -37,15 +40,16 @@ impl RecordingEditor {
     ) -> Rc<Self> {
         // Create UI
 
-        let builder =
-            gtk::Builder::from_resource("/de/johrpan/musicus/ui/recording_editor.ui");
+        let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/recording_editor.ui");
 
-        get_widget!(builder, gtk::Box, widget);
+        get_widget!(builder, gtk::Stack, widget);
         get_widget!(builder, gtk::Button, cancel_button);
         get_widget!(builder, gtk::Button, save_button);
+        get_widget!(builder, gtk::InfoBar, info_bar);
         get_widget!(builder, gtk::Button, work_button);
         get_widget!(builder, gtk::Label, work_label);
         get_widget!(builder, gtk::Entry, comment_entry);
+        get_widget!(builder, gtk::Switch, upload_switch);
         get_widget!(builder, gtk::ScrolledWindow, scroll);
         get_widget!(builder, gtk::Button, add_performer_button);
         get_widget!(builder, gtk::Button, edit_performer_button);
@@ -67,8 +71,10 @@ impl RecordingEditor {
             backend,
             parent: parent.clone().upcast(),
             save_button,
+            info_bar,
             work_label,
             comment_entry,
+            upload_switch,
             performance_list,
             id,
             work: RefCell::new(work),
@@ -87,20 +93,20 @@ impl RecordingEditor {
 
         this.save_button
             .connect_clicked(clone!(@strong this => move |_| {
-                let recording = Recording {
-                    id: this.id.clone(),
-                    work: this.work.borrow().clone().expect("Tried to create recording without work!"),
-                    comment: this.comment_entry.get_text().to_string(),
-                    performances: this.performances.borrow().clone(),
-                };
-                
-                let c = glib::MainContext::default();
+                let context = glib::MainContext::default();
                 let clone = this.clone();
-                c.spawn_local(async move {
-                    clone.backend.db().update_recording(recording.clone().into()).await.unwrap();
-                    if let Some(cb) = &*clone.selected_cb.borrow() {
-                        cb(recording.clone());
+                context.spawn_local(async move {
+                    clone.widget.set_visible_child_name("loading");
+                    match clone.clone().save().await {
+                        Ok(_) => {
+                            // We already called the callback.
+                        }
+                        Err(_) => {
+                            clone.info_bar.set_revealed(true);
+                            clone.widget.set_visible_child_name("content");
+                        }
                     }
+
                 });
             }));
 
@@ -181,7 +187,8 @@ impl RecordingEditor {
             this.work_selected(work);
         }
 
-        this.performance_list.show_items(this.performances.borrow().clone());
+        this.performance_list
+            .show_items(this.performances.borrow().clone());
 
         this
     }
@@ -198,7 +205,41 @@ impl RecordingEditor {
 
     /// Update the UI according to work.    
     fn work_selected(&self, work: &Work) {
-        self.work_label.set_text(&format!("{}: {}", work.composer.name_fl(), work.title));
+        self.work_label
+            .set_text(&format!("{}: {}", work.composer.name_fl(), work.title));
         self.save_button.set_sensitive(true);
+    }
+
+    /// Save the recording and possibly upload it to the server.
+    async fn save(self: Rc<Self>) -> Result<()> {
+        let recording = Recording {
+            id: self.id.clone(),
+            work: self
+                .work
+                .borrow()
+                .clone()
+                .expect("Tried to create recording without work!"),
+            comment: self.comment_entry.get_text().to_string(),
+            performances: self.performances.borrow().clone(),
+        };
+
+        let upload = self.upload_switch.get_active();
+        if upload {
+            self.backend.post_recording(&recording).await?;
+        }
+
+        self.backend
+            .db()
+            .update_recording(recording.clone().into())
+            .await
+            .unwrap();
+
+        self.backend.library_changed();
+
+        if let Some(cb) = &*self.selected_cb.borrow() {
+            cb(recording.clone());
+        }
+
+        Ok(())
     }
 }

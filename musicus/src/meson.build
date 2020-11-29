@@ -37,6 +37,7 @@ sources = files(
   'backend/client/ensembles.rs',
   'backend/client/instruments.rs',
   'backend/client/persons.rs',
+  'backend/client/recordings.rs',
   'backend/client/works.rs',
   'backend/library.rs',
   'backend/mod.rs',

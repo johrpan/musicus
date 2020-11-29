@@ -16,6 +16,9 @@ pub use instruments::*;
 pub mod persons;
 pub use persons::*;
 
+pub mod recordings;
+pub use recordings::*;
+
 pub mod works;
 pub use works::*;
 

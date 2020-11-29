@@ -10,7 +10,7 @@ impl Backend {
         Ok(instruments)
     }
 
-    /// Post a new instrument to the server and return the ID.
+    /// Post a new instrument to the server.
     pub async fn post_instrument(&self, data: &Instrument) -> Result<()> {
         self.post("instruments", serde_json::to_string(data)?).await?;
         Ok(())

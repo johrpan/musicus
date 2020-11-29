@@ -12,6 +12,8 @@ use std::rc::Rc;
 /// A screen within the recording selector presenting a list of recordings for a work.
 pub struct RecordingSelectorWorkScreen {
     backend: Rc<Backend>,
+    work: Work,
+    online: bool,
     widget: gtk::Box,
     stack: gtk::Stack,
     recording_list: Rc<List<Recording>>,
@@ -21,7 +23,7 @@ pub struct RecordingSelectorWorkScreen {
 
 impl RecordingSelectorWorkScreen {
     /// Create a new recording selector work screen.
-    pub fn new(backend: Rc<Backend>, work: Work) -> Rc<Self> {
+    pub fn new(backend: Rc<Backend>, work: Work, online: bool) -> Rc<Self> {
         // Create UI
 
         let builder =
@@ -31,15 +33,19 @@ impl RecordingSelectorWorkScreen {
         get_widget!(builder, libhandy::HeaderBar, header);
         get_widget!(builder, gtk::Button, back_button);
         get_widget!(builder, gtk::Stack, stack);
+        get_widget!(builder, gtk::ScrolledWindow, scroll);
+        get_widget!(builder, gtk::Button, try_again_button);
 
         header.set_title(Some(&work.title));
         header.set_subtitle(Some(&work.composer.name_fl()));
 
         let recording_list = List::new(&gettext("No recordings found."));
-        stack.add_named(&recording_list.widget, "content");
+        scroll.add(&recording_list.widget);
 
         let this = Rc::new(Self {
             backend,
+            work,
+            online,
             widget,
             stack,
             recording_list,
@@ -54,6 +60,37 @@ impl RecordingSelectorWorkScreen {
             if let Some(navigator) = navigator {
                 navigator.pop();
             }
+        }));
+
+        let load_online = Rc::new(clone!(@strong this => move || {
+            this.stack.set_visible_child_name("loading");
+
+            let context = glib::MainContext::default();
+            let clone = this.clone();
+            context.spawn_local(async move {
+                match clone.backend.get_recordings_for_work(&clone.work.id).await {
+                    Ok(recordings) => {
+                        clone.recording_list.show_items(recordings);
+                        clone.stack.set_visible_child_name("content");
+                    }
+                    Err(_) => {
+                        clone.recording_list.show_items(Vec::new());
+                        clone.stack.set_visible_child_name("error");
+                    }
+                }
+            });
+        }));
+
+        let load_local = Rc::new(clone!(@strong this => move || {
+            this.stack.set_visible_child_name("loading");
+
+            let context = glib::MainContext::default();
+            let clone = this.clone();
+            context.spawn_local(async move {
+                let recordings = clone.backend.db().get_recordings_for_work(&clone.work.id).await.unwrap();
+                clone.recording_list.show_items(recordings);
+                clone.stack.set_visible_child_name("content");
+            });
         }));
 
         this.recording_list
@@ -82,21 +119,17 @@ impl RecordingSelectorWorkScreen {
                 }
             }));
 
+        try_again_button.connect_clicked(clone!(@strong load_online => move |_| {
+            load_online();
+        }));
+
         // Initialize
 
-        let context = glib::MainContext::default();
-        let clone = this.clone();
-        context.spawn_local(async move {
-            let recordings = clone
-                .backend
-                .db()
-                .get_recordings_for_work(&work.id)
-                .await
-                .unwrap();
-
-            clone.recording_list.show_items(recordings);
-            clone.stack.set_visible_child_name("content");
-        });
+        if this.online {
+            load_online();
+        } else {
+            load_local();
+        }
 
         this
     }
