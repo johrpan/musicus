@@ -26,7 +26,6 @@ pub struct RecordingEditor {
     work: RefCell<Option<Work>>,
     performances: RefCell<Vec<Performance>>,
     selected_cb: RefCell<Option<Box<dyn Fn(Recording) -> ()>>>,
-    back_cb: RefCell<Option<Box<dyn Fn() -> ()>>>,
     navigator: RefCell<Option<Rc<Navigator>>>,
 }
 
@@ -38,7 +37,7 @@ impl RecordingEditor {
         let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/recording_editor.ui");
 
         get_widget!(builder, gtk::Stack, widget);
-        get_widget!(builder, gtk::Button, cancel_button);
+        get_widget!(builder, gtk::Button, back_button);
         get_widget!(builder, gtk::Button, save_button);
         get_widget!(builder, gtk::InfoBar, info_bar);
         get_widget!(builder, gtk::Button, work_button);
@@ -74,17 +73,12 @@ impl RecordingEditor {
             work: RefCell::new(work),
             performances: RefCell::new(performances),
             selected_cb: RefCell::new(None),
-            back_cb: RefCell::new(None),
             navigator: RefCell::new(None),
         });
 
         // Connect signals and callbacks
 
-        cancel_button.connect_clicked(clone!(@strong this => move |_| {
-            if let Some(cb) = &*this.back_cb.borrow() {
-                cb();
-            }
-
+        back_button.connect_clicked(clone!(@strong this => move |_| {
             let navigator = this.navigator.borrow().clone();
             if let Some(navigator) = navigator {
                 navigator.clone().pop();
@@ -214,11 +208,6 @@ impl RecordingEditor {
             .show_items(this.performances.borrow().clone());
 
         this
-    }
-
-    /// Set the closure to be called if the editor is canceled.
-    pub fn set_back_cb<F: Fn() -> () + 'static>(&self, cb: F) {
-        self.back_cb.replace(Some(Box::new(cb)));
     }
 
     /// Set the closure to be called if the recording was created.

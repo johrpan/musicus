@@ -14,7 +14,6 @@ use std::rc::Rc;
 
 pub struct PersonScreen {
     backend: Rc<Backend>,
-    window: gtk::Window,
     person: Person,
     widget: gtk::Box,
     stack: gtk::Stack,
@@ -24,10 +23,7 @@ pub struct PersonScreen {
 }
 
 impl PersonScreen {
-    pub fn new<W>(backend: Rc<Backend>, window: &W, person: Person) -> Rc<Self>
-    where
-        W: IsA<gtk::Window>,
-    {
+    pub fn new(backend: Rc<Backend>, person: Person) -> Rc<Self> {
         let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/person_screen.ui");
 
         get_widget!(builder, gtk::Box, widget);
@@ -103,7 +99,6 @@ impl PersonScreen {
 
         let result = Rc::new(Self {
             backend,
-            window: window.clone().upcast(),
             person,
             widget,
             stack,
@@ -130,7 +125,7 @@ impl PersonScreen {
                 result.recording_list.clear_selection();
                 let navigator = result.navigator.borrow().clone();
                 if let Some(navigator) = navigator {
-                    navigator.push(WorkScreen::new(result.backend.clone(), &result.window, work.clone()));
+                    navigator.push(WorkScreen::new(result.backend.clone(), work.clone()));
                 }
             }));
 
@@ -140,7 +135,7 @@ impl PersonScreen {
                 result.work_list.clear_selection();
                 let navigator = result.navigator.borrow().clone();
                 if let Some(navigator) = navigator {
-                    navigator.push(RecordingScreen::new(result.backend.clone(), &result.window, recording.clone()));
+                    navigator.push(RecordingScreen::new(result.backend.clone(), recording.clone()));
                 }
             }));
 

@@ -14,7 +14,6 @@ use std::rc::Rc;
 
 pub struct WorkScreen {
     backend: Rc<Backend>,
-    window: gtk::Window,
     work: Work,
     widget: gtk::Box,
     stack: gtk::Stack,
@@ -23,10 +22,7 @@ pub struct WorkScreen {
 }
 
 impl WorkScreen {
-    pub fn new<W>(backend: Rc<Backend>, window: &W, work: Work) -> Rc<Self>
-    where
-        W: IsA<gtk::Window>,
-    {
+    pub fn new(backend: Rc<Backend>, work: Work) -> Rc<Self> {
         let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/work_screen.ui");
 
         get_widget!(builder, gtk::Box, widget);
@@ -79,7 +75,6 @@ impl WorkScreen {
 
         let result = Rc::new(Self {
             backend,
-            window: window.clone().upcast(),
             work,
             widget,
             stack,
@@ -103,7 +98,7 @@ impl WorkScreen {
             .set_selected(clone!(@strong result => move |recording| {
                 let navigator = result.navigator.borrow().clone();
                 if let Some(navigator) = navigator {
-                    navigator.push(RecordingScreen::new(result.backend.clone(), &result.window, recording.clone()));
+                    navigator.push(RecordingScreen::new(result.backend.clone(), recording.clone()));
                 }
             }));
 

@@ -14,7 +14,6 @@ use std::rc::Rc;
 
 pub struct RecordingScreen {
     backend: Rc<Backend>,
-    window: gtk::Window,
     recording: Recording,
     widget: gtk::Box,
     stack: gtk::Stack,
@@ -23,10 +22,7 @@ pub struct RecordingScreen {
 }
 
 impl RecordingScreen {
-    pub fn new<W>(backend: Rc<Backend>, window: &W, recording: Recording) -> Rc<Self>
-    where
-        W: IsA<gtk::Window>,
-    {
+    pub fn new(backend: Rc<Backend>, recording: Recording) -> Rc<Self> {
         let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/recording_screen.ui");
 
         get_widget!(builder, gtk::Box, widget);
@@ -57,7 +53,6 @@ impl RecordingScreen {
 
         let result = Rc::new(Self {
             backend,
-            window: window.clone().upcast(),
             recording,
             widget,
             stack,

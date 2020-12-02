@@ -14,7 +14,6 @@ use std::rc::Rc;
 
 pub struct EnsembleScreen {
     backend: Rc<Backend>,
-    window: gtk::Window,
     ensemble: Ensemble,
     widget: gtk::Box,
     stack: gtk::Stack,
@@ -23,10 +22,7 @@ pub struct EnsembleScreen {
 }
 
 impl EnsembleScreen {
-    pub fn new<W>(backend: Rc<Backend>, window: &W, ensemble: Ensemble) -> Rc<Self>
-    where
-        W: IsA<gtk::Window>,
-    {
+    pub fn new(backend: Rc<Backend>, ensemble: Ensemble) -> Rc<Self> {
         let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/ensemble_screen.ui");
 
         get_widget!(builder, gtk::Box, widget);
@@ -80,7 +76,6 @@ impl EnsembleScreen {
 
         let result = Rc::new(Self {
             backend,
-            window: window.clone().upcast(),
             ensemble,
             widget,
             stack,
@@ -104,7 +99,7 @@ impl EnsembleScreen {
             .set_selected(clone!(@strong result => move |recording| {
                 let navigator = result.navigator.borrow().clone();
                 if let Some(navigator) = navigator {
-                    navigator.push(RecordingScreen::new(result.backend.clone(), &result.window, recording.clone()));
+                    navigator.push(RecordingScreen::new(result.backend.clone(), recording.clone()));
                 }
             }));
 

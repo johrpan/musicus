@@ -163,10 +163,10 @@ impl Window {
                 result.leaflet.set_visible_child(&result.navigator.widget);
                 match poe {
                     PersonOrEnsemble::Person(person) => {
-                        result.navigator.clone().replace(PersonScreen::new(result.backend.clone(), &result.window, person.clone()));
+                        result.navigator.clone().replace(PersonScreen::new(result.backend.clone(), person.clone()));
                     }
                     PersonOrEnsemble::Ensemble(ensemble) => {
-                        result.navigator.clone().replace(EnsembleScreen::new(result.backend.clone(), &result.window, ensemble.clone()));
+                        result.navigator.clone().replace(EnsembleScreen::new(result.backend.clone(), ensemble.clone()));
                     }
                 }
             }));
