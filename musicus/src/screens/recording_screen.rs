@@ -1,8 +1,8 @@
 use crate::backend::*;
 use crate::database::*;
-use crate::dialogs::{RecordingEditorDialog, TracksEditor};
+use crate::editors::{RecordingEditor, TracksEditor};
 use crate::player::*;
-use crate::widgets::*;
+use crate::widgets::{List, Navigator, NavigatorScreen, NavigatorWindow};
 use gettextrs::gettext;
 use gio::prelude::*;
 use glib::clone;
@@ -111,7 +111,9 @@ impl RecordingScreen {
         }));
 
         edit_action.connect_activate(clone!(@strong result => move |_, _| {
-            RecordingEditorDialog::new(result.backend.clone(), &result.window, Some(result.recording.clone())).show();
+            let editor = RecordingEditor::new(result.backend.clone(), Some(result.recording.clone()));
+            let window = NavigatorWindow::new(editor);
+            window.show();
         }));
 
         delete_action.connect_activate(clone!(@strong result => move |_, _| {
@@ -124,7 +126,9 @@ impl RecordingScreen {
         }));
 
         edit_tracks_action.connect_activate(clone!(@strong result => move |_, _| {
-            TracksEditor::new(result.backend.clone(), &result.window, Some(result.recording.clone()), result.tracks.borrow().clone()).show();
+            let editor = TracksEditor::new(result.backend.clone(), Some(result.recording.clone()), result.tracks.borrow().clone());
+            let window = NavigatorWindow::new(editor);
+            window.show();
         }));
 
         delete_tracks_action.connect_activate(clone!(@strong result => move |_, _| {

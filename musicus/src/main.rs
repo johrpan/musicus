@@ -11,12 +11,14 @@ use glib::clone;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-mod config;
 mod backend;
+mod config;
 mod database;
 mod dialogs;
+mod editors;
 mod player;
 mod screens;
+mod selectors;
 mod widgets;
 
 mod window;
@@ -33,11 +35,8 @@ fn main() {
     libhandy::init();
     resources::init().expect("Failed to initialize resources!");
 
-    let app = gtk::Application::new(
-        Some("de.johrpan.musicus"),
-        gio::ApplicationFlags::empty(),
-    )
-    .expect("Failed to initialize GTK application!");
+    let app = gtk::Application::new(Some("de.johrpan.musicus"), gio::ApplicationFlags::empty())
+        .expect("Failed to initialize GTK application!");
 
     let window: RefCell<Option<Rc<Window>>> = RefCell::new(None);
 

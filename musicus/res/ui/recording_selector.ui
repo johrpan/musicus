@@ -99,7 +99,7 @@
                 </child>
                 <child>
                   <object class="GtkCheckButton" id="server_check_button">
-                    <property name="label" translatable="yes">Show works from the server</property>
+                    <property name="label" translatable="yes">Show recordings from the server</property>
                     <property name="visible">True</property>
                     <property name="can-focus">True</property>
                     <property name="receives-default">False</property>

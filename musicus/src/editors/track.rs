@@ -1,4 +1,5 @@
 use crate::database::*;
+use crate::widgets::{Navigator, NavigatorScreen};
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
@@ -6,43 +7,58 @@ use std::cell::RefCell;
 use std::convert::TryInto;
 use std::rc::Rc;
 
+/// A screen for editing a single track.
+// TODO: Refactor.
 pub struct TrackEditor {
-    window: libhandy::Window,
+    widget: gtk::Box,
+    ready_cb: RefCell<Option<Box<dyn Fn(Track) -> ()>>>,
+    navigator: RefCell<Option<Rc<Navigator>>>,
 }
 
 impl TrackEditor {
-    pub fn new<W, F>(parent: &W, track: Track, work: Work, callback: F) -> Self
-    where
-        W: IsA<gtk::Window>,
-        F: Fn(Track) -> () + 'static,
-    {
+    /// Create a new track editor.
+    pub fn new(track: Track, work: Work) -> Rc<Self> {
+        // Create UI
+
         let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/track_editor.ui");
 
-        get_widget!(builder, libhandy::Window, window);
-        get_widget!(builder, gtk::Button, cancel_button);
+        get_widget!(builder, gtk::Box, widget);
+        get_widget!(builder, gtk::Button, back_button);
         get_widget!(builder, gtk::Button, save_button);
         get_widget!(builder, gtk::ListBox, list);
 
-        window.set_transient_for(Some(parent));
+        let this = Rc::new(Self {
+            widget,
+            ready_cb: RefCell::new(None),
+            navigator: RefCell::new(None),
+        });
 
-        cancel_button.connect_clicked(clone!(@strong window => move |_| {
-            window.close();
+        back_button.connect_clicked(clone!(@strong this => move |_| {
+            let navigator = this.navigator.borrow().clone();
+            if let Some(navigator) = navigator {
+                navigator.pop();
+            }
         }));
 
         let work = Rc::new(work);
         let work_parts = Rc::new(RefCell::new(track.work_parts));
         let file_name = track.file_name;
 
-        save_button.connect_clicked(clone!(@strong work_parts, @strong window => move |_| {
+        save_button.connect_clicked(clone!(@strong this, @strong work_parts => move |_| {
             let mut work_parts = work_parts.borrow_mut();
             work_parts.sort();
 
-            callback(Track {
-                work_parts: work_parts.clone(),
-                file_name: file_name.clone(),
-            });
+            if let Some(cb) = &*this.ready_cb.borrow() {
+                cb(Track {
+                    work_parts: work_parts.clone(),
+                    file_name: file_name.clone(),
+                });
+            }
 
-            window.close();
+            let navigator = this.navigator.borrow().clone();
+            if let Some(navigator) = navigator {
+                navigator.pop();
+            }
         }));
 
         for (index, part) in work.parts.iter().enumerate() {
@@ -108,10 +124,25 @@ impl TrackEditor {
             section_count += 1;
         }
 
-        Self { window }
+        this
     }
 
-    pub fn show(&self) {
-        self.window.show();
+    /// Set the closure to be called when the track was edited.
+    pub fn set_ready_cb<F: Fn(Track) -> () + 'static>(&self, cb: F) {
+        self.ready_cb.replace(Some(Box::new(cb)));
+    }
+}
+
+impl NavigatorScreen for TrackEditor {
+    fn attach_navigator(&self, navigator: Rc<Navigator>) {
+        self.navigator.replace(Some(navigator));
+    }
+
+    fn get_widget(&self) -> gtk::Widget {
+        self.widget.clone().upcast()
+    }
+
+    fn detach_navigator(&self) {
+        self.navigator.replace(None);
     }
 }

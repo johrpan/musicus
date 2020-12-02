@@ -1,8 +1,8 @@
 use super::*;
 use crate::backend::*;
 use crate::database::*;
-use crate::dialogs::EnsembleEditor;
-use crate::widgets::*;
+use crate::editors::EnsembleEditor;
+use crate::widgets::{List, Navigator, NavigatorScreen, NavigatorWindow};
 use gettextrs::gettext;
 use gio::prelude::*;
 use glib::clone;
@@ -109,7 +109,9 @@ impl EnsembleScreen {
             }));
 
         edit_action.connect_activate(clone!(@strong result => move |_, _| {
-            EnsembleEditor::new(result.backend.clone(), &result.window, Some(result.ensemble.clone())).show();
+            let editor = EnsembleEditor::new(result.backend.clone(), Some(result.ensemble.clone()));
+            let window = NavigatorWindow::new(editor);
+            window.show();
         }));
 
         delete_action.connect_activate(clone!(@strong result => move |_, _| {

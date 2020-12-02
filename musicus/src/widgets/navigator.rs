@@ -10,6 +10,7 @@ pub trait NavigatorScreen {
 }
 
 pub struct Navigator {
+    pub window: gtk::Window,
     pub widget: gtk::Stack,
     screens: RefCell<Vec<Rc<dyn NavigatorScreen>>>,
     old_screens: RefCell<Vec<Rc<dyn NavigatorScreen>>>,
@@ -17,17 +18,22 @@ pub struct Navigator {
 }
 
 impl Navigator {
-    pub fn new<W>(empty_screen: &W) -> Rc<Self>
+    pub fn new<W, S>(window: &W, empty_screen: &S) -> Rc<Self>
     where
-        W: IsA<gtk::Widget>,
+        W: IsA<gtk::Window>,
+        S: IsA<gtk::Widget>,
     {
         let widget = gtk::Stack::new();
+        widget.set_hhomogeneous(false);
+        widget.set_vhomogeneous(false);
+        widget.set_interpolate_size(true);
         widget.set_transition_type(gtk::StackTransitionType::Crossfade);
         widget.set_hexpand(true);
         widget.add_named(empty_screen, "empty_screen");
         widget.show();
 
         let result = Rc::new(Self {
+            window: window.clone().upcast(),
             widget,
             screens: RefCell::new(Vec::new()),
             old_screens: RefCell::new(Vec::new()),
@@ -48,7 +54,10 @@ impl Navigator {
         result
     }
 
-    pub fn set_back_cb<F>(&self, cb: F) where F: Fn() -> () + 'static {
+    pub fn set_back_cb<F>(&self, cb: F)
+    where
+        F: Fn() -> () + 'static,
+    {
         self.back_cb.replace(Some(Box::new(cb)));
     }
 

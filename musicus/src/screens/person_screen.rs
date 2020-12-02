@@ -1,8 +1,8 @@
 use super::*;
 use crate::backend::*;
 use crate::database::*;
-use crate::dialogs::PersonEditor;
-use crate::widgets::*;
+use crate::editors::PersonEditor;
+use crate::widgets::{List, Navigator, NavigatorScreen, NavigatorWindow};
 use gettextrs::gettext;
 use gio::prelude::*;
 use glib::clone;
@@ -145,7 +145,9 @@ impl PersonScreen {
             }));
 
         edit_action.connect_activate(clone!(@strong result => move |_, _| {
-            PersonEditor::new(result.backend.clone(), &result.window, Some(result.person.clone())).show();
+            let editor = PersonEditor::new(result.backend.clone(), Some(result.person.clone()));
+            let window = NavigatorWindow::new(editor);
+            window.show();
         }));
 
         delete_action.connect_activate(clone!(@strong result => move |_, _| {

@@ -1,6 +1,7 @@
-use crate::backend::*;
+use crate::backend::Backend;
 use crate::database::*;
-use crate::dialogs::*;
+use crate::selectors::PersonSelector;
+use crate::widgets::{Navigator, NavigatorScreen};
 use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
@@ -9,36 +10,31 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 /// A dialog for creating or editing a work part.
-pub struct PartEditor {
+pub struct WorkPartEditor {
     backend: Rc<Backend>,
-    window: libhandy::Window,
+    widget: gtk::Box,
     title_entry: gtk::Entry,
     composer_label: gtk::Label,
     reset_composer_button: gtk::Button,
     composer: RefCell<Option<Person>>,
     ready_cb: RefCell<Option<Box<dyn Fn(WorkPart) -> ()>>>,
+    navigator: RefCell<Option<Rc<Navigator>>>,
 }
 
-impl PartEditor {
+impl WorkPartEditor {
     /// Create a new part editor and optionally initialize it.
-    pub fn new<P: IsA<gtk::Window>>(
-        backend: Rc<Backend>,
-        parent: &P,
-        part: Option<WorkPart>,
-    ) -> Rc<Self> {
+    pub fn new(backend: Rc<Backend>, part: Option<WorkPart>) -> Rc<Self> {
         // Create UI
 
-        let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/part_editor.ui");
+        let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/work_part_editor.ui");
 
-        get_widget!(builder, libhandy::Window, window);
-        get_widget!(builder, gtk::Button, cancel_button);
+        get_widget!(builder, gtk::Box, widget);
+        get_widget!(builder, gtk::Button, back_button);
         get_widget!(builder, gtk::Button, save_button);
         get_widget!(builder, gtk::Entry, title_entry);
         get_widget!(builder, gtk::Button, composer_button);
         get_widget!(builder, gtk::Label, composer_label);
         get_widget!(builder, gtk::Button, reset_composer_button);
-
-        window.set_transient_for(Some(parent));
 
         let composer = match part {
             Some(part) => {
@@ -50,18 +46,22 @@ impl PartEditor {
 
         let this = Rc::new(Self {
             backend,
-            window,
+            widget,
             title_entry,
             composer_label,
             reset_composer_button,
             composer: RefCell::new(composer),
             ready_cb: RefCell::new(None),
+            navigator: RefCell::new(None),
         });
 
         // Connect signals and callbacks
 
-        cancel_button.connect_clicked(clone!(@strong this => move |_| {
-            this.window.close();
+        back_button.connect_clicked(clone!(@strong this => move |_| {
+            let navigator = this.navigator.borrow().clone();
+            if let Some(navigator) = navigator {
+                navigator.pop();
+            }
         }));
 
         save_button.connect_clicked(clone!(@strong this => move |_| {
@@ -72,18 +72,26 @@ impl PartEditor {
                 });
             }
 
-            this.window.close();
+            let navigator = this.navigator.borrow().clone();
+            if let Some(navigator) = navigator {
+                navigator.pop();
+            }
         }));
 
         composer_button.connect_clicked(clone!(@strong this => move |_| {
-            let dialog = PersonSelector::new(this.backend.clone(), &this.window);
+            let navigator = this.navigator.borrow().clone();
+            if let Some(navigator) = navigator {
+                let selector = PersonSelector::new(this.backend.clone());
 
-            dialog.set_selected_cb(clone!(@strong this => move |person| {
-                this.show_composer(Some(&person));
-                this.composer.replace(Some(person));
-            }));
+                selector.set_selected_cb(clone!(@strong this, @strong navigator => move |person| {
+                    this.show_composer(Some(person));
+                    this.composer.replace(Some(person.clone()));
+                    navigator.clone().pop();
+                }));
 
-            dialog.show();
+                navigator.push(selector);
+            }
+
         }));
 
         this.reset_composer_button
@@ -106,11 +114,6 @@ impl PartEditor {
         self.ready_cb.replace(Some(Box::new(cb)));
     }
 
-    /// Show the part editor.
-    pub fn show(&self) {
-        self.window.show();
-    }
-
     /// Update the UI according to person.
     fn show_composer(&self, person: Option<&Person>) {
         if let Some(person) = person {
@@ -120,5 +123,19 @@ impl PartEditor {
             self.composer_label.set_text(&gettext("Select …"));
             self.reset_composer_button.hide();
         }
+    }
+}
+
+impl NavigatorScreen for WorkPartEditor {
+    fn attach_navigator(&self, navigator: Rc<Navigator>) {
+        self.navigator.replace(Some(navigator));
+    }
+
+    fn get_widget(&self) -> gtk::Widget {
+        self.widget.clone().upcast()
+    }
+
+    fn detach_navigator(&self) {
+        self.navigator.replace(None);
     }
 }

@@ -1,5 +1,6 @@
 use crate::backend::Backend;
 use crate::database::*;
+use crate::widgets::{Navigator, NavigatorScreen};
 use anyhow::Result;
 use glib::clone;
 use gtk::prelude::*;
@@ -11,30 +12,25 @@ use std::rc::Rc;
 pub struct PersonEditor {
     backend: Rc<Backend>,
     id: String,
-    window: libhandy::Window,
-    stack: gtk::Stack,
+    widget: gtk::Stack,
     info_bar: gtk::InfoBar,
     first_name_entry: gtk::Entry,
     last_name_entry: gtk::Entry,
     upload_switch: gtk::Switch,
     saved_cb: RefCell<Option<Box<dyn Fn(Person) -> ()>>>,
+    navigator: RefCell<Option<Rc<Navigator>>>,
 }
 
 impl PersonEditor {
     /// Create a new person editor and optionally initialize it.
-    pub fn new<P: IsA<gtk::Window>>(
-        backend: Rc<Backend>,
-        parent: &P,
-        person: Option<Person>,
-    ) -> Rc<Self> {
+    pub fn new(backend: Rc<Backend>, person: Option<Person>) -> Rc<Self> {
         // Create UI
 
         let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/person_editor.ui");
 
-        get_widget!(builder, libhandy::Window, window);
-        get_widget!(builder, gtk::Button, cancel_button);
+        get_widget!(builder, gtk::Stack, widget);
+        get_widget!(builder, gtk::Button, back_button);
         get_widget!(builder, gtk::Button, save_button);
-        get_widget!(builder, gtk::Stack, stack);
         get_widget!(builder, gtk::InfoBar, info_bar);
         get_widget!(builder, gtk::Entry, first_name_entry);
         get_widget!(builder, gtk::Entry, last_name_entry);
@@ -53,40 +49,44 @@ impl PersonEditor {
         let this = Rc::new(Self {
             backend,
             id,
-            window,
-            stack,
+            widget,
             info_bar,
             first_name_entry,
             last_name_entry,
             upload_switch,
             saved_cb: RefCell::new(None),
+            navigator: RefCell::new(None),
         });
 
         // Connect signals and callbacks
 
-        cancel_button.connect_clicked(clone!(@strong this => move |_| {
-            this.window.close();
+        back_button.connect_clicked(clone!(@strong this => move |_| {
+            let navigator = this.navigator.borrow().clone();
+            if let Some(navigator) = navigator {
+                navigator.pop();
+            }
         }));
 
         save_button.connect_clicked(clone!(@strong this => move |_| {
             let context = glib::MainContext::default();
             let clone = this.clone();
             context.spawn_local(async move {
-                clone.stack.set_visible_child_name("loading");
+                clone.widget.set_visible_child_name("loading");
                 match clone.clone().save().await {
                     Ok(_) => {
-                        clone.window.close();
+                        let navigator = clone.navigator.borrow().clone();
+                        if let Some(navigator) = navigator {
+                            navigator.pop();
+                        }
                     }
                     Err(_) => {
                         clone.info_bar.set_revealed(true);
-                        clone.stack.set_visible_child_name("content");
+                        clone.widget.set_visible_child_name("content");
                     }
                 }
 
             });
         }));
-
-        this.window.set_transient_for(Some(parent));
 
         this
     }
@@ -94,11 +94,6 @@ impl PersonEditor {
     /// Set the closure to be called if the person was saved.
     pub fn set_saved_cb<F: Fn(Person) -> () + 'static>(&self, cb: F) {
         self.saved_cb.replace(Some(Box::new(cb)));
-    }
-
-    /// Show the person editor.
-    pub fn show(&self) {
-        self.window.show();
     }
 
     /// Save the person and possibly upload it to the server.
@@ -125,5 +120,19 @@ impl PersonEditor {
         }
 
         Ok(())
+    }
+}
+
+impl NavigatorScreen for PersonEditor {
+    fn attach_navigator(&self, navigator: Rc<Navigator>) {
+        self.navigator.replace(Some(navigator));
+    }
+
+    fn get_widget(&self) -> gtk::Widget {
+        self.widget.clone().upcast()
+    }
+
+    fn detach_navigator(&self) {
+        self.navigator.replace(None);
     }
 }

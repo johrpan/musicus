@@ -1,5 +1,6 @@
 use crate::backend::*;
 use crate::dialogs::*;
+use crate::editors::TracksEditor;
 use crate::screens::*;
 use crate::widgets::*;
 use futures::prelude::*;
@@ -42,7 +43,7 @@ impl Window {
         stack.add_named(&player_screen.widget, "player_screen");
 
         let poe_list = PoeList::new(backend.clone());
-        let navigator = Navigator::new(&empty_screen);
+        let navigator = Navigator::new(&window, &empty_screen);
         navigator.set_back_cb(clone!(@strong leaflet, @strong sidebar_box => move || {
             leaflet.set_visible_child(&sidebar_box);
         }));
@@ -84,13 +85,14 @@ impl Window {
         }));
 
         add_button.connect_clicked(clone!(@strong result => move |_| {
-            let editor = TracksEditor::new(result.backend.clone(), &result.window, None, Vec::new());
+            let editor = TracksEditor::new(result.backend.clone(), None, Vec::new());
 
             editor.set_callback(clone!(@strong result => move || {
                 result.reload();
             }));
 
-            editor.show();
+            let window = NavigatorWindow::new(editor);
+            window.show();
         }));
 
         result

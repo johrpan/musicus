@@ -1,8 +1,8 @@
-use super::performance_editor::*;
-use crate::backend::*;
+use super::performance::PerformanceEditor;
+use crate::backend::Backend;
 use crate::database::*;
-use crate::dialogs::*;
-use crate::widgets::*;
+use crate::selectors::{PersonSelector, WorkSelector};
+use crate::widgets::{List, Navigator, NavigatorScreen};
 use anyhow::Result;
 use gettextrs::gettext;
 use glib::clone;
@@ -16,7 +16,6 @@ use std::rc::Rc;
 pub struct RecordingEditor {
     pub widget: gtk::Stack,
     backend: Rc<Backend>,
-    parent: gtk::Window,
     save_button: gtk::Button,
     info_bar: gtk::InfoBar,
     work_label: gtk::Label,
@@ -28,16 +27,12 @@ pub struct RecordingEditor {
     performances: RefCell<Vec<Performance>>,
     selected_cb: RefCell<Option<Box<dyn Fn(Recording) -> ()>>>,
     back_cb: RefCell<Option<Box<dyn Fn() -> ()>>>,
+    navigator: RefCell<Option<Rc<Navigator>>>,
 }
 
 impl RecordingEditor {
-    /// Create a new recording editor widget and optionally initialize it. The parent window is
-    /// used as the parent for newly created dialogs.
-    pub fn new<W: IsA<gtk::Window>>(
-        backend: Rc<Backend>,
-        parent: &W,
-        recording: Option<Recording>,
-    ) -> Rc<Self> {
+    /// Create a new recording editor widget and optionally initialize it.
+    pub fn new(backend: Rc<Backend>, recording: Option<Recording>) -> Rc<Self> {
         // Create UI
 
         let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/recording_editor.ui");
@@ -69,7 +64,6 @@ impl RecordingEditor {
         let this = Rc::new(RecordingEditor {
             widget,
             backend,
-            parent: parent.clone().upcast(),
             save_button,
             info_bar,
             work_label,
@@ -81,6 +75,7 @@ impl RecordingEditor {
             performances: RefCell::new(performances),
             selected_cb: RefCell::new(None),
             back_cb: RefCell::new(None),
+            navigator: RefCell::new(None),
         });
 
         // Connect signals and callbacks
@@ -88,6 +83,11 @@ impl RecordingEditor {
         cancel_button.connect_clicked(clone!(@strong this => move |_| {
             if let Some(cb) = &*this.back_cb.borrow() {
                 cb();
+            }
+
+            let navigator = this.navigator.borrow().clone();
+            if let Some(navigator) = navigator {
+                navigator.clone().pop();
             }
         }));
 
@@ -99,7 +99,10 @@ impl RecordingEditor {
                     clone.widget.set_visible_child_name("loading");
                     match clone.clone().save().await {
                         Ok(_) => {
-                            // We already called the callback.
+                            let navigator = clone.navigator.borrow().clone();
+                            if let Some(navigator) = navigator {
+                                navigator.clone().pop();
+                            }
                         }
                         Err(_) => {
                             clone.info_bar.set_revealed(true);
@@ -111,14 +114,26 @@ impl RecordingEditor {
             }));
 
         work_button.connect_clicked(clone!(@strong this => move |_| {
-            let dialog = WorkDialog::new(this.backend.clone(), &this.parent);
+            let navigator = this.navigator.borrow().clone();
+            if let Some(navigator) = navigator {
+                let person_selector = PersonSelector::new(this.backend.clone());
 
-            dialog.set_selected_cb(clone!(@strong this => move |work| {
-                this.work_selected(&work);
-                this.work.replace(Some(work));
-            }));
+                person_selector.set_selected_cb(clone!(@strong this, @strong navigator => move |person| {
+                    let work_selector = WorkSelector::new(this.backend.clone(), person.clone());
+                    
+                    work_selector.set_selected_cb(clone!(@strong this, @strong navigator => move |work| {
+                        this.work_selected(&work);
+                        this.work.replace(Some(work.clone()));
 
-            dialog.show();
+                        navigator.clone().pop();
+                        navigator.clone().pop();
+                    }));
+
+                    navigator.clone().push(work_selector);
+                }));
+
+                navigator.push(person_selector);
+            }
         }));
 
         this.performance_list.set_make_widget(|performance| {
@@ -133,42 +148,50 @@ impl RecordingEditor {
         });
 
         add_performer_button.connect_clicked(clone!(@strong this => move |_| {
-            let editor = PerformanceEditor::new(this.backend.clone(), &this.parent, None);
+            let navigator = this.navigator.borrow().clone();
+            if let Some(navigator) = navigator {
+                let editor = PerformanceEditor::new(this.backend.clone(), None);
 
-            editor.set_selected_cb(clone!(@strong this => move |performance| {
-                let mut performances = this.performances.borrow_mut();
+                editor.set_selected_cb(clone!(@strong this, @strong navigator => move |performance| {
+                    let mut performances = this.performances.borrow_mut();
 
-                let index = match this.performance_list.get_selected_index() {
-                    Some(index) => index + 1,
-                    None => performances.len(),
-                };
+                    let index = match this.performance_list.get_selected_index() {
+                        Some(index) => index + 1,
+                        None => performances.len(),
+                    };
 
-                performances.insert(index, performance);
-                this.performance_list.show_items(performances.clone());
-                this.performance_list.select_index(index);
-            }));
+                    performances.insert(index, performance);
+                    this.performance_list.show_items(performances.clone());
+                    this.performance_list.select_index(index);
 
-            editor.show();
+                    navigator.clone().pop();
+                }));
+
+                navigator.push(editor);
+            }
         }));
 
         edit_performer_button.connect_clicked(clone!(@strong this => move |_| {
-            if let Some(index) = this.performance_list.get_selected_index() {
-                let performance = &this.performances.borrow()[index];
+            let navigator = this.navigator.borrow().clone();
+            if let Some(navigator) = navigator {
+                if let Some(index) = this.performance_list.get_selected_index() {
+                    let performance = &this.performances.borrow()[index];
 
-                let editor = PerformanceEditor::new(
-                    this.backend.clone(),
-                    &this.parent,
-                    Some(performance.clone()),
-                );
+                    let editor = PerformanceEditor::new(
+                        this.backend.clone(),
+                        Some(performance.clone()),
+                    );
 
-                editor.set_selected_cb(clone!(@strong this => move |performance| {
-                    let mut performances = this.performances.borrow_mut();
-                    performances[index] = performance;
-                    this.performance_list.show_items(performances.clone());
-                    this.performance_list.select_index(index);
-                }));
+                    editor.set_selected_cb(clone!(@strong this, @strong navigator => move |performance| {
+                        let mut performances = this.performances.borrow_mut();
+                        performances[index] = performance;
+                        this.performance_list.show_items(performances.clone());
+                        this.performance_list.select_index(index);
+                        navigator.clone().pop();
+                    }));
 
-                editor.show();
+                    navigator.push(editor);
+                }
             }
         }));
 
@@ -240,6 +263,25 @@ impl RecordingEditor {
             cb(recording.clone());
         }
 
+        let navigator = self.navigator.borrow().clone();
+        if let Some(navigator) = navigator {
+            navigator.clone().pop();
+        }
+
         Ok(())
+    }
+}
+
+impl NavigatorScreen for RecordingEditor {
+    fn attach_navigator(&self, navigator: Rc<Navigator>) {
+        self.navigator.replace(Some(navigator));
+    }
+
+    fn get_widget(&self) -> gtk::Widget {
+        self.widget.clone().upcast()
+    }
+
+    fn detach_navigator(&self) {
+        self.navigator.replace(None);
     }
 }

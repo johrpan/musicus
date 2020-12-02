@@ -1,8 +1,8 @@
 use super::*;
 use crate::backend::*;
 use crate::database::*;
-use crate::dialogs::WorkEditorDialog;
-use crate::widgets::*;
+use crate::editors::WorkEditor;
+use crate::widgets::{List, Navigator, NavigatorScreen, NavigatorWindow};
 use gettextrs::gettext;
 use gio::prelude::*;
 use glib::clone;
@@ -108,7 +108,9 @@ impl WorkScreen {
             }));
 
         edit_action.connect_activate(clone!(@strong result => move |_, _| {
-            WorkEditorDialog::new(result.backend.clone(), &result.window, Some(result.work.clone())).show();
+            let editor = WorkEditor::new(result.backend.clone(), Some(result.work.clone()));
+            let window = NavigatorWindow::new(editor);
+            window.show();
         }));
 
         delete_action.connect_activate(clone!(@strong result => move |_, _| {
