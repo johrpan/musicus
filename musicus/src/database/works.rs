@@ -1,3 +1,4 @@
+use super::generate_id;
 use super::schema::{instrumentations, work_parts, work_sections, works};
 use super::{Database, Instrument, Person};
 use anyhow::{anyhow, Error, Result};
@@ -83,6 +84,18 @@ pub struct Work {
 }
 
 impl Work {
+    /// Initialize a new work with a composer.
+    pub fn new(composer: Person) -> Self {
+        Self {
+            id: generate_id(),
+            title: String::new(),
+            composer,
+            instruments: Vec::new(),
+            parts: Vec::new(),
+            sections: Vec::new(),
+        }
+    }
+
     /// Get a string including the composer and title of the work.
     // TODO: Replace with impl Display.
     pub fn get_title(&self) -> String {

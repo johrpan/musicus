@@ -47,9 +47,16 @@ impl WorkSelector {
         this.selector.set_add_cb(clone!(@strong this => move || {
             let navigator = this.navigator.borrow().clone();
             if let Some(navigator) = navigator {
-                let editor = WorkEditor::new(this.backend.clone(), None);
+                let work = Work::new(this.person.clone());
+
+                let editor = WorkEditor::new(this.backend.clone(), Some(work));
+
                 editor
-                    .set_saved_cb(clone!(@strong this => move |work| this.select(&work)));
+                    .set_saved_cb(clone!(@strong this, @strong navigator => move |work| {
+                        navigator.clone().pop();
+                        this.select(&work);
+                    }));
+
                 navigator.push(editor);
             }
         }));

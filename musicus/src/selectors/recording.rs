@@ -47,9 +47,16 @@ impl RecordingSelector {
         this.selector.set_add_cb(clone!(@strong this => move || {
             let navigator = this.navigator.borrow().clone();
             if let Some(navigator) = navigator {
-                let editor = RecordingEditor::new(this.backend.clone(), None);
+                let recording = Recording::new(this.work.clone());
+
+                let editor = RecordingEditor::new(this.backend.clone(), Some(recording));
+                
                 editor
-                    .set_selected_cb(clone!(@strong this => move |recording| this.select(&recording)));
+                    .set_selected_cb(clone!(@strong this, @strong navigator => move |recording| {
+                        navigator.clone().pop();
+                        this.select(&recording);
+                    }));
+                
                 navigator.push(editor);
             }
         }));

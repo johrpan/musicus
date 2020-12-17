@@ -1,3 +1,4 @@
+use super::generate_id;
 use super::schema::{ensembles, performances, persons, recordings};
 use super::{Database, Ensemble, Instrument, Person, Work};
 use anyhow::{anyhow, Error, Result};
@@ -93,6 +94,16 @@ pub struct Recording {
 }
 
 impl Recording {
+    /// Initialize a new recording with a work.
+    pub fn new(work: Work) -> Self {
+        Self {
+            id: generate_id(),
+            work,
+            comment: String::new(),
+            performances: Vec::new(),
+        }
+    }
+
     /// Get a string representation of the performances in this recording.
     // TODO: Maybe replace with impl Display?
     pub fn get_performers(&self) -> String {
