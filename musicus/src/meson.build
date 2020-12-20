@@ -52,6 +52,7 @@ sources = files(
   'database/tracks.rs',
   'database/works.rs',
   'dialogs/about.rs',
+  'dialogs/import_disc.rs',
   'dialogs/login_dialog.rs',
   'dialogs/mod.rs',
   'dialogs/preferences.rs',
@@ -93,6 +94,7 @@ sources = files(
   'player.rs',
   'resources.rs',
   'resources.rs.in',
+  'ripper.rs',
   'window.rs',
 )
 

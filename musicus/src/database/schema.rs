@@ -6,6 +6,13 @@ table! {
 }
 
 table! {
+    files (file_name) {
+        file_name -> Text,
+        track -> Text,
+    }
+}
+
+table! {
     instrumentations (id) {
         id -> BigInt,
         work -> Text,
@@ -17,6 +24,14 @@ table! {
     instruments (id) {
         id -> Text,
         name -> Text,
+    }
+}
+
+table! {
+    mediums (id) {
+        id -> Text,
+        name -> Text,
+        discid -> Nullable<Text>,
     }
 }
 
@@ -47,11 +62,19 @@ table! {
 }
 
 table! {
-    tracks (id) {
-        id -> BigInt,
-        file_name -> Text,
+    track_sets (id) {
+        id -> Text,
+        medium -> Text,
+        index -> Integer,
         recording -> Text,
-        track_index -> Integer,
+    }
+}
+
+table! {
+    tracks (id) {
+        id -> Text,
+        track_set -> Text,
+        index -> Integer,
         work_parts -> Text,
     }
 }
@@ -83,6 +106,7 @@ table! {
     }
 }
 
+joinable!(files -> tracks (track));
 joinable!(instrumentations -> instruments (instrument));
 joinable!(instrumentations -> works (work));
 joinable!(performances -> ensembles (ensemble));
@@ -90,7 +114,9 @@ joinable!(performances -> instruments (role));
 joinable!(performances -> persons (person));
 joinable!(performances -> recordings (recording));
 joinable!(recordings -> works (work));
-joinable!(tracks -> recordings (recording));
+joinable!(track_sets -> mediums (medium));
+joinable!(track_sets -> recordings (recording));
+joinable!(tracks -> track_sets (track_set));
 joinable!(work_parts -> persons (composer));
 joinable!(work_parts -> works (work));
 joinable!(work_sections -> works (work));
@@ -98,11 +124,14 @@ joinable!(works -> persons (composer));
 
 allow_tables_to_appear_in_same_query!(
     ensembles,
+    files,
     instrumentations,
     instruments,
+    mediums,
     performances,
     persons,
     recordings,
+    track_sets,
     tracks,
     work_parts,
     work_sections,

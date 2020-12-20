@@ -28,9 +28,12 @@ enum Action {
     GetRecordingsForEnsemble(String, Sender<Result<Vec<Recording>>>),
     GetRecordingsForWork(String, Sender<Result<Vec<Recording>>>),
     RecordingExists(String, Sender<Result<bool>>),
-    UpdateTracks(String, Vec<Track>, Sender<Result<()>>),
-    DeleteTracks(String, Sender<Result<()>>),
-    GetTracks(String, Sender<Result<Vec<Track>>>),
+    UpdateMedium(Medium, Sender<Result<()>>),
+    GetMedium(String, Sender<Result<Option<Medium>>>),
+    DeleteMedium(String, Sender<Result<()>>),
+    UpdateFile(String, String, Sender<Result<()>>),
+    DeleteFile(String, Sender<Result<()>>),
+    GetFile(String, Sender<Result<Option<String>>>),
     Stop(Sender<()>),
 }
 
@@ -124,16 +127,23 @@ impl DbThread {
                     RecordingExists(id, sender) => {
                         sender.send(db.recording_exists(&id)).unwrap();
                     }
-                    UpdateTracks(recording_id, tracks, sender) => {
-                        sender
-                            .send(db.update_tracks(&recording_id, tracks))
-                            .unwrap();
+                    UpdateMedium(medium, sender) => {
+                        sender.send(db.update_medium(medium)).unwrap();
                     }
-                    DeleteTracks(recording_id, sender) => {
-                        sender.send(db.delete_tracks(&recording_id)).unwrap();
+                    GetMedium(id, sender) => {
+                        sender.send(db.get_medium(&id)).unwrap();
                     }
-                    GetTracks(recording_id, sender) => {
-                        sender.send(db.get_tracks(&recording_id)).unwrap();
+                    DeleteMedium(id, sender) => {
+                        sender.send(db.delete_medium(&id)).unwrap();
+                    }
+                    UpdateFile(file_name, track_id, sender) => {
+                        sender.send(db.update_file(&file_name, &track_id)).unwrap();
+                    }
+                    DeleteFile(file_name, sender) => {
+                        sender.send(db.delete_file(&file_name)).unwrap();
+                    }
+                    GetFile(track_id, sender) => {
+                        sender.send(db.get_file(&track_id)).unwrap();
                     }
                     Stop(sender) => {
                         sender.send(()).unwrap();
@@ -312,28 +322,63 @@ impl DbThread {
         receiver.await?
     }
 
-    /// Add or change the tracks associated with a recording. This will fail, if there are still
-    /// other items referencing this recording.
-    pub async fn update_tracks(&self, recording_id: &str, tracks: Vec<Track>) -> Result<()> {
+    /// Update an existing medium or insert a new one.
+    pub async fn update_medium(&self, medium: Medium) -> Result<()> {
         let (sender, receiver) = oneshot::channel();
-        self.action_sender
-            .send(UpdateTracks(recording_id.to_string(), tracks, sender))?;
+        self.action_sender.send(UpdateMedium(medium, sender))?;
         receiver.await?
     }
 
-    /// Delete all tracks associated with a recording.
-    pub async fn delete_tracks(&self, recording_id: &str) -> Result<()> {
+    /// Delete an existing medium. This will fail, if there are still other
+    /// items referencing this medium.
+    pub async fn delete_medium(&self, id: &str) -> Result<()> {
         let (sender, receiver) = oneshot::channel();
+
         self.action_sender
-            .send(DeleteTracks(recording_id.to_string(), sender))?;
+            .send(DeleteMedium(id.to_owned(), sender))?;
+
         receiver.await?
     }
 
-    /// Get all tracks associated with a recording.
-    pub async fn get_tracks(&self, recording_id: &str) -> Result<Vec<Track>> {
+    /// Get an existing medium.
+    pub async fn get_medium(&self, id: &str) -> Result<Option<Medium>> {
         let (sender, receiver) = oneshot::channel();
+        self.action_sender.send(GetMedium(id.to_owned(), sender))?;
+        receiver.await?
+    }
+
+    /// Insert or update a file. This assumes that the track is already in the
+    /// database.
+    pub async fn update_file(&self, file_name: &str, track_id: &str) -> Result<()> {
+        let (sender, receiver) = oneshot::channel();
+
+        self.action_sender.send(UpdateFile(
+            file_name.to_owned(),
+            track_id.to_owned(),
+            sender,
+        ))?;
+
+        receiver.await?
+    }
+
+    /// Delete an existing file. This will not delete the file from the file
+    /// system but just the representing row from the database.
+    pub async fn delete_file(&self, file_name: &str) -> Result<()> {
+        let (sender, receiver) = oneshot::channel();
+
         self.action_sender
-            .send(GetTracks(recording_id.to_string(), sender))?;
+            .send(DeleteFile(file_name.to_owned(), sender))?;
+
+        receiver.await?
+    }
+
+    /// Get the file name of the audio file for the specified track.
+    pub async fn get_file(&self, track_id: &str) -> Result<Option<String>> {
+        let (sender, receiver) = oneshot::channel();
+
+        self.action_sender
+            .send(GetFile(track_id.to_owned(), sender))?;
+
         receiver.await?
     }
 

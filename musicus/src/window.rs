@@ -109,6 +109,16 @@ impl Window {
 
         action!(
             result.window,
+            "import-disc",
+            clone!(@strong result => move |_, _| {
+                let dialog = ImportDiscDialog::new(result.backend.clone());
+                let window = NavigatorWindow::new(dialog);
+                window.show();
+            })
+        );
+
+        action!(
+            result.window,
             "preferences",
             clone!(@strong result => move |_, _| {
                 Preferences::new(result.backend.clone(), &result.window).show();
