@@ -104,13 +104,6 @@ impl Ripper {
     /// Build the GStreamer pipeline to rip a track.
     fn build_pipeline(path: &str, track: u32) -> Result<Pipeline> {
         let cdparanoiasrc = ElementFactory::make("cdparanoiasrc", None)?;
-
-        // // TODO: Remove.
-        // cdparanoiasrc.set_property(
-        //     "device",
-        //     &String::from("/home/johrpan/Diverses/arrau_schumann.iso"),
-        // )?;
-
         cdparanoiasrc.set_property("track", &track)?;
 
         let queue = ElementFactory::make("queue", None)?;

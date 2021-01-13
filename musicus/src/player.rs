@@ -9,6 +9,7 @@ use std::rc::Rc;
 #[derive(Clone)]
 pub struct PlaylistItem {
     pub tracks: TrackSet,
+    pub file_names: Vec<String>,
     pub indices: Vec<usize>,
 }
 
@@ -248,15 +249,7 @@ impl Player {
             "file://{}",
             self.music_library_path
                 .join(
-                    self.playlist
-                        .borrow()
-                        .get(current_item)
-                        .ok_or(anyhow!("Playlist item doesn't exist!"))?
-                        .tracks
-                        .get(current_track)
-                        .ok_or(anyhow!("Track doesn't exist!"))?
-                        .file_name
-                        .clone(),
+                    self.playlist.borrow()[current_item].file_names[current_track].clone(),
                 )
                 .to_str()
                 .unwrap(),

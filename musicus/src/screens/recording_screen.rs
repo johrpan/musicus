@@ -1,6 +1,6 @@
 use crate::backend::*;
 use crate::database::*;
-use crate::editors::{RecordingEditor, TracksEditor};
+use crate::editors::RecordingEditor;
 use crate::player::*;
 use crate::widgets::{List, Navigator, NavigatorScreen, NavigatorWindow};
 use gettextrs::gettext;
@@ -76,15 +76,15 @@ impl RecordingScreen {
             title_label.set_ellipsize(pango::EllipsizeMode::End);
             title_label.set_halign(gtk::Align::Start);
 
-            let file_name_label = gtk::Label::new(Some(&track.file_name));
-            file_name_label.set_ellipsize(pango::EllipsizeMode::End);
-            file_name_label.set_opacity(0.5);
-            file_name_label.set_halign(gtk::Align::Start);
+            // let file_name_label = gtk::Label::new(Some(&track.file_name));
+            // file_name_label.set_ellipsize(pango::EllipsizeMode::End);
+            // file_name_label.set_opacity(0.5);
+            // file_name_label.set_halign(gtk::Align::Start);
 
             let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
             vbox.set_border_width(6);
             vbox.add(&title_label);
-            vbox.add(&file_name_label);
+            // vbox.add(&file_name_label);
 
             vbox.upcast()
         }));
@@ -98,10 +98,10 @@ impl RecordingScreen {
 
         add_to_playlist_button.connect_clicked(clone!(@strong result => move |_| {
             if let Some(player) = result.backend.get_player() {
-                player.add_item(PlaylistItem {
-                    recording: result.recording.clone(),
-                    tracks: result.tracks.borrow().clone(),
-                }).unwrap();
+                // player.add_item(PlaylistItem {
+                //     recording: result.recording.clone(),
+                //     tracks: result.tracks.borrow().clone(),
+                // }).unwrap();
             }
         }));
 
@@ -121,33 +121,33 @@ impl RecordingScreen {
         }));
 
         edit_tracks_action.connect_activate(clone!(@strong result => move |_, _| {
-            let editor = TracksEditor::new(result.backend.clone(), Some(result.recording.clone()), result.tracks.borrow().clone());
-            let window = NavigatorWindow::new(editor);
-            window.show();
+            // let editor = TracksEditor::new(result.backend.clone(), Some(result.recording.clone()), result.tracks.borrow().clone());
+            // let window = NavigatorWindow::new(editor);
+            // window.show();
         }));
 
         delete_tracks_action.connect_activate(clone!(@strong result => move |_, _| {
             let context = glib::MainContext::default();
             let clone = result.clone();
             context.spawn_local(async move {
-                clone.backend.db().delete_tracks(&clone.recording.id).await.unwrap();
-                clone.backend.library_changed();
+                // clone.backend.db().delete_tracks(&clone.recording.id).await.unwrap();
+                // clone.backend.library_changed();
             });
         }));
 
         let context = glib::MainContext::default();
         let clone = result.clone();
         context.spawn_local(async move {
-            let tracks = clone
-                .backend
-                .db()
-                .get_tracks(&clone.recording.id)
-                .await
-                .unwrap();
+            // let tracks = clone
+            //     .backend
+            //     .db()
+            //     .get_tracks(&clone.recording.id)
+            //     .await
+            //     .unwrap();
 
-            list.show_items(tracks.clone());
-            clone.stack.set_visible_child_name("content");
-            clone.tracks.replace(tracks);
+            // list.show_items(tracks.clone());
+            // clone.stack.set_visible_child_name("content");
+            // clone.tracks.replace(tracks);
         });
 
         result
