@@ -4,6 +4,7 @@ use crate::backend::Backend;
 use crate::widgets::{Navigator, NavigatorScreen};
 use crate::widgets::new_list::List;
 use glib::clone;
+use glib::prelude::*;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
 use libhandy::prelude::*;
@@ -15,6 +16,9 @@ pub struct MediumEditor {
     backend: Rc<Backend>,
     source: Rc<DiscSource>,
     widget: gtk::Box,
+    done_button: gtk::Button,
+    done_stack: gtk::Stack,
+    done: gtk::Image,
     track_set_list: List,
     track_sets: RefCell<Vec<TrackSetData>>,
     navigator: RefCell<Option<Rc<Navigator>>>,
@@ -30,6 +34,9 @@ impl MediumEditor {
         get_widget!(builder, gtk::Box, widget);
         get_widget!(builder, gtk::Button, back_button);
         get_widget!(builder, gtk::Button, add_button);
+        get_widget!(builder, gtk::Button, done_button);
+        get_widget!(builder, gtk::Stack, done_stack);
+        get_widget!(builder, gtk::Image, done);
         get_widget!(builder, gtk::Frame, frame);
 
         let list = List::new("No recordings added.");
@@ -39,6 +46,9 @@ impl MediumEditor {
             backend,
             source: Rc::new(source),
             widget,
+            done_button,
+            done_stack,
+            done,
             track_set_list: list,
             track_sets: RefCell::new(Vec::new()),
             navigator: RefCell::new(None),
@@ -98,6 +108,22 @@ impl MediumEditor {
 
             row.upcast()
         }));
+
+        // Start ripping the CD in the background.
+        let context = glib::MainContext::default();
+        let clone = this.clone();
+        context.spawn_local(async move {
+            match clone.source.rip().await {
+                Err(error) => {
+                    // TODO: Present error.
+                    println!("Failed to rip: {}", error);
+                },
+                Ok(_) => {
+                    clone.done_stack.set_visible_child(&clone.done);
+                    clone.done_button.set_sensitive(true);
+                }
+            }
+        });
 
         this
     }
