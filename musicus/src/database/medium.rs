@@ -10,9 +10,16 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Medium {
+    /// An unique ID for the medium.
     pub id: String,
+
+    /// The human identifier for the medium.
     pub name: String,
+
+    /// If applicable, the MusicBrainz DiscID.
     pub discid: Option<String>,
+
+    /// The tracks of the medium, grouped by recording.
     pub tracks: Vec<TrackSet>,
 }
 
@@ -20,7 +27,10 @@ pub struct Medium {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct TrackSet {
+    /// The recording to which the tracks belong.
     pub recording: Recording,
+
+    /// The actual tracks.
     pub tracks: Vec<Track>,
 }
 
@@ -28,7 +38,9 @@ pub struct TrackSet {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Track {
-    work_parts: Vec<usize>,
+    /// The work parts that are played on this track. They are indices to the
+    /// work parts of the work that is associated with the recording.
+    pub work_parts: Vec<usize>,
 }
 
 /// Table data for a [`Medium`].
