@@ -42,7 +42,7 @@ pub struct TrackSetEditor {
     track_list: List,
     recording: RefCell<Option<Recording>>,
     tracks: RefCell<Vec<TrackData>>,
-    done_cb: RefCell<Option<Box<dyn Fn(TrackSet)>>>,
+    done_cb: RefCell<Option<Box<dyn Fn(TrackSetData)>>>,
     navigator: RefCell<Option<Rc<Navigator>>>,
 }
 
@@ -87,7 +87,19 @@ impl TrackSetEditor {
         }));
 
         this.save_button.connect_clicked(clone!(@strong this => move |_| {
-            if let Some(cb) = &*this.done_cb.borrow() {}
+            if let Some(cb) = &*this.done_cb.borrow() {
+                let data = TrackSetData {
+                    recording: this.recording.borrow().clone().unwrap(),
+                    tracks: this.tracks.borrow().clone(),
+                };
+
+                cb(data);
+            }
+
+            let navigator = this.navigator.borrow().clone();
+            if let Some(navigator) = navigator {
+                navigator.pop();
+            }
         }));
 
         select_recording_button.connect_clicked(clone!(@strong this => move |_| {
@@ -215,7 +227,7 @@ impl TrackSetEditor {
     }
 
     /// Set the closure to be called when the user has created the track set.
-    pub fn set_done_cb<F: Fn(TrackSet) + 'static>(&self, cb: F) {
+    pub fn set_done_cb<F: Fn(TrackSetData) + 'static>(&self, cb: F) {
         self.done_cb.replace(Some(Box::new(cb)));
     }
 
