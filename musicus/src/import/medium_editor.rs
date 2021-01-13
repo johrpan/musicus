@@ -19,6 +19,7 @@ pub struct MediumEditor {
     done_button: gtk::Button,
     done_stack: gtk::Stack,
     done: gtk::Image,
+    name_entry: gtk::Entry,
     track_set_list: List,
     track_sets: RefCell<Vec<TrackSetData>>,
     navigator: RefCell<Option<Rc<Navigator>>>,
@@ -33,10 +34,11 @@ impl MediumEditor {
 
         get_widget!(builder, gtk::Box, widget);
         get_widget!(builder, gtk::Button, back_button);
-        get_widget!(builder, gtk::Button, add_button);
         get_widget!(builder, gtk::Button, done_button);
         get_widget!(builder, gtk::Stack, done_stack);
         get_widget!(builder, gtk::Image, done);
+        get_widget!(builder, gtk::Entry, name_entry);
+        get_widget!(builder, gtk::Button, add_button);
         get_widget!(builder, gtk::Frame, frame);
 
         let list = List::new("No recordings added.");
@@ -49,6 +51,7 @@ impl MediumEditor {
             done_button,
             done_stack,
             done,
+            name_entry,
             track_set_list: list,
             track_sets: RefCell::new(Vec::new()),
             navigator: RefCell::new(None),
