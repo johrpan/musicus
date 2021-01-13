@@ -7,6 +7,8 @@ pub use navigator::*;
 pub mod navigator_window;
 pub use navigator_window::*;
 
+pub mod new_list;
+
 pub mod player_bar;
 pub use player_bar::*;
 

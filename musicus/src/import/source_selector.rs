@@ -1,3 +1,4 @@
+use super::medium_editor::MediumEditor;
 use super::disc_source::DiscSource;
 use crate::backend::Backend;
 use crate::widgets::{Navigator, NavigatorScreen};
@@ -55,7 +56,13 @@ impl SourceSelector {
             context.spawn_local(async move {
                 match DiscSource::load().await {
                     Ok(disc) => {
-                        println!("{:?}", disc);
+                        let navigator = clone.navigator.borrow().clone();
+                        if let Some(navigator) = navigator {
+                            let editor = MediumEditor::new(clone.backend.clone(), disc);
+                            navigator.push(editor);
+                        }
+
+                        clone.info_bar.set_revealed(false);
                         clone.stack.set_visible_child_name("start");
                     }
                     Err(_) => {
