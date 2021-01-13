@@ -63,7 +63,6 @@ sources = files(
   'editors/performance.rs',
   'editors/person.rs',
   'editors/recording.rs',
-  'editors/track_set.rs',
   'editors/work.rs',
   'editors/work_part.rs',
   'editors/work_section.rs',

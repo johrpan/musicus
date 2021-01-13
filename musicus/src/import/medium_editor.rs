@@ -1,6 +1,6 @@
 use super::disc_source::DiscSource;
+use super::track_set_editor::TrackSetEditor;
 use crate::backend::Backend;
-// use crate::editors::{TrackSetEditor, TrackSource};
 use crate::widgets::{Navigator, NavigatorScreen};
 use crate::widgets::new_list::List;
 use glib::clone;
@@ -12,7 +12,7 @@ use std::rc::Rc;
 /// A dialog for editing metadata while importing music into the music library.
 pub struct MediumEditor {
     backend: Rc<Backend>,
-    source: DiscSource,
+    source: Rc<DiscSource>,
     widget: gtk::Box,
     navigator: RefCell<Option<Rc<Navigator>>>,
 }
@@ -34,7 +34,7 @@ impl MediumEditor {
 
         let this = Rc::new(Self {
             backend,
-            source,
+            source: Rc::new(source),
             widget,
             navigator: RefCell::new(None),
         });
@@ -51,8 +51,8 @@ impl MediumEditor {
         add_button.connect_clicked(clone!(@strong this => move |_| {
             let navigator = this.navigator.borrow().clone();
             if let Some(navigator) = navigator {
-                // let editor = TrackSetEditor::new(this.backend.clone(), this.source.clone());
-                // navigator.push(editor);
+                let editor = TrackSetEditor::new(this.backend.clone(), Rc::clone(&this.source));
+                navigator.push(editor);
             }
         }));
 
