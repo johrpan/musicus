@@ -1,5 +1,6 @@
 use crate::backend::*;
 use crate::dialogs::*;
+use crate::import::SourceSelector;
 use crate::screens::*;
 use crate::widgets::*;
 use futures::prelude::*;
@@ -93,7 +94,7 @@ impl Window {
             // let window = NavigatorWindow::new(editor);
             // window.show();
 
-            let dialog = ImportFolderDialog::new(result.backend.clone());
+            let dialog = SourceSelector::new(result.backend.clone());
             let window = NavigatorWindow::new(dialog);
             window.show();
         }));
@@ -110,15 +111,15 @@ impl Window {
                 result.stack.set_visible_child_name("content");
             }));
 
-        action!(
-            result.window,
-            "import-disc",
-            clone!(@strong result => move |_, _| {
-                let dialog = ImportDiscDialog::new(result.backend.clone());
-                let window = NavigatorWindow::new(dialog);
-                window.show();
-            })
-        );
+        // action!(
+        //     result.window,
+        //     "import-disc",
+        //     clone!(@strong result => move |_, _| {
+        //         let dialog = ImportDiscDialog::new(result.backend.clone());
+        //         let window = NavigatorWindow::new(dialog);
+        //         window.show();
+        //     })
+        // );
 
         action!(
             result.window,

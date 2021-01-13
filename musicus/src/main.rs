@@ -12,11 +12,11 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 mod backend;
-mod ripper;
 mod config;
 mod database;
 mod dialogs;
 mod editors;
+mod import;
 mod player;
 mod screens;
 mod selectors;
