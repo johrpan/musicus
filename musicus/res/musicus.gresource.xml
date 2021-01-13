@@ -4,11 +4,9 @@
         <file preprocess="xml-stripblanks">ui/ensemble_editor.ui</file>
         <file preprocess="xml-stripblanks">ui/ensemble_screen.ui</file>
         <file preprocess="xml-stripblanks">ui/ensemble_selector.ui</file>
+        <file preprocess="xml-stripblanks">ui/import_dialog.ui</file>
         <file preprocess="xml-stripblanks">ui/import_disc_dialog.ui</file>
-<<<<<<< HEAD
         <file preprocess="xml-stripblanks">ui/import_folder_dialog.ui</file>
-=======
->>>>>>> wip/cd-ripping-old
         <file preprocess="xml-stripblanks">ui/instrument_editor.ui</file>
         <file preprocess="xml-stripblanks">ui/instrument_selector.ui</file>
         <file preprocess="xml-stripblanks">ui/login_dialog.ui</file>
@@ -27,8 +25,9 @@
         <file preprocess="xml-stripblanks">ui/recording_selector_screen.ui</file>
         <file preprocess="xml-stripblanks">ui/selector.ui</file>
         <file preprocess="xml-stripblanks">ui/server_dialog.ui</file>
-        <file preprocess="xml-stripblanks">ui/tracks_editor.ui</file>
         <file preprocess="xml-stripblanks">ui/track_editor.ui</file>
+        <file preprocess="xml-stripblanks">ui/track_selector.ui</file>
+        <file preprocess="xml-stripblanks">ui/track_set_editor.ui</file>
         <file preprocess="xml-stripblanks">ui/window.ui</file>
         <file preprocess="xml-stripblanks">ui/work_editor.ui</file>
         <file preprocess="xml-stripblanks">ui/work_part_editor.ui</file>
