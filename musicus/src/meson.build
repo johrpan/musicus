@@ -43,7 +43,6 @@ sources = files(
   'backend/mod.rs',
   'backend/secure.rs',
   'database/ensembles.rs',
-  'database/files.rs',
   'database/instruments.rs',
   'database/medium.rs',
   'database/mod.rs',

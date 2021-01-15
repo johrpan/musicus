@@ -6,13 +6,6 @@ table! {
 }
 
 table! {
-    files (file_name) {
-        file_name -> Text,
-        track -> Text,
-    }
-}
-
-table! {
     instrumentations (id) {
         id -> BigInt,
         work -> Text,
@@ -76,6 +69,7 @@ table! {
         track_set -> Text,
         index -> Integer,
         work_parts -> Text,
+        path -> Text,
     }
 }
 
@@ -106,7 +100,6 @@ table! {
     }
 }
 
-joinable!(files -> tracks (track));
 joinable!(instrumentations -> instruments (instrument));
 joinable!(instrumentations -> works (work));
 joinable!(performances -> ensembles (ensemble));
@@ -124,7 +117,6 @@ joinable!(works -> persons (composer));
 
 allow_tables_to_appear_in_same_query!(
     ensembles,
-    files,
     instrumentations,
     instruments,
     mediums,

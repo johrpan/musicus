@@ -13,6 +13,9 @@ pub struct DiscSource {
     /// The MusicBrainz DiscID of the CD.
     pub discid: String,
 
+    /// The path to the temporary directory where the audio files will be.
+    pub path: PathBuf,
+
     /// The tracks on this disc.
     pub tracks: Vec<TrackSource>,
 }
@@ -96,6 +99,7 @@ impl DiscSource {
         let disc = DiscSource {
             discid: id,
             tracks,
+            path: tmp_dir,
         };
 
         Ok(disc)

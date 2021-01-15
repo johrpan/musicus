@@ -12,5 +12,4 @@ DROP TABLE "performances";
 DROP TABLE "mediums";
 DROP TABLE "track_sets";
 DROP TABLE "tracks";
-DROP TABLE "files";
 

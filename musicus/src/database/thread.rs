@@ -31,9 +31,7 @@ enum Action {
     UpdateMedium(Medium, Sender<Result<()>>),
     GetMedium(String, Sender<Result<Option<Medium>>>),
     DeleteMedium(String, Sender<Result<()>>),
-    UpdateFile(String, String, Sender<Result<()>>),
-    DeleteFile(String, Sender<Result<()>>),
-    GetFile(String, Sender<Result<Option<String>>>),
+    GetTracks(String, Sender<Result<Vec<Track>>>),
     Stop(Sender<()>),
 }
 
@@ -136,14 +134,8 @@ impl DbThread {
                     DeleteMedium(id, sender) => {
                         sender.send(db.delete_medium(&id)).unwrap();
                     }
-                    UpdateFile(file_name, track_id, sender) => {
-                        sender.send(db.update_file(&file_name, &track_id)).unwrap();
-                    }
-                    DeleteFile(file_name, sender) => {
-                        sender.send(db.delete_file(&file_name)).unwrap();
-                    }
-                    GetFile(track_id, sender) => {
-                        sender.send(db.get_file(&track_id)).unwrap();
+                    GetTracks(recording_id, sender) => {
+                        sender.send(db.get_tracks(&recording_id)).unwrap();
                     }
                     Stop(sender) => {
                         sender.send(()).unwrap();
@@ -347,38 +339,10 @@ impl DbThread {
         receiver.await?
     }
 
-    /// Insert or update a file. This assumes that the track is already in the
-    /// database.
-    pub async fn update_file(&self, file_name: &str, track_id: &str) -> Result<()> {
+    /// Get all tracks for a recording.
+    pub async fn get_tracks(&self, recording_id: &str) -> Result<Vec<Track>> {
         let (sender, receiver) = oneshot::channel();
-
-        self.action_sender.send(UpdateFile(
-            file_name.to_owned(),
-            track_id.to_owned(),
-            sender,
-        ))?;
-
-        receiver.await?
-    }
-
-    /// Delete an existing file. This will not delete the file from the file
-    /// system but just the representing row from the database.
-    pub async fn delete_file(&self, file_name: &str) -> Result<()> {
-        let (sender, receiver) = oneshot::channel();
-
-        self.action_sender
-            .send(DeleteFile(file_name.to_owned(), sender))?;
-
-        receiver.await?
-    }
-
-    /// Get the file name of the audio file for the specified track.
-    pub async fn get_file(&self, track_id: &str) -> Result<Option<String>> {
-        let (sender, receiver) = oneshot::channel();
-
-        self.action_sender
-            .send(GetFile(track_id.to_owned(), sender))?;
-
+        self.action_sender.send(GetTracks(recording_id.to_owned(), sender))?;
         receiver.await?
     }
 

@@ -72,11 +72,7 @@ CREATE TABLE "tracks" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "track_set" TEXT NOT NULL REFERENCES "track_sets"("id") ON DELETE CASCADE,
     "index" INTEGER NOT NULL,
-    "work_parts" TEXT NOT NULL
-);
-
-CREATE TABLE "files" (
-    "file_name" TEXT NOT NULL PRIMARY KEY,
-    "track" TEXT NOT NULL REFERENCES "tracks"("id")
+    "work_parts" TEXT NOT NULL,
+    "path" TEXT NOT NULL
 );
 

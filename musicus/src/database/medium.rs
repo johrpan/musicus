@@ -1,5 +1,5 @@
 use super::generate_id;
-use super::schema::{mediums, track_sets, tracks};
+use super::schema::{mediums, recordings, track_sets, tracks};
 use super::{Database, Recording};
 use anyhow::{anyhow, Error, Result};
 use diesel::prelude::*;
@@ -41,6 +41,11 @@ pub struct Track {
     /// The work parts that are played on this track. They are indices to the
     /// work parts of the work that is associated with the recording.
     pub work_parts: Vec<usize>,
+
+    /// The path to the audio file containing this track. This will not be
+    /// included when communicating with the server.
+    #[serde(skip)]
+    pub path: String,
 }
 
 /// Table data for a [`Medium`].
@@ -70,6 +75,7 @@ struct TrackRow {
     pub track_set: String,
     pub index: i32,
     pub work_parts: String,
+    pub path: String,
 }
 
 impl Database {
@@ -83,7 +89,28 @@ impl Database {
             // This will also delete the track sets and tracks.
             self.delete_medium(medium_id)?;
 
+            // Add the new medium.
+
+            let medium_row = MediumRow {
+                id: medium_id.to_owned(),
+                name: medium.name.clone(),
+                discid: medium.discid.clone(),
+            };
+
+            diesel::insert_into(mediums::table)
+                .values(medium_row)
+                .execute(&self.connection)?;
+
             for (index, track_set) in medium.tracks.iter().enumerate() {
+                // Add associated items from the server, if they don't already
+                // exist.
+
+                if self.get_recording(&track_set.recording.id)?.is_none() {
+                    self.update_recording(track_set.recording.clone())?;
+                }
+
+                // Add the actual track set data.
+
                 let track_set_id = generate_id();
 
                 let track_set_row = TrackSetRow {
@@ -110,6 +137,7 @@ impl Database {
                         track_set: track_set_id.clone(),
                         index: index as i32,
                         work_parts,
+                        path: track.path.clone(),
                     };
 
                     diesel::insert_into(tracks::table)
@@ -147,6 +175,35 @@ impl Database {
         Ok(())
     }
 
+    /// Get all tracks for a recording.
+    pub fn get_tracks(&self, recording_id: &str) -> Result<Vec<Track>> {
+        let mut tracks: Vec<Track> = Vec::new();
+
+        let rows = tracks::table
+            .inner_join(track_sets::table.on(track_sets::id.eq(tracks::track_set)))
+            .inner_join(recordings::table.on(recordings::id.eq(track_sets::recording)))
+            .filter(recordings::id.eq(recording_id))
+            .select(tracks::table::all_columns())
+            .load::<TrackRow>(&self.connection)?;
+
+        for row in rows {
+            let work_parts = row
+                .work_parts
+                .split(',')
+                .map(|part_index| Ok(str::parse(part_index)?))
+                .collect::<Result<Vec<usize>>>()?;
+
+            let track = Track {
+                work_parts,
+                path: row.path.clone(),
+            };
+
+            tracks.push(track);
+        }
+
+        Ok(tracks)
+    }
+
     /// Retrieve all available information on a medium from related tables.
     fn get_medium_data(&self, row: MediumRow) -> Result<Medium> {
         let track_set_rows = track_sets::table
@@ -177,7 +234,10 @@ impl Database {
                     .map(|part_index| Ok(str::parse(part_index)?))
                     .collect::<Result<Vec<usize>>>()?;
 
-                let track = Track { work_parts };
+                let track = Track {
+                    work_parts,
+                    path: track_row.path.clone(),
+                };
 
                 tracks.push(track);
             }

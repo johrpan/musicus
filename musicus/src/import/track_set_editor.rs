@@ -141,10 +141,6 @@ impl TrackSetEditor {
                     let mut tracks = Vec::new();
 
                     for index in selection {
-                        let track = Track {
-                            work_parts: Vec::new(),
-                        };
-
                         let data = TrackData {
                             track_source: index,
                             work_parts: Vec::new(),

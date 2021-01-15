@@ -19,9 +19,6 @@ pub use recordings::*;
 pub mod thread;
 pub use thread::*;
 
-pub mod files;
-pub use files::*;
-
 pub mod works;
 pub use works::*;
 

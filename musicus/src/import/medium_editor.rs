@@ -1,8 +1,10 @@
 use super::disc_source::DiscSource;
 use super::track_set_editor::{TrackSetData, TrackSetEditor};
+use crate::database::{generate_id, Medium, Track, TrackSet};
 use crate::backend::Backend;
 use crate::widgets::{Navigator, NavigatorScreen};
 use crate::widgets::new_list::List;
+use anyhow::Result;
 use glib::clone;
 use glib::prelude::*;
 use gtk::prelude::*;
@@ -15,11 +17,12 @@ use std::rc::Rc;
 pub struct MediumEditor {
     backend: Rc<Backend>,
     source: Rc<DiscSource>,
-    widget: gtk::Box,
+    widget: gtk::Stack,
     done_button: gtk::Button,
     done_stack: gtk::Stack,
     done: gtk::Image,
     name_entry: gtk::Entry,
+    publish_switch: gtk::Switch,
     track_set_list: List,
     track_sets: RefCell<Vec<TrackSetData>>,
     navigator: RefCell<Option<Rc<Navigator>>>,
@@ -32,12 +35,13 @@ impl MediumEditor {
 
         let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/medium_editor.ui");
 
-        get_widget!(builder, gtk::Box, widget);
+        get_widget!(builder, gtk::Stack, widget);
         get_widget!(builder, gtk::Button, back_button);
         get_widget!(builder, gtk::Button, done_button);
         get_widget!(builder, gtk::Stack, done_stack);
         get_widget!(builder, gtk::Image, done);
         get_widget!(builder, gtk::Entry, name_entry);
+        get_widget!(builder, gtk::Switch, publish_switch);
         get_widget!(builder, gtk::Button, add_button);
         get_widget!(builder, gtk::Frame, frame);
 
@@ -52,6 +56,7 @@ impl MediumEditor {
             done_stack,
             done,
             name_entry,
+            publish_switch,
             track_set_list: list,
             track_sets: RefCell::new(Vec::new()),
             navigator: RefCell::new(None),
@@ -64,6 +69,22 @@ impl MediumEditor {
             if let Some(navigator) = navigator {
                 navigator.pop();
             }
+        }));
+
+        this.done_button.connect_clicked(clone!(@strong this => move |_| {
+            let context = glib::MainContext::default();
+            let clone = this.clone();
+            context.spawn_local(async move {
+                clone.widget.set_visible_child_name("loading");
+                match clone.clone().save().await {
+                    Ok(_) => (),
+                    Err(err) => {
+                        println!("{:?}", err);
+                        // clone.info_bar.set_revealed(true);
+                    }
+                }
+
+            });
         }));
 
         add_button.connect_clicked(clone!(@strong this => move |_| {
@@ -129,6 +150,79 @@ impl MediumEditor {
         });
 
         this
+    }
+
+    /// Save the medium and possibly upload it to the server.
+    async fn save(self: Rc<Self>) -> Result<()> {
+        let name = self.name_entry.get_text().to_string();
+
+        // Create a new directory in the music library path for the imported medium.
+
+        let mut path = self.backend.get_music_library_path().unwrap().clone();
+        path.push(&name);
+        std::fs::create_dir(&path)?;
+
+        // Convert the track set data to real track sets.
+
+        let mut track_sets = Vec::new();
+
+        for track_set_data in &*self.track_sets.borrow() {
+            let mut tracks = Vec::new();
+
+            for track_data in &track_set_data.tracks {
+                // Copy the corresponding audio file to the music library.
+
+                let track_source = &self.source.tracks[track_data.track_source];
+                let file_name = format!("track_{:02}.flac", track_source.number);
+
+                let mut track_path = path.clone();
+                track_path.push(&file_name);
+
+                std::fs::copy(&track_source.path, &track_path)?;
+
+                // Create the real track.
+
+                let track = Track {
+                    work_parts: track_data.work_parts.clone(),
+                    path: track_path.to_str().unwrap().to_owned(),
+                };
+
+                tracks.push(track);
+            }
+
+            let track_set = TrackSet {
+                recording: track_set_data.recording.clone(),
+                tracks,
+            };
+
+            track_sets.push(track_set);
+        }
+
+        let medium = Medium {
+            id: generate_id(),
+            name: self.name_entry.get_text().to_string(),
+            discid: Some(self.source.discid.clone()),
+            tracks: track_sets,
+        };
+
+        let upload = self.publish_switch.get_active();
+        if upload {
+            // self.backend.post_medium(&medium).await?;
+        }
+
+        self.backend
+            .db()
+            .update_medium(medium.clone())
+            .await?;
+
+        self.backend.library_changed();
+
+        let navigator = self.navigator.borrow().clone();
+        if let Some(navigator) = navigator {
+            navigator.clone().pop();
+        }
+
+        Ok(())
     }
 }
 

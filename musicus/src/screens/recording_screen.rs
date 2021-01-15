@@ -76,15 +76,15 @@ impl RecordingScreen {
             title_label.set_ellipsize(pango::EllipsizeMode::End);
             title_label.set_halign(gtk::Align::Start);
 
-            // let file_name_label = gtk::Label::new(Some(&track.file_name));
-            // file_name_label.set_ellipsize(pango::EllipsizeMode::End);
-            // file_name_label.set_opacity(0.5);
-            // file_name_label.set_halign(gtk::Align::Start);
+            let file_name_label = gtk::Label::new(Some(&track.path));
+            file_name_label.set_ellipsize(pango::EllipsizeMode::End);
+            file_name_label.set_opacity(0.5);
+            file_name_label.set_halign(gtk::Align::Start);
 
             let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
             vbox.set_border_width(6);
             vbox.add(&title_label);
-            // vbox.add(&file_name_label);
+            vbox.add(&file_name_label);
 
             vbox.upcast()
         }));
@@ -138,16 +138,16 @@ impl RecordingScreen {
         let context = glib::MainContext::default();
         let clone = result.clone();
         context.spawn_local(async move {
-            // let tracks = clone
-            //     .backend
-            //     .db()
-            //     .get_tracks(&clone.recording.id)
-            //     .await
-            //     .unwrap();
+            let tracks = clone
+                .backend
+                .db()
+                .get_tracks(&clone.recording.id)
+                .await
+                .unwrap();
 
-            // list.show_items(tracks.clone());
-            // clone.stack.set_visible_child_name("content");
-            // clone.tracks.replace(tracks);
+            list.show_items(tracks.clone());
+            clone.stack.set_visible_child_name("content");
+            clone.tracks.replace(tracks);
         });
 
         result
