@@ -16,6 +16,7 @@ mod config;
 mod database;
 mod dialogs;
 mod editors;
+mod import;
 mod player;
 mod screens;
 mod selectors;
@@ -31,6 +32,7 @@ fn main() {
     gettextrs::bindtextdomain("musicus", config::LOCALEDIR);
     gettextrs::textdomain("musicus");
 
+    gstreamer::init().expect("Failed to initialize GStreamer!");
     gtk::init().expect("Failed to initialize GTK!");
     libhandy::init();
     resources::init().expect("Failed to initialize resources!");

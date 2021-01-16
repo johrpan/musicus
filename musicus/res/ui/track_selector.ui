@@ -8,7 +8,7 @@
     <child>
       <object class="HdyHeaderBar">
         <property name="visible">True</property>
-        <property name="title" translatable="yes">Track</property>
+        <property name="title" translatable="yes">Select tracks</property>
         <child>
           <object class="GtkButton" id="back_button">
             <property name="visible">True</property>
@@ -25,6 +25,7 @@
           <object class="GtkButton" id="select_button">
             <property name="visible">True</property>
             <property name="can-focus">True</property>
+            <property name="sensitive">False</property>
             <style>
               <class name="suggested-action"/>
             </style>
@@ -54,7 +55,7 @@
               <object class="HdyClamp">
                 <property name="visible">True</property>
                 <child>
-                  <object class="GtkFrame" id="parts_frame">
+                  <object class="GtkFrame" id="tracks_frame">
                     <property name="visible">True</property>
                     <property name="valign">start</property>
                     <property name="margin-top">12</property>

@@ -1,6 +1,6 @@
 use crate::backend::*;
 use crate::dialogs::*;
-use crate::editors::TracksEditor;
+use crate::import::SourceSelector;
 use crate::screens::*;
 use crate::widgets::*;
 use futures::prelude::*;
@@ -85,13 +85,17 @@ impl Window {
         }));
 
         add_button.connect_clicked(clone!(@strong result => move |_| {
-            let editor = TracksEditor::new(result.backend.clone(), None, Vec::new());
+            // let editor = TracksEditor::new(result.backend.clone(), None, Vec::new());
 
-            editor.set_callback(clone!(@strong result => move || {
-                result.reload();
-            }));
+            // editor.set_callback(clone!(@strong result => move || {
+            //     result.reload();
+            // }));
 
-            let window = NavigatorWindow::new(editor);
+            // let window = NavigatorWindow::new(editor);
+            // window.show();
+
+            let dialog = SourceSelector::new(result.backend.clone());
+            let window = NavigatorWindow::new(dialog);
             window.show();
         }));
 
@@ -106,6 +110,16 @@ impl Window {
             .set_back_cb(clone!(@strong result => move || {
                 result.stack.set_visible_child_name("content");
             }));
+
+        // action!(
+        //     result.window,
+        //     "import-disc",
+        //     clone!(@strong result => move |_, _| {
+        //         let dialog = ImportDiscDialog::new(result.backend.clone());
+        //         let window = NavigatorWindow::new(dialog);
+        //         window.show();
+        //     })
+        // );
 
         action!(
             result.window,

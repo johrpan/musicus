@@ -7,6 +7,9 @@ pub use ensembles::*;
 pub mod instruments;
 pub use instruments::*;
 
+pub mod medium;
+pub use medium::*;
+
 pub mod persons;
 pub use persons::*;
 
@@ -15,9 +18,6 @@ pub use recordings::*;
 
 pub mod thread;
 pub use thread::*;
-
-pub mod tracks;
-pub use tracks::*;
 
 pub mod works;
 pub use works::*;

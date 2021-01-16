@@ -63,6 +63,16 @@ where
         this
     }
 
+    pub fn set_selectable(&self, selectable: bool) {
+        let mode = if selectable {
+            gtk::SelectionMode::Single
+        } else {
+            gtk::SelectionMode::None
+        };
+    
+        self.widget.set_selection_mode(mode);
+    }
+
     pub fn set_make_widget<F: Fn(&T) -> gtk::Widget + 'static>(&self, make_widget: F) {
         self.make_widget.replace(Some(Box::new(make_widget)));
     }

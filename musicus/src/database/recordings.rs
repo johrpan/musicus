@@ -190,6 +190,22 @@ impl Database {
         Ok(exists)
     }
 
+    /// Get an existing recording.
+    pub fn get_recording(&self, id: &str) -> Result<Option<Recording>> {
+        let row = recordings::table
+            .filter(recordings::id.eq(id))
+            .load::<RecordingRow>(&self.connection)?
+            .into_iter()
+            .next();
+
+        let recording = match row {
+            Some(row) => Some(self.get_recording_data(row)?),
+            None => None,
+        };
+
+        Ok(recording)
+    }
+
     /// Retrieve all available information on a recording from related tables.
     fn get_recording_data(&self, row: RecordingRow) -> Result<Recording> {
         let mut performance_descriptions: Vec<Performance> = Vec::new();

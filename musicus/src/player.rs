@@ -8,8 +8,8 @@ use std::rc::Rc;
 
 #[derive(Clone)]
 pub struct PlaylistItem {
-    pub recording: Recording,
-    pub tracks: Vec<Track>,
+    pub track_set: TrackSet,
+    pub indices: Vec<usize>,
 }
 
 pub struct Player {
@@ -19,11 +19,11 @@ pub struct Player {
     current_item: Cell<Option<usize>>,
     current_track: Cell<Option<usize>>,
     playing: Cell<bool>,
-    playlist_cbs: RefCell<Vec<Box<dyn Fn(Vec<PlaylistItem>) -> ()>>>,
-    track_cbs: RefCell<Vec<Box<dyn Fn(usize, usize) -> ()>>>,
-    duration_cbs: RefCell<Vec<Box<dyn Fn(u64) -> ()>>>,
-    playing_cbs: RefCell<Vec<Box<dyn Fn(bool) -> ()>>>,
-    position_cbs: RefCell<Vec<Box<dyn Fn(u64) -> ()>>>,
+    playlist_cbs: RefCell<Vec<Box<dyn Fn(Vec<PlaylistItem>)>>>,
+    track_cbs: RefCell<Vec<Box<dyn Fn(usize, usize)>>>,
+    duration_cbs: RefCell<Vec<Box<dyn Fn(u64)>>>,
+    playing_cbs: RefCell<Vec<Box<dyn Fn(bool)>>>,
+    position_cbs: RefCell<Vec<Box<dyn Fn(u64)>>>,
 }
 
 impl Player {
@@ -80,23 +80,23 @@ impl Player {
         result
     }
 
-    pub fn add_playlist_cb<F: Fn(Vec<PlaylistItem>) -> () + 'static>(&self, cb: F) {
+    pub fn add_playlist_cb<F: Fn(Vec<PlaylistItem>) + 'static>(&self, cb: F) {
         self.playlist_cbs.borrow_mut().push(Box::new(cb));
     }
 
-    pub fn add_track_cb<F: Fn(usize, usize) -> () + 'static>(&self, cb: F) {
+    pub fn add_track_cb<F: Fn(usize, usize) + 'static>(&self, cb: F) {
         self.track_cbs.borrow_mut().push(Box::new(cb));
     }
 
-    pub fn add_duration_cb<F: Fn(u64) -> () + 'static>(&self, cb: F) {
+    pub fn add_duration_cb<F: Fn(u64) + 'static>(&self, cb: F) {
         self.duration_cbs.borrow_mut().push(Box::new(cb));
     }
 
-    pub fn add_playing_cb<F: Fn(bool) -> () + 'static>(&self, cb: F) {
+    pub fn add_playing_cb<F: Fn(bool) + 'static>(&self, cb: F) {
         self.playing_cbs.borrow_mut().push(Box::new(cb));
     }
 
-    pub fn add_position_cb<F: Fn(u64) -> () + 'static>(&self, cb: F) {
+    pub fn add_position_cb<F: Fn(u64) + 'static>(&self, cb: F) {
         self.position_cbs.borrow_mut().push(Box::new(cb));
     }
 
@@ -121,7 +121,7 @@ impl Player {
     }
 
     pub fn add_item(&self, item: PlaylistItem) -> Result<()> {
-        if item.tracks.is_empty() {
+        if item.indices.is_empty() {
             Err(anyhow!(
                 "Tried to add playlist item without tracks to playlist!"
             ))
@@ -199,7 +199,7 @@ impl Player {
             current_track -= 1;
         } else if current_item > 0 {
             current_item -= 1;
-            current_track = playlist[current_item].tracks.len() - 1;
+            current_track = playlist[current_item].indices.len() - 1;
         } else {
             return Err(anyhow!("No previous track!"));
         }
@@ -213,7 +213,7 @@ impl Player {
                 let playlist = self.playlist.borrow();
                 let item = &playlist[current_item];
 
-                current_track + 1 < item.tracks.len() || current_item + 1 < playlist.len()
+                current_track + 1 < item.indices.len() || current_item + 1 < playlist.len()
             } else {
                 false
             }
@@ -231,7 +231,7 @@ impl Player {
 
         let playlist = self.playlist.borrow();
         let item = &playlist[current_item];
-        if current_track + 1 < item.tracks.len() {
+        if current_track + 1 < item.indices.len() {
             current_track += 1;
         } else if current_item + 1 < playlist.len() {
             current_item += 1;
@@ -248,15 +248,7 @@ impl Player {
             "file://{}",
             self.music_library_path
                 .join(
-                    self.playlist
-                        .borrow()
-                        .get(current_item)
-                        .ok_or(anyhow!("Playlist item doesn't exist!"))?
-                        .tracks
-                        .get(current_track)
-                        .ok_or(anyhow!("Track doesn't exist!"))?
-                        .file_name
-                        .clone(),
+                    self.playlist.borrow()[current_item].track_set.tracks[current_track].path.clone(),
                 )
                 .to_str()
                 .unwrap(),

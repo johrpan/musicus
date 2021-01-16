@@ -33,9 +33,9 @@ run_command(
 )
 
 sources = files(
-  'backend/client/mod.rs',
   'backend/client/ensembles.rs',
   'backend/client/instruments.rs',
+  'backend/client/mod.rs',
   'backend/client/persons.rs',
   'backend/client/recordings.rs',
   'backend/client/works.rs',
@@ -44,12 +44,12 @@ sources = files(
   'backend/secure.rs',
   'database/ensembles.rs',
   'database/instruments.rs',
+  'database/medium.rs',
   'database/mod.rs',
   'database/persons.rs',
   'database/recordings.rs',
   'database/schema.rs',
   'database/thread.rs',
-  'database/tracks.rs',
   'database/works.rs',
   'dialogs/about.rs',
   'dialogs/login_dialog.rs',
@@ -62,8 +62,6 @@ sources = files(
   'editors/performance.rs',
   'editors/person.rs',
   'editors/recording.rs',
-  'editors/track.rs',
-  'editors/tracks.rs',
   'editors/work.rs',
   'editors/work_part.rs',
   'editors/work_section.rs',
