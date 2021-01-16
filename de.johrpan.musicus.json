@@ -13,7 +13,9 @@
         "--socket=x11",
         "--socket=wayland",
         "--socket=pulseaudio",
-        "--filesystem=host"
+        "--filesystem=host",
+        "--talk-name=org.freedesktop.secrets",
+        "--device=all"
     ],
     "build-options" : {
         "append-path" : "/usr/lib/sdk/rust-stable/bin",
@@ -53,6 +55,41 @@
             "cleanup": [
                 "/include",
                 "/lib/pkgconfig"
+            ]
+        },
+        {
+            "name": "cdparanoia",
+            "buildsystem": "simple",
+            "build-commands": [
+                "cp /usr/share/automake-*/config.{sub,guess} .",
+                "./configure --prefix=/app",
+                "make all slib",
+                "make install"
+            ],
+            "sources": [
+                {
+                    "type": "archive",
+                    "url": "http://downloads.xiph.org/releases/cdparanoia/cdparanoia-III-10.2.src.tgz",
+                    "sha256": "005db45ef4ee017f5c32ec124f913a0546e77014266c6a1c50df902a55fe64df"
+                }
+            ]
+        },
+        {
+            "name": "gst-plugins-base",
+            "buildsystem": "meson",
+            "config-opts": [
+                "--prefix=/app",
+                "-Dauto_features=disabled",
+                "-Dcdparanoia=enabled"
+            ],
+            "cleanup": [ "*.la", "/share/gtk-doc" ],
+            "sources": [
+                {
+                    "type": "git",
+                    "url": "https://gitlab.freedesktop.org/gstreamer/gst-plugins-base.git",
+                    "branch" : "1.16.2",
+                    "commit" : "9d3581b2e6f12f0b7e790d1ebb63b90cf5b1ef4e"
+                }
             ]
         },
         {
