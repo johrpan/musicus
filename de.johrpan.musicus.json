@@ -21,6 +21,7 @@
             "--share=network"
         ],
         "env" : {
+            "RUSTFLAGS" : "-L /app/lib",
             "CARGO_HOME" : "/run/build/musicus/cargo",
             "RUST_BACKTRACE" : "1",
             "RUST_LOG" : "musicus=debug"
@@ -41,6 +42,7 @@
     	{
             "name": "libdiscid",
             "buildsystem": "cmake-ninja",
+	    "builddir" : true,
             "sources": [
                 {
                     "type": "archive",
