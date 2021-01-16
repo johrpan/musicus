@@ -175,33 +175,22 @@ impl Database {
         Ok(())
     }
 
-    /// Get all tracks for a recording.
-    pub fn get_tracks(&self, recording_id: &str) -> Result<Vec<Track>> {
-        let mut tracks: Vec<Track> = Vec::new();
+    /// Get all available track sets for a recording.
+    pub fn get_track_sets(&self, recording_id: &str) -> Result<Vec<TrackSet>> {
+        let mut track_sets: Vec<TrackSet> = Vec::new();
 
-        let rows = tracks::table
-            .inner_join(track_sets::table.on(track_sets::id.eq(tracks::track_set)))
+        let rows = track_sets::table
             .inner_join(recordings::table.on(recordings::id.eq(track_sets::recording)))
             .filter(recordings::id.eq(recording_id))
-            .select(tracks::table::all_columns())
-            .load::<TrackRow>(&self.connection)?;
+            .select(track_sets::table::all_columns())
+            .load::<TrackSetRow>(&self.connection)?;
 
         for row in rows {
-            let work_parts = row
-                .work_parts
-                .split(',')
-                .map(|part_index| Ok(str::parse(part_index)?))
-                .collect::<Result<Vec<usize>>>()?;
-
-            let track = Track {
-                work_parts,
-                path: row.path.clone(),
-            };
-
-            tracks.push(track);
+            let track_set = self.get_track_set_from_row(row)?;
+            track_sets.push(track_set);
         }
 
-        Ok(tracks)
+        Ok(track_sets)
     }
 
     /// Retrieve all available information on a medium from related tables.
@@ -214,36 +203,7 @@ impl Database {
         let mut track_sets = Vec::new();
 
         for track_set_row in track_set_rows {
-            let recording_id = &track_set_row.recording;
-
-            let recording = self
-                .get_recording(recording_id)?
-                .ok_or_else(|| anyhow!("No recording with ID: {}", recording_id))?;
-
-            let track_rows = tracks::table
-                .filter(tracks::id.eq(&track_set_row.id))
-                .order_by(tracks::index)
-                .load::<TrackRow>(&self.connection)?;
-
-            let mut tracks = Vec::new();
-
-            for track_row in track_rows {
-                let work_parts = track_row
-                    .work_parts
-                    .split(',')
-                    .map(|part_index| Ok(str::parse(part_index)?))
-                    .collect::<Result<Vec<usize>>>()?;
-
-                let track = Track {
-                    work_parts,
-                    path: track_row.path.clone(),
-                };
-
-                tracks.push(track);
-            }
-
-            let track_set = TrackSet { recording, tracks };
-
+            let track_set = self.get_track_set_from_row(track_set_row)?;
             track_sets.push(track_set);
         }
 
@@ -255,5 +215,40 @@ impl Database {
         };
 
         Ok(medium)
+    }
+
+    /// Convert a track set row from the database to an actual track set.
+    fn get_track_set_from_row(&self, row: TrackSetRow) -> Result<TrackSet> {
+        let recording_id = row.recording;
+
+        let recording = self
+            .get_recording(&recording_id)?
+            .ok_or_else(|| anyhow!("No recording with ID: {}", recording_id))?;
+
+        let track_rows = tracks::table
+            .filter(tracks::track_set.eq(row.id))
+            .order_by(tracks::index)
+            .load::<TrackRow>(&self.connection)?;
+
+        let mut tracks = Vec::new();
+
+        for track_row in track_rows {
+            let work_parts = track_row
+                .work_parts
+                .split(',')
+                .map(|part_index| Ok(str::parse(part_index)?))
+                .collect::<Result<Vec<usize>>>()?;
+
+            let track = Track {
+                work_parts,
+                path: track_row.path,
+            };
+
+            tracks.push(track);
+        }
+
+        let track_set = TrackSet { recording, tracks };
+
+        Ok(track_set)
     }
 }

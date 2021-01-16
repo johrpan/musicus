@@ -17,7 +17,7 @@ pub struct RecordingScreen {
     recording: Recording,
     widget: gtk::Box,
     stack: gtk::Stack,
-    tracks: RefCell<Vec<Track>>,
+    track_sets: RefCell<Vec<TrackSet>>,
     navigator: RefCell<Option<Rc<Navigator>>>,
 }
 
@@ -56,35 +56,43 @@ impl RecordingScreen {
             recording,
             widget,
             stack,
-            tracks: RefCell::new(Vec::new()),
+            track_sets: RefCell::new(Vec::new()),
             navigator: RefCell::new(None),
         });
 
-        list.set_make_widget(clone!(@strong result => move |track: &Track| {
-            let mut title_parts = Vec::<String>::new();
-            for part in &track.work_parts {
-                title_parts.push(result.recording.work.parts[*part].title.clone());
-            }
-
-            let title = if title_parts.is_empty() {
-                gettext("Unknown")
-            } else {
-                title_parts.join(", ")
-            };
-
-            let title_label = gtk::Label::new(Some(&title));
-            title_label.set_ellipsize(pango::EllipsizeMode::End);
-            title_label.set_halign(gtk::Align::Start);
-
-            let file_name_label = gtk::Label::new(Some(&track.path));
-            file_name_label.set_ellipsize(pango::EllipsizeMode::End);
-            file_name_label.set_opacity(0.5);
-            file_name_label.set_halign(gtk::Align::Start);
-
+        list.set_make_widget(clone!(@strong result => move |track_set: &TrackSet| {
             let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
             vbox.set_border_width(6);
-            vbox.add(&title_label);
-            vbox.add(&file_name_label);
+            vbox.set_spacing(6);
+
+            for track in &track_set.tracks {
+                let track_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
+
+                let mut title_parts = Vec::<String>::new();
+                for part in &track.work_parts {
+                    title_parts.push(result.recording.work.parts[*part].title.clone());
+                }
+
+                let title = if title_parts.is_empty() {
+                    gettext("Unknown")
+                } else {
+                    title_parts.join(", ")
+                };
+
+                let title_label = gtk::Label::new(Some(&title));
+                title_label.set_ellipsize(pango::EllipsizeMode::End);
+                title_label.set_halign(gtk::Align::Start);
+
+                let file_name_label = gtk::Label::new(Some(&track.path));
+                file_name_label.set_ellipsize(pango::EllipsizeMode::End);
+                file_name_label.set_opacity(0.5);
+                file_name_label.set_halign(gtk::Align::Start);
+
+                track_box.add(&title_label);
+                track_box.add(&file_name_label);
+
+                vbox.add(&track_box);
+            }
 
             vbox.upcast()
         }));
@@ -97,12 +105,12 @@ impl RecordingScreen {
         }));
 
         add_to_playlist_button.connect_clicked(clone!(@strong result => move |_| {
-            if let Some(player) = result.backend.get_player() {
-                // player.add_item(PlaylistItem {
-                //     recording: result.recording.clone(),
-                //     tracks: result.tracks.borrow().clone(),
-                // }).unwrap();
-            }
+            // if let Some(player) = result.backend.get_player() {
+            //     player.add_item(PlaylistItem {
+            //         track_set: result.track_sets.get(0).unwrap().clone(),
+            //         indices: result.tracks.borrow().clone(),
+            //     }).unwrap();
+            // }
         }));
 
         edit_action.connect_activate(clone!(@strong result => move |_, _| {
@@ -138,16 +146,16 @@ impl RecordingScreen {
         let context = glib::MainContext::default();
         let clone = result.clone();
         context.spawn_local(async move {
-            let tracks = clone
+            let track_sets = clone
                 .backend
                 .db()
-                .get_tracks(&clone.recording.id)
+                .get_track_sets(&clone.recording.id)
                 .await
                 .unwrap();
 
-            list.show_items(tracks.clone());
+            list.show_items(track_sets.clone());
             clone.stack.set_visible_child_name("content");
-            clone.tracks.replace(tracks);
+            clone.track_sets.replace(track_sets);
         });
 
         result

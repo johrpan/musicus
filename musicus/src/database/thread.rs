@@ -31,7 +31,7 @@ enum Action {
     UpdateMedium(Medium, Sender<Result<()>>),
     GetMedium(String, Sender<Result<Option<Medium>>>),
     DeleteMedium(String, Sender<Result<()>>),
-    GetTracks(String, Sender<Result<Vec<Track>>>),
+    GetTrackSets(String, Sender<Result<Vec<TrackSet>>>),
     Stop(Sender<()>),
 }
 
@@ -134,8 +134,8 @@ impl DbThread {
                     DeleteMedium(id, sender) => {
                         sender.send(db.delete_medium(&id)).unwrap();
                     }
-                    GetTracks(recording_id, sender) => {
-                        sender.send(db.get_tracks(&recording_id)).unwrap();
+                    GetTrackSets(recording_id, sender) => {
+                        sender.send(db.get_track_sets(&recording_id)).unwrap();
                     }
                     Stop(sender) => {
                         sender.send(()).unwrap();
@@ -339,10 +339,10 @@ impl DbThread {
         receiver.await?
     }
 
-    /// Get all tracks for a recording.
-    pub async fn get_tracks(&self, recording_id: &str) -> Result<Vec<Track>> {
+    /// Get all track sets for a recording.
+    pub async fn get_track_sets(&self, recording_id: &str) -> Result<Vec<TrackSet>> {
         let (sender, receiver) = oneshot::channel();
-        self.action_sender.send(GetTracks(recording_id.to_owned(), sender))?;
+        self.action_sender.send(GetTrackSets(recording_id.to_owned(), sender))?;
         receiver.await?
     }
 

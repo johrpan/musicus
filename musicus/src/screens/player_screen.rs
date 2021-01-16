@@ -215,17 +215,17 @@ impl PlayerScreen {
                         elements.push(PlaylistElement {
                             item: item_index,
                             track: 0,
-                            title: item.tracks.recording.work.get_title(),
-                            subtitle: Some(item.tracks.recording.get_performers()),
+                            title: item.track_set.recording.work.get_title(),
+                            subtitle: Some(item.track_set.recording.get_performers()),
                             playable: false,
                         });
 
                         for track_index in &item.indices {
-                            let track = &item.tracks.tracks[*track_index];
+                            let track = &item.track_set.tracks[*track_index];
 
                             let mut parts = Vec::<String>::new();
                             for part in &track.work_parts {
-                                parts.push(item.tracks.recording.work.parts[*part].title.clone());
+                                parts.push(item.track_set.recording.work.parts[*part].title.clone());
                             }
 
                             let title = if parts.is_empty() {
@@ -264,20 +264,20 @@ impl PlayerScreen {
                     next_button.set_sensitive(player.has_next());
 
                     let item = &playlist.borrow()[current_item];
-                    let track = &item.tracks.tracks[current_track];
+                    let track = &item.track_set.tracks[current_track];
 
                     let mut parts = Vec::<String>::new();
                     for part in &track.work_parts {
-                        parts.push(item.tracks.recording.work.parts[*part].title.clone());
+                        parts.push(item.track_set.recording.work.parts[*part].title.clone());
                     }
 
-                    let mut title = item.tracks.recording.work.get_title();
+                    let mut title = item.track_set.recording.work.get_title();
                     if !parts.is_empty() {
                         title = format!("{}: {}", title, parts.join(", "));
                     }
 
                     title_label.set_text(&title);
-                    subtitle_label.set_text(&item.tracks.recording.get_performers());
+                    subtitle_label.set_text(&item.track_set.recording.get_performers());
                     position_label.set_text("0:00");
 
                     self_item.replace(current_item);
