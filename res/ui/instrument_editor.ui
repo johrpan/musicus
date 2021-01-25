@@ -1,189 +1,132 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Generated with glade 3.38.1 -->
 <interface>
-  <requires lib="gtk+" version="3.22"/>
+  <requires lib="gtk" version="4.0"/>
   <requires lib="libhandy" version="1.0"/>
   <object class="GtkStack" id="widget">
-    <property name="visible">True</property>
-    <property name="can-focus">False</property>
     <property name="transition-type">crossfade</property>
     <child>
-      <object class="GtkBox">
-        <property name="visible">True</property>
-        <property name="can-focus">False</property>
-        <property name="orientation">vertical</property>
-        <child>
-          <object class="HdyHeaderBar">
-            <property name="visible">True</property>
-            <property name="can-focus">False</property>
-            <property name="title" translatable="yes">Instrument</property>
+      <object class="GtkStackPage">
+        <property name="name">content</property>
+        <property name="child">
+          <object class="GtkBox">
+            <property name="orientation">vertical</property>
             <child>
-              <object class="GtkButton" id="back_button">
-                <property name="visible">True</property>
-                <property name="can-focus">True</property>
-                <property name="receives-default">True</property>
+              <object class="HdyHeaderBar">
+                <property name="show-title-buttons">false</property>
+                <property name="title-widget">
+                  <object class="GtkLabel">
+                    <property name="label" translatable="yes">Instrument</property>
+                    <style>
+                      <class name="title"/>
+                    </style>
+                  </object>
+                </property>
                 <child>
-                  <object class="GtkImage">
-                    <property name="visible">True</property>
-                    <property name="can-focus">False</property>
+                  <object class="GtkButton" id="back_button">
                     <property name="icon-name">go-previous-symbolic</property>
                   </object>
                 </child>
-              </object>
-            </child>
-            <child>
-              <object class="GtkButton" id="save_button">
-                <property name="visible">True</property>
-                <property name="can-focus">True</property>
-                <property name="receives-default">True</property>
-                <child>
-                  <object class="GtkImage">
-                    <property name="visible">True</property>
-                    <property name="can-focus">False</property>
+                <child type="end">
+                  <object class="GtkButton" id="save_button">
                     <property name="icon-name">object-select-symbolic</property>
+                    <style>
+                      <class name="suggested-action"/>
+                    </style>
                   </object>
                 </child>
-                <style>
-                  <class name="suggested-action"/>
-                </style>
               </object>
-              <packing>
-                <property name="pack-type">end</property>
-                <property name="position">1</property>
-              </packing>
             </child>
-          </object>
-          <packing>
-            <property name="expand">False</property>
-            <property name="fill">True</property>
-            <property name="position">0</property>
-          </packing>
-        </child>
-        <child>
-          <object class="GtkInfoBar" id="info_bar">
-            <property name="visible">True</property>
-            <property name="can-focus">False</property>
-            <property name="revealed">False</property>
             <child>
-              <placeholder/>
+              <object class="GtkInfoBar" id="info_bar">
+                <property name="revealed">False</property>
+              </object>
             </child>
-          </object>
-          <packing>
-            <property name="expand">False</property>
-            <property name="fill">True</property>
-            <property name="position">1</property>
-          </packing>
-        </child>
-        <child>
-          <object class="HdyClamp">
-            <property name="visible">True</property>
-            <property name="can-focus">False</property>
-            <property name="maximum-size">500</property>
-            <property name="tightening-threshold">300</property>
             <child>
-              <!-- n-columns=2 n-rows=2 -->
-              <object class="GtkGrid">
-                <property name="visible">True</property>
-                <property name="can-focus">False</property>
-                <property name="border-width">18</property>
-                <property name="row-spacing">12</property>
-                <property name="column-spacing">6</property>
+              <object class="GtkScrolledWindow">
+                <property name="vexpand">true</property>
                 <child>
-                  <object class="GtkLabel">
-                    <property name="visible">True</property>
-                    <property name="can-focus">False</property>
-                    <property name="halign">end</property>
-                    <property name="label" translatable="yes">Name</property>
+                  <object class="HdyClamp">
+                    <property name="margin-start">12</property>
+                    <property name="margin-end">12</property>
+                    <property name="margin-top">18</property>
+                    <property name="margin-bottom">12</property>
+                    <property name="maximum-size">500</property>
+                    <property name="tightening-threshold">300</property>
+                    <child>
+                      <object class="GtkFrame">
+                        <property name="valign">start</property>
+                        <child>
+                          <object class="GtkListBox">
+                            <property name="selection-mode">none</property>
+                            <child>
+                              <object class="HdyActionRow">
+                                <property name="activatable">True</property>
+                                <property name="title" translatable="yes">Name</property>
+                                <property name="activatable-widget">name_entry</property>
+                                <child>
+                                  <object class="GtkEntry" id="name_entry">
+                                    <property name="valign">center</property>
+                                    <property name="hexpand">True</property>
+                                  </object>
+                                </child>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="HdyActionRow">
+                                <property name="activatable">True</property>
+                                <property name="title" translatable="yes">Publish to the server</property>
+                                <property name="activatable-widget">upload_switch</property>
+                                <child>
+                                  <object class="GtkSwitch" id="upload_switch">
+                                    <property name="valign">center</property>
+                                    <property name="active">True</property>
+                                  </object>
+                                </child>
+                              </object>
+                            </child>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
                   </object>
-                  <packing>
-                    <property name="left-attach">0</property>
-                    <property name="top-attach">0</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkEntry" id="name_entry">
-                    <property name="visible">True</property>
-                    <property name="can-focus">True</property>
-                    <property name="hexpand">True</property>
-                  </object>
-                  <packing>
-                    <property name="left-attach">1</property>
-                    <property name="top-attach">0</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkLabel">
-                    <property name="visible">True</property>
-                    <property name="can-focus">False</property>
-                    <property name="halign">end</property>
-                    <property name="label" translatable="yes">Publish</property>
-                  </object>
-                  <packing>
-                    <property name="left-attach">0</property>
-                    <property name="top-attach">1</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkSwitch" id="upload_switch">
-                    <property name="visible">True</property>
-                    <property name="can-focus">True</property>
-                    <property name="halign">start</property>
-                    <property name="active">True</property>
-                  </object>
-                  <packing>
-                    <property name="left-attach">1</property>
-                    <property name="top-attach">1</property>
-                  </packing>
                 </child>
               </object>
             </child>
           </object>
-          <packing>
-            <property name="expand">False</property>
-            <property name="fill">True</property>
-            <property name="position">2</property>
-          </packing>
-        </child>
+        </property>
       </object>
-      <packing>
-        <property name="name">content</property>
-      </packing>
     </child>
     <child>
-      <object class="GtkBox">
-        <property name="visible">True</property>
-        <property name="can-focus">False</property>
-        <property name="orientation">vertical</property>
-        <child>
-          <object class="HdyHeaderBar">
-            <property name="visible">True</property>
-            <property name="can-focus">False</property>
-            <property name="title" translatable="yes">Instrument</property>
-          </object>
-          <packing>
-            <property name="expand">False</property>
-            <property name="fill">True</property>
-            <property name="position">0</property>
-          </packing>
-        </child>
-        <child>
-          <object class="GtkSpinner">
-            <property name="visible">True</property>
-            <property name="can-focus">False</property>
-            <property name="vexpand">True</property>
-            <property name="active">True</property>
-          </object>
-          <packing>
-            <property name="expand">False</property>
-            <property name="fill">True</property>
-            <property name="position">1</property>
-          </packing>
-        </child>
-      </object>
-      <packing>
+      <object class="GtkStackPage">
         <property name="name">loading</property>
-        <property name="position">1</property>
-      </packing>
+        <property name="child">
+          <object class="GtkBox">
+            <property name="orientation">vertical</property>
+            <child>
+              <object class="HdyHeaderBar">
+                <property name="show-title-buttons">false</property>
+                <property name="title-widget">
+                  <object class="GtkLabel">
+                    <property name="label" translatable="yes">Instrument</property>
+                    <style>
+                      <class name="title"/>
+                    </style>
+                  </object>
+                </property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkSpinner">
+                <property name="spinning">true</property>
+                <property name="hexpand">true</property>
+                <property name="vexpand">true</property>
+                <property name="halign">center</property>
+                <property name="valign">center</property>
+              </object>
+            </child>
+          </object>
+        </property>
+      </object>
     </child>
   </object>
 </interface>

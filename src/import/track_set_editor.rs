@@ -2,17 +2,15 @@ use super::disc_source::DiscSource;
 use super::track_editor::TrackEditor;
 use super::track_selector::TrackSelector;
 use crate::backend::Backend;
-use crate::database::{Recording, Track, TrackSet};
+use crate::database::Recording;
 use crate::selectors::{PersonSelector, RecordingSelector, WorkSelector};
-use crate::widgets::{Navigator, NavigatorScreen};
-use crate::widgets::new_list::List;
+use crate::widgets::{List, Navigator, NavigatorScreen};
 use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
 use libhandy::prelude::*;
-use std::cell::{Cell, RefCell};
-use std::collections::HashSet;
+use std::cell::RefCell;
 use std::rc::Rc;
 
 /// A track set before being imported.
@@ -39,7 +37,7 @@ pub struct TrackSetEditor {
     widget: gtk::Box,
     save_button: gtk::Button,
     recording_row: libhandy::ActionRow,
-    track_list: List,
+    track_list: Rc<List>,
     recording: RefCell<Option<Recording>>,
     tracks: RefCell<Vec<TrackData>>,
     done_cb: RefCell<Option<Box<dyn Fn(TrackSetData)>>>,
@@ -61,8 +59,8 @@ impl TrackSetEditor {
         get_widget!(builder, gtk::Button, edit_tracks_button);
         get_widget!(builder, gtk::Frame, tracks_frame);
 
-        let track_list = List::new(&gettext!("No tracks added"));
-        tracks_frame.add(&track_list.widget);
+        let track_list = List::new();
+        tracks_frame.set_child(Some(&track_list.widget));
 
         let this = Rc::new(Self {
             backend,
@@ -159,7 +157,7 @@ impl TrackSetEditor {
             }
         }));
 
-        this.track_list.set_make_widget(clone!(@strong this => move |index| {
+        this.track_list.set_make_widget_cb(clone!(@strong this => move |index| {
             let track = &this.tracks.borrow()[index];
 
             let mut title_parts = Vec::<String>::new();
@@ -179,19 +177,18 @@ impl TrackSetEditor {
             let number = this.source.tracks[track.track_source].number;
             let subtitle = format!("Track {}", number);
 
-            let edit_image = gtk::Image::from_icon_name(Some("document-edit-symbolic"), gtk::IconSize::Button);
+            let edit_image = gtk::Image::from_icon_name(Some("document-edit-symbolic"));
             let edit_button = gtk::Button::new();
-            edit_button.set_relief(gtk::ReliefStyle::None);
+            edit_button.set_has_frame(false);
             edit_button.set_valign(gtk::Align::Center);
-            edit_button.add(&edit_image);
+            edit_button.set_child(Some(&edit_image));
 
             let row = libhandy::ActionRow::new();
             row.set_activatable(true);
             row.set_title(Some(&title));
             row.set_subtitle(Some(&subtitle));
-            row.add(&edit_button);
+            row.add_suffix(&edit_button);
             row.set_activatable_widget(Some(&edit_button));
-            row.show_all();
 
             edit_button.connect_clicked(clone!(@strong this => move |_| {
                 let recording = this.recording.borrow().clone();

@@ -9,6 +9,7 @@ use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
+use libhandy::prelude::*;
 use std::cell::RefCell;
 use std::convert::TryInto;
 use std::rc::Rc;
@@ -20,6 +21,15 @@ enum PartOrSection {
     Section(WorkSection),
 }
 
+impl PartOrSection {
+    pub fn get_title(&self) -> String {
+        match self {
+            PartOrSection::Part(part) => part.title.clone(),
+            PartOrSection::Section(section) => section.title.clone(),
+        }
+    }
+}
+
 /// A widget for editing and creating works.
 pub struct WorkEditor {
     widget: gtk::Stack,
@@ -27,10 +37,10 @@ pub struct WorkEditor {
     save_button: gtk::Button,
     title_entry: gtk::Entry,
     info_bar: gtk::InfoBar,
-    composer_label: gtk::Label,
+    composer_row: libhandy::ActionRow,
     upload_switch: gtk::Switch,
-    instrument_list: Rc<List<Instrument>>,
-    part_list: Rc<List<PartOrSection>>,
+    instrument_list: Rc<List>,
+    part_list: Rc<List>,
     id: String,
     composer: RefCell<Option<Person>>,
     instruments: RefCell<Vec<Instrument>>,
@@ -52,24 +62,19 @@ impl WorkEditor {
         get_widget!(builder, gtk::InfoBar, info_bar);
         get_widget!(builder, gtk::Entry, title_entry);
         get_widget!(builder, gtk::Button, composer_button);
-        get_widget!(builder, gtk::Label, composer_label);
+        get_widget!(builder, libhandy::ActionRow, composer_row);
         get_widget!(builder, gtk::Switch, upload_switch);
-        get_widget!(builder, gtk::ScrolledWindow, instruments_scroll);
+        get_widget!(builder, gtk::Frame, instrument_frame);
         get_widget!(builder, gtk::Button, add_instrument_button);
-        get_widget!(builder, gtk::Button, remove_instrument_button);
-        get_widget!(builder, gtk::ScrolledWindow, structure_scroll);
+        get_widget!(builder, gtk::Frame, structure_frame);
         get_widget!(builder, gtk::Button, add_part_button);
-        get_widget!(builder, gtk::Button, remove_part_button);
         get_widget!(builder, gtk::Button, add_section_button);
-        get_widget!(builder, gtk::Button, edit_part_button);
-        get_widget!(builder, gtk::Button, move_part_up_button);
-        get_widget!(builder, gtk::Button, move_part_down_button);
 
-        let instrument_list = List::new(&gettext("No instruments added."));
-        instruments_scroll.add(&instrument_list.widget);
+        let instrument_list = List::new();
+        instrument_frame.set_child(Some(&instrument_list.widget));
 
-        let part_list = List::new(&gettext("No work parts added."));
-        structure_scroll.add(&part_list.widget);
+        let part_list = List::new();
+        structure_frame.set_child(Some(&part_list.widget));
 
         let (id, composer, instruments, structure) = match work {
             Some(work) => {
@@ -100,7 +105,7 @@ impl WorkEditor {
             id,
             info_bar,
             title_entry,
-            composer_label,
+            composer_row,
             upload_switch,
             instrument_list,
             part_list,
@@ -157,16 +162,28 @@ impl WorkEditor {
             }
         }));
 
-        this.instrument_list.set_make_widget(|instrument| {
-            let label = gtk::Label::new(Some(&instrument.name));
-            label.set_ellipsize(pango::EllipsizeMode::End);
-            label.set_halign(gtk::Align::Start);
-            label.set_margin_start(6);
-            label.set_margin_end(6);
-            label.set_margin_top(6);
-            label.set_margin_bottom(6);
-            label.upcast()
-        });
+        this.instrument_list.set_make_widget_cb(clone!(@strong this => move |index| {
+            let instrument = &this.instruments.borrow()[index];
+
+            let delete_button = gtk::Button::from_icon_name(Some("user-trash-symbolic"));
+            delete_button.set_valign(gtk::Align::Center);
+
+            delete_button.connect_clicked(clone!(@strong this => move |_| {
+                let length = {
+                    let mut instruments = this.instruments.borrow_mut();
+                    instruments.remove(index);
+                    instruments.len()
+                };
+
+                this.instrument_list.update(length);
+            }));
+
+            let row = libhandy::ActionRow::new();
+            row.set_title(Some(&instrument.name));
+            row.add_suffix(&delete_button);
+
+            row.upcast()
+        }));
 
         add_instrument_button.connect_clicked(clone!(@strong this => move |_| {
             let navigator = this.navigator.borrow().clone();
@@ -174,17 +191,13 @@ impl WorkEditor {
                 let selector = InstrumentSelector::new(this.backend.clone());
 
                 selector.set_selected_cb(clone!(@strong this, @strong navigator => move |instrument| {
-                    let mut instruments = this.instruments.borrow_mut();
-
-                    let index = match this.instrument_list.get_selected_index() {
-                        Some(index) => index + 1,
-                        None => instruments.len(),
+                    let length = {
+                        let mut instruments = this.instruments.borrow_mut();
+                        instruments.push(instrument.clone());
+                        instruments.len()
                     };
 
-                    instruments.insert(index, instrument.clone());
-                    this.instrument_list.show_items(instruments.clone());
-                    this.instrument_list.select_index(index);
-
+                    this.instrument_list.update(length);
                     navigator.clone().pop();
                 }));
 
@@ -192,39 +205,93 @@ impl WorkEditor {
             }
         }));
 
-        remove_instrument_button.connect_clicked(clone!(@strong this => move |_| {
-            if let Some(index) = this.instrument_list.get_selected_index() {
-                let mut instruments = this.instruments.borrow_mut();
-                instruments.remove(index);
-                this.instrument_list.show_items(instruments.clone());
-                this.instrument_list.select_index(index);
+        this.part_list.set_make_widget_cb(clone!(@strong this => move |index| {
+            let pos = &this.structure.borrow()[index];
+
+            let drag_source = gtk::DragSource::new();
+            drag_source.set_content(Some(&gdk::ContentProvider::new_for_value(&(index as u32).to_value())));
+
+            let drop_target = gtk::DropTarget::new(glib::Type::U32, gdk::DragAction::MOVE);
+
+            drop_target.connect_property_value_notify(clone!(@strong this => move |drop_target| {
+                println!("{:?} -> {:?}", drop_target.get_value(), index);
+            }));
+
+            let handle = gtk::Image::from_icon_name(Some("open-menu-symbolic"));
+            handle.add_controller(&drag_source);
+
+            let delete_button = gtk::Button::from_icon_name(Some("user-trash-symbolic"));
+            delete_button.set_valign(gtk::Align::Center);
+
+            delete_button.connect_clicked(clone!(@strong this => move |_| {
+                    let length = {
+                        let mut structure = this.structure.borrow_mut();
+                        structure.remove(index);
+                        structure.len()
+                    };
+
+                    this.part_list.update(length);
+            }));
+
+            let edit_button = gtk::Button::from_icon_name(Some("document-edit-symbolic"));
+            edit_button.set_valign(gtk::Align::Center);
+
+            edit_button.connect_clicked(clone!(@strong this => move |_| {
+                let navigator = this.navigator.borrow().clone();
+                if let Some(navigator) = navigator {
+                    match this.structure.borrow()[index].clone() {
+                        PartOrSection::Part(part) => {
+                            let editor = WorkPartEditor::new(this.backend.clone(), Some(part));
+
+                            editor.set_ready_cb(clone!(@strong this, @strong navigator => move |part| {
+                                let length = {
+                                    let mut structure = this.structure.borrow_mut();
+                                    structure[index] = PartOrSection::Part(part);
+                                    structure.len()
+                                };
+
+                                this.part_list.update(length);
+                                navigator.clone().pop();
+                            }));
+
+                            navigator.push(editor);
+                        }
+                        PartOrSection::Section(section) => {
+                            let editor = WorkSectionEditor::new(Some(section));
+
+                            editor.set_ready_cb(clone!(@strong this, @strong navigator => move |section| {
+                                let length = {
+                                    let mut structure = this.structure.borrow_mut();
+                                    structure[index] = PartOrSection::Section(section);
+                                    structure.len()
+                                };
+
+                                this.part_list.update(length);
+                                navigator.clone().pop();
+                            }));
+
+                            navigator.push(editor);
+                        }
+                    }
+                }
+            }));
+
+            let row = libhandy::ActionRow::new();
+            row.set_activatable(true);
+            row.set_title(Some(&pos.get_title()));
+            row.add_prefix(&handle);
+            row.add_suffix(&delete_button);
+            row.add_suffix(&edit_button);
+            row.set_activatable_widget(Some(&edit_button));
+            row.add_controller(&drop_target);
+
+            if let PartOrSection::Part(_) = pos {
+                // TODO: Replace with better solution to differentiate parts and sections.
+                row.set_margin_start(12);
             }
+
+            row.upcast()
         }));
-
-        this.part_list.set_make_widget(|pos| {
-            let label = gtk::Label::new(None);
-            label.set_ellipsize(pango::EllipsizeMode::End);
-            label.set_halign(gtk::Align::Start);
-            label.set_margin_end(6);
-            label.set_margin_top(6);
-            label.set_margin_bottom(6);
-
-            match pos {
-                PartOrSection::Part(part) => {
-                    label.set_text(&part.title);
-                    label.set_margin_start(12);
-                }
-                PartOrSection::Section(section) => {
-                    let attrs = pango::AttrList::new();
-                    attrs.insert(pango::Attribute::new_weight(pango::Weight::Bold).unwrap());
-                    label.set_attributes(Some(&attrs));
-                    label.set_text(&section.title);
-                    label.set_margin_start(6);
-                }
-            }
-
-            label.upcast()
-        });
 
         add_part_button.connect_clicked(clone!(@strong this => move |_| {
             let navigator = this.navigator.borrow().clone();
@@ -232,17 +299,13 @@ impl WorkEditor {
                 let editor = WorkPartEditor::new(this.backend.clone(), None);
 
                 editor.set_ready_cb(clone!(@strong this, @strong navigator => move |part| {
-                    let mut structure = this.structure.borrow_mut();
-
-                    let index = match this.part_list.get_selected_index() {
-                        Some(index) => index + 1,
-                        None => structure.len(),
+                    let length = {
+                        let mut structure = this.structure.borrow_mut();
+                        structure.push(PartOrSection::Part(part));
+                        structure.len()
                     };
 
-                    structure.insert(index, PartOrSection::Part(part));
-                    this.part_list.show_items(structure.clone());
-                    this.part_list.select_index(index);
-
+                    this.part_list.update(length);
                     navigator.clone().pop();
                 }));
 
@@ -256,88 +319,17 @@ impl WorkEditor {
                 let editor = WorkSectionEditor::new(None);
 
                 editor.set_ready_cb(clone!(@strong this, @strong navigator => move |section| {
-                    let mut structure = this.structure.borrow_mut();
-
-                    let index = match this.part_list.get_selected_index() {
-                        Some(index) => index + 1,
-                        None => structure.len(),
+                    let length = {
+                        let mut structure = this.structure.borrow_mut();
+                        structure.push(PartOrSection::Section(section));
+                        structure.len()
                     };
 
-                    structure.insert(index, PartOrSection::Section(section));
-                    this.part_list.show_items(structure.clone());
-                    this.part_list.select_index(index);
-
+                    this.part_list.update(length);
                     navigator.clone().pop();
                 }));
 
                 navigator.push(editor);
-            }
-        }));
-
-        edit_part_button.connect_clicked(clone!(@strong this => move |_| {
-            let navigator = this.navigator.borrow().clone();
-            if let Some(navigator) = navigator {
-                if let Some(index) = this.part_list.get_selected_index() {
-                    match this.structure.borrow()[index].clone() {
-                        PartOrSection::Part(part) => {
-                            let editor = WorkPartEditor::new(this.backend.clone(), Some(part));
-
-                            editor.set_ready_cb(clone!(@strong this, @strong navigator => move |part| {
-                                let mut structure = this.structure.borrow_mut();
-                                structure[index] = PartOrSection::Part(part);
-                                this.part_list.show_items(structure.clone());
-                                this.part_list.select_index(index);
-                                navigator.clone().pop();
-                            }));
-
-                            navigator.push(editor);
-                        }
-                        PartOrSection::Section(section) => {
-                            let editor = WorkSectionEditor::new(Some(section));
-
-                            editor.set_ready_cb(clone!(@strong this, @strong navigator => move |section| {
-                                let mut structure = this.structure.borrow_mut();
-                                structure[index] = PartOrSection::Section(section);
-                                this.part_list.show_items(structure.clone());
-                                this.part_list.select_index(index);
-                                navigator.clone().pop();
-                            }));
-
-                            navigator.push(editor);
-                        }
-                    }
-                }
-            }
-        }));
-
-        remove_part_button.connect_clicked(clone!(@strong this => move |_| {
-            if let Some(index) = this.part_list.get_selected_index() {
-                let mut structure = this.structure.borrow_mut();
-                structure.remove(index);
-                this.part_list.show_items(structure.clone());
-                this.part_list.select_index(index);
-            }
-        }));
-
-        move_part_up_button.connect_clicked(clone!(@strong this => move |_| {
-            if let Some(index) = this.part_list.get_selected_index() {
-                if index > 0 {
-                    let mut structure = this.structure.borrow_mut();
-                    structure.swap(index - 1, index);
-                    this.part_list.show_items(structure.clone());
-                    this.part_list.select_index(index - 1);
-                }
-            }
-        }));
-
-        move_part_down_button.connect_clicked(clone!(@strong this => move |_| {
-            if let Some(index) = this.part_list.get_selected_index() {
-                let mut structure = this.structure.borrow_mut();
-                if index < structure.len() - 1 {
-                    structure.swap(index, index + 1);
-                    this.part_list.show_items(structure.clone());
-                    this.part_list.select_index(index + 1);
-                }
             }
         }));
 
@@ -347,9 +339,8 @@ impl WorkEditor {
             this.show_composer(composer);
         }
 
-        this.instrument_list
-            .show_items(this.instruments.borrow().clone());
-        this.part_list.show_items(this.structure.borrow().clone());
+        this.instrument_list.update(this.instruments.borrow().len());
+        this.part_list.update(this.structure.borrow().len());
 
         this
     }
@@ -361,7 +352,8 @@ impl WorkEditor {
 
     /// Update the UI according to person.
     fn show_composer(&self, person: &Person) {
-        self.composer_label.set_text(&person.name_fl());
+        self.composer_row.set_title(Some(&gettext("Composer")));
+        self.composer_row.set_subtitle(Some(&person.name_fl()));
         self.save_button.set_sensitive(true);
     }
 
@@ -385,7 +377,7 @@ impl WorkEditor {
 
         let work = Work {
             id: self.id.clone(),
-            title: self.title_entry.get_text().to_string(),
+            title: self.title_entry.get_text().unwrap().to_string(),
             composer: self
                 .composer
                 .borrow()

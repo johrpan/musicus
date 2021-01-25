@@ -2,8 +2,7 @@ use super::disc_source::DiscSource;
 use super::track_set_editor::{TrackSetData, TrackSetEditor};
 use crate::database::{generate_id, Medium, Track, TrackSet};
 use crate::backend::Backend;
-use crate::widgets::{Navigator, NavigatorScreen};
-use crate::widgets::new_list::List;
+use crate::widgets::{List, Navigator, NavigatorScreen};
 use anyhow::Result;
 use glib::clone;
 use glib::prelude::*;
@@ -23,7 +22,7 @@ pub struct MediumEditor {
     done: gtk::Image,
     name_entry: gtk::Entry,
     publish_switch: gtk::Switch,
-    track_set_list: List,
+    track_set_list: Rc<List>,
     track_sets: RefCell<Vec<TrackSetData>>,
     navigator: RefCell<Option<Rc<Navigator>>>,
 }
@@ -45,8 +44,8 @@ impl MediumEditor {
         get_widget!(builder, gtk::Button, add_button);
         get_widget!(builder, gtk::Frame, frame);
 
-        let list = List::new("No recordings added.");
-        frame.add(&list.widget);
+        let list = List::new();
+        frame.set_child(Some(&list.widget));
 
         let this = Rc::new(Self {
             backend,
@@ -106,25 +105,24 @@ impl MediumEditor {
             }
         }));
 
-        this.track_set_list.set_make_widget(clone!(@strong this => move |index| {
+        this.track_set_list.set_make_widget_cb(clone!(@strong this => move |index| {
             let track_set = &this.track_sets.borrow()[index];
 
             let title = track_set.recording.work.get_title();
             let subtitle = track_set.recording.get_performers();
 
-            let edit_image = gtk::Image::from_icon_name(Some("document-edit-symbolic"), gtk::IconSize::Button);
+            let edit_image = gtk::Image::from_icon_name(Some("document-edit-symbolic"));
             let edit_button = gtk::Button::new();
-            edit_button.set_relief(gtk::ReliefStyle::None);
+            edit_button.set_has_frame(false);
             edit_button.set_valign(gtk::Align::Center);
-            edit_button.add(&edit_image);
+            edit_button.set_child(Some(&edit_image));
 
             let row = libhandy::ActionRow::new();
             row.set_activatable(true);
             row.set_title(Some(&title));
             row.set_subtitle(Some(&subtitle));
-            row.add(&edit_button);
+            row.add_suffix(&edit_button);
             row.set_activatable_widget(Some(&edit_button));
-            row.show_all();
 
             edit_button.connect_clicked(clone!(@strong this => move |_| {
 
@@ -154,7 +152,7 @@ impl MediumEditor {
 
     /// Save the medium and possibly upload it to the server.
     async fn save(self: Rc<Self>) -> Result<()> {
-        let name = self.name_entry.get_text().to_string();
+        let name = self.name_entry.get_text().unwrap().to_string();
 
         // Create a new directory in the music library path for the imported medium.
 
@@ -200,7 +198,7 @@ impl MediumEditor {
 
         let medium = Medium {
             id: generate_id(),
-            name: self.name_entry.get_text().to_string(),
+            name: self.name_entry.get_text().unwrap().to_string(),
             discid: Some(self.source.discid.clone()),
             tracks: track_sets,
         };

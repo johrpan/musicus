@@ -8,20 +8,20 @@ use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
+use libhandy::prelude::*;
 use std::cell::RefCell;
 use std::rc::Rc;
 
 /// A widget for creating or editing a recording.
-// TODO: Disable buttons if no performance is selected.
 pub struct RecordingEditor {
     pub widget: gtk::Stack,
     backend: Rc<Backend>,
     save_button: gtk::Button,
     info_bar: gtk::InfoBar,
-    work_label: gtk::Label,
+    work_row: libhandy::ActionRow,
     comment_entry: gtk::Entry,
     upload_switch: gtk::Switch,
-    performance_list: Rc<List<Performance>>,
+    performance_list: Rc<List>,
     id: String,
     work: RefCell<Option<Work>>,
     performances: RefCell<Vec<Performance>>,
@@ -40,17 +40,15 @@ impl RecordingEditor {
         get_widget!(builder, gtk::Button, back_button);
         get_widget!(builder, gtk::Button, save_button);
         get_widget!(builder, gtk::InfoBar, info_bar);
+        get_widget!(builder, libhandy::ActionRow, work_row);
         get_widget!(builder, gtk::Button, work_button);
-        get_widget!(builder, gtk::Label, work_label);
         get_widget!(builder, gtk::Entry, comment_entry);
         get_widget!(builder, gtk::Switch, upload_switch);
-        get_widget!(builder, gtk::ScrolledWindow, scroll);
+        get_widget!(builder, gtk::Frame, performance_frame);
         get_widget!(builder, gtk::Button, add_performer_button);
-        get_widget!(builder, gtk::Button, edit_performer_button);
-        get_widget!(builder, gtk::Button, remove_performer_button);
 
-        let performance_list = List::new(&gettext("No performers added."));
-        scroll.add(&performance_list.widget);
+        let performance_list = List::new();
+        performance_frame.set_child(Some(&performance_list.widget));
 
         let (id, work, performances) = match recording {
             Some(recording) => {
@@ -65,7 +63,7 @@ impl RecordingEditor {
             backend,
             save_button,
             info_bar,
-            work_label,
+            work_row,
             comment_entry,
             upload_switch,
             performance_list,
@@ -130,16 +128,60 @@ impl RecordingEditor {
             }
         }));
 
-        this.performance_list.set_make_widget(|performance| {
-            let label = gtk::Label::new(Some(&performance.get_title()));
-            label.set_ellipsize(pango::EllipsizeMode::End);
-            label.set_halign(gtk::Align::Start);
-            label.set_margin_start(6);
-            label.set_margin_end(6);
-            label.set_margin_top(6);
-            label.set_margin_bottom(6);
-            label.upcast()
-        });
+        this.performance_list.set_make_widget_cb(clone!(@strong this => move |index| {
+            let performance = &this.performances.borrow()[index];
+
+            let delete_button = gtk::Button::from_icon_name(Some("user-trash-symbolic"));
+            delete_button.set_valign(gtk::Align::Center);
+
+            delete_button.connect_clicked(clone!(@strong this => move |_| {
+                    let length = {
+                        let mut performances = this.performances.borrow_mut();
+                        performances.remove(index);
+                        performances.len()
+                    };
+
+                    this.performance_list.update(length);
+            }));
+
+            let edit_button = gtk::Button::from_icon_name(Some("document-edit-symbolic"));
+            edit_button.set_valign(gtk::Align::Center);
+
+            edit_button.connect_clicked(clone!(@strong this => move |_| {
+                    let navigator = this.navigator.borrow().clone();
+                    if let Some(navigator) = navigator {
+                        let performance = &this.performances.borrow()[index];
+
+                        let editor = PerformanceEditor::new(
+                            this.backend.clone(),
+                            Some(performance.clone()),
+                        );
+
+                        editor.set_selected_cb(clone!(@strong this, @strong navigator => move |performance| {
+                            let length = {
+                                let mut performances = this.performances.borrow_mut();
+                                performances[index] = performance;
+                                performances.len()
+                            };
+
+                            this.performance_list.update(length);
+
+                            navigator.clone().pop();
+                        }));
+
+                        navigator.push(editor);
+                    }
+            }));
+
+            let row = libhandy::ActionRow::new();
+            row.set_activatable(true);
+            row.set_title(Some(&performance.get_title()));
+            row.add_suffix(&delete_button);
+            row.add_suffix(&edit_button);
+            row.set_activatable_widget(Some(&edit_button));
+
+            row.upcast()
+        }));
 
         add_performer_button.connect_clicked(clone!(@strong this => move |_| {
             let navigator = this.navigator.borrow().clone();
@@ -147,54 +189,18 @@ impl RecordingEditor {
                 let editor = PerformanceEditor::new(this.backend.clone(), None);
 
                 editor.set_selected_cb(clone!(@strong this, @strong navigator => move |performance| {
-                    let mut performances = this.performances.borrow_mut();
-
-                    let index = match this.performance_list.get_selected_index() {
-                        Some(index) => index + 1,
-                        None => performances.len(),
+                    let length = {
+                        let mut performances = this.performances.borrow_mut();
+                        performances.push(performance);
+                        performances.len()
                     };
 
-                    performances.insert(index, performance);
-                    this.performance_list.show_items(performances.clone());
-                    this.performance_list.select_index(index);
+                    this.performance_list.update(length);
 
                     navigator.clone().pop();
                 }));
 
                 navigator.push(editor);
-            }
-        }));
-
-        edit_performer_button.connect_clicked(clone!(@strong this => move |_| {
-            let navigator = this.navigator.borrow().clone();
-            if let Some(navigator) = navigator {
-                if let Some(index) = this.performance_list.get_selected_index() {
-                    let performance = &this.performances.borrow()[index];
-
-                    let editor = PerformanceEditor::new(
-                        this.backend.clone(),
-                        Some(performance.clone()),
-                    );
-
-                    editor.set_selected_cb(clone!(@strong this, @strong navigator => move |performance| {
-                        let mut performances = this.performances.borrow_mut();
-                        performances[index] = performance;
-                        this.performance_list.show_items(performances.clone());
-                        this.performance_list.select_index(index);
-                        navigator.clone().pop();
-                    }));
-
-                    navigator.push(editor);
-                }
-            }
-        }));
-
-        remove_performer_button.connect_clicked(clone!(@strong this => move |_| {
-            if let Some(index) = this.performance_list.get_selected_index() {
-                let mut performances = this.performances.borrow_mut();
-                performances.remove(index);
-                this.performance_list.show_items(performances.clone());
-                this.performance_list.select_index(index);
             }
         }));
 
@@ -204,8 +210,8 @@ impl RecordingEditor {
             this.work_selected(work);
         }
 
-        this.performance_list
-            .show_items(this.performances.borrow().clone());
+        let length = this.performances.borrow().len();
+        this.performance_list.update(length);
 
         this
     }
@@ -217,8 +223,8 @@ impl RecordingEditor {
 
     /// Update the UI according to work.    
     fn work_selected(&self, work: &Work) {
-        self.work_label
-            .set_text(&format!("{}: {}", work.composer.name_fl(), work.title));
+        self.work_row.set_title(Some(&gettext("Work")));
+        self.work_row.set_subtitle(Some(&work.get_title()));
         self.save_button.set_sensitive(true);
     }
 
@@ -231,7 +237,7 @@ impl RecordingEditor {
                 .borrow()
                 .clone()
                 .expect("Tried to create recording without work!"),
-            comment: self.comment_entry.get_text().to_string(),
+            comment: self.comment_entry.get_text().unwrap().to_string(),
             performances: self.performances.borrow().clone(),
         };
 

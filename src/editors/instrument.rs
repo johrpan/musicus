@@ -94,7 +94,7 @@ impl InstrumentEditor {
 
     /// Save the instrument and possibly upload it to the server.
     async fn save(self: Rc<Self>) -> Result<()> {
-        let name = self.name_entry.get_text().to_string();
+        let name = self.name_entry.get_text().unwrap().to_string();
 
         let instrument = Instrument {
             id: self.id.clone(),

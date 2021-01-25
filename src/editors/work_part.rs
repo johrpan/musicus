@@ -6,6 +6,7 @@ use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
+use libhandy::prelude::*;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -14,7 +15,7 @@ pub struct WorkPartEditor {
     backend: Rc<Backend>,
     widget: gtk::Box,
     title_entry: gtk::Entry,
-    composer_label: gtk::Label,
+    composer_row: libhandy::ActionRow,
     reset_composer_button: gtk::Button,
     composer: RefCell<Option<Person>>,
     ready_cb: RefCell<Option<Box<dyn Fn(WorkPart) -> ()>>>,
@@ -33,7 +34,7 @@ impl WorkPartEditor {
         get_widget!(builder, gtk::Button, save_button);
         get_widget!(builder, gtk::Entry, title_entry);
         get_widget!(builder, gtk::Button, composer_button);
-        get_widget!(builder, gtk::Label, composer_label);
+        get_widget!(builder, libhandy::ActionRow, composer_row);
         get_widget!(builder, gtk::Button, reset_composer_button);
 
         let composer = match part {
@@ -48,7 +49,7 @@ impl WorkPartEditor {
             backend,
             widget,
             title_entry,
-            composer_label,
+            composer_row,
             reset_composer_button,
             composer: RefCell::new(composer),
             ready_cb: RefCell::new(None),
@@ -67,7 +68,7 @@ impl WorkPartEditor {
         save_button.connect_clicked(clone!(@strong this => move |_| {
             if let Some(cb) = &*this.ready_cb.borrow() {
                 cb(WorkPart {
-                    title: this.title_entry.get_text().to_string(),
+                    title: this.title_entry.get_text().unwrap().to_string(),
                     composer: this.composer.borrow().clone(),
                 });
             }
@@ -117,10 +118,12 @@ impl WorkPartEditor {
     /// Update the UI according to person.
     fn show_composer(&self, person: Option<&Person>) {
         if let Some(person) = person {
-            self.composer_label.set_text(&person.name_fl());
+            self.composer_row.set_title(Some(&gettext("Composer")));
+            self.composer_row.set_subtitle(Some(&person.name_fl()));
             self.reset_composer_button.show();
         } else {
-            self.composer_label.set_text(&gettext("Select …"));
+            self.composer_row.set_title(Some(&gettext("Select a composer")));
+            self.composer_row.set_subtitle(None);
             self.reset_composer_button.hide();
         }
     }

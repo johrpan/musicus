@@ -98,8 +98,8 @@ impl PersonEditor {
 
     /// Save the person and possibly upload it to the server.
     async fn save(self: Rc<Self>) -> Result<()> {
-        let first_name = self.first_name_entry.get_text().to_string();
-        let last_name = self.last_name_entry.get_text().to_string();
+        let first_name = self.first_name_entry.get_text().unwrap().to_string();
+        let last_name = self.last_name_entry.get_text().unwrap().to_string();
 
         let person = Person {
             id: self.id.clone(),

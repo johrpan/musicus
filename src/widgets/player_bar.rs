@@ -144,15 +144,11 @@ impl PlayerBar {
                 @strong self.play_image as play_image,
                 @strong self.pause_image as pause_image
                 => move |playing| {
-                    if let Some(child) = play_button.get_child() {
-                        play_button.remove( &child);
-                    }
-
-                    play_button.add(if playing {
+                    play_button.set_child(Some(if playing {
                         &pause_image
                     } else {
                         &play_image
-                    });
+                    }));
                 }
             ));
 

@@ -8,16 +8,28 @@ use gio::prelude::*;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
-use libhandy::HeaderBarExt;
+use libhandy::prelude::*;
 use std::cell::RefCell;
 use std::rc::Rc;
+
+/// Representation of one entry within the track list.
+enum ListItem {
+    /// A track row. This hold an index to the track set and an index to the
+    /// track within the track set.
+    Track(usize, usize),
+
+    /// A separator intended for use between track sets.
+    Separator,
+}
 
 pub struct RecordingScreen {
     backend: Rc<Backend>,
     recording: Recording,
     widget: gtk::Box,
     stack: gtk::Stack,
+    list: Rc<List>,
     track_sets: RefCell<Vec<TrackSet>>,
+    items: RefCell<Vec<ListItem>>,
     navigator: RefCell<Option<Rc<Navigator>>>,
 }
 
@@ -26,14 +38,15 @@ impl RecordingScreen {
         let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/recording_screen.ui");
 
         get_widget!(builder, gtk::Box, widget);
-        get_widget!(builder, libhandy::HeaderBar, header);
+        get_widget!(builder, gtk::Label, title_label);
+        get_widget!(builder, gtk::Label, subtitle_label);
         get_widget!(builder, gtk::Button, back_button);
         get_widget!(builder, gtk::Stack, stack);
         get_widget!(builder, gtk::Frame, frame);
         get_widget!(builder, gtk::Button, add_to_playlist_button);
 
-        header.set_title(Some(&recording.work.get_title()));
-        header.set_subtitle(Some(&recording.get_performers()));
+        title_label.set_label(&recording.work.get_title());
+        subtitle_label.set_label(&recording.get_performers());
 
         let edit_action = gio::SimpleAction::new("edit", None);
         let delete_action = gio::SimpleAction::new("delete", None);
@@ -48,95 +61,96 @@ impl RecordingScreen {
 
         widget.insert_action_group("widget", Some(&actions));
 
-        let list = List::new(&gettext("No tracks found."));
-        frame.add(&list.widget);
+        let list = List::new();
+        frame.set_child(Some(&list.widget));
 
-        let result = Rc::new(Self {
+        let this = Rc::new(Self {
             backend,
             recording,
             widget,
             stack,
+            list,
             track_sets: RefCell::new(Vec::new()),
+            items: RefCell::new(Vec::new()),
             navigator: RefCell::new(None),
         });
 
-        list.set_make_widget(clone!(@strong result => move |track_set: &TrackSet| {
-            let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
-            vbox.set_border_width(6);
-            vbox.set_spacing(6);
+        this.list.set_make_widget_cb(clone!(@strong this => move |index| {
+            match this.items.borrow()[index] {
+                ListItem::Track(track_set_index, track_index) => {
+                    let track_set = &this.track_sets.borrow()[track_set_index];
+                    let track = &track_set.tracks[track_index];
 
-            for track in &track_set.tracks {
-                let track_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
+                    let mut title_parts = Vec::<String>::new();
+                    for part in &track.work_parts {
+                        title_parts.push(this.recording.work.parts[*part].title.clone());
+                    }
 
-                let mut title_parts = Vec::<String>::new();
-                for part in &track.work_parts {
-                    title_parts.push(result.recording.work.parts[*part].title.clone());
+                    let title = if title_parts.is_empty() {
+                        gettext("Unknown")
+                    } else {
+                        title_parts.join(", ")
+                    };
+
+                    let row = libhandy::ActionRow::new();
+                    row.set_title(Some(&title));
+
+                    row.upcast()
                 }
-
-                let title = if title_parts.is_empty() {
-                    gettext("Unknown")
-                } else {
-                    title_parts.join(", ")
-                };
-
-                let title_label = gtk::Label::new(Some(&title));
-                title_label.set_ellipsize(pango::EllipsizeMode::End);
-                title_label.set_halign(gtk::Align::Start);
-
-                let file_name_label = gtk::Label::new(Some(&track.path));
-                file_name_label.set_ellipsize(pango::EllipsizeMode::End);
-                file_name_label.set_opacity(0.5);
-                file_name_label.set_halign(gtk::Align::Start);
-
-                track_box.add(&title_label);
-                track_box.add(&file_name_label);
-
-                vbox.add(&track_box);
+                ListItem::Separator => {
+                    let separator = gtk::Separator::new(gtk::Orientation::Horizontal);
+                    separator.upcast()
+                }
             }
-
-            vbox.upcast()
         }));
 
-        back_button.connect_clicked(clone!(@strong result => move |_| {
-            let navigator = result.navigator.borrow().clone();
+        back_button.connect_clicked(clone!(@strong this => move |_| {
+            let navigator = this.navigator.borrow().clone();
             if let Some(navigator) = navigator {
                 navigator.clone().pop();
             }
         }));
 
-        add_to_playlist_button.connect_clicked(clone!(@strong result => move |_| {
-            // if let Some(player) = result.backend.get_player() {
-            //     player.add_item(PlaylistItem {
-            //         track_set: result.track_sets.get(0).unwrap().clone(),
-            //         indices: result.tracks.borrow().clone(),
-            //     }).unwrap();
-            // }
+        // TODO: Decide whether to handle multiple track sets.
+        add_to_playlist_button.connect_clicked(clone!(@strong this => move |_| {
+            if let Some(player) = this.backend.get_player() {
+                if let Some(track_set) = this.track_sets.borrow().get(0).cloned() {
+                    let indices = (0..track_set.tracks.len()).collect();
+
+                    let playlist_item = PlaylistItem {
+                        track_set,
+                        indices,
+                    };
+
+                    player.add_item(playlist_item).unwrap();
+                }
+            }
         }));
 
-        edit_action.connect_activate(clone!(@strong result => move |_, _| {
-            let editor = RecordingEditor::new(result.backend.clone(), Some(result.recording.clone()));
+        edit_action.connect_activate(clone!(@strong this => move |_, _| {
+            let editor = RecordingEditor::new(this.backend.clone(), Some(this.recording.clone()));
             let window = NavigatorWindow::new(editor);
             window.show();
         }));
 
-        delete_action.connect_activate(clone!(@strong result => move |_, _| {
+        delete_action.connect_activate(clone!(@strong this => move |_, _| {
             let context = glib::MainContext::default();
-            let clone = result.clone();
+            let clone = this.clone();
             context.spawn_local(async move {
                 clone.backend.db().delete_recording(&clone.recording.id).await.unwrap();
                 clone.backend.library_changed();
             });
         }));
 
-        edit_tracks_action.connect_activate(clone!(@strong result => move |_, _| {
-            // let editor = TracksEditor::new(result.backend.clone(), Some(result.recording.clone()), result.tracks.borrow().clone());
+        edit_tracks_action.connect_activate(clone!(@strong this => move |_, _| {
+            // let editor = TracksEditor::new(this.backend.clone(), Some(this.recording.clone()), this.tracks.borrow().clone());
             // let window = NavigatorWindow::new(editor);
             // window.show();
         }));
 
-        delete_tracks_action.connect_activate(clone!(@strong result => move |_, _| {
+        delete_tracks_action.connect_activate(clone!(@strong this => move |_, _| {
             let context = glib::MainContext::default();
-            let clone = result.clone();
+            let clone = this.clone();
             context.spawn_local(async move {
                 // clone.backend.db().delete_tracks(&clone.recording.id).await.unwrap();
                 // clone.backend.library_changed();
@@ -144,7 +158,7 @@ impl RecordingScreen {
         }));
 
         let context = glib::MainContext::default();
-        let clone = result.clone();
+        let clone = this.clone();
         context.spawn_local(async move {
             let track_sets = clone
                 .backend
@@ -153,12 +167,34 @@ impl RecordingScreen {
                 .await
                 .unwrap();
 
-            list.show_items(track_sets.clone());
+            clone.show_track_sets(track_sets);
             clone.stack.set_visible_child_name("content");
-            clone.track_sets.replace(track_sets);
         });
 
-        result
+        this
+    }
+
+    /// Update the track sets variable as well as the user interface.
+    fn show_track_sets(&self, track_sets: Vec<TrackSet>) {
+        let mut first = true;
+        let mut items = Vec::new();
+
+        for (track_set_index, track_set) in track_sets.iter().enumerate() {
+            if !first {
+                items.push(ListItem::Separator);
+            } else {
+                first = false;
+            }
+
+            for (track_index, _) in track_set.tracks.iter().enumerate() {
+                items.push(ListItem::Track(track_set_index, track_index));
+            }
+        }
+
+        let length = items.len();
+        self.items.replace(items);
+        self.track_sets.replace(track_sets);
+        self.list.update(length);
     }
 }
 

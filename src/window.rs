@@ -9,7 +9,6 @@ use gio::prelude::*;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::{action, get_widget};
-use libhandy::prelude::*;
 use std::rc::Rc;
 
 pub struct Window {
@@ -21,7 +20,7 @@ pub struct Window {
     poe_list: Rc<PoeList>,
     navigator: Rc<Navigator>,
     player_bar: PlayerBar,
-    player_screen: PlayerScreen,
+    player_screen: Rc<PlayerScreen>,
 }
 
 impl Window {
@@ -40,7 +39,7 @@ impl Window {
         let backend = Rc::new(Backend::new());
 
         let player_screen = PlayerScreen::new();
-        stack.add_named(&player_screen.widget, "player_screen");
+        stack.add_named(&player_screen.widget, Some("player_screen"));
 
         let poe_list = PoeList::new(backend.clone());
         let navigator = Navigator::new(&window, &empty_screen);
@@ -49,7 +48,7 @@ impl Window {
         }));
 
         let player_bar = PlayerBar::new();
-        content_box.add(&player_bar.widget);
+        content_box.append(&player_bar.widget);
 
         let result = Rc::new(Self {
             backend,
@@ -73,15 +72,21 @@ impl Window {
                 None,
                 None);
 
-            if let gtk::ResponseType::Accept = dialog.run() {
-                if let Some(path) = dialog.get_filename() {
-                    let context = glib::MainContext::default();
-                    let backend = result.backend.clone();
-                    context.spawn_local(async move {
-                        backend.set_music_library_path(path).await.unwrap();
-                    });
+            dialog.connect_response(clone!(@strong result => move |dialog, response| {
+                if response == gtk::ResponseType::Accept {
+                    if let Some(file) = dialog.get_file() {
+                        if let Some(path) = file.get_path() {
+                            let context = glib::MainContext::default();
+                            let backend = result.backend.clone();
+                            context.spawn_local(async move {
+                                backend.set_music_library_path(path).await.unwrap();
+                            });
+                        }
+                    }
                 }
-            }
+            }));
+
+            dialog.show();
         }));
 
         add_button.connect_clicked(clone!(@strong result => move |_| {
@@ -156,7 +161,7 @@ impl Window {
 
                         let player = clone.backend.get_player().unwrap();
                         clone.player_bar.set_player(Some(player.clone()));
-                        clone.player_screen.set_player(Some(player));
+                        clone.player_screen.clone().set_player(Some(player));
                     }
                 }
             }
@@ -169,11 +174,11 @@ impl Window {
             clone.backend.clone().init().await.unwrap();
         });
 
-        result.leaflet.add(&result.navigator.widget);
+        result.leaflet.append(&result.navigator.widget);
 
         result
             .poe_list
-            .set_selected(clone!(@strong result => move |poe| {
+            .set_selected_cb(clone!(@strong result => move |poe| {
                 result.leaflet.set_visible_child(&result.navigator.widget);
                 match poe {
                     PersonOrEnsemble::Person(person) => {
@@ -187,7 +192,7 @@ impl Window {
 
         result
             .sidebar_box
-            .pack_start(&result.poe_list.widget, true, true, 0);
+            .append(&result.poe_list.widget);
 
         result
     }

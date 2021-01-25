@@ -1,326 +1,224 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Generated with glade 3.38.1 -->
 <interface>
-  <requires lib="gtk+" version="3.22" />
+  <requires lib="gtk" version="4.0" />
   <requires lib="libhandy" version="1.0" />
   <object class="GtkBox" id="empty_screen">
-    <property name="visible">True</property>
-    <property name="can-focus">False</property>
     <property name="orientation">vertical</property>
     <child>
       <object class="HdyHeaderBar">
-        <property name="visible">True</property>
-        <property name="can-focus">False</property>
         <property name="hexpand">True</property>
-        <property name="show-close-button">True</property>
+        <property name="show-title-buttons">True</property>
+        <property name="title-widget">
+          <object class="GtkLabel"/>
+        </property>
       </object>
-      <packing>
-        <property name="expand">False</property>
-        <property name="fill">True</property>
-        <property name="position">0</property>
-      </packing>
     </child>
     <child>
       <object class="GtkBox">
-        <property name="visible">True</property>
-        <property name="can-focus">False</property>
+        <property name="vexpand">True</property>
         <property name="halign">center</property>
         <property name="valign">center</property>
-        <property name="border-width">18</property>
+        <property name="margin-top">18</property>
+        <property name="margin-bottom">18</property>
+        <property name="margin-start">18</property>
+        <property name="margin-end">18</property>
         <property name="orientation">vertical</property>
         <property name="spacing">18</property>
         <child>
           <object class="GtkImage">
-            <property name="visible">True</property>
-            <property name="can-focus">False</property>
             <property name="opacity">0.5</property>
             <property name="pixel-size">80</property>
             <property name="icon-name">folder-music-symbolic</property>
           </object>
-          <packing>
-            <property name="expand">False</property>
-            <property name="fill">True</property>
-            <property name="position">0</property>
-          </packing>
         </child>
         <child>
           <object class="GtkLabel">
-            <property name="visible">True</property>
-            <property name="can-focus">False</property>
             <property name="opacity">0.5</property>
             <property name="label" translatable="yes">Welcome to Musicus!</property>
             <attributes>
               <attribute name="size" value="16384" />
             </attributes>
           </object>
-          <packing>
-            <property name="expand">False</property>
-            <property name="fill">True</property>
-            <property name="position">1</property>
-          </packing>
         </child>
         <child>
           <object class="GtkLabel">
-            <property name="visible">True</property>
-            <property name="can-focus">False</property>
             <property name="opacity">0.5</property>
             <property name="label" translatable="yes">Get startet by selecting something from the sidebar or adding new things to your library using the button in the top left corner.</property>
             <property name="justify">center</property>
             <property name="wrap">True</property>
             <property name="max-width-chars">40</property>
           </object>
-          <packing>
-            <property name="expand">False</property>
-            <property name="fill">True</property>
-            <property name="position">2</property>
-          </packing>
         </child>
       </object>
-      <packing>
-        <property name="expand">True</property>
-        <property name="fill">True</property>
-        <property name="position">1</property>
-      </packing>
     </child>
   </object>
   <object class="HdyApplicationWindow" id="window">
-    <property name="can-focus">False</property>
     <property name="default-width">800</property>
     <property name="default-height">566</property>
     <child>
       <object class="GtkStack" id="stack">
-        <property name="visible">True</property>
-        <property name="can-focus">False</property>
         <property name="transition-type">crossfade</property>
         <child>
-          <object class="GtkBox">
-            <property name="visible">True</property>
-            <property name="can-focus">False</property>
-            <property name="orientation">vertical</property>
-            <child>
-              <object class="HdyHeaderBar">
-                <property name="visible">True</property>
-                <property name="can-focus">False</property>
-                <property name="title" translatable="yes">Musicus</property>
-                <property name="show-close-button">True</property>
-              </object>
-              <packing>
-                <property name="expand">False</property>
-                <property name="fill">True</property>
-                <property name="position">0</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkBox">
-                <property name="visible">True</property>
-                <property name="can-focus">False</property>
-                <property name="halign">center</property>
-                <property name="valign">center</property>
-                <property name="border-width">18</property>
-                <property name="orientation">vertical</property>
-                <property name="spacing">18</property>
-                <child>
-                  <object class="GtkImage">
-                    <property name="visible">True</property>
-                    <property name="can-focus">False</property>
-                    <property name="opacity">0.5019607843137255</property>
-                    <property name="pixel-size">80</property>
-                    <property name="icon-name">folder-music-symbolic</property>
-                  </object>
-                  <packing>
-                    <property name="expand">False</property>
-                    <property name="fill">True</property>
-                    <property name="position">0</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkLabel">
-                    <property name="visible">True</property>
-                    <property name="can-focus">False</property>
-                    <property name="opacity">0.5019607843137255</property>
-                    <property name="label" translatable="yes">Welcome to Musicus!</property>
-                    <attributes>
-                      <attribute name="size" value="16384" />
-                    </attributes>
-                  </object>
-                  <packing>
-                    <property name="expand">False</property>
-                    <property name="fill">True</property>
-                    <property name="position">1</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkLabel">
-                    <property name="visible">True</property>
-                    <property name="can-focus">False</property>
-                    <property name="opacity">0.5019607843137255</property>
-                    <property name="label" translatable="yes">Get startet by selecting the folder containing your music files! Musicus will create a new database there or open one that already exists.</property>
-                    <property name="justify">center</property>
-                    <property name="wrap">True</property>
-                    <property name="max-width-chars">40</property>
-                  </object>
-                  <packing>
-                    <property name="expand">False</property>
-                    <property name="fill">True</property>
-                    <property name="position">2</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkButton" id="select_music_library_path_button">
-                    <property name="label" translatable="yes">Select folder</property>
-                    <property name="visible">True</property>
-                    <property name="can-focus">True</property>
-                    <property name="receives-default">True</property>
-                    <property name="halign">center</property>
-                    <style>
-                      <class name="suggested-action" />
-                    </style>
-                  </object>
-                  <packing>
-                    <property name="expand">False</property>
-                    <property name="fill">True</property>
-                    <property name="position">3</property>
-                  </packing>
-                </child>
-              </object>
-              <packing>
-                <property name="expand">True</property>
-                <property name="fill">True</property>
-                <property name="position">1</property>
-              </packing>
-            </child>
-          </object>
-          <packing>
+          <object class="GtkStackPage">
             <property name="name">empty</property>
-          </packing>
-        </child>
-        <child>
-          <object class="GtkBox">
-            <property name="visible">True</property>
-            <property name="can-focus">False</property>
-            <property name="orientation">vertical</property>
-            <child>
-              <object class="HdyHeaderBar">
-                <property name="visible">True</property>
-                <property name="can-focus">False</property>
-                <property name="show-close-button">True</property>
-              </object>
-              <packing>
-                <property name="expand">False</property>
-                <property name="fill">True</property>
-                <property name="position">0</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkSpinner">
-                <property name="visible">True</property>
-                <property name="can-focus">False</property>
-                <property name="active">True</property>
-              </object>
-              <packing>
-                <property name="expand">True</property>
-                <property name="fill">True</property>
-                <property name="position">1</property>
-              </packing>
-            </child>
-          </object>
-          <packing>
-            <property name="name">loading</property>
-            <property name="position">1</property>
-          </packing>
-        </child>
-        <child>
-          <object class="GtkBox" id="content_box">
-            <property name="visible">True</property>
-            <property name="can-focus">False</property>
-            <property name="orientation">vertical</property>
-            <child>
-              <object class="HdyLeaflet" id="leaflet">
-                <property name="visible">True</property>
-                <property name="can-focus">False</property>
+            <property name="child">
+              <object class="GtkBox">
+                <property name="orientation">vertical</property>
                 <child>
-                  <object class="GtkBox" id="sidebar_box">
-                    <property name="width-request">250</property>
-                    <property name="visible">True</property>
-                    <property name="can-focus">False</property>
-                    <property name="hexpand">False</property>
-                    <property name="orientation">vertical</property>
-                    <child>
-                      <object class="HdyHeaderBar">
-                        <property name="visible">True</property>
-                        <property name="can-focus">False</property>
-                        <property name="title" translatable="yes">Musicus</property>
-                        <child>
-                          <object class="GtkButton" id="add_button">
-                            <property name="visible">True</property>
-                            <property name="can-focus">True</property>
-                            <property name="receives-default">True</property>
-                            <child>
-                              <object class="GtkImage">
-                                <property name="visible">True</property>
-                                <property name="can-focus">False</property>
-                                <property name="icon-name">list-add-symbolic</property>
-                              </object>
-                            </child>
-                          </object>
-                        </child>
-                        <child>
-                          <object class="GtkMenuButton">
-                            <property name="visible">True</property>
-                            <property name="can-focus">True</property>
-                            <property name="focus-on-click">False</property>
-                            <property name="receives-default">True</property>
-                            <property name="menu-model">menu</property>
-                            <child>
-                              <object class="GtkImage">
-                                <property name="visible">True</property>
-                                <property name="can-focus">False</property>
-                                <property name="icon-name">open-menu-symbolic</property>
-                              </object>
-                            </child>
-                          </object>
-                          <packing>
-                            <property name="pack-type">end</property>
-                            <property name="position">1</property>
-                          </packing>
-                        </child>
+                  <object class="HdyHeaderBar">
+                    <property name="title-widget">
+                      <object class="GtkLabel">
+                        <property name="label">Musicus</property>
+                        <style>
+                          <class name="title"/>
+                        </style>
                       </object>
-                      <packing>
-                        <property name="expand">False</property>
-                        <property name="fill">True</property>
-                        <property name="position">0</property>
-                      </packing>
+                    </property>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkBox">
+                    <property name="vexpand">True</property>
+                    <property name="halign">center</property>
+                    <property name="valign">center</property>
+                    <property name="margin-top">18</property>
+                    <property name="margin-bottom">18</property>
+                    <property name="margin-start">18</property>
+                    <property name="margin-end">18</property>
+                    <property name="orientation">vertical</property>
+                    <property name="spacing">18</property>
+                    <child>
+                      <object class="GtkImage">
+                        <property name="opacity">0.5019607843137255</property>
+                        <property name="pixel-size">80</property>
+                        <property name="icon-name">folder-music-symbolic</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkLabel">
+                        <property name="opacity">0.5019607843137255</property>
+                        <property name="label" translatable="yes">Welcome to Musicus!</property>
+                        <attributes>
+                          <attribute name="size" value="16384" />
+                        </attributes>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkLabel">
+                        <property name="opacity">0.5019607843137255</property>
+                        <property name="label" translatable="yes">Get startet by selecting the folder containing your music files! Musicus will create a new database there or open one that already exists.</property>
+                        <property name="justify">center</property>
+                        <property name="wrap">True</property>
+                        <property name="max-width-chars">40</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkButton" id="select_music_library_path_button">
+                        <property name="label" translatable="yes">Select folder</property>
+                        <property name="receives-default">True</property>
+                        <property name="halign">center</property>
+                        <style>
+                          <class name="suggested-action" />
+                        </style>
+                      </object>
                     </child>
                   </object>
-                  <packing>
-                    <property name="name">sidebar</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkSeparator">
-                    <property name="visible">True</property>
-                    <property name="can-focus">False</property>
-                    <property name="orientation">vertical</property>
-                    <style>
-                      <class name="sidebar" />
-                    </style>
-                  </object>
-                  <packing>
-                    <property name="navigatable">False</property>
-                  </packing>
                 </child>
               </object>
-              <packing>
-                <property name="expand">True</property>
-                <property name="fill">True</property>
-                <property name="position">0</property>
-              </packing>
-            </child>
+            </property>
           </object>
-          <packing>
+        </child>
+        <child>
+          <object class="GtkStackPage">
+            <property name="name">loading</property>
+            <property name="child">
+              <object class="GtkBox">
+                <property name="orientation">vertical</property>
+                <child>
+                  <object class="HdyHeaderBar">
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkSpinner">
+                    <property name="spinning">True</property>
+                    <property name="vexpand">True</property>
+                    <property name="hexpand">True</property>
+                    <property name="valign">center</property>
+                    <property name="halign">center</property>
+                  </object>
+                </child>
+              </object>
+            </property>
+          </object>
+        </child>
+        <child>
+          <object class="GtkStackPage">
             <property name="name">content</property>
-            <property name="position">2</property>
-          </packing>
+            <property name="child">
+              <object class="GtkBox" id="content_box">
+                <property name="orientation">vertical</property>
+                <child>
+                  <object class="HdyLeaflet" id="leaflet">
+                    <property name="vexpand">true</property>
+                    <child>
+                      <object class="HdyLeafletPage">
+                        <property name="child">
+                          <object class="GtkBox" id="sidebar_box">
+                            <property name="width-request">250</property>
+                            <property name="hexpand">False</property>
+                            <property name="orientation">vertical</property>
+                            <child>
+                              <object class="HdyHeaderBar">
+                                <property name="show-title-buttons">False</property>
+                                <property name="title-widget">
+                                  <object class="GtkLabel">
+                                    <property name="label">Musicus</property>
+                                    <style>
+                                      <class name="title"/>
+                                    </style>
+                                  </object>
+                                </property>
+                                <child>
+                                  <object class="GtkButton" id="add_button">
+                                    <property name="receives-default">True</property>
+                                    <child>
+                                      <object class="GtkImage">
+                                        <property name="icon-name">list-add-symbolic</property>
+                                      </object>
+                                    </child>
+                                  </object>
+                                </child>
+                                <child type="end">
+                                  <object class="GtkMenuButton">
+                                    <property name="receives-default">True</property>
+                                    <property name="icon-name">open-menu-symbolic</property>
+                                    <property name="menu-model">menu</property>
+                                  </object>
+                                </child>
+                              </object>
+                            </child>
+                          </object>
+                        </property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="HdyLeafletPage">
+                        <property name="navigatable">False</property>
+                        <property name="child">
+                          <object class="GtkSeparator">
+                            <property name="orientation">vertical</property>
+                            <style>
+                              <class name="sidebar" />
+                            </style>
+                          </object>
+                        </property>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+              </object>
+            </property>
+          </object>
         </child>
       </object>
     </child>

@@ -33,7 +33,7 @@ impl TrackSelector {
         track_list.set_selection_mode(gtk::SelectionMode::None);
         track_list.set_vexpand(false);
         track_list.show();
-        tracks_frame.add(&track_list);
+        tracks_frame.set_child(Some(&track_list));
 
         let this = Rc::new(Self {
             source,
@@ -90,10 +90,10 @@ impl TrackSelector {
             let row = libhandy::ActionRow::new();
             row.add_prefix(&check);
             row.set_activatable_widget(Some(&check));
+            row.set_activatable(true);
             row.set_title(Some(&title));
-            row.show_all();
 
-            track_list.add(&row);
+            track_list.append(&row);
         }
 
         this

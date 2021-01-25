@@ -3,7 +3,6 @@ use discid::DiscId;
 use futures_channel::oneshot;
 use gstreamer::prelude::*;
 use gstreamer::{Element, ElementFactory, Pipeline};
-use std::cell::RefCell;
 use std::path::{Path, PathBuf};
 use std::thread;
 

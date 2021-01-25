@@ -50,7 +50,7 @@ impl WorkSectionEditor {
             if let Some(cb) = &*this.ready_cb.borrow() {
                 cb(WorkSection {
                     before_index: 0,
-                    title: this.title_entry.get_text().to_string(),
+                    title: this.title_entry.get_text().unwrap().to_string(),
                 });
             }
 

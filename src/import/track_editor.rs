@@ -1,6 +1,5 @@
 use crate::database::Recording;
 use crate::widgets::{Navigator, NavigatorScreen};
-use crate::widgets::new_list::List;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
@@ -32,7 +31,7 @@ impl TrackEditor {
         parts_list.set_selection_mode(gtk::SelectionMode::None);
         parts_list.set_vexpand(false);
         parts_list.show();
-        parts_frame.add(&parts_list);
+        parts_frame.set_child(Some(&parts_list));
 
         let this = Rc::new(Self {
             widget,
@@ -81,9 +80,8 @@ impl TrackEditor {
             row.add_prefix(&check);
             row.set_activatable_widget(Some(&check));
             row.set_title(Some(&part.title));
-            row.show_all();
 
-            parts_list.add(&row);
+            parts_list.append(&row);
         }
 
         this

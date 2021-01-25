@@ -6,6 +6,7 @@ use crate::widgets::{Navigator, NavigatorScreen};
 use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
+use libhandy::prelude::*;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -73,22 +74,22 @@ impl RecordingSelector {
                 async move { clone.backend.db().get_recordings_for_work(&clone.work.id).await.unwrap() }
             }));
 
-        this.selector.set_make_widget(|recording| {
-            let label = gtk::Label::new(Some(&recording.get_performers()));
-            label.set_halign(gtk::Align::Start);
-            label.set_margin_start(6);
-            label.set_margin_end(6);
-            label.set_margin_top(6);
-            label.set_margin_bottom(6);
-            label.upcast()
-        });
+        this.selector.set_make_widget(clone!(@strong this => move |recording| {
+            let row = libhandy::ActionRow::new();
+            row.set_activatable(true);
+            row.set_title(Some(&recording.get_performers()));
+
+            let recording = recording.to_owned();
+            row.connect_activated(clone!(@strong this => move |_| {
+                this.select(&recording);
+            }));
+
+            row.upcast()
+        }));
 
         this.selector.set_filter(|search, recording| {
             recording.get_performers().to_lowercase().contains(search)
         });
-
-        this.selector
-            .set_selected_cb(clone!(@strong this => move |recording| this.select(recording)));
 
         this
     }

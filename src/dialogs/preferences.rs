@@ -43,21 +43,32 @@ impl Preferences {
         // Connect signals and callbacks
 
         select_music_library_path_button.connect_clicked(clone!(@strong this => move |_| {
-            let dialog = gtk::FileChooserNative::new(
+            let dialog = gtk::FileChooserDialog::new(
                 Some(&gettext("Select music library folder")),
-                Some(&this.window), gtk::FileChooserAction::SelectFolder,None, None);
+                Some(&this.window),
+                gtk::FileChooserAction::SelectFolder,
+                &[
+                    (&gettext("Cancel"), gtk::ResponseType::Cancel),
+                    (&gettext("Select"), gtk::ResponseType::Accept),
+                ]);
 
-            if let gtk::ResponseType::Accept = dialog.run() {
-                if let Some(path) = dialog.get_filename() {
-                    this.music_library_path_row.set_subtitle(Some(path.to_str().unwrap()));
+            dialog.connect_response(clone!(@strong this => move |dialog, response| {
+                if let gtk::ResponseType::Accept = response {
+                    if let Some(file) = dialog.get_file() {
+                        if let Some(path) = file.get_path() {
+                            this.music_library_path_row.set_subtitle(Some(path.to_str().unwrap()));
 
-                    let context = glib::MainContext::default();
-                    let backend = this.backend.clone();
-                    context.spawn_local(async move {
-                        backend.set_music_library_path(path).await.unwrap();
-                    });
+                            let context = glib::MainContext::default();
+                            let backend = this.backend.clone();
+                            context.spawn_local(async move {
+                                backend.set_music_library_path(path).await.unwrap();
+                            });
+                        }
+                    }
                 }
-            }
+            }));
+
+            dialog.show();
         }));
 
         url_button.connect_clicked(clone!(@strong this => move |_| {

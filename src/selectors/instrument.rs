@@ -6,6 +6,7 @@ use crate::widgets::{Navigator, NavigatorScreen};
 use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
+use libhandy::prelude::*;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -63,21 +64,21 @@ impl InstrumentSelector {
                 async move { clone.backend.db().get_instruments().await.unwrap() }
             }));
 
-        this.selector.set_make_widget(|instrument| {
-            let label = gtk::Label::new(Some(&instrument.name));
-            label.set_halign(gtk::Align::Start);
-            label.set_margin_start(6);
-            label.set_margin_end(6);
-            label.set_margin_top(6);
-            label.set_margin_bottom(6);
-            label.upcast()
-        });
+        this.selector.set_make_widget(clone!(@strong this => move |instrument| {
+            let row = libhandy::ActionRow::new();
+            row.set_activatable(true);
+            row.set_title(Some(&instrument.name));
+
+            let instrument = instrument.to_owned();
+            row.connect_activated(clone!(@strong this => move |_| {
+                this.select(&instrument);
+            }));
+
+            row.upcast()
+        }));
 
         this.selector
             .set_filter(|search, instrument| instrument.name.to_lowercase().contains(search));
-
-        this.selector
-            .set_selected_cb(clone!(@strong this => move |instrument| this.select(instrument)));
 
         this
     }
@@ -87,7 +88,7 @@ impl InstrumentSelector {
         self.selected_cb.replace(Some(Box::new(cb)));
     }
 
-    /// Select a instrument.
+    /// Select an instrument.
     fn select(&self, instrument: &Instrument) {
         if let Some(cb) = &*self.selected_cb.borrow() {
             cb(&instrument);

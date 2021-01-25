@@ -29,7 +29,7 @@ impl Navigator {
         widget.set_interpolate_size(true);
         widget.set_transition_type(gtk::StackTransitionType::Crossfade);
         widget.set_hexpand(true);
-        widget.add_named(empty_screen, "empty_screen");
+        widget.add_named(empty_screen, Some("empty_screen"));
         widget.show();
 
         let result = Rc::new(Self {
@@ -70,7 +70,7 @@ impl Navigator {
         }
 
         let widget = screen.get_widget();
-        self.widget.add(&widget);
+        self.widget.add_child(&widget);
         self.widget.set_visible_child(&widget);
 
         screen.attach_navigator(self.clone());
@@ -116,7 +116,7 @@ impl Navigator {
         }
 
         let widget = screen.get_widget();
-        self.widget.add(&widget);
+        self.widget.add_child(&widget);
         self.widget.set_visible_child(&widget);
 
         screen.attach_navigator(self.clone());

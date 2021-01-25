@@ -6,6 +6,7 @@ use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
+use libhandy::prelude::*;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -14,9 +15,9 @@ pub struct PerformanceEditor {
     backend: Rc<Backend>,
     widget: gtk::Box,
     save_button: gtk::Button,
-    person_label: gtk::Label,
-    ensemble_label: gtk::Label,
-    role_label: gtk::Label,
+    person_row: libhandy::ActionRow,
+    ensemble_row: libhandy::ActionRow,
+    role_row: libhandy::ActionRow,
     reset_role_button: gtk::Button,
     person: RefCell<Option<Person>>,
     ensemble: RefCell<Option<Ensemble>>,
@@ -39,17 +40,17 @@ impl PerformanceEditor {
         get_widget!(builder, gtk::Button, ensemble_button);
         get_widget!(builder, gtk::Button, role_button);
         get_widget!(builder, gtk::Button, reset_role_button);
-        get_widget!(builder, gtk::Label, person_label);
-        get_widget!(builder, gtk::Label, ensemble_label);
-        get_widget!(builder, gtk::Label, role_label);
+        get_widget!(builder, libhandy::ActionRow, person_row);
+        get_widget!(builder, libhandy::ActionRow, ensemble_row);
+        get_widget!(builder, libhandy::ActionRow, role_row);
 
         let this = Rc::new(PerformanceEditor {
             backend,
             widget,
             save_button,
-            person_label,
-            ensemble_label,
-            role_label,
+            person_row,
+            ensemble_row,
+            role_row,
             reset_role_button,
             person: RefCell::new(None),
             ensemble: RefCell::new(None),
@@ -166,30 +167,36 @@ impl PerformanceEditor {
     /// Update the UI according to person.
     fn show_person(&self, person: Option<&Person>) {
         if let Some(person) = person {
-            self.person_label.set_text(&person.name_fl());
+            self.person_row.set_title(Some(&gettext("Person")));
+            self.person_row.set_subtitle(Some(&person.name_fl()));
             self.save_button.set_sensitive(true);
         } else {
-            self.person_label.set_text(&gettext("Select …"));
+            self.person_row.set_title(Some(&gettext("Select a person")));
+            self.person_row.set_subtitle(None);
         }
     }
 
     /// Update the UI according to ensemble.
     fn show_ensemble(&self, ensemble: Option<&Ensemble>) {
         if let Some(ensemble) = ensemble {
-            self.ensemble_label.set_text(&ensemble.name);
+            self.ensemble_row.set_title(Some(&gettext("Ensemble")));
+            self.ensemble_row.set_subtitle(Some(&ensemble.name));
             self.save_button.set_sensitive(true);
         } else {
-            self.ensemble_label.set_text(&gettext("Select …"));
+            self.ensemble_row.set_title(Some(&gettext("Select an ensemble")));
+            self.ensemble_row.set_subtitle(None);
         }
     }
 
     /// Update the UI according to role.
     fn show_role(&self, role: Option<&Instrument>) {
         if let Some(role) = role {
-            self.role_label.set_text(&role.name);
+            self.role_row.set_title(Some(&gettext("Role")));
+            self.role_row.set_subtitle(Some(&role.name));
             self.reset_role_button.show();
         } else {
-            self.role_label.set_text(&gettext("Select …"));
+            self.role_row.set_title(Some(&gettext("Select a role")));
+            self.role_row.set_subtitle(None);
             self.reset_role_button.hide();
         }
     }

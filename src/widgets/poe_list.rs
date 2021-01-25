@@ -1,10 +1,11 @@
 use super::*;
 use crate::backend::Backend;
 use crate::database::*;
-use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
+use libhandy::prelude::*;
+use std::cell::RefCell;
 use std::rc::Rc;
 
 #[derive(Clone)]
@@ -24,9 +25,12 @@ impl PersonOrEnsemble {
 
 pub struct PoeList {
     pub widget: gtk::Box,
-    list: Rc<List<PersonOrEnsemble>>,
     backend: Rc<Backend>,
     stack: gtk::Stack,
+    search_entry: gtk::SearchEntry,
+    list: Rc<List>,
+    data: RefCell<Vec<PersonOrEnsemble>>,
+    selected_cb: RefCell<Option<Box<dyn Fn(&PersonOrEnsemble)>>>,
 }
 
 impl PoeList {
@@ -38,47 +42,54 @@ impl PoeList {
         get_widget!(builder, gtk::Stack, stack);
         get_widget!(builder, gtk::ScrolledWindow, scrolled_window);
 
-        let list = List::new(&gettext("No persons or ensembles found."));
+        let list = List::new();
+        list.widget.add_css_class("navigation-sidebar");
 
-        list.set_make_widget(|poe: &PersonOrEnsemble| {
-            let label = gtk::Label::new(Some(&poe.get_title()));
-            label.set_halign(gtk::Align::Start);
-            label.set_margin_start(6);
-            label.set_margin_end(6);
-            label.set_margin_top(6);
-            label.set_margin_bottom(6);
-            label.upcast()
-        });
+        scrolled_window.set_child(Some(&list.widget));
 
-        list.set_filter(
-            clone!(@strong search_entry => move |poe: &PersonOrEnsemble| {
-                let search = search_entry.get_text().to_string().to_lowercase();
-                let title = poe.get_title().to_lowercase();
-                search.is_empty() || title.contains(&search)
-            }),
-        );
-
-        scrolled_window.add(&list.widget);
-
-        let result = Rc::new(Self {
+        let this = Rc::new(Self {
             widget,
-            list,
             backend,
             stack,
+            search_entry,
+            list,
+            data: RefCell::new(Vec::new()),
+            selected_cb: RefCell::new(None),
         });
 
-        search_entry.connect_search_changed(clone!(@strong result => move |_| {
-            result.list.invalidate_filter();
+        this.search_entry.connect_search_changed(clone!(@strong this => move |_| {
+            this.list.invalidate_filter();
         }));
 
-        result
+        this.list.set_make_widget_cb(clone!(@strong this => move |index| {
+            let poe = &this.data.borrow()[index];
+
+            let row = libhandy::ActionRow::new();
+            row.set_activatable(true);
+            row.set_title(Some(&poe.get_title()));
+
+            let poe = poe.to_owned();
+            row.connect_activated(clone!(@strong this => move |_| {
+                if let Some(cb) = &*this.selected_cb.borrow() {
+                    cb(&poe);
+                }
+            }));
+
+            row.upcast()
+        }));
+
+        this.list.set_filter_cb(clone!(@strong this => move |index| {
+            let poe = &this.data.borrow()[index];
+            let search = this.search_entry.get_text().unwrap().to_string().to_lowercase();
+            let title = poe.get_title().to_lowercase();
+            search.is_empty() || title.contains(&search)
+        }));
+
+        this
     }
 
-    pub fn set_selected<S>(&self, selected: S)
-    where
-        S: Fn(&PersonOrEnsemble) -> () + 'static,
-    {
-        self.list.set_selected(selected);
+    pub fn set_selected_cb<F: Fn(&PersonOrEnsemble) + 'static>(&self, cb: F) {
+        self.selected_cb.replace(Some(Box::new(cb)));
     }
 
     pub fn reload(self: Rc<Self>) {
@@ -86,7 +97,6 @@ impl PoeList {
 
         let context = glib::MainContext::default();
         let backend = self.backend.clone();
-        let list = self.list.clone();
 
         context.spawn_local(async move {
             let persons = backend.db().get_persons().await.unwrap();
@@ -101,7 +111,9 @@ impl PoeList {
                 poes.push(PersonOrEnsemble::Ensemble(ensemble));
             }
 
-            list.show_items(poes);
+            let length = poes.len();
+            self.data.replace(poes);
+            self.list.update(length);
 
             self.stack.set_visible_child_name("content");
         });

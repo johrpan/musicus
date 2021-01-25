@@ -2,7 +2,6 @@ use super::medium_editor::MediumEditor;
 use super::disc_source::DiscSource;
 use crate::backend::Backend;
 use crate::widgets::{Navigator, NavigatorScreen};
-use anyhow::Result;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;

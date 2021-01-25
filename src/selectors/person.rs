@@ -6,6 +6,7 @@ use crate::widgets::{Navigator, NavigatorScreen};
 use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
+use libhandy::prelude::*;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -63,21 +64,21 @@ impl PersonSelector {
                 async move { clone.backend.db().get_persons().await.unwrap() }
             }));
 
-        this.selector.set_make_widget(|person| {
-            let label = gtk::Label::new(Some(&person.name_lf()));
-            label.set_halign(gtk::Align::Start);
-            label.set_margin_start(6);
-            label.set_margin_end(6);
-            label.set_margin_top(6);
-            label.set_margin_bottom(6);
-            label.upcast()
-        });
+        this.selector.set_make_widget(clone!(@strong this => move |person| {
+            let row = libhandy::ActionRow::new();
+            row.set_activatable(true);
+            row.set_title(Some(&person.name_lf()));
+
+            let person = person.to_owned();
+            row.connect_activated(clone!(@strong this => move |_| {
+                this.select(&person);
+            }));
+
+            row.upcast()
+        }));
 
         this.selector
             .set_filter(|search, person| person.name_fl().to_lowercase().contains(search));
-
-        this.selector
-            .set_selected_cb(clone!(@strong this => move |person| this.select(person)));
 
         this
     }

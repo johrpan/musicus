@@ -17,6 +17,5 @@ pub fn show_about_dialog<W: IsA<gtk::Window>>(parent: &W) {
         .authors(vec![String::from("Elias Projahn <johrpan@gmail.com>")])
         .build();
 
-    dialog.connect_response(|dialog, _| dialog.close());
     dialog.show();
 }
