@@ -3,6 +3,7 @@ use glib::subclass;
 use glib::subclass::prelude::*;
 use gio::prelude::*;
 use gio::subclass::prelude::*;
+use once_cell::sync::Lazy;
 use std::cell::Cell;
 
 glib::wrapper! {
@@ -32,37 +33,16 @@ mod indexed_list_model {
         length: Cell<u32>,
     }
 
-    static PROPERTIES: [subclass::Property; 1] = [
-        subclass::Property("length", |length| {
-            glib::ParamSpec::uint(
-                length,
-                "Length",
-                "Length",
-                0,
-                std::u32::MAX,
-                0,
-                glib::ParamFlags::READWRITE,
-            )
-        }),
-    ];
-
     impl ObjectSubclass for IndexedListModel {
         const NAME: &'static str = "IndexedListModel";
 
         type Type = super::IndexedListModel;
         type ParentType = glib::Object;
+        type Interfaces = (gio::ListModel,);
         type Instance = subclass::simple::InstanceStruct<Self>;
         type Class = subclass::simple::ClassStruct<Self>;
 
         glib::object_subclass!();
-
-        fn type_init(type_: &mut subclass::InitializingType<Self>) {
-            type_.add_interface::<gio::ListModel>();
-        }
-
-        fn class_init(klass: &mut Self::Class) {
-            klass.install_properties(&PROPERTIES);
-        }
 
         fn new() -> Self {
             Self { length: Cell::new(0) }
@@ -70,11 +50,27 @@ mod indexed_list_model {
     }
 
     impl ObjectImpl for IndexedListModel {
-        fn set_property(&self, _obj: &Self::Type, id: usize, value: &glib::Value) {
-            let prop = &PROPERTIES[id];
+        fn properties() -> &'static [glib::ParamSpec] {
+            static PROPERTIES: Lazy<Vec<glib::ParamSpec>> = Lazy::new(|| {
+                vec![
+                    glib::ParamSpec::uint(
+                        "length",
+                        "Length",
+                        "Length",
+                        0,
+                        std::u32::MAX,
+                        0,
+                        glib::ParamFlags::READWRITE,
+                    ),
+                ]
+            });
 
-            match *prop {
-                subclass::Property("length", ..) => {
+            PROPERTIES.as_ref()
+        }
+
+        fn set_property(&self, _obj: &Self::Type, id: usize, value: &glib::Value, pspec: &glib::ParamSpec) {
+            match pspec.get_name() {
+                "length" => {
                     let length = value.get().unwrap().unwrap();
                     self.length.set(length);
                 }
@@ -82,11 +78,9 @@ mod indexed_list_model {
             }
         }
 
-        fn get_property(&self, _obj: &Self::Type, id: usize) -> glib::Value {
-            let prop = &PROPERTIES[id];
-
-            match *prop {
-                subclass::Property("length", ..) => self.length.get().to_value(),
+        fn get_property(&self, _obj: &Self::Type, id: usize, pspec: &glib::ParamSpec) -> glib::Value {
+            match pspec.get_name() {
+                "length" => self.length.get().to_value(),
                 _ => unimplemented!(),
             }
         }
@@ -131,33 +125,16 @@ mod item_index {
         value: Cell<u32>,
     }
 
-    static PROPERTIES: [subclass::Property; 1] = [
-        subclass::Property("value", |value| {
-            glib::ParamSpec::uint(
-                value,
-                "Value",
-                "Value",
-                0,
-                std::u32::MAX,
-                0,
-                glib::ParamFlags::READWRITE,
-            )
-        }),
-    ];
-
     impl ObjectSubclass for ItemIndex {
         const NAME: &'static str = "ItemIndex";
 
         type Type = super::ItemIndex;
         type ParentType = glib::Object;
+        type Interfaces = ();
         type Instance = subclass::simple::InstanceStruct<Self>;
         type Class = subclass::simple::ClassStruct<Self>;
 
         glib::object_subclass!();
-
-        fn class_init(klass: &mut Self::Class) {
-            klass.install_properties(&PROPERTIES);
-        }
 
         fn new() -> Self {
             Self { value: Cell::new(0) }
@@ -165,11 +142,27 @@ mod item_index {
     }
 
     impl ObjectImpl for ItemIndex {
-        fn set_property(&self, _obj: &Self::Type, id: usize, value: &glib::Value) {
-            let prop = &PROPERTIES[id];
+        fn properties() -> &'static [glib::ParamSpec] {
+            static PROPERTIES: Lazy<Vec<glib::ParamSpec>> = Lazy::new(|| {
+                vec![
+                    glib::ParamSpec::uint(
+                        "value",
+                        "Value",
+                        "Value",
+                        0,
+                        std::u32::MAX,
+                        0,
+                        glib::ParamFlags::READWRITE,
+                    ),
+                ]
+            });
 
-            match *prop {
-                subclass::Property("value", ..) => {
+            PROPERTIES.as_ref()
+        }
+
+        fn set_property(&self, _obj: &Self::Type, id: usize, value: &glib::Value, pspec: &glib::ParamSpec) {
+            match pspec.get_name() {
+                "value" => {
                     let value = value.get().unwrap().unwrap();
                     self.value.set(value);
                 }
@@ -177,11 +170,9 @@ mod item_index {
             }
         }
 
-        fn get_property(&self, _obj: &Self::Type, id: usize) -> glib::Value {
-            let prop = &PROPERTIES[id];
-
-            match *prop {
-                subclass::Property("value", ..) => self.value.get().to_value(),
+        fn get_property(&self, _obj: &Self::Type, id: usize, pspec: &glib::ParamSpec) -> glib::Value {
+            match pspec.get_name() {
+                "value" => self.value.get().to_value(),
                 _ => unimplemented!(),
             }
         }
