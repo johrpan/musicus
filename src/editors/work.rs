@@ -74,6 +74,7 @@ impl WorkEditor {
         instrument_frame.set_child(Some(&instrument_list.widget));
 
         let part_list = List::new();
+        part_list.set_enable_dnd(true);
         structure_frame.set_child(Some(&part_list.widget));
 
         let (id, composer, instruments, structure) = match work {
@@ -208,29 +209,17 @@ impl WorkEditor {
         this.part_list.set_make_widget_cb(clone!(@strong this => move |index| {
             let pos = &this.structure.borrow()[index];
 
-            let drag_source = gtk::DragSource::new();
-            drag_source.set_content(Some(&gdk::ContentProvider::new_for_value(&(index as u32).to_value())));
-
-            let drop_target = gtk::DropTarget::new(glib::Type::U32, gdk::DragAction::MOVE);
-
-            drop_target.connect_property_value_notify(clone!(@strong this => move |drop_target| {
-                println!("{:?} -> {:?}", drop_target.get_value(), index);
-            }));
-
-            let handle = gtk::Image::from_icon_name(Some("open-menu-symbolic"));
-            handle.add_controller(&drag_source);
-
             let delete_button = gtk::Button::from_icon_name(Some("user-trash-symbolic"));
             delete_button.set_valign(gtk::Align::Center);
 
             delete_button.connect_clicked(clone!(@strong this => move |_| {
-                    let length = {
-                        let mut structure = this.structure.borrow_mut();
-                        structure.remove(index);
-                        structure.len()
-                    };
+                let length = {
+                    let mut structure = this.structure.borrow_mut();
+                    structure.remove(index);
+                    structure.len()
+                };
 
-                    this.part_list.update(length);
+                this.part_list.update(length);
             }));
 
             let edit_button = gtk::Button::from_icon_name(Some("document-edit-symbolic"));
@@ -279,11 +268,9 @@ impl WorkEditor {
             let row = libhandy::ActionRow::new();
             row.set_activatable(true);
             row.set_title(Some(&pos.get_title()));
-            row.add_prefix(&handle);
             row.add_suffix(&delete_button);
             row.add_suffix(&edit_button);
             row.set_activatable_widget(Some(&edit_button));
-            row.add_controller(&drop_target);
 
             if let PartOrSection::Part(_) = pos {
                 // TODO: Replace with better solution to differentiate parts and sections.
@@ -291,6 +278,16 @@ impl WorkEditor {
             }
 
             row.upcast()
+        }));
+
+        this.part_list.set_move_cb(clone!(@strong this => move |old_index, new_index| {
+            let length = {
+                let mut structure = this.structure.borrow_mut();
+                structure.swap(old_index, new_index);
+                structure.len()
+            };
+
+            this.part_list.update(length);
         }));
 
         add_part_button.connect_clicked(clone!(@strong this => move |_| {
