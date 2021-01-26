@@ -28,7 +28,8 @@ impl SourceSelector {
         get_widget!(builder, gtk::Button, back_button);
         get_widget!(builder, gtk::Stack, stack);
         get_widget!(builder, gtk::InfoBar, info_bar);
-        get_widget!(builder, gtk::Button, import_button);
+        get_widget!(builder, gtk::Button, folder_button);
+        get_widget!(builder, gtk::Button, disc_button);
 
         let this = Rc::new(Self {
             backend,
@@ -47,7 +48,7 @@ impl SourceSelector {
             }
         }));
 
-        import_button.connect_clicked(clone!(@strong this => move |_| {
+        disc_button.connect_clicked(clone!(@strong this => move |_| {
             this.stack.set_visible_child_name("loading");
 
             let context = glib::MainContext::default();
