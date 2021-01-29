@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
   <requires lib="gtk" version="4.0"/>
-  <requires lib="libhandy" version="1.0"/>
+  <requires lib="libadwaita" version="1.0"/>
   <object class="GtkBox" id="widget">
     <property name="orientation">vertical</property>
     <child>
-      <object class="HdyHeaderBar">
+      <object class="AdwHeaderBar">
         <property name="show-start-title-buttons">false</property>
         <property name="show-end-title-buttons">false</property>
         <property name="title-widget">
@@ -35,7 +35,7 @@
       <object class="GtkScrolledWindow">
         <property name="vexpand">True</property>
         <child>
-          <object class="HdyClamp">
+          <object class="AdwClamp">
             <child>
               <object class="GtkFrame" id="parts_frame">
                 <property name="valign">start</property>

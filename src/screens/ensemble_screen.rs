@@ -7,7 +7,7 @@ use gio::prelude::*;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
-use libhandy::prelude::*;
+use libadwaita::prelude::*;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -72,7 +72,7 @@ impl EnsembleScreen {
         this.recording_list.set_make_widget_cb(clone!(@strong this => move |index| {
             let recording = &this.recordings.borrow()[index];
 
-            let row = libhandy::ActionRow::new();
+            let row = libadwaita::ActionRow::new();
             row.set_activatable(true);
             row.set_title(Some(&recording.work.get_title()));
             row.set_subtitle(Some(&recording.get_performers()));

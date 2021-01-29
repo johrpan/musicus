@@ -8,7 +8,7 @@ use std::rc::Rc;
 /// A dialog for entering login credentials.
 pub struct LoginDialog {
     backend: Rc<Backend>,
-    window: libhandy::Window,
+    window: libadwaita::Window,
     stack: gtk::Stack,
     info_bar: gtk::InfoBar,
     username_entry: gtk::Entry,
@@ -22,7 +22,7 @@ impl LoginDialog {
         // Create UI
         let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/login_dialog.ui");
 
-        get_widget!(builder, libhandy::Window, window);
+        get_widget!(builder, libadwaita::Window, window);
         get_widget!(builder, gtk::Stack, stack);
         get_widget!(builder, gtk::InfoBar, info_bar);
         get_widget!(builder, gtk::Button, cancel_button);

@@ -40,9 +40,9 @@ features = ["v2_64"]
 git = "https://github.com/gtk-rs/gtk4-rs"
 package = "gtk4"
 
-[dependencies.libhandy]
-git = "https://gitlab.gnome.org/bilelmoussaoui/libhandy4-rs"
-package = "libhandy4"
+[dependencies.libadwaita]
+git = "https://gitlab.gnome.org/bilelmoussaoui/libadwaita-rs"
+package = "libadwaita"
 
 [dependencies.pango]
 git = "https://github.com/gtk-rs/gtk-rs/"

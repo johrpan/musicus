@@ -4,7 +4,7 @@ use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
-use libhandy::prelude::*;
+use libadwaita::prelude::*;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
@@ -155,7 +155,7 @@ impl PlayerScreen {
                     let playlist_item = &this.playlist.borrow()[item_index];
                     let recording = &playlist_item.track_set.recording;
 
-                    let row = libhandy::ActionRow::new();
+                    let row = libadwaita::ActionRow::new();
                     row.set_activatable(false);
                     row.set_selectable(false);
                     row.set_title(Some(&recording.work.get_title()));
@@ -179,7 +179,7 @@ impl PlayerScreen {
                         parts.join(", ")
                     };
 
-                    let row = libhandy::ActionRow::new();
+                    let row = libadwaita::ActionRow::new();
                     row.set_selectable(false);
                     row.set_activatable(true);
                     row.set_title(Some(&title));

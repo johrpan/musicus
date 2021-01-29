@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
   <requires lib="gtk" version="4.0"/>
-  <requires lib="libhandy" version="1.0"/>
+  <requires lib="libadwaita" version="1.0"/>
   <object class="GtkBox" id="widget">
     <property name="orientation">vertical</property>
     <child>
-      <object class="HdyHeaderBar">
+      <object class="AdwHeaderBar">
         <property name="show-start-title-buttons">false</property>
         <property name="show-end-title-buttons">false</property>
         <property name="title-widget">
@@ -36,7 +36,7 @@
       <object class="GtkScrolledWindow">
         <property name="vexpand">true</property>
         <child>
-          <object class="HdyClamp">
+          <object class="AdwClamp">
             <property name="margin-start">12</property>
             <property name="margin-end">12</property>
             <property name="margin-top">18</property>
@@ -50,7 +50,7 @@
                   <object class="GtkListBox">
                     <property name="selection-mode">none</property>
                     <child>
-                      <object class="HdyActionRow" id="person_row">
+                      <object class="AdwActionRow" id="person_row">
                         <property name="activatable">True</property>
                         <property name="title" translatable="yes">Select a person</property>
                         <property name="activatable-widget">person_button</property>
@@ -63,7 +63,7 @@
                       </object>
                     </child>
                     <child>
-                      <object class="HdyActionRow" id="ensemble_row">
+                      <object class="AdwActionRow" id="ensemble_row">
                         <property name="activatable">True</property>
                         <property name="title" translatable="yes">Select an ensemble</property>
                         <property name="activatable-widget">ensemble_button</property>
@@ -76,7 +76,7 @@
                       </object>
                     </child>
                     <child>
-                      <object class="HdyActionRow" id="role_row">
+                      <object class="AdwActionRow" id="role_row">
                         <property name="activatable">True</property>
                         <property name="title" translatable="yes">Select a role</property>
                         <property name="activatable-widget">role_button</property>

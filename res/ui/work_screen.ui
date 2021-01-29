@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
   <requires lib="gtk" version="4.0"/>
-  <requires lib="libhandy" version="1.0"/>
+  <requires lib="libadwaita" version="1.0"/>
   <object class="GtkBox" id="widget">
     <property name="orientation">vertical</property>
     <child>
-      <object class="HdyHeaderBar" id="header">
+      <object class="AdwHeaderBar" id="header">
         <property name="title-widget">
           <object class="GtkBox">
             <property name="orientation">vertical</property>
@@ -49,7 +49,7 @@
       <object class="GtkSearchBar">
         <property name="search-mode-enabled" bind-source="search_button" bind-property="active" bind-flags="bidirectional|sync-create">False</property>
         <child>
-          <object class="HdyClamp">
+          <object class="AdwClamp">
             <property name="maximum-size">400</property>
             <property name="hexpand">true</property>
             <child>
@@ -80,7 +80,7 @@
               <object class="GtkScrolledWindow">
                 <property name="vexpand">true</property>
                 <child>
-                  <object class="HdyClamp">
+                  <object class="AdwClamp">
                     <property name="margin-start">12</property>
                     <property name="margin-end">12</property>
                     <property name="margin-top">18</property>

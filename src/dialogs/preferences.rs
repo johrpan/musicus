@@ -4,16 +4,16 @@ use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
-use libhandy::prelude::*;
+use libadwaita::prelude::*;
 use std::rc::Rc;
 
 /// A dialog for configuring the app.
 pub struct Preferences {
     backend: Rc<Backend>,
-    window: libhandy::Window,
-    music_library_path_row: libhandy::ActionRow,
-    url_row: libhandy::ActionRow,
-    login_row: libhandy::ActionRow,
+    window: libadwaita::Window,
+    music_library_path_row: libadwaita::ActionRow,
+    url_row: libadwaita::ActionRow,
+    login_row: libadwaita::ActionRow,
 }
 
 impl Preferences {
@@ -22,12 +22,12 @@ impl Preferences {
         // Create UI
         let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/preferences.ui");
 
-        get_widget!(builder, libhandy::Window, window);
-        get_widget!(builder, libhandy::ActionRow, music_library_path_row);
+        get_widget!(builder, libadwaita::Window, window);
+        get_widget!(builder, libadwaita::ActionRow, music_library_path_row);
         get_widget!(builder, gtk::Button, select_music_library_path_button);
-        get_widget!(builder, libhandy::ActionRow, url_row);
+        get_widget!(builder, libadwaita::ActionRow, url_row);
         get_widget!(builder, gtk::Button, url_button);
-        get_widget!(builder, libhandy::ActionRow, login_row);
+        get_widget!(builder, libadwaita::ActionRow, login_row);
         get_widget!(builder, gtk::Button, login_button);
 
         window.set_transient_for(Some(parent));

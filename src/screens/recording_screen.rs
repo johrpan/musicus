@@ -8,7 +8,7 @@ use gio::prelude::*;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
-use libhandy::prelude::*;
+use libadwaita::prelude::*;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -92,7 +92,7 @@ impl RecordingScreen {
                         title_parts.join(", ")
                     };
 
-                    let row = libhandy::ActionRow::new();
+                    let row = libadwaita::ActionRow::new();
                     row.set_title(Some(&title));
 
                     row.upcast()

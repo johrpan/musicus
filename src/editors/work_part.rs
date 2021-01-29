@@ -6,7 +6,7 @@ use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
-use libhandy::prelude::*;
+use libadwaita::prelude::*;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -15,7 +15,7 @@ pub struct WorkPartEditor {
     backend: Rc<Backend>,
     widget: gtk::Box,
     title_entry: gtk::Entry,
-    composer_row: libhandy::ActionRow,
+    composer_row: libadwaita::ActionRow,
     reset_composer_button: gtk::Button,
     composer: RefCell<Option<Person>>,
     ready_cb: RefCell<Option<Box<dyn Fn(WorkPart) -> ()>>>,
@@ -34,7 +34,7 @@ impl WorkPartEditor {
         get_widget!(builder, gtk::Button, save_button);
         get_widget!(builder, gtk::Entry, title_entry);
         get_widget!(builder, gtk::Button, composer_button);
-        get_widget!(builder, libhandy::ActionRow, composer_row);
+        get_widget!(builder, libadwaita::ActionRow, composer_row);
         get_widget!(builder, gtk::Button, reset_composer_button);
 
         let composer = match part {

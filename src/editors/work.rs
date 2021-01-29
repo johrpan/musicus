@@ -9,7 +9,7 @@ use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
-use libhandy::prelude::*;
+use libadwaita::prelude::*;
 use std::cell::RefCell;
 use std::convert::TryInto;
 use std::rc::Rc;
@@ -37,7 +37,7 @@ pub struct WorkEditor {
     save_button: gtk::Button,
     title_entry: gtk::Entry,
     info_bar: gtk::InfoBar,
-    composer_row: libhandy::ActionRow,
+    composer_row: libadwaita::ActionRow,
     upload_switch: gtk::Switch,
     instrument_list: Rc<List>,
     part_list: Rc<List>,
@@ -62,7 +62,7 @@ impl WorkEditor {
         get_widget!(builder, gtk::InfoBar, info_bar);
         get_widget!(builder, gtk::Entry, title_entry);
         get_widget!(builder, gtk::Button, composer_button);
-        get_widget!(builder, libhandy::ActionRow, composer_row);
+        get_widget!(builder, libadwaita::ActionRow, composer_row);
         get_widget!(builder, gtk::Switch, upload_switch);
         get_widget!(builder, gtk::Frame, instrument_frame);
         get_widget!(builder, gtk::Button, add_instrument_button);
@@ -179,7 +179,7 @@ impl WorkEditor {
                 this.instrument_list.update(length);
             }));
 
-            let row = libhandy::ActionRow::new();
+            let row = libadwaita::ActionRow::new();
             row.set_title(Some(&instrument.name));
             row.add_suffix(&delete_button);
 
@@ -265,7 +265,7 @@ impl WorkEditor {
                 }
             }));
 
-            let row = libhandy::ActionRow::new();
+            let row = libadwaita::ActionRow::new();
             row.set_activatable(true);
             row.set_title(Some(&pos.get_title()));
             row.add_suffix(&delete_button);

@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
   <requires lib="gtk" version="4.0" />
-  <requires lib="libhandy" version="1.0" />
+  <requires lib="libadwaita" version="1.0" />
   <object class="GtkBox" id="empty_screen">
     <property name="orientation">vertical</property>
     <child>
-      <object class="HdyHeaderBar">
+      <object class="AdwHeaderBar">
       </object>
     </child>
     <child>
@@ -47,7 +47,7 @@
       </object>
     </child>
   </object>
-  <object class="HdyApplicationWindow" id="window">
+  <object class="AdwApplicationWindow" id="window">
     <property name="default-width">800</property>
     <property name="default-height">566</property>
     <child>
@@ -60,7 +60,7 @@
               <object class="GtkBox">
                 <property name="orientation">vertical</property>
                 <child>
-                  <object class="HdyHeaderBar">
+                  <object class="AdwHeaderBar">
                     <property name="title-widget">
                       <object class="GtkLabel">
                         <property name="label">Musicus</property>
@@ -130,7 +130,7 @@
               <object class="GtkBox">
                 <property name="orientation">vertical</property>
                 <child>
-                  <object class="HdyHeaderBar">
+                  <object class="AdwHeaderBar">
                   </object>
                 </child>
                 <child>
@@ -153,17 +153,17 @@
               <object class="GtkBox" id="content_box">
                 <property name="orientation">vertical</property>
                 <child>
-                  <object class="HdyLeaflet" id="leaflet">
+                  <object class="AdwLeaflet" id="leaflet">
                     <property name="vexpand">true</property>
                     <child>
-                      <object class="HdyLeafletPage">
+                      <object class="AdwLeafletPage">
                         <property name="child">
                           <object class="GtkBox" id="sidebar_box">
                             <property name="width-request">250</property>
                             <property name="hexpand">False</property>
                             <property name="orientation">vertical</property>
                             <child>
-                              <object class="HdyHeaderBar">
+                              <object class="AdwHeaderBar">
                                 <property name="show-start-title-buttons">false</property>
                                 <property name="show-end-title-buttons">false</property>
                                 <property name="title-widget">
@@ -198,7 +198,7 @@
                       </object>
                     </child>
                     <child>
-                      <object class="HdyLeafletPage">
+                      <object class="AdwLeafletPage">
                         <property name="navigatable">False</property>
                         <property name="child">
                           <object class="GtkSeparator">

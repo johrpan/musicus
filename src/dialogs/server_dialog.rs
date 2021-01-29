@@ -8,7 +8,7 @@ use std::rc::Rc;
 /// A dialog for setting up the server.
 pub struct ServerDialog {
     backend: Rc<Backend>,
-    window: libhandy::Window,
+    window: libadwaita::Window,
     url_entry: gtk::Entry,
     selected_cb: RefCell<Option<Box<dyn Fn(String) -> ()>>>,
 }
@@ -19,7 +19,7 @@ impl ServerDialog {
         // Create UI
         let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/server_dialog.ui");
 
-        get_widget!(builder, libhandy::Window, window);
+        get_widget!(builder, libadwaita::Window, window);
         get_widget!(builder, gtk::Button, cancel_button);
         get_widget!(builder, gtk::Button, set_button);
         get_widget!(builder, gtk::Entry, url_entry);

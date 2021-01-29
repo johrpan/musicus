@@ -8,7 +8,7 @@ use glib::clone;
 use glib::prelude::*;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
-use libhandy::prelude::*;
+use libadwaita::prelude::*;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -117,7 +117,7 @@ impl MediumEditor {
             edit_button.set_valign(gtk::Align::Center);
             edit_button.set_child(Some(&edit_image));
 
-            let row = libhandy::ActionRow::new();
+            let row = libadwaita::ActionRow::new();
             row.set_activatable(true);
             row.set_title(Some(&title));
             row.set_subtitle(Some(&subtitle));

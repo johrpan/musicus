@@ -8,7 +8,7 @@ use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
-use libhandy::prelude::*;
+use libadwaita::prelude::*;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -18,7 +18,7 @@ pub struct RecordingEditor {
     backend: Rc<Backend>,
     save_button: gtk::Button,
     info_bar: gtk::InfoBar,
-    work_row: libhandy::ActionRow,
+    work_row: libadwaita::ActionRow,
     comment_entry: gtk::Entry,
     upload_switch: gtk::Switch,
     performance_list: Rc<List>,
@@ -40,7 +40,7 @@ impl RecordingEditor {
         get_widget!(builder, gtk::Button, back_button);
         get_widget!(builder, gtk::Button, save_button);
         get_widget!(builder, gtk::InfoBar, info_bar);
-        get_widget!(builder, libhandy::ActionRow, work_row);
+        get_widget!(builder, libadwaita::ActionRow, work_row);
         get_widget!(builder, gtk::Button, work_button);
         get_widget!(builder, gtk::Entry, comment_entry);
         get_widget!(builder, gtk::Switch, upload_switch);
@@ -173,7 +173,7 @@ impl RecordingEditor {
                     }
             }));
 
-            let row = libhandy::ActionRow::new();
+            let row = libadwaita::ActionRow::new();
             row.set_activatable(true);
             row.set_title(Some(&performance.get_title()));
             row.add_suffix(&delete_button);

@@ -34,7 +34,7 @@ fn main() {
 
     gstreamer::init().expect("Failed to initialize GStreamer!");
     gtk::init().expect("Failed to initialize GTK!");
-    libhandy::init();
+    libadwaita::init();
     resources::init().expect("Failed to initialize resources!");
 
     let app = gtk::Application::new(Some("de.johrpan.musicus"), gio::ApplicationFlags::empty())

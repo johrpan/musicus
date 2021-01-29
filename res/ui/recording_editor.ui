@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
   <requires lib="gtk" version="4.0"/>
-  <requires lib="libhandy" version="1.0"/>
+  <requires lib="libadwaita" version="1.0"/>
   <object class="GtkStack" id="widget">
     <child>
       <object class="GtkStackPage">
@@ -10,7 +10,7 @@
           <object class="GtkBox">
             <property name="orientation">vertical</property>
             <child>
-              <object class="HdyHeaderBar">
+              <object class="AdwHeaderBar">
                 <property name="show-start-title-buttons">false</property>
                 <property name="show-end-title-buttons">false</property>
                 <property name="title-widget">
@@ -46,7 +46,7 @@
               <object class="GtkScrolledWindow">
                 <property name="vexpand">true</property>
                 <child>
-                  <object class="HdyClamp">
+                  <object class="AdwClamp">
                     <property name="margin-start">12</property>
                     <property name="margin-end">12</property>
                     <property name="margin-top">18</property>
@@ -74,7 +74,7 @@
                               <object class="GtkListBox">
                                 <property name="selection-mode">none</property>
                                 <child>
-                                  <object class="HdyActionRow" id="work_row">
+                                  <object class="AdwActionRow" id="work_row">
                                     <property name="activatable">True</property>
                                     <property name="title" translatable="yes">Select a work</property>
                                     <property name="activatable-widget">work_button</property>
@@ -87,7 +87,7 @@
                                   </object>
                                 </child>
                                 <child>
-                                  <object class="HdyActionRow">
+                                  <object class="AdwActionRow">
                                     <property name="activatable">True</property>
                                     <property name="title" translatable="yes">Comment</property>
                                     <property name="activatable-widget">comment_entry</property>
@@ -100,7 +100,7 @@
                                   </object>
                                 </child>
                                 <child>
-                                  <object class="HdyActionRow">
+                                  <object class="AdwActionRow">
                                     <property name="activatable">True</property>
                                     <property name="title" translatable="yes">Publish to the server</property>
                                     <property name="activatable-widget">upload_switch</property>
@@ -160,7 +160,7 @@
           <object class="GtkBox">
             <property name="orientation">vertical</property>
             <child>
-              <object class="HdyHeaderBar">
+              <object class="AdwHeaderBar">
                 <property name="show-start-title-buttons">false</property>
                 <property name="show-end-title-buttons">false</property>
                 <property name="title-widget">

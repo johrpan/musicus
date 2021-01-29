@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
   <requires lib="gtk" version="4.0"/>
-  <requires lib="libhandy" version="1.0"/>
-  <object class="HdyWindow" id="window">
+  <requires lib="libadwaita" version="1.0"/>
+  <object class="AdwWindow" id="window">
     <property name="modal">True</property>
     <child>
       <object class="GtkBox">
         <property name="orientation">vertical</property>
         <child>
-          <object class="HdyHeaderBar">
+          <object class="AdwHeaderBar">
             <property name="show-start-title-buttons">false</property>
             <property name="show-end-title-buttons">false</property>
             <property name="title-widget">
@@ -39,7 +39,7 @@
           <object class="GtkListBox">
             <property name="selection-mode">none</property>
             <child>
-              <object class="HdyActionRow">
+              <object class="AdwActionRow">
                 <property name="activatable">True</property>
                 <property name="title" translatable="yes">URL</property>
                 <property name="activatable-widget">url_entry</property>

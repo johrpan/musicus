@@ -3,7 +3,7 @@ use crate::widgets::{Navigator, NavigatorScreen};
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
-use libhandy::prelude::*;
+use libadwaita::prelude::*;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -89,7 +89,7 @@ impl TrackSelector {
 
             let title = format!("Track {}", track.number);
 
-            let row = libhandy::ActionRow::new();
+            let row = libadwaita::ActionRow::new();
             row.add_prefix(&check);
             row.set_activatable_widget(Some(&check));
             row.set_activatable(true);

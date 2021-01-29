@@ -4,7 +4,7 @@ use crate::database::*;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
-use libhandy::prelude::*;
+use libadwaita::prelude::*;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -64,7 +64,7 @@ impl PoeList {
         this.list.set_make_widget_cb(clone!(@strong this => move |index| {
             let poe = &this.data.borrow()[index];
 
-            let row = libhandy::ActionRow::new();
+            let row = libadwaita::ActionRow::new();
             row.set_activatable(true);
             row.set_title(Some(&poe.get_title()));
 

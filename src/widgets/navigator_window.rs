@@ -5,7 +5,7 @@ use std::rc::Rc;
 
 /// A window hosting a navigator.
 pub struct NavigatorWindow {
-    window: libhandy::Window,
+    window: libadwaita::Window,
     navigator: Rc<Navigator>,
 }
 
@@ -14,11 +14,11 @@ impl NavigatorWindow {
     pub fn new<S: NavigatorScreen + 'static>(initial_screen: Rc<S>) -> Rc<Self> {
         // Create UI
 
-        let window = libhandy::Window::new();
+        let window = libadwaita::Window::new();
         window.set_default_size(600, 424);
         let placeholder = gtk::Label::new(None);
         let navigator = Navigator::new(&window, &placeholder);
-        libhandy::WindowExt::set_child(&window, Some(&navigator.widget));
+        libadwaita::WindowExt::set_child(&window, Some(&navigator.widget));
 
         let this = Rc::new(Self { window, navigator });
 
