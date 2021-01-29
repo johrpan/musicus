@@ -128,6 +128,8 @@ impl Navigator {
     }
 
     pub fn reset(&self) {
+        self.widget.set_visible_child_name("empty_screen");
+
         for screen in self.screens.replace(Vec::new()) {
             screen.detach_navigator();
             self.old_screens.borrow_mut().push(screen);
