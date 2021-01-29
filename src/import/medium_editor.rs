@@ -1,9 +1,9 @@
-use super::disc_source::DiscSource;
+use super::source::Source;
 use super::track_set_editor::{TrackSetData, TrackSetEditor};
 use crate::database::{generate_id, Medium, Track, TrackSet};
 use crate::backend::Backend;
 use crate::widgets::{List, Navigator, NavigatorScreen};
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use glib::clone;
 use glib::prelude::*;
 use gtk::prelude::*;
@@ -15,7 +15,7 @@ use std::rc::Rc;
 /// A dialog for editing metadata while importing music into the music library.
 pub struct MediumEditor {
     backend: Rc<Backend>,
-    source: Rc<DiscSource>,
+    source: Rc<Box<dyn Source>>,
     widget: gtk::Stack,
     done_button: gtk::Button,
     done_stack: gtk::Stack,
@@ -29,7 +29,7 @@ pub struct MediumEditor {
 
 impl MediumEditor {
     /// Create a new medium editor.
-    pub fn new(backend: Rc<Backend>, source: DiscSource) -> Rc<Self> {
+    pub fn new(backend: Rc<Backend>, source: Rc<Box<dyn Source>>) -> Rc<Self> {
         // Create UI
 
         let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/medium_editor.ui");
@@ -49,7 +49,7 @@ impl MediumEditor {
 
         let this = Rc::new(Self {
             backend,
-            source: Rc::new(source),
+            source,
             widget,
             done_button,
             done_stack,
@@ -131,14 +131,14 @@ impl MediumEditor {
             row.upcast()
         }));
 
-        // Start ripping the CD in the background.
+        // Copy the source in the background.
         let context = glib::MainContext::default();
         let clone = this.clone();
         context.spawn_local(async move {
-            match clone.source.rip().await {
+            match clone.source.copy().await {
                 Err(error) => {
                     // TODO: Present error.
-                    println!("Failed to rip: {}", error);
+                    println!("Failed to copy source: {}", error);
                 },
                 Ok(_) => {
                     clone.done_stack.set_visible_child(&clone.done);
@@ -163,6 +163,7 @@ impl MediumEditor {
         // Convert the track set data to real track sets.
 
         let mut track_sets = Vec::new();
+        let source_tracks = self.source.tracks().ok_or_else(|| anyhow!("Tracks not loaded!"))?;
 
         for track_set_data in &*self.track_sets.borrow() {
             let mut tracks = Vec::new();
@@ -170,7 +171,7 @@ impl MediumEditor {
             for track_data in &track_set_data.tracks {
                 // Copy the corresponding audio file to the music library.
 
-                let track_source = &self.source.tracks[track_data.track_source];
+                let track_source = &source_tracks[track_data.track_source];
                 let file_name = format!("track_{:02}.flac", track_source.number);
 
                 let mut track_path = path.clone();
@@ -199,7 +200,7 @@ impl MediumEditor {
         let medium = Medium {
             id: generate_id(),
             name: self.name_entry.get_text().unwrap().to_string(),
-            discid: Some(self.source.discid.clone()),
+            discid: self.source.discid(),
             tracks: track_sets,
         };
 

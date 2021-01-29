@@ -1,4 +1,4 @@
-use super::disc_source::DiscSource;
+use super::source::Source;
 use crate::widgets::{Navigator, NavigatorScreen};
 use glib::clone;
 use gtk::prelude::*;
@@ -7,9 +7,9 @@ use libhandy::prelude::*;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-/// A screen for selecting tracks from a medium.
+/// A screen for selecting tracks from a source.
 pub struct TrackSelector {
-    source: Rc<DiscSource>,
+    source: Rc<Box<dyn Source>>,
     widget: gtk::Box,
     select_button: gtk::Button,
     selection: RefCell<Vec<usize>>,
@@ -19,7 +19,7 @@ pub struct TrackSelector {
 
 impl TrackSelector {
     /// Create a new track selector.
-    pub fn new(source: Rc<DiscSource>) -> Rc<Self> {
+    pub fn new(source: Rc<Box<dyn Source>>) -> Rc<Self> {
         // Create UI
 
         let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/track_selector.ui");
@@ -65,7 +65,9 @@ impl TrackSelector {
             }
         }));
 
-        for (index, track) in this.source.tracks.iter().enumerate() {
+        let tracks = this.source.tracks().unwrap();
+
+        for (index, track) in tracks.iter().enumerate() {
             let check = gtk::CheckButton::new();
 
             check.connect_toggled(clone!(@strong this => move |check| {

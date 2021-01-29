@@ -5,6 +5,7 @@ edition = "2018"
 
 [dependencies]
 anyhow = "1.0.33"
+async-trait = "0.1.42"
 diesel = { version = "1.4.5", features = ["sqlite"] }
 diesel_migrations = "1.4.0"
 discid = "0.4.4"

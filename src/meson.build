@@ -68,6 +68,7 @@ sources = files(
   'import/disc_source.rs',
   'import/medium_editor.rs',
   'import/mod.rs',
+  'import/source.rs',
   'import/source_selector.rs',
   'import/track_editor.rs',
   'import/track_selector.rs',

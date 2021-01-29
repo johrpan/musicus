@@ -1,5 +1,6 @@
 use super::medium_editor::MediumEditor;
 use super::disc_source::DiscSource;
+use super::source::Source;
 use crate::backend::Backend;
 use crate::widgets::{Navigator, NavigatorScreen};
 use glib::clone;
@@ -54,11 +55,13 @@ impl SourceSelector {
             let context = glib::MainContext::default();
             let clone = this.clone();
             context.spawn_local(async move {
-                match DiscSource::load().await {
-                    Ok(disc) => {
+                let disc = DiscSource::new().unwrap();
+                match disc.load().await {
+                    Ok(_) => {
                         let navigator = clone.navigator.borrow().clone();
                         if let Some(navigator) = navigator {
-                            let editor = MediumEditor::new(clone.backend.clone(), disc);
+                            let source = Rc::new(Box::new(disc) as Box<dyn Source>);
+                            let editor = MediumEditor::new(clone.backend.clone(), source);
                             navigator.push(editor);
                         }
 

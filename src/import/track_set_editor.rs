@@ -1,4 +1,4 @@
-use super::disc_source::DiscSource;
+use super::source::Source;
 use super::track_editor::TrackEditor;
 use super::track_selector::TrackSelector;
 use crate::backend::Backend;
@@ -33,7 +33,7 @@ pub struct TrackData {
 /// A screen for editing a set of tracks for one recording.
 pub struct TrackSetEditor {
     backend: Rc<Backend>,
-    source: Rc<DiscSource>,
+    source: Rc<Box<dyn Source>>,
     widget: gtk::Box,
     save_button: gtk::Button,
     recording_row: libhandy::ActionRow,
@@ -46,7 +46,7 @@ pub struct TrackSetEditor {
 
 impl TrackSetEditor {
     /// Create a new track set editor.
-    pub fn new(backend: Rc<Backend>, source: Rc<DiscSource>) -> Rc<Self> {
+    pub fn new(backend: Rc<Backend>, source: Rc<Box<dyn Source>>) -> Rc<Self> {
         // Create UI
 
         let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/track_set_editor.ui");
@@ -174,7 +174,9 @@ impl TrackSetEditor {
                 title_parts.join(", ")
             };
 
-            let number = this.source.tracks[track.track_source].number;
+            let tracks = this.source.tracks().unwrap();
+
+            let number = tracks[track.track_source].number;
             let subtitle = format!("Track {}", number);
 
             let edit_image = gtk::Image::from_icon_name(Some("document-edit-symbolic"));
