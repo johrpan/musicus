@@ -65,15 +65,17 @@ impl Window {
         result.window.set_application(Some(app));
 
         select_music_library_path_button.connect_clicked(clone!(@strong result => move |_| {
-            let dialog = gtk::FileChooserNative::new(
+            let dialog = gtk::FileChooserDialog::new(
                 Some(&gettext("Select music library folder")),
                 Some(&result.window),
                 gtk::FileChooserAction::SelectFolder,
-                None,
-                None);
+                &[
+                    (&gettext("Cancel"), gtk::ResponseType::Cancel),
+                    (&gettext("Select"), gtk::ResponseType::Accept),
+                ]);
 
             dialog.connect_response(clone!(@strong result => move |dialog, response| {
-                if response == gtk::ResponseType::Accept {
+                if let gtk::ResponseType::Accept = response {
                     if let Some(file) = dialog.get_file() {
                         if let Some(path) = file.get_path() {
                             let context = glib::MainContext::default();
@@ -84,6 +86,8 @@ impl Window {
                         }
                     }
                 }
+
+                dialog.hide();
             }));
 
             dialog.show();

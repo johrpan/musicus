@@ -66,6 +66,8 @@ impl Preferences {
                         }
                     }
                 }
+
+                dialog.hide();
             }));
 
             dialog.show();
