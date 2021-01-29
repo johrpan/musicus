@@ -87,13 +87,11 @@ impl TrackSelector {
                 }
             }));
 
-            let title = format!("Track {}", track.number);
-
             let row = libadwaita::ActionRow::new();
             row.add_prefix(&check);
             row.set_activatable_widget(Some(&check));
             row.set_activatable(true);
-            row.set_title(Some(&title));
+            row.set_title(Some(&track.name));
 
             track_list.append(&row);
         }

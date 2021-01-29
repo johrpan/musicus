@@ -3,6 +3,7 @@ use anyhow::{anyhow, bail, Result};
 use async_trait::async_trait;
 use discid::DiscId;
 use futures_channel::oneshot;
+use gettextrs::gettext;
 use gstreamer::prelude::*;
 use gstreamer::{Element, ElementFactory, Pipeline};
 use once_cell::sync::OnceCell;
@@ -45,6 +46,8 @@ impl DiscSource {
         let tmp_dir = Self::create_tmp_dir()?;
 
         for number in first_track..=last_track {
+            let name = gettext!("Track {}", number);
+
             let file_name = format!("track_{:02}.flac", number);
 
             let mut path = tmp_dir.clone();
@@ -52,6 +55,7 @@ impl DiscSource {
 
             let track = SourceTrack {
                 number,
+                name,
                 path,
             };
 

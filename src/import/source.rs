@@ -27,6 +27,10 @@ pub struct SourceTrack {
     /// the track numbers start.
     pub number: u32,
 
+    /// A human readable identifier for the track. This will be used to
+    /// present the track for selection.
+    pub name: String,
+
     /// The path to the file where the corresponding audio file is. This file
     /// is only required to exist, once the source's copy method has finished.
     /// This will not be the actual file within the user's music library, but

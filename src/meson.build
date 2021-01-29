@@ -66,6 +66,7 @@ sources = files(
   'editors/work_part.rs',
   'editors/work_section.rs',
   'import/disc_source.rs',
+  'import/folder_source.rs',
   'import/medium_editor.rs',
   'import/mod.rs',
   'import/source.rs',

@@ -175,9 +175,7 @@ impl TrackSetEditor {
             };
 
             let tracks = this.source.tracks().unwrap();
-
-            let number = tracks[track.track_source].number;
-            let subtitle = format!("Track {}", number);
+            let track_name = &tracks[track.track_source].name;
 
             let edit_image = gtk::Image::from_icon_name(Some("document-edit-symbolic"));
             let edit_button = gtk::Button::new();
@@ -188,7 +186,7 @@ impl TrackSetEditor {
             let row = libadwaita::ActionRow::new();
             row.set_activatable(true);
             row.set_title(Some(&title));
-            row.set_subtitle(Some(&subtitle));
+            row.set_subtitle(Some(track_name));
             row.add_suffix(&edit_button);
             row.set_activatable_widget(Some(&edit_button));
 
