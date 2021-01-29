@@ -57,7 +57,6 @@
                         <child>
                           <object class="GtkButton" id="previous_button">
                             <property name="sensitive">False</property>
-                            <property name="can-focus">True</property>
                             <child>
                               <object class="GtkImage">
                                 <property name="icon-name">media-skip-backward-symbolic</property>

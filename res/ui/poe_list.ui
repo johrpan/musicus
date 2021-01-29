@@ -44,8 +44,6 @@
             <property name="name">content</property>
             <property name="child">
               <object class="GtkScrolledWindow" id="scrolled_window">
-                <property name="visible">True</property>
-                <property name="can-focus">True</property>
                 <child>
                   <placeholder/>
                 </child>
