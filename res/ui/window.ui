@@ -6,11 +6,6 @@
     <property name="orientation">vertical</property>
     <child>
       <object class="HdyHeaderBar">
-        <property name="hexpand">True</property>
-        <property name="show-title-buttons">True</property>
-        <property name="title-widget">
-          <object class="GtkLabel"/>
-        </property>
       </object>
     </child>
     <child>
@@ -169,7 +164,8 @@
                             <property name="orientation">vertical</property>
                             <child>
                               <object class="HdyHeaderBar">
-                                <property name="show-title-buttons">False</property>
+                                <property name="show-start-title-buttons">false</property>
+                                <property name="show-end-title-buttons">false</property>
                                 <property name="title-widget">
                                   <object class="GtkLabel">
                                     <property name="label">Musicus</property>

@@ -22,7 +22,6 @@
             </style>
           </object>
         </property>
-        <property name="show-title-buttons">True</property>
         <child>
           <object class="GtkButton" id="back_button">
             <child>
