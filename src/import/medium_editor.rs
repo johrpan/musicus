@@ -172,10 +172,9 @@ impl MediumEditor {
                 // Copy the corresponding audio file to the music library.
 
                 let track_source = &source_tracks[track_data.track_source];
-                let file_name = format!("track_{:02}.flac", track_source.number);
 
                 let mut track_path = path.clone();
-                track_path.push(&file_name);
+                track_path.push(track_source.path.file_name().unwrap());
 
                 std::fs::copy(&track_source.path, &track_path)?;
 
