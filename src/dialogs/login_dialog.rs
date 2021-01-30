@@ -1,4 +1,5 @@
 use crate::backend::{Backend, LoginData};
+use crate::widgets::{Navigator, NavigatorScreen};
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
@@ -8,48 +9,48 @@ use std::rc::Rc;
 /// A dialog for entering login credentials.
 pub struct LoginDialog {
     backend: Rc<Backend>,
-    window: libadwaita::Window,
-    stack: gtk::Stack,
+    widget: gtk::Stack,
     info_bar: gtk::InfoBar,
     username_entry: gtk::Entry,
     password_entry: gtk::Entry,
     selected_cb: RefCell<Option<Box<dyn Fn(LoginData) -> ()>>>,
+    navigator: RefCell<Option<Rc<Navigator>>>,
 }
 
 impl LoginDialog {
     /// Create a new login dialog.
-    pub fn new<P: IsA<gtk::Window>>(backend: Rc<Backend>, parent: &P) -> Rc<Self> {
+    pub fn new(backend: Rc<Backend>) -> Rc<Self> {
         // Create UI
         let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/login_dialog.ui");
 
-        get_widget!(builder, libadwaita::Window, window);
-        get_widget!(builder, gtk::Stack, stack);
+        get_widget!(builder, gtk::Stack, widget);
         get_widget!(builder, gtk::InfoBar, info_bar);
         get_widget!(builder, gtk::Button, cancel_button);
         get_widget!(builder, gtk::Button, login_button);
         get_widget!(builder, gtk::Entry, username_entry);
         get_widget!(builder, gtk::Entry, password_entry);
 
-        window.set_transient_for(Some(parent));
-
         let this = Rc::new(Self {
             backend,
-            window,
-            stack,
+            widget,
             info_bar,
             username_entry,
             password_entry,
             selected_cb: RefCell::new(None),
+            navigator: RefCell::new(None),
         });
 
         // Connect signals and callbacks
 
         cancel_button.connect_clicked(clone!(@strong this => move |_| {
-            this.window.close();
+            let navigator = this.navigator.borrow().clone();
+            if let Some(navigator) = navigator {
+                navigator.pop();
+            }
         }));
 
         login_button.connect_clicked(clone!(@strong this => move |_| {
-            this.stack.set_visible_child_name("loading");
+            this.widget.set_visible_child_name("loading");
 
             let data = LoginData {
                 username: this.username_entry.get_text().unwrap().to_string(),
@@ -65,9 +66,12 @@ impl LoginDialog {
                         cb(data);
                     }
 
-                    clone.window.close();
+                    let navigator = clone.navigator.borrow().clone();
+                    if let Some(navigator) = navigator {
+                        navigator.pop();
+                    }
                 } else {
-                    clone.stack.set_visible_child_name("content");
+                    clone.widget.set_visible_child_name("content");
                     clone.info_bar.set_revealed(true);
                 }
             });
@@ -80,9 +84,18 @@ impl LoginDialog {
     pub fn set_selected_cb<F: Fn(LoginData) -> () + 'static>(&self, cb: F) {
         self.selected_cb.replace(Some(Box::new(cb)));
     }
+}
 
-    /// Show the login dialog.
-    pub fn show(&self) {
-        self.window.show();
+impl NavigatorScreen for LoginDialog {
+    fn attach_navigator(&self, navigator: Rc<Navigator>) {
+        self.navigator.replace(Some(navigator));
+    }
+
+    fn get_widget(&self) -> gtk::Widget {
+        self.widget.clone().upcast()
+    }
+
+    fn detach_navigator(&self) {
+        self.navigator.replace(None);
     }
 }
