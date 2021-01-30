@@ -205,7 +205,7 @@ impl MediumEditor {
 
         let upload = self.publish_switch.get_active();
         if upload {
-            // self.backend.post_medium(&medium).await?;
+            self.backend.post_medium(&medium).await?;
         }
 
         self.backend
