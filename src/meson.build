@@ -35,6 +35,7 @@ run_command(
 sources = files(
   'backend/client/ensembles.rs',
   'backend/client/instruments.rs',
+  'backend/client/mediums.rs',
   'backend/client/mod.rs',
   'backend/client/persons.rs',
   'backend/client/recordings.rs',
