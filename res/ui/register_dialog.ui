@@ -6,6 +6,39 @@
     <property name="transition-type">crossfade</property>
     <child>
       <object class="GtkStackPage">
+        <property name="name">loading</property>
+        <property name="child">
+          <object class="GtkBox">
+            <property name="orientation">vertical</property>
+            <child>
+              <object class="AdwHeaderBar">
+                <property name="show-start-title-buttons">false</property>
+                <property name="show-end-title-buttons">false</property>
+                <property name="title-widget">
+                  <object class="GtkLabel">
+                    <property name="label" translatable="yes">Register</property>
+                    <style>
+                      <class name="title"/>
+                    </style>
+                  </object>
+                </property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkSpinner">
+                <property name="spinning">true</property>
+                <property name="hexpand">true</property>
+                <property name="vexpand">true</property>
+                <property name="halign">center</property>
+                <property name="valign">center</property>
+              </object>
+            </child>
+          </object>
+        </property>
+      </object>
+    </child>
+    <child>
+      <object class="GtkStackPage">
         <property name="name">content</property>
         <property name="child">
           <object class="GtkBox">
@@ -20,12 +53,12 @@
                 </property>
                 <child>
                   <object class="GtkButton" id="cancel_button">
-                    <property name="label" translatable="yes">Cancel</property>
+                    <property name="icon-name">go-previous-symbolic</property>
                   </object>
                 </child>
                 <child type="end">
-                  <object class="GtkButton" id="login_button">
-                    <property name="label" translatable="yes">Login</property>
+                  <object class="GtkButton" id="register_button">
+                    <property name="label" translatable="yes">Create account</property>
                     <style>
                       <class name="suggested-action"/>
                     </style>
@@ -55,7 +88,7 @@
                         <child>
                           <object class="GtkLabel">
                             <property name="halign">start</property>
-                            <property name="label" translatable="yes">Login to existing account</property>
+                            <property name="label" translatable="yes">Personal data</property>
                             <attributes>
                               <attribute name="weight" value="bold"/>
                             </attributes>
@@ -80,6 +113,38 @@
                                     </child>
                                   </object>
                                 </child>
+                                 <child>
+                                  <object class="AdwActionRow">
+                                    <property name="activatable">True</property>
+                                    <property name="title" translatable="yes">E-mail (optional)</property>
+                                    <property name="activatable-widget">email_entry</property>
+                                    <child>
+                                      <object class="GtkEntry" id="email_entry">
+                                        <property name="valign">center</property>
+                                        <property name="hexpand">True</property>
+                                      </object>
+                                    </child>
+                                  </object>
+                                </child>
+                              </object>
+                            </child>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkLabel">
+                            <property name="halign">start</property>
+                            <property name="label" translatable="yes">Password</property>
+                            <attributes>
+                              <attribute name="weight" value="bold"/>
+                            </attributes>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkFrame">
+                            <property name="valign">start</property>
+                            <child>
+                              <object class="GtkListBox">
+                                <property name="selection-mode">none</property>
                                 <child>
                                   <object class="AdwActionRow">
                                     <property name="activatable">True</property>
@@ -95,6 +160,21 @@
                                     </child>
                                   </object>
                                 </child>
+                                <child>
+                                  <object class="AdwActionRow">
+                                    <property name="activatable">True</property>
+                                    <property name="title" translatable="yes">Repeat password</property>
+                                    <property name="activatable-widget">repeat_password_entry</property>
+                                    <child>
+                                      <object class="GtkEntry" id="repeat_password_entry">
+                                        <property name="valign">center</property>
+                                        <property name="hexpand">True</property>
+                                        <property name="visibility">False</property>
+                                        <property name="input-purpose">password</property>
+                                      </object>
+                                    </child>
+                                  </object>
+                                </child>
                               </object>
                             </child>
                           </object>
@@ -102,7 +182,7 @@
                         <child>
                           <object class="GtkLabel">
                             <property name="halign">start</property>
-                            <property name="label" translatable="yes">Create a new account</property>
+                            <property name="label" translatable="yes">Captcha</property>
                             <attributes>
                               <attribute name="weight" value="bold"/>
                             </attributes>
@@ -115,14 +195,22 @@
                               <object class="GtkListBox">
                                 <property name="selection-mode">none</property>
                                 <child>
+                                  <object class="AdwActionRow" id="captcha_row">
+                                    <property name="title-lines">0</property>
+                                    <property name="subtitle" translatable="yes">Feel free to look for the answer online!</property>
+                                  </object>
+                                </child>
+                                <child>
                                   <object class="AdwActionRow">
                                     <property name="activatable">True</property>
-                                    <property name="title" translatable="yes">Register a new account</property>
-                                    <property name="activatable-widget">register_button</property>
+                                    <property name="title" translatable="yes">Your answer</property>
+                                    <property name="activatable-widget">captcha_entry</property>
                                     <child>
-                                      <object class="GtkButton" id="register_button">
-                                        <property name="label" translatable="yes">Start</property>
+                                      <object class="GtkEntry" id="captcha_entry">
                                         <property name="valign">center</property>
+                                        <property name="hexpand">True</property>
+                                        <property name="visibility">False</property>
+                                        <property name="activates-default">True</property>
                                       </object>
                                     </child>
                                   </object>
@@ -135,39 +223,6 @@
                     </child>
                   </object>
                 </child>
-              </object>
-            </child>
-          </object>
-        </property>
-      </object>
-    </child>
-    <child>
-      <object class="GtkStackPage">
-        <property name="name">loading</property>
-        <property name="child">
-          <object class="GtkBox">
-            <property name="orientation">vertical</property>
-            <child>
-              <object class="AdwHeaderBar">
-                <property name="show-start-title-buttons">false</property>
-                <property name="show-end-title-buttons">false</property>
-                <property name="title-widget">
-                  <object class="GtkLabel">
-                    <property name="label" translatable="yes">Login</property>
-                    <style>
-                      <class name="title"/>
-                    </style>
-                  </object>
-                </property>
-              </object>
-            </child>
-            <child>
-              <object class="GtkSpinner">
-                <property name="spinning">true</property>
-                <property name="hexpand">true</property>
-                <property name="vexpand">true</property>
-                <property name="halign">center</property>
-                <property name="valign">center</property>
               </object>
             </child>
           </object>

@@ -22,6 +22,9 @@ pub use persons::*;
 pub mod recordings;
 pub use recordings::*;
 
+pub mod register;
+pub use register::*;
+
 pub mod works;
 pub use works::*;
 

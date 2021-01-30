@@ -1,3 +1,4 @@
+use super::RegisterDialog;
 use crate::backend::{Backend, LoginData};
 use crate::widgets::{Navigator, NavigatorScreen};
 use glib::clone;
@@ -29,6 +30,7 @@ impl LoginDialog {
         get_widget!(builder, gtk::Button, login_button);
         get_widget!(builder, gtk::Entry, username_entry);
         get_widget!(builder, gtk::Entry, password_entry);
+        get_widget!(builder, gtk::Button, register_button);
 
         let this = Rc::new(Self {
             backend,
@@ -75,6 +77,26 @@ impl LoginDialog {
                     clone.info_bar.set_revealed(true);
                 }
             });
+        }));
+
+        register_button.connect_clicked(clone!(@strong this => move |_| {
+            let navigator = this.navigator.borrow().clone();
+            if let Some(navigator) = navigator {
+                let dialog = RegisterDialog::new(this.backend.clone());
+
+                dialog.set_selected_cb(clone!(@strong this => move |data| {
+                    if let Some(cb) = &*this.selected_cb.borrow() {
+                        cb(data);
+                    }
+
+                    let navigator = this.navigator.borrow().clone();
+                    if let Some(navigator) = navigator {
+                        navigator.pop();
+                    }
+                }));
+
+                navigator.push(dialog);
+            }
         }));
 
         this
