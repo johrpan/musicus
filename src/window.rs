@@ -13,9 +13,9 @@ use std::rc::Rc;
 
 pub struct Window {
     backend: Rc<Backend>,
-    window: libhandy::ApplicationWindow,
+    window: libadwaita::ApplicationWindow,
     stack: gtk::Stack,
-    leaflet: libhandy::Leaflet,
+    leaflet: libadwaita::Leaflet,
     sidebar_box: gtk::Box,
     poe_list: Rc<PoeList>,
     navigator: Rc<Navigator>,
@@ -27,11 +27,11 @@ impl Window {
     pub fn new(app: &gtk::Application) -> Rc<Self> {
         let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/window.ui");
 
-        get_widget!(builder, libhandy::ApplicationWindow, window);
+        get_widget!(builder, libadwaita::ApplicationWindow, window);
         get_widget!(builder, gtk::Stack, stack);
         get_widget!(builder, gtk::Button, select_music_library_path_button);
         get_widget!(builder, gtk::Box, content_box);
-        get_widget!(builder, libhandy::Leaflet, leaflet);
+        get_widget!(builder, libadwaita::Leaflet, leaflet);
         get_widget!(builder, gtk::Button, add_button);
         get_widget!(builder, gtk::Box, sidebar_box);
         get_widget!(builder, gtk::Box, empty_screen);
@@ -65,15 +65,17 @@ impl Window {
         result.window.set_application(Some(app));
 
         select_music_library_path_button.connect_clicked(clone!(@strong result => move |_| {
-            let dialog = gtk::FileChooserNative::new(
+            let dialog = gtk::FileChooserDialog::new(
                 Some(&gettext("Select music library folder")),
                 Some(&result.window),
                 gtk::FileChooserAction::SelectFolder,
-                None,
-                None);
+                &[
+                    (&gettext("Cancel"), gtk::ResponseType::Cancel),
+                    (&gettext("Select"), gtk::ResponseType::Accept),
+                ]);
 
             dialog.connect_response(clone!(@strong result => move |dialog, response| {
-                if response == gtk::ResponseType::Accept {
+                if let gtk::ResponseType::Accept = response {
                     if let Some(file) = dialog.get_file() {
                         if let Some(path) = file.get_path() {
                             let context = glib::MainContext::default();
@@ -84,6 +86,8 @@ impl Window {
                         }
                     }
                 }
+
+                dialog.hide();
             }));
 
             dialog.show();

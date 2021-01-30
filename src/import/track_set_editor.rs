@@ -1,4 +1,4 @@
-use super::disc_source::DiscSource;
+use super::source::Source;
 use super::track_editor::TrackEditor;
 use super::track_selector::TrackSelector;
 use crate::backend::Backend;
@@ -9,7 +9,7 @@ use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
-use libhandy::prelude::*;
+use libadwaita::prelude::*;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -33,10 +33,10 @@ pub struct TrackData {
 /// A screen for editing a set of tracks for one recording.
 pub struct TrackSetEditor {
     backend: Rc<Backend>,
-    source: Rc<DiscSource>,
+    source: Rc<Box<dyn Source>>,
     widget: gtk::Box,
     save_button: gtk::Button,
-    recording_row: libhandy::ActionRow,
+    recording_row: libadwaita::ActionRow,
     track_list: Rc<List>,
     recording: RefCell<Option<Recording>>,
     tracks: RefCell<Vec<TrackData>>,
@@ -46,7 +46,7 @@ pub struct TrackSetEditor {
 
 impl TrackSetEditor {
     /// Create a new track set editor.
-    pub fn new(backend: Rc<Backend>, source: Rc<DiscSource>) -> Rc<Self> {
+    pub fn new(backend: Rc<Backend>, source: Rc<Box<dyn Source>>) -> Rc<Self> {
         // Create UI
 
         let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/track_set_editor.ui");
@@ -54,7 +54,7 @@ impl TrackSetEditor {
         get_widget!(builder, gtk::Box, widget);
         get_widget!(builder, gtk::Button, back_button);
         get_widget!(builder, gtk::Button, save_button);
-        get_widget!(builder, libhandy::ActionRow, recording_row);
+        get_widget!(builder, libadwaita::ActionRow, recording_row);
         get_widget!(builder, gtk::Button, select_recording_button);
         get_widget!(builder, gtk::Button, edit_tracks_button);
         get_widget!(builder, gtk::Frame, tracks_frame);
@@ -174,8 +174,8 @@ impl TrackSetEditor {
                 title_parts.join(", ")
             };
 
-            let number = this.source.tracks[track.track_source].number;
-            let subtitle = format!("Track {}", number);
+            let tracks = this.source.tracks().unwrap();
+            let track_name = &tracks[track.track_source].name;
 
             let edit_image = gtk::Image::from_icon_name(Some("document-edit-symbolic"));
             let edit_button = gtk::Button::new();
@@ -183,10 +183,10 @@ impl TrackSetEditor {
             edit_button.set_valign(gtk::Align::Center);
             edit_button.set_child(Some(&edit_image));
 
-            let row = libhandy::ActionRow::new();
+            let row = libadwaita::ActionRow::new();
             row.set_activatable(true);
             row.set_title(Some(&title));
-            row.set_subtitle(Some(&subtitle));
+            row.set_subtitle(Some(track_name));
             row.add_suffix(&edit_button);
             row.set_activatable_widget(Some(&edit_button));
 

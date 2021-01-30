@@ -6,7 +6,7 @@ use crate::widgets::{Navigator, NavigatorScreen};
 use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
-use libhandy::prelude::*;
+use libadwaita::prelude::*;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -75,7 +75,7 @@ impl RecordingSelector {
             }));
 
         this.selector.set_make_widget(clone!(@strong this => move |recording| {
-            let row = libhandy::ActionRow::new();
+            let row = libadwaita::ActionRow::new();
             row.set_activatable(true);
             row.set_title(Some(&recording.get_performers()));
 

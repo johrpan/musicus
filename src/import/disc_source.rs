@@ -1,8 +1,12 @@
+use super::source::{Source, SourceTrack};
 use anyhow::{anyhow, bail, Result};
+use async_trait::async_trait;
 use discid::DiscId;
 use futures_channel::oneshot;
+use gettextrs::gettext;
 use gstreamer::prelude::*;
 use gstreamer::{Element, ElementFactory, Pipeline};
+use once_cell::sync::OnceCell;
 use std::path::{Path, PathBuf};
 use std::thread;
 
@@ -10,67 +14,27 @@ use std::thread;
 #[derive(Clone, Debug)]
 pub struct DiscSource {
     /// The MusicBrainz DiscID of the CD.
-    pub discid: String,
-
-    /// The path to the temporary directory where the audio files will be.
-    pub path: PathBuf,
+    pub discid: OnceCell<String>,
 
     /// The tracks on this disc.
-    pub tracks: Vec<TrackSource>,
-}
-
-/// Representation of a single track on an audio CD.
-#[derive(Clone, Debug)]
-pub struct TrackSource {
-    /// The track number. This is different from the index in the disc
-    /// source's tracks list, because it is not defined from which number the
-    /// the track numbers start.
-    pub number: u32,
-
-    /// The path to the temporary file to which the track will be ripped. The
-    /// file will not exist until the track is actually ripped.
-    pub path: PathBuf,
+    tracks: OnceCell<Vec<SourceTrack>>,
 }
 
 impl DiscSource {
-    /// Try to create a new disc source by asynchronously reading the
-    /// information from the default disc drive.
-    pub async fn load() -> Result<Self> {
-        let (sender, receiver) = oneshot::channel();
+    /// Create a new disc source. The source has to be initialized by calling
+    /// load() afterwards.
+    pub fn new() -> Result<Self> {
+        let result = Self {
+            discid: OnceCell::new(),
+            tracks: OnceCell::new(),
+        };
 
-        thread::spawn(|| {
-            let disc = Self::load_priv();
-            sender.send(disc).unwrap();
-        });
-
-        let disc = receiver.await??;
-
-        Ok(disc)
+        Ok(result)
     }
 
-    /// Rip the whole disc asynchronously. After this method has finished
-    /// successfully, the audio files will be available in the specified
-    /// location for each track source.
-    pub async fn rip(&self) -> Result<()> {
-        for track in &self.tracks {
-            let (sender, receiver) = oneshot::channel();
-
-            let number = track.number;
-            let path = track.path.clone();
-
-            thread::spawn(move || {
-                let result = Self::rip_track(&path, number);
-                sender.send(result).unwrap();
-            });
-
-            receiver.await??;
-        }
-
-        Ok(())
-    }
-
-    /// Load the disc from the default disc drive.
-    fn load_priv() -> Result<Self> {
+    /// Load the disc from the default disc drive and return the MusicBrainz
+    /// DiscID as well as descriptions of the contained tracks.
+    fn load_priv() -> Result<(String, Vec<SourceTrack>)> {
         let discid = DiscId::read(None)?;
         let id = discid.id();
 
@@ -82,26 +46,23 @@ impl DiscSource {
         let tmp_dir = Self::create_tmp_dir()?;
 
         for number in first_track..=last_track {
+            let name = gettext!("Track {}", number);
+
             let file_name = format!("track_{:02}.flac", number);
 
             let mut path = tmp_dir.clone();
             path.push(file_name);
 
-            let track = TrackSource {
+            let track = SourceTrack {
                 number,
+                name,
                 path,
             };
 
             tracks.push(track);
         }
 
-        let disc = DiscSource {
-            discid: id,
-            tracks,
-            path: tmp_dir,
-        };
-
-        Ok(disc)
+        Ok((id, tracks))
     }
 
     /// Create a new temporary directory and return its path.
@@ -170,5 +131,59 @@ impl DiscSource {
         Element::link_many(&[&cdparanoiasrc, &queue, &audioconvert, &flacenc, &filesink])?;
 
         Ok(pipeline)
+    }
+}
+
+#[async_trait]
+impl Source for DiscSource {
+    async fn load(&self) -> Result<()> {
+        let (sender, receiver) = oneshot::channel();
+
+        thread::spawn(|| {
+            let result = Self::load_priv();
+            sender.send(result).unwrap();
+        });
+
+        let (discid, tracks) = receiver.await??;
+
+        self.discid.set(discid);
+        self.tracks.set(tracks);
+
+        Ok(())
+    }
+
+    fn tracks(&self) -> Option<&[SourceTrack]> {
+        match self.tracks.get() {
+            Some(tracks) => Some(tracks.as_slice()),
+            None => None,
+        }
+    }
+
+    fn discid(&self) -> Option<String> {
+        match self.discid.get() {
+            Some(discid) => Some(discid.to_owned()),
+            None => None,
+        }
+    }
+
+    async fn copy(&self) -> Result<()> {
+        let tracks = self.tracks.get()
+            .ok_or_else(|| anyhow!("Tried to copy disc before loading has finished!"))?;
+
+        for track in tracks {
+            let (sender, receiver) = oneshot::channel();
+
+            let number = track.number;
+            let path = track.path.clone();
+
+            thread::spawn(move || {
+                let result = Self::rip_track(&path, number);
+                sender.send(result).unwrap();
+            });
+
+            receiver.await??;
+        }
+
+        Ok(())
     }
 }

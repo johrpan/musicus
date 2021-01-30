@@ -1,19 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
   <requires lib="gtk" version="4.0"/>
-  <requires lib="libhandy" version="1.0"/>
-  <object class="HdyPreferencesWindow" id="window">
+  <requires lib="libadwaita" version="1.0"/>
+  <object class="AdwPreferencesWindow" id="window">
     <property name="modal">True</property>
     <property name="default-width">400</property>
     <property name="default-height">400</property>
     <child>
-      <object class="HdyPreferencesPage">
+      <object class="AdwPreferencesPage">
         <property name="title" translatable="yes">General</property>
         <child>
-          <object class="HdyPreferencesGroup">
+          <object class="AdwPreferencesGroup">
             <property name="title" translatable="yes">Music library</property>
             <child>
-              <object class="HdyActionRow" id="music_library_path_row">
+              <object class="AdwActionRow" id="music_library_path_row">
                 <property name="title" translatable="yes">Music library folder</property>
                 <property name="activatable-widget">select_music_library_path_button</property>
                 <property name="subtitle" translatable="yes">None selected</property>
@@ -29,10 +29,10 @@
           </object>
         </child>
         <child>
-          <object class="HdyPreferencesGroup">
+          <object class="AdwPreferencesGroup">
             <property name="title" translatable="yes">Server connection</property>
             <child>
-              <object class="HdyActionRow" id="url_row">
+              <object class="AdwActionRow" id="url_row">
                 <property name="title" translatable="yes">Server URL</property>
                 <property name="activatable-widget">url_button</property>
                 <property name="subtitle" translatable="yes">Not set</property>
@@ -46,7 +46,7 @@
               </object>
             </child>
             <child>
-              <object class="HdyActionRow" id="login_row">
+              <object class="AdwActionRow" id="login_row">
                 <property name="title" translatable="yes">Login credentials</property>
                 <property name="activatable-widget">login_button</property>
                 <property name="subtitle" translatable="yes">Not logged in</property>

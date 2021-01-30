@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
   <requires lib="gtk" version="4.0"/>
-  <requires lib="libhandy" version="1.0"/>
+  <requires lib="libadwaita" version="1.0"/>
   <object class="GtkImage" id="play_image">
     <property name="icon-name">media-playback-start-symbolic</property>
   </object>
@@ -13,7 +13,7 @@
   <object class="GtkBox" id="widget">
     <property name="orientation">vertical</property>
     <child>
-      <object class="HdyHeaderBar">
+      <object class="AdwHeaderBar">
         <property name="title-widget">
           <object class="GtkLabel">
             <property name="label" translatable="yes">Player</property>
@@ -22,7 +22,6 @@
             </style>
           </object>
         </property>
-        <property name="show-title-buttons">True</property>
         <child>
           <object class="GtkButton" id="back_button">
             <child>
@@ -38,7 +37,7 @@
       <object class="GtkScrolledWindow">
         <property name="vexpand">true</property>
         <child>
-          <object class="HdyClamp">
+          <object class="AdwClamp">
             <property name="margin-start">12</property>
             <property name="margin-end">12</property>
             <property name="margin-top">18</property>
@@ -58,7 +57,6 @@
                         <child>
                           <object class="GtkButton" id="previous_button">
                             <property name="sensitive">False</property>
-                            <property name="can-focus">True</property>
                             <child>
                               <object class="GtkImage">
                                 <property name="icon-name">media-skip-backward-symbolic</property>

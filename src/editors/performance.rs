@@ -6,7 +6,7 @@ use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
-use libhandy::prelude::*;
+use libadwaita::prelude::*;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -15,9 +15,9 @@ pub struct PerformanceEditor {
     backend: Rc<Backend>,
     widget: gtk::Box,
     save_button: gtk::Button,
-    person_row: libhandy::ActionRow,
-    ensemble_row: libhandy::ActionRow,
-    role_row: libhandy::ActionRow,
+    person_row: libadwaita::ActionRow,
+    ensemble_row: libadwaita::ActionRow,
+    role_row: libadwaita::ActionRow,
     reset_role_button: gtk::Button,
     person: RefCell<Option<Person>>,
     ensemble: RefCell<Option<Ensemble>>,
@@ -40,9 +40,9 @@ impl PerformanceEditor {
         get_widget!(builder, gtk::Button, ensemble_button);
         get_widget!(builder, gtk::Button, role_button);
         get_widget!(builder, gtk::Button, reset_role_button);
-        get_widget!(builder, libhandy::ActionRow, person_row);
-        get_widget!(builder, libhandy::ActionRow, ensemble_row);
-        get_widget!(builder, libhandy::ActionRow, role_row);
+        get_widget!(builder, libadwaita::ActionRow, person_row);
+        get_widget!(builder, libadwaita::ActionRow, ensemble_row);
+        get_widget!(builder, libadwaita::ActionRow, role_row);
 
         let this = Rc::new(PerformanceEditor {
             backend,

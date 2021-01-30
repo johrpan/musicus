@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
   <requires lib="gtk" version="4.0"/>
-  <requires lib="libhandy" version="1.0"/>
+  <requires lib="libadwaita" version="1.0"/>
   <object class="GtkStack" id="widget">
     <property name="transition-type">crossfade</property>
     <child>
@@ -11,8 +11,9 @@
           <object class="GtkBox">
             <property name="orientation">vertical</property>
             <child>
-              <object class="HdyHeaderBar">
-                <property name="show-title-buttons">false</property>
+              <object class="AdwHeaderBar">
+                <property name="show-start-title-buttons">false</property>
+                <property name="show-end-title-buttons">false</property>
                 <property name="title-widget">
                   <object class="GtkLabel">
                     <property name="label" translatable="yes">Import music</property>
@@ -60,7 +61,7 @@
               <object class="GtkScrolledWindow">
                 <property name="vexpand">True</property>
                 <child>
-                  <object class="HdyClamp">
+                  <object class="AdwClamp">
                     <child>
                       <object class="GtkBox">
                         <property name="margin-start">6</property>
@@ -84,7 +85,7 @@
                               <object class="GtkListBox">
                                 <property name="selection-mode">none</property>
                                 <child>
-                                  <object class="HdyActionRow" id="name_row">
+                                  <object class="AdwActionRow" id="name_row">
                                     <property name="activatable">True</property>
                                     <property name="title" translatable="yes">Name of the medium</property>
                                     <property name="activatable-widget">name_entry</property>
@@ -97,7 +98,7 @@
                                   </object>
                                 </child>
                                 <child>
-                                  <object class="HdyActionRow">
+                                  <object class="AdwActionRow">
                                     <property name="activatable">True</property>
                                     <property name="title" translatable="yes">Publish to the server</property>
                                     <property name="activatable-widget">publish_switch</property>
