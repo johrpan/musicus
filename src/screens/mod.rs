@@ -1,14 +1,14 @@
-pub mod ensemble_screen;
-pub use ensemble_screen::*;
+pub mod ensemble;
+pub use ensemble::*;
 
-pub mod person_screen;
-pub use person_screen::*;
+pub mod person;
+pub use person::*;
 
 pub mod player_screen;
 pub use player_screen::*;
 
-pub mod work_screen;
-pub use work_screen::*;
+pub mod work;
+pub use work::*;
 
-pub mod recording_screen;
-pub use recording_screen::*;
+pub mod recording;
+pub use recording::*;

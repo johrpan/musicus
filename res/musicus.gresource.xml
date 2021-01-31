@@ -2,20 +2,19 @@
 <gresources>
     <gresource prefix="/de/johrpan/musicus">
         <file preprocess="xml-stripblanks">ui/ensemble_editor.ui</file>
-        <file preprocess="xml-stripblanks">ui/ensemble_screen.ui</file>
         <file preprocess="xml-stripblanks">ui/instrument_editor.ui</file>
         <file preprocess="xml-stripblanks">ui/login_dialog.ui</file>
         <file preprocess="xml-stripblanks">ui/medium_editor.ui</file>
         <file preprocess="xml-stripblanks">ui/performance_editor.ui</file>
         <file preprocess="xml-stripblanks">ui/person_editor.ui</file>
-        <file preprocess="xml-stripblanks">ui/person_screen.ui</file>
         <file preprocess="xml-stripblanks">ui/player_bar.ui</file>
         <file preprocess="xml-stripblanks">ui/player_screen.ui</file>
         <file preprocess="xml-stripblanks">ui/poe_list.ui</file>
         <file preprocess="xml-stripblanks">ui/preferences.ui</file>
         <file preprocess="xml-stripblanks">ui/recording_editor.ui</file>
-        <file preprocess="xml-stripblanks">ui/recording_screen.ui</file>
         <file preprocess="xml-stripblanks">ui/register_dialog.ui</file>
+        <file preprocess="xml-stripblanks">ui/screen.ui</file>
+        <file preprocess="xml-stripblanks">ui/section.ui</file>
         <file preprocess="xml-stripblanks">ui/selector.ui</file>
         <file preprocess="xml-stripblanks">ui/server_dialog.ui</file>
         <file preprocess="xml-stripblanks">ui/source_selector.ui</file>
@@ -25,7 +24,6 @@
         <file preprocess="xml-stripblanks">ui/window.ui</file>
         <file preprocess="xml-stripblanks">ui/work_editor.ui</file>
         <file preprocess="xml-stripblanks">ui/work_part_editor.ui</file>
-        <file preprocess="xml-stripblanks">ui/work_screen.ui</file>
         <file preprocess="xml-stripblanks">ui/work_section_editor.ui</file>
     </gresource>
 </gresources>
