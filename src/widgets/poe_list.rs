@@ -44,6 +44,7 @@ impl PoeList {
 
         let list = List::new();
         list.widget.add_css_class("navigation-sidebar");
+        list.enable_selection();
 
         scrolled_window.set_child(Some(&list.widget));
 

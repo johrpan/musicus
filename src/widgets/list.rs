@@ -28,6 +28,7 @@ impl List {
         // let widget = gtk::ListView::new(Some(&selection), Some(&factory));
 
         let widget = gtk::ListBox::new();
+        widget.set_selection_mode(gtk::SelectionMode::None);
 
         let this = Rc::new(Self {
             widget,
@@ -111,6 +112,11 @@ impl List {
     /// new position.
     pub fn set_move_cb<F: Fn(usize, usize) + 'static>(&self, cb: F) {
         self.move_cb.replace(Some(Box::new(cb)));
+    }
+
+    /// Set the lists selection mode to single.
+    pub fn enable_selection(&self) {
+        self.widget.set_selection_mode(gtk::SelectionMode::Single);
     }
 
     /// Select an item by its index. If the index is out of range, nothing will happen.
