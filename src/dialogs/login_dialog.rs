@@ -1,6 +1,7 @@
 use super::RegisterDialog;
+use crate::push;
 use crate::backend::{Backend, LoginData};
-use crate::widgets::{Navigator, NavigatorScreen};
+use crate::widgets::new_navigator::{NavigationHandle, Screen, Widget};
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
@@ -9,18 +10,15 @@ use std::rc::Rc;
 
 /// A dialog for entering login credentials.
 pub struct LoginDialog {
-    backend: Rc<Backend>,
+    handle: NavigationHandle<LoginData>,
     widget: gtk::Stack,
     info_bar: gtk::InfoBar,
     username_entry: gtk::Entry,
     password_entry: gtk::Entry,
-    selected_cb: RefCell<Option<Box<dyn Fn(LoginData) -> ()>>>,
-    navigator: RefCell<Option<Rc<Navigator>>>,
 }
 
-impl LoginDialog {
-    /// Create a new login dialog.
-    pub fn new(backend: Rc<Backend>) -> Rc<Self> {
+impl Screen<(), LoginData> for LoginDialog {
+    fn new(_: (), handle: NavigationHandle<LoginData>) -> Rc<Self> {
         // Create UI
         let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/login_dialog.ui");
 
@@ -33,22 +31,17 @@ impl LoginDialog {
         get_widget!(builder, gtk::Button, register_button);
 
         let this = Rc::new(Self {
-            backend,
+            handle,
             widget,
             info_bar,
             username_entry,
             password_entry,
-            selected_cb: RefCell::new(None),
-            navigator: RefCell::new(None),
         });
 
         // Connect signals and callbacks
 
         cancel_button.connect_clicked(clone!(@strong this => move |_| {
-            let navigator = this.navigator.borrow().clone();
-            if let Some(navigator) = navigator {
-                navigator.pop();
-            }
+            this.handle.pop(None);
         }));
 
         login_button.connect_clicked(clone!(@strong this => move |_| {
@@ -62,16 +55,9 @@ impl LoginDialog {
             let c = glib::MainContext::default();
             let clone = this.clone();
             c.spawn_local(async move {
-                clone.backend.set_login_data(data.clone()).await.unwrap();
-                if clone.backend.login().await.unwrap() {
-                    if let Some(cb) = &*clone.selected_cb.borrow() {
-                        cb(data);
-                    }
-
-                    let navigator = clone.navigator.borrow().clone();
-                    if let Some(navigator) = navigator {
-                        navigator.pop();
-                    }
+                clone.handle.backend.set_login_data(data.clone()).await.unwrap();
+                if clone.handle.backend.login().await.unwrap() {
+                    clone.handle.pop(Some(data));
                 } else {
                     clone.widget.set_visible_child_name("content");
                     clone.info_bar.set_revealed(true);
@@ -80,44 +66,21 @@ impl LoginDialog {
         }));
 
         register_button.connect_clicked(clone!(@strong this => move |_| {
-            let navigator = this.navigator.borrow().clone();
-            if let Some(navigator) = navigator {
-                let dialog = RegisterDialog::new(this.backend.clone());
-
-                dialog.set_selected_cb(clone!(@strong this => move |data| {
-                    if let Some(cb) = &*this.selected_cb.borrow() {
-                        cb(data);
-                    }
-
-                    let navigator = this.navigator.borrow().clone();
-                    if let Some(navigator) = navigator {
-                        navigator.pop();
-                    }
-                }));
-
-                navigator.push(dialog);
-            }
+            let context = glib::MainContext::default();
+            let clone = this.clone();
+            context.spawn_local(async move {
+                if let Some(data) = push!(clone.handle, RegisterDialog).await {
+                    clone.handle.pop(Some(data));
+                }
+            });
         }));
 
         this
     }
-
-    /// The closure to call when the login succeded.
-    pub fn set_selected_cb<F: Fn(LoginData) -> () + 'static>(&self, cb: F) {
-        self.selected_cb.replace(Some(Box::new(cb)));
-    }
 }
 
-impl NavigatorScreen for LoginDialog {
-    fn attach_navigator(&self, navigator: Rc<Navigator>) {
-        self.navigator.replace(Some(navigator));
-    }
-
+impl Widget for LoginDialog {
     fn get_widget(&self) -> gtk::Widget {
         self.widget.clone().upcast()
-    }
-
-    fn detach_navigator(&self) {
-        self.navigator.replace(None);
     }
 }

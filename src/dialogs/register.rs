@@ -1,5 +1,5 @@
 use crate::backend::{Backend, LoginData, UserRegistration};
-use crate::widgets::{Navigator, NavigatorScreen};
+use crate::widgets::new_navigator::{NavigationHandle, Screen, Widget};
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
@@ -9,7 +9,7 @@ use std::rc::Rc;
 
 /// A dialog for creating a new user account.
 pub struct RegisterDialog {
-    backend: Rc<Backend>,
+    handle: NavigationHandle<LoginData>,
     widget: gtk::Stack,
     username_entry: gtk::Entry,
     email_entry: gtk::Entry,
@@ -18,13 +18,11 @@ pub struct RegisterDialog {
     captcha_row: libadwaita::ActionRow,
     captcha_entry: gtk::Entry,
     captcha_id: RefCell<Option<String>>,
-    selected_cb: RefCell<Option<Box<dyn Fn(LoginData)>>>,
-    navigator: RefCell<Option<Rc<Navigator>>>,
 }
 
-impl RegisterDialog {
+impl Screen<(), LoginData> for RegisterDialog {
     /// Create a new register dialog.
-    pub fn new(backend: Rc<Backend>) -> Rc<Self> {
+    fn new(_: (), handle: NavigationHandle<LoginData>) -> Rc<Self> {
         // Create UI
         let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/register_dialog.ui");
 
@@ -39,7 +37,7 @@ impl RegisterDialog {
         get_widget!(builder, gtk::Entry, captcha_entry);
 
         let this = Rc::new(Self {
-            backend,
+            handle,
             widget,
             username_entry,
             email_entry,
@@ -48,17 +46,12 @@ impl RegisterDialog {
             captcha_row,
             captcha_entry,
             captcha_id: RefCell::new(None),
-            selected_cb: RefCell::new(None),
-            navigator: RefCell::new(None),
         });
 
         // Connect signals and callbacks
 
         cancel_button.connect_clicked(clone!(@strong this => move |_| {
-            let navigator = this.navigator.borrow().clone();
-            if let Some(navigator) = navigator {
-                navigator.pop();
-            }
+            this.handle.pop(None);
         }));
 
         register_button.connect_clicked(clone!(@strong this => move |_| {
@@ -93,20 +86,13 @@ impl RegisterDialog {
                     };
 
                     // TODO: Handle errors.
-                    if clone.backend.register(registration).await.unwrap() {
-                        if let Some(cb) = &*clone.selected_cb.borrow() {
-                            let data = LoginData {
-                                username,
-                                password,
-                            };
+                    if clone.handle.backend.register(registration).await.unwrap() {
+                        let data = LoginData {
+                            username,
+                            password,
+                        };
 
-                            cb(data);
-                        }
-
-                        let navigator = clone.navigator.borrow().clone();
-                        if let Some(navigator) = navigator {
-                            navigator.pop();
-                        }
+                        clone.handle.pop(Some(data));
                     } else {
                         clone.widget.set_visible_child_name("content");
                     }
@@ -119,7 +105,7 @@ impl RegisterDialog {
         let context = glib::MainContext::default();
         let clone = this.clone();
         context.spawn_local(async move {
-            let captcha = clone.backend.get_captcha().await.unwrap();
+            let captcha = clone.handle.backend.get_captcha().await.unwrap();
             clone.captcha_row.set_title(Some(&captcha.question));
             clone.captcha_id.replace(Some(captcha.id));
             clone.widget.set_visible_child_name("content");
@@ -127,23 +113,10 @@ impl RegisterDialog {
 
         this
     }
-
-    /// The closure to call when the login succeded.
-    pub fn set_selected_cb<F: Fn(LoginData) + 'static>(&self, cb: F) {
-        self.selected_cb.replace(Some(Box::new(cb)));
-    }
 }
 
-impl NavigatorScreen for RegisterDialog {
-    fn attach_navigator(&self, navigator: Rc<Navigator>) {
-        self.navigator.replace(Some(navigator));
-    }
-
+impl Widget for RegisterDialog {
     fn get_widget(&self) -> gtk::Widget {
         self.widget.clone().upcast()
-    }
-
-    fn detach_navigator(&self) {
-        self.navigator.replace(None);
     }
 }

@@ -98,6 +98,8 @@ sources = files(
   'widgets/mod.rs',
   'widgets/navigator.rs',
   'widgets/navigator_window.rs',
+  'widgets/new_navigator.rs',
+  'widgets/new_navigator_window.rs',
   'widgets/player_bar.rs',
   'widgets/poe_list.rs',
   'widgets/screen.rs',

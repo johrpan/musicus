@@ -148,3 +148,4 @@ impl Navigator {
         self.old_screens.borrow_mut().clear();
     }
 }
+

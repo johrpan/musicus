@@ -1,6 +1,6 @@
 use super::{LoginDialog, ServerDialog};
 use crate::backend::Backend;
-use crate::widgets::NavigatorWindow;
+use crate::widgets::new_navigator_window::NavigatorWindow;
 use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
@@ -85,16 +85,17 @@ impl Preferences {
         }));
 
         login_button.connect_clicked(clone!(@strong this => move |_| {
-            let dialog = LoginDialog::new(this.backend.clone());
-
-            dialog.set_selected_cb(clone!(@strong this => move |data| {
-                this.login_row.set_subtitle(Some(&data.username));
-            }));
-
-
-            let window = NavigatorWindow::new(dialog);
+            let window = NavigatorWindow::new(this.backend.clone());
             window.set_transient_for(&this.window);
             window.show();
+
+            let context = glib::MainContext::default();
+            let clone = this.clone();
+            context.spawn_local(async move {
+                if let Some(data) = window.navigator.replace::<_, _, LoginDialog>(()).await {
+                    clone.login_row.set_subtitle(Some(&data.username));
+                }
+            });
         }));
 
         // Initialize
