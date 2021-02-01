@@ -1,3 +1,9 @@
+pub mod editor;
+pub use editor::*;
+
+pub mod entry_row;
+pub use entry_row::*;
+
 pub mod list;
 pub use list::*;
 
@@ -18,5 +24,8 @@ pub use screen::*;
 
 pub mod section;
 pub use section::*;
+
+pub mod upload_section;
+pub use upload_section::*;
 
 mod indexed_list_model;

@@ -1,7 +1,9 @@
 use crate::backend::Backend;
-use crate::database::*;
-use crate::widgets::{Navigator, NavigatorScreen};
+use crate::database::generate_id;
+use crate::database::Person;
+use crate::widgets::{Editor, EntryRow, Navigator, NavigatorScreen, Section, UploadSection};
 use anyhow::Result;
+use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
@@ -11,12 +13,14 @@ use std::rc::Rc;
 /// A dialog for creating or editing a person.
 pub struct PersonEditor {
     backend: Rc<Backend>,
+
+    /// The ID of the person that is edited or a newly generated one.
     id: String,
-    widget: gtk::Stack,
-    info_bar: gtk::InfoBar,
-    first_name_entry: gtk::Entry,
-    last_name_entry: gtk::Entry,
-    upload_switch: gtk::Switch,
+
+    editor: Editor,
+    first_name: EntryRow,
+    last_name: EntryRow,
+    upload: UploadSection,
     saved_cb: RefCell<Option<Box<dyn Fn(Person) -> ()>>>,
     navigator: RefCell<Option<Rc<Navigator>>>,
 }
@@ -24,22 +28,29 @@ pub struct PersonEditor {
 impl PersonEditor {
     /// Create a new person editor and optionally initialize it.
     pub fn new(backend: Rc<Backend>, person: Option<Person>) -> Rc<Self> {
-        // Create UI
+        let editor = Editor::new();
+        editor.set_title("Person");
 
-        let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/person_editor.ui");
+        let list = gtk::ListBoxBuilder::new()
+            .selection_mode(gtk::SelectionMode::None)
+            .build();
 
-        get_widget!(builder, gtk::Stack, widget);
-        get_widget!(builder, gtk::Button, back_button);
-        get_widget!(builder, gtk::Button, save_button);
-        get_widget!(builder, gtk::InfoBar, info_bar);
-        get_widget!(builder, gtk::Entry, first_name_entry);
-        get_widget!(builder, gtk::Entry, last_name_entry);
-        get_widget!(builder, gtk::Switch, upload_switch);
+        let first_name = EntryRow::new(&gettext("First name"));
+        let last_name = EntryRow::new(&gettext("Last name"));
+
+        list.append(&first_name.widget);
+        list.append(&last_name.widget);
+
+        let section = Section::new(&gettext("General"), &list);
+        let upload = UploadSection::new();
+
+        editor.add_content(&section.widget);
+        editor.add_content(&upload.widget);
 
         let id = match person {
             Some(person) => {
-                first_name_entry.set_text(&person.first_name);
-                last_name_entry.set_text(&person.last_name);
+                first_name.set_text(&person.first_name);
+                last_name.set_text(&person.last_name);
 
                 person.id
             }
@@ -49,29 +60,28 @@ impl PersonEditor {
         let this = Rc::new(Self {
             backend,
             id,
-            widget,
-            info_bar,
-            first_name_entry,
-            last_name_entry,
-            upload_switch,
+            editor,
+            first_name,
+            last_name,
+            upload,
             saved_cb: RefCell::new(None),
             navigator: RefCell::new(None),
         });
 
         // Connect signals and callbacks
 
-        back_button.connect_clicked(clone!(@strong this => move |_| {
+        this.editor.set_back_cb(clone!(@strong this => move || {
             let navigator = this.navigator.borrow().clone();
             if let Some(navigator) = navigator {
                 navigator.pop();
             }
         }));
 
-        save_button.connect_clicked(clone!(@strong this => move |_| {
+        this.editor.set_save_cb(clone!(@strong this => move || {
             let context = glib::MainContext::default();
             let clone = this.clone();
             context.spawn_local(async move {
-                clone.widget.set_visible_child_name("loading");
+                clone.editor.loading();
                 match clone.clone().save().await {
                     Ok(_) => {
                         let navigator = clone.navigator.borrow().clone();
@@ -79,9 +89,9 @@ impl PersonEditor {
                             navigator.pop();
                         }
                     }
-                    Err(_) => {
-                        clone.info_bar.set_revealed(true);
-                        clone.widget.set_visible_child_name("content");
+                    Err(err) => {
+                        let description = gettext!("Cause: {}", err);
+                        clone.editor.error(&gettext("Failed to save person!"), &description);
                     }
                 }
 
@@ -98,8 +108,8 @@ impl PersonEditor {
 
     /// Save the person and possibly upload it to the server.
     async fn save(self: Rc<Self>) -> Result<()> {
-        let first_name = self.first_name_entry.get_text().unwrap().to_string();
-        let last_name = self.last_name_entry.get_text().unwrap().to_string();
+        let first_name = self.first_name.get_text();
+        let last_name = self.last_name.get_text();
 
         let person = Person {
             id: self.id.clone(),
@@ -107,8 +117,7 @@ impl PersonEditor {
             last_name,
         };
 
-        let upload = self.upload_switch.get_active();
-        if upload {
+        if self.upload.get_active() {
             self.backend.post_person(&person).await?;
         }
 
@@ -129,10 +138,11 @@ impl NavigatorScreen for PersonEditor {
     }
 
     fn get_widget(&self) -> gtk::Widget {
-        self.widget.clone().upcast()
+        self.editor.widget.clone().upcast()
     }
 
     fn detach_navigator(&self) {
         self.navigator.replace(None);
     }
 }
+
