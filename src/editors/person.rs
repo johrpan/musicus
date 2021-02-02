@@ -6,7 +6,6 @@ use anyhow::Result;
 use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
-use gtk_macros::get_widget;
 use std::cell::RefCell;
 use std::rc::Rc;
 

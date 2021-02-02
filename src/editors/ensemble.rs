@@ -1,21 +1,24 @@
 use crate::backend::Backend;
-use crate::database::*;
-use crate::widgets::{Navigator, NavigatorScreen};
+use crate::database::generate_id;
+use crate::database::Ensemble;
+use crate::widgets::{Editor, EntryRow, Navigator, NavigatorScreen, Section, UploadSection};
 use anyhow::Result;
+use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
-use gtk_macros::get_widget;
 use std::cell::RefCell;
 use std::rc::Rc;
 
 /// A dialog for creating or editing a ensemble.
 pub struct EnsembleEditor {
     backend: Rc<Backend>,
+
+    /// The ID of the ensemble that is edited or a newly generated one.
     id: String,
-    widget: gtk::Stack,
-    info_bar: gtk::InfoBar,
-    name_entry: gtk::Entry,
-    upload_switch: gtk::Switch,
+
+    editor: Editor,
+    name: EntryRow,
+    upload: UploadSection,
     saved_cb: RefCell<Option<Box<dyn Fn(Ensemble) -> ()>>>,
     navigator: RefCell<Option<Rc<Navigator>>>,
 }
@@ -23,21 +26,25 @@ pub struct EnsembleEditor {
 impl EnsembleEditor {
     /// Create a new ensemble editor and optionally initialize it.
     pub fn new(backend: Rc<Backend>, ensemble: Option<Ensemble>) -> Rc<Self> {
-        // Create UI
+        let editor = Editor::new();
+        editor.set_title("Ensemble");
 
-        let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/ensemble_editor.ui");
+        let list = gtk::ListBoxBuilder::new()
+            .selection_mode(gtk::SelectionMode::None)
+            .build();
 
-        get_widget!(builder, gtk::Stack, widget);
-        get_widget!(builder, gtk::Button, back_button);
-        get_widget!(builder, gtk::Button, save_button);
-        get_widget!(builder, gtk::InfoBar, info_bar);
-        get_widget!(builder, gtk::Entry, name_entry);
-        get_widget!(builder, gtk::Switch, upload_switch);
+        let name = EntryRow::new(&gettext("Name"));
+        list.append(&name.widget);
+
+        let section = Section::new(&gettext("General"), &list);
+        let upload = UploadSection::new();
+
+        editor.add_content(&section.widget);
+        editor.add_content(&upload.widget);
 
         let id = match ensemble {
             Some(ensemble) => {
-                name_entry.set_text(&ensemble.name);
-
+                name.set_text(&ensemble.name);
                 ensemble.id
             }
             None => generate_id(),
@@ -46,28 +53,27 @@ impl EnsembleEditor {
         let this = Rc::new(Self {
             backend,
             id,
-            widget,
-            info_bar,
-            name_entry,
-            upload_switch,
+            editor,
+            name,
+            upload,
             saved_cb: RefCell::new(None),
             navigator: RefCell::new(None),
         });
 
         // Connect signals and callbacks
 
-        back_button.connect_clicked(clone!(@strong this => move |_| {
+        this.editor.set_back_cb(clone!(@strong this => move || {
             let navigator = this.navigator.borrow().clone();
             if let Some(navigator) = navigator {
                 navigator.pop();
             }
         }));
 
-        save_button.connect_clicked(clone!(@strong this => move |_| {
+        this.editor.set_save_cb(clone!(@strong this => move || {
             let context = glib::MainContext::default();
             let clone = this.clone();
             context.spawn_local(async move {
-                clone.widget.set_visible_child_name("loading");
+                clone.editor.loading();
                 match clone.clone().save().await {
                     Ok(_) => {
                         let navigator = clone.navigator.borrow().clone();
@@ -75,9 +81,9 @@ impl EnsembleEditor {
                             navigator.pop();
                         }
                     }
-                    Err(_) => {
-                        clone.info_bar.set_revealed(true);
-                        clone.widget.set_visible_child_name("content");
+                    Err(err) => {
+                        let description = gettext!("Cause: {}", err);
+                        clone.editor.error(&gettext("Failed to save ensemble!"), &description);
                     }
                 }
 
@@ -94,22 +100,18 @@ impl EnsembleEditor {
 
     /// Save the ensemble and possibly upload it to the server.
     async fn save(self: Rc<Self>) -> Result<()> {
-        let name = self.name_entry.get_text().unwrap().to_string();
+        let name = self.name.get_text();
 
         let ensemble = Ensemble {
             id: self.id.clone(),
             name,
         };
 
-        let upload = self.upload_switch.get_active();
-        if upload {
+        if self.upload.get_active() {
             self.backend.post_ensemble(&ensemble).await?;
         }
 
-        self.backend
-            .db()
-            .update_ensemble(ensemble.clone())
-            .await?;
+        self.backend.db().update_ensemble(ensemble.clone()).await?;
         self.backend.library_changed();
 
         if let Some(cb) = &*self.saved_cb.borrow() {
@@ -126,10 +128,11 @@ impl NavigatorScreen for EnsembleEditor {
     }
 
     fn get_widget(&self) -> gtk::Widget {
-        self.widget.clone().upcast()
+        self.editor.widget.clone().upcast()
     }
 
     fn detach_navigator(&self) {
         self.navigator.replace(None);
     }
 }
+
