@@ -23,6 +23,31 @@ macro_rules! push {
     };
 }
 
+/// Simplification for replacing the current navigator screen.
+///
+/// This macro can be invoked in two forms.
+///
+/// 1. To replace with screens without an input value:
+///
+/// ```
+/// let result = replace!(navigator, ScreenType).await;
+/// ```
+///
+/// 2. To replace with screens with an input value:
+///
+/// ```
+/// let result = replace!(navigator, ScreenType, input).await;
+/// ```
+#[macro_export]
+macro_rules! replace {
+    ($navigator:expr, $screen:ty) => {
+        $navigator.replace::<_, _, $screen>(())
+    };
+    ($navigator:expr, $screen:ty, $input:ident) => {
+        $navigator.replace::<_, _, $screen>($input)
+    };
+}
+
 /// Spawn a future on the GLib MainContext.
 ///
 /// This can be invoked in the following forms:

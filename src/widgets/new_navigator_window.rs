@@ -11,7 +11,7 @@ pub struct NavigatorWindow {
 }
 
 impl NavigatorWindow {
-    /// Create a new navigator window.
+    /// Create a new navigator window and show it.
     pub fn new(backend: Rc<Backend>) -> Rc<Self> {
         let window = libadwaita::Window::new();
         window.set_default_size(600, 424);
@@ -24,6 +24,8 @@ impl NavigatorWindow {
         this.navigator.set_back_cb(clone!(@strong this => move || {
             this.window.close();
         }));
+
+        this.window.show();
 
         this
     }

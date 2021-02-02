@@ -59,10 +59,8 @@ impl Preferences {
                         if let Some(path) = file.get_path() {
                             this.music_library_path_row.set_subtitle(Some(path.to_str().unwrap()));
 
-                            let context = glib::MainContext::default();
-                            let backend = this.backend.clone();
-                            context.spawn_local(async move {
-                                backend.set_music_library_path(path).await.unwrap();
+                            spawn!(@clone this, async move {
+                                this.backend.set_music_library_path(path).await.unwrap();
                             });
                         }
                     }
@@ -87,13 +85,10 @@ impl Preferences {
         login_button.connect_clicked(clone!(@strong this => move |_| {
             let window = NavigatorWindow::new(this.backend.clone());
             window.set_transient_for(&this.window);
-            window.show();
 
-            let context = glib::MainContext::default();
-            let clone = this.clone();
-            context.spawn_local(async move {
-                if let Some(data) = window.navigator.replace::<_, _, LoginDialog>(()).await {
-                    clone.login_row.set_subtitle(Some(&data.username));
+            spawn!(@clone this, async move {
+                if let Some(data) = replace!(window.navigator, LoginDialog).await {
+                    this.login_row.set_subtitle(Some(&data.username));
                 }
             });
         }));
