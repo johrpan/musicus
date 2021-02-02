@@ -1,7 +1,7 @@
 use crate::backend::*;
 use crate::config;
-use crate::dialogs::*;
 use crate::import::SourceSelector;
+use crate::preferences::Preferences;
 use crate::screens::*;
 use crate::widgets::*;
 use futures::prelude::*;

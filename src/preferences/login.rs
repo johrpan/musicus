@@ -1,4 +1,4 @@
-use super::RegisterDialog;
+use super::register::RegisterDialog;
 use crate::push;
 use crate::backend::{Backend, LoginData};
 use crate::widgets::new_navigator::{NavigationHandle, Screen, Widget};

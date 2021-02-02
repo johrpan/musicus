@@ -1,4 +1,3 @@
-use super::{LoginDialog, ServerDialog};
 use crate::backend::Backend;
 use crate::widgets::new_navigator_window::NavigatorWindow;
 use gettextrs::gettext;
@@ -7,6 +6,14 @@ use gtk::prelude::*;
 use gtk_macros::get_widget;
 use libadwaita::prelude::*;
 use std::rc::Rc;
+
+mod login;
+use login::LoginDialog;
+
+mod server;
+use server::ServerDialog;
+
+mod register;
 
 /// A dialog for configuring the app.
 pub struct Preferences {
