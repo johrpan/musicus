@@ -53,7 +53,6 @@ sources = files(
   'database/schema.rs',
   'database/thread.rs',
   'database/works.rs',
-  'dialogs/about.rs',
   'dialogs/login_dialog.rs',
   'dialogs/mod.rs',
   'dialogs/preferences.rs',

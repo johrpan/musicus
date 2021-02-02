@@ -1,4 +1,5 @@
 use crate::backend::*;
+use crate::config;
 use crate::dialogs::*;
 use crate::import::SourceSelector;
 use crate::screens::*;
@@ -142,7 +143,7 @@ impl Window {
             result.window,
             "about",
             clone!(@strong result => move |_, _| {
-                show_about_dialog(&result.window);
+                result.show_about_dialog();
             })
         );
 
@@ -209,5 +210,23 @@ impl Window {
         self.poe_list.clone().reload();
         self.navigator.reset();
         self.leaflet.set_visible_child(&self.sidebar_box);
+    }
+
+    fn show_about_dialog(&self) {
+        let dialog = gtk::AboutDialogBuilder::new()
+            .transient_for(&self.window)
+            .modal(true)
+            .logo_icon_name("de.johrpan.musicus")
+            .program_name(&gettext("Musicus"))
+            .version(config::VERSION)
+            .comments(&gettext("The classical music player and organizer."))
+            .website("https://github.com/johrpan/musicus")
+            .website_label(&gettext("Further information and source code"))
+            .copyright("© 2020 Elias Projahn")
+            .license_type(gtk::License::Agpl30)
+            .authors(vec![String::from("Elias Projahn <johrpan@gmail.com>")])
+            .build();
+
+        dialog.show();
     }
 }
