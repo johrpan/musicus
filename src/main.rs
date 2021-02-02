@@ -19,6 +19,7 @@ mod config;
 mod database;
 mod editors;
 mod import;
+mod navigator;
 mod player;
 mod preferences;
 mod screens;

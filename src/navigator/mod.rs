@@ -6,6 +6,9 @@ use gtk::prelude::*;
 use std::cell::{Cell, RefCell};
 use std::rc::{Rc, Weak};
 
+pub mod window;
+pub use window::*;
+
 /// A widget that represents a logical unit of transient user interaction and
 /// that optionally resolves to a specific return value.
 pub trait Screen<I, O>: Widget {

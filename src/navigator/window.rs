@@ -1,5 +1,5 @@
 use crate::backend::Backend;
-use super::new_navigator::{Navigator, Screen};
+use super::{Navigator, Screen};
 use glib::clone;
 use gtk::prelude::*;
 use std::rc::Rc;

@@ -10,12 +10,8 @@ pub use list::*;
 pub mod navigator;
 pub use navigator::*;
 
-pub mod new_navigator;
-
 pub mod navigator_window;
 pub use navigator_window::*;
-
-pub mod new_navigator_window;
 
 pub mod player_bar;
 pub use player_bar::*;

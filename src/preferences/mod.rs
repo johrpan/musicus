@@ -1,5 +1,5 @@
 use crate::backend::Backend;
-use crate::widgets::new_navigator_window::NavigatorWindow;
+use crate::navigator::NavigatorWindow;
 use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
