@@ -40,11 +40,11 @@ impl Screen<(), LoginData> for LoginDialog {
 
         // Connect signals and callbacks
 
-        cancel_button.connect_clicked(clone!(@strong this => move |_| {
+        cancel_button.connect_clicked(clone!(@weak this => move |_| {
             this.handle.pop(None);
         }));
 
-        login_button.connect_clicked(clone!(@strong this => move |_| {
+        login_button.connect_clicked(clone!(@weak this => move |_| {
             this.widget.set_visible_child_name("loading");
 
             let data = LoginData {
@@ -65,7 +65,7 @@ impl Screen<(), LoginData> for LoginDialog {
             });
         }));
 
-        register_button.connect_clicked(clone!(@strong this => move |_| {
+        register_button.connect_clicked(clone!(@weak this => move |_| {
             let context = glib::MainContext::default();
             let clone = this.clone();
             context.spawn_local(async move {

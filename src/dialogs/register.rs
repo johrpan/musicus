@@ -50,11 +50,11 @@ impl Screen<(), LoginData> for RegisterDialog {
 
         // Connect signals and callbacks
 
-        cancel_button.connect_clicked(clone!(@strong this => move |_| {
+        cancel_button.connect_clicked(clone!(@weak this => move |_| {
             this.handle.pop(None);
         }));
 
-        register_button.connect_clicked(clone!(@strong this => move |_| {
+        register_button.connect_clicked(clone!(@weak this => move |_| {
             let password = this.password_entry.get_text().unwrap().to_string();
             let repeat = this.repeat_password_entry.get_text().unwrap().to_string();
 
