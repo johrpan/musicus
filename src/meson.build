@@ -90,6 +90,7 @@ sources = files(
   'selectors/recording.rs',
   'selectors/selector.rs',
   'selectors/work.rs',
+  'widgets/button_row.rs',
   'widgets/editor.rs',
   'widgets/entry_row.rs',
   'widgets/upload_section.rs',

@@ -1,5 +1,8 @@
 use gtk::prelude::*;
 
+pub mod button_row;
+pub use button_row::*;
+
 pub mod editor;
 pub use editor::*;
 

@@ -1,3 +1,4 @@
+use super::Widget;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
 
@@ -9,25 +10,36 @@ pub struct Section {
 
     /// The box containing the title and action buttons.
     title_box: gtk::Box,
+
+    /// An optional subtitle below the title.
+    subtitle_label: gtk::Label,
 }
 
 impl Section {
     /// Create a new section.
-    pub fn new<W: IsA<gtk::Widget>>(title: &str, content: &W) -> Self {
+    pub fn new<W: Widget>(title: &str, content: &W) -> Self {
         let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/section.ui");
 
         get_widget!(builder, gtk::Box, widget);
         get_widget!(builder, gtk::Box, title_box);
         get_widget!(builder, gtk::Label, title_label);
+        get_widget!(builder, gtk::Label, subtitle_label);
         get_widget!(builder, gtk::Frame, frame);
 
         title_label.set_label(title);
-        frame.set_child(Some(content));
+        frame.set_child(Some(&content.get_widget()));
 
         Self {
             widget,
             title_box,
+            subtitle_label,
         }
+    }
+
+    /// Add a subtitle below the title.
+    pub fn set_subtitle(&self, subtitle: &str) {
+        self.subtitle_label.set_label(subtitle);
+        self.subtitle_label.show();
     }
 
     /// Add an action button. This should by definition be something that is
@@ -44,5 +56,11 @@ impl Section {
         button.connect_clicked(move |_| cb());
 
         self.title_box.append(&button);
+    }
+}
+
+impl Widget for Section {
+    fn get_widget(&self) -> gtk::Widget {
+        self.widget.clone().upcast()
     }
 }

@@ -1,3 +1,4 @@
+use super::Widget;
 use gio::prelude::*;
 use glib::clone;
 use gtk::prelude::*;
@@ -61,6 +62,11 @@ impl Editor {
         self.window_title.set_title(Some(title));
     }
 
+    /// Set whether the user should be able to click the save button.
+    pub fn set_may_save(&self, save: bool) {
+        self.save_button.set_sensitive(save);
+    }
+
     pub fn set_save_cb<F: Fn() + 'static>(&self, cb: F) {
         self.save_button.connect_clicked(move |_| cb());
     }
@@ -79,7 +85,7 @@ impl Editor {
     }
 
     /// Add content to the bottom of the content area.
-    pub fn add_content<W: IsA<gtk::Widget>>(&self, content: &W) {
-        self.content_box.append(content);
+    pub fn add_content<W: Widget>(&self, content: &W) {
+        self.content_box.append(&content.get_widget());
     }
 }
