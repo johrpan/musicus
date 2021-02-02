@@ -106,6 +106,7 @@ sources = files(
   'widgets/section.rs',
   'config.rs',
   'config.rs.in',
+  'macros.rs',
   'main.rs',
   'player.rs',
   'resources.rs',

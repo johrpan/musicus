@@ -11,6 +11,9 @@ use glib::clone;
 use std::cell::RefCell;
 use std::rc::Rc;
 
+#[macro_use]
+mod macros;
+
 mod backend;
 mod config;
 mod database;
