@@ -69,14 +69,14 @@ impl<O> NavigationHandle<O> {
 
     /// Go back to the previous screen optionally returning something.
     pub fn pop(&self, output: Option<O>) {
+        self.unwrap_navigator().pop();
+
         let sender = self.sender.take()
             .expect("Tried to send result from screen through a dropped sender.");
 
         if sender.send(output).is_err() {
             panic!("Tried to send result from screen to non-existing previous screen.");
         }
-
-        self.unwrap_navigator().pop();
     }
 
     /// Get the navigator and panic if it doesn't exist.
