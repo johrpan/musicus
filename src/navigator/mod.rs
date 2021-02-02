@@ -1,4 +1,5 @@
 use crate::backend::Backend;
+use crate::widgets::Widget;
 use futures_channel::oneshot;
 use futures_channel::oneshot::{Receiver, Sender};
 use glib::clone;
@@ -14,12 +15,6 @@ pub use window::*;
 pub trait Screen<I, O>: Widget {
     /// Create a new screen and initialize it with the provided input value.
     fn new(input: I, navigation_handle: NavigationHandle<O>) -> Rc<Self> where Self: Sized;
-}
-
-/// Something that can be represented as a GTK widget.
-pub trait Widget {
-    /// Get the widget.
-    fn get_widget(&self) -> gtk::Widget;
 }
 
 /// An accessor to navigation functionality for screens.

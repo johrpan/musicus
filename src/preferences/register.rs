@@ -1,5 +1,6 @@
 use crate::backend::{Backend, LoginData, UserRegistration};
-use crate::navigator::{NavigationHandle, Screen, Widget};
+use crate::navigator::{NavigationHandle, Screen};
+use crate::widgets::Widget;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
