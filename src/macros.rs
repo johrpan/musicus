@@ -22,3 +22,40 @@ macro_rules! push {
         $handle.push::<_, _, $screen>($input)
     };
 }
+
+/// Spawn a future on the GLib MainContext.
+///
+/// This can be invoked in the following forms:
+///
+/// 1. For spawning a future and nothing more:
+///
+/// ```
+/// spawn!(async {
+///     // Some code
+/// });
+///
+/// 2. For spawning a future and cloning some data, that will be accessible
+///    from the async code:
+///
+/// ```
+/// spawn!(@clone data: Rc<_>, async move {
+///     // Some code
+/// });
+#[macro_export]
+macro_rules! spawn {
+    ($future:expr) => {
+        {
+            let context = glib::MainContext::default();
+            context.spawn_local($future);
+
+        }
+    };
+    (@clone $data:ident, $future:expr) => {
+        {
+            let context = glib::MainContext::default();
+            let $data = Rc::clone(&$data);
+            context.spawn_local($future);
+
+        }
+    };
+}

@@ -63,13 +63,11 @@ impl Screen<(), LoginData> for RegisterDialog {
             } else {
                 this.widget.set_visible_child_name("loading");
 
-                let context = glib::MainContext::default();
-                let clone = this.clone();
-                context.spawn_local(async move {
-                    let username = clone.username_entry.get_text().unwrap().to_string();
-                    let email = clone.email_entry.get_text().unwrap().to_string();
-                    let captcha_id = clone.captcha_id.borrow().clone().unwrap();
-                    let answer = clone.captcha_entry.get_text().unwrap().to_string();
+                spawn!(@clone this, async move {
+                    let username = this.username_entry.get_text().unwrap().to_string();
+                    let email = this.email_entry.get_text().unwrap().to_string();
+                    let captcha_id = this.captcha_id.borrow().clone().unwrap();
+                    let answer = this.captcha_entry.get_text().unwrap().to_string();
 
                     let email = if email.len() == 0 {
                         None
@@ -86,15 +84,15 @@ impl Screen<(), LoginData> for RegisterDialog {
                     };
 
                     // TODO: Handle errors.
-                    if clone.handle.backend.register(registration).await.unwrap() {
+                    if this.handle.backend.register(registration).await.unwrap() {
                         let data = LoginData {
                             username,
                             password,
                         };
 
-                        clone.handle.pop(Some(data));
+                        this.handle.pop(Some(data));
                     } else {
-                        clone.widget.set_visible_child_name("content");
+                        this.widget.set_visible_child_name("content");
                     }
                 });
             }
@@ -102,13 +100,11 @@ impl Screen<(), LoginData> for RegisterDialog {
 
         // Initialize
 
-        let context = glib::MainContext::default();
-        let clone = this.clone();
-        context.spawn_local(async move {
-            let captcha = clone.handle.backend.get_captcha().await.unwrap();
-            clone.captcha_row.set_title(Some(&captcha.question));
-            clone.captcha_id.replace(Some(captcha.id));
-            clone.widget.set_visible_child_name("content");
+        spawn!(@clone this, async move {
+            let captcha = this.handle.backend.get_captcha().await.unwrap();
+            this.captcha_row.set_title(Some(&captcha.question));
+            this.captcha_id.replace(Some(captcha.id));
+            this.widget.set_visible_child_name("content");
         });
 
         this

@@ -52,25 +52,21 @@ impl Screen<(), LoginData> for LoginDialog {
                 password: this.password_entry.get_text().unwrap().to_string(),
             };
 
-            let c = glib::MainContext::default();
-            let clone = this.clone();
-            c.spawn_local(async move {
-                clone.handle.backend.set_login_data(data.clone()).await.unwrap();
-                if clone.handle.backend.login().await.unwrap() {
-                    clone.handle.pop(Some(data));
+            spawn!(@clone this, async move {
+                this.handle.backend.set_login_data(data.clone()).await.unwrap();
+                if this.handle.backend.login().await.unwrap() {
+                    this.handle.pop(Some(data));
                 } else {
-                    clone.widget.set_visible_child_name("content");
-                    clone.info_bar.set_revealed(true);
+                    this.widget.set_visible_child_name("content");
+                    this.info_bar.set_revealed(true);
                 }
             });
         }));
 
         register_button.connect_clicked(clone!(@weak this => move |_| {
-            let context = glib::MainContext::default();
-            let clone = this.clone();
-            context.spawn_local(async move {
-                if let Some(data) = push!(clone.handle, RegisterDialog).await {
-                    clone.handle.pop(Some(data));
+            spawn!(@clone this, async move {
+                if let Some(data) = push!(this.handle, RegisterDialog).await {
+                    this.handle.pop(Some(data));
                 }
             });
         }));
