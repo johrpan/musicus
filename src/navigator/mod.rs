@@ -37,7 +37,9 @@ impl<O> NavigationHandle<O> {
     pub async fn push<I, R, S: Screen<I, R> + 'static>(&self, input: I) -> Option<R> {
         let navigator = self.unwrap_navigator();
         let receiver = navigator.push::<I, R, S>(input);
-        receiver.await.expect("The sender to send the result of a screen was dropped.")
+
+        // If the sender is dropped, return None.
+        receiver.await.unwrap_or(None)
     }
 
     /// Go back to the previous screen optionally returning something.
@@ -137,7 +139,8 @@ impl Navigator {
             self.clear_old_widgets();
         }
 
-        receiver.await.expect("The sender to send the result of a screen was dropped.")
+        // We ignore the case, if a sender is dropped.
+        receiver.await.unwrap_or(None)
     }
 
 
