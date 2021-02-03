@@ -1,5 +1,4 @@
-use super::{Backend, BackendState};
-use crate::database::DbThread;
+use super::{Backend, BackendState, DbThread};
 use crate::player::Player;
 use anyhow::Result;
 use gio::prelude::*;

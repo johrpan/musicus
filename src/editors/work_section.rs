@@ -1,4 +1,4 @@
-use crate::database::*;
+use crate::backend::WorkSection;
 use crate::navigator::{NavigationHandle, Screen};
 use crate::widgets::Widget;
 use glib::clone;

@@ -1,6 +1,5 @@
 use super::*;
-use crate::backend::Backend;
-use crate::database::*;
+use crate::backend::{Backend, Person, Ensemble};
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;

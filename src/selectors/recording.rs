@@ -1,6 +1,5 @@
 use super::selector::Selector;
-use crate::backend::Backend;
-use crate::database::{Person, Work, Recording};
+use crate::backend::{Backend, Person, Work, Recording};
 use crate::editors::{PersonEditor, WorkEditor, RecordingEditor};
 use crate::navigator::{NavigationHandle, Screen};
 use crate::widgets::Widget;

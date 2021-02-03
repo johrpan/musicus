@@ -1,5 +1,4 @@
-use crate::backend::Backend;
-use crate::database::{Recording, TrackSet};
+use crate::backend::{Backend, Recording, TrackSet};
 use crate::editors::RecordingEditor;
 use crate::navigator::{NavigatorWindow, NavigationHandle, Screen};
 use crate::player::PlaylistItem;

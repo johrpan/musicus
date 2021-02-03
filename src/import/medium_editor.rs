@@ -1,7 +1,7 @@
 use super::source::Source;
 use super::track_set_editor::{TrackSetData, TrackSetEditor};
-use crate::database::{generate_id, Medium, Track, TrackSet};
-use crate::backend::Backend;
+use crate::backend::generate_id;
+use crate::backend::{Backend, Medium, Track, TrackSet};
 use crate::navigator::{NavigationHandle, Screen};
 use crate::widgets::{List, Widget};
 use anyhow::{anyhow, Result};

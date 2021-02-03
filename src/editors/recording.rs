@@ -1,6 +1,6 @@
 use super::performance::PerformanceEditor;
-use crate::backend::Backend;
-use crate::database::*;
+use crate::backend::generate_id;
+use crate::backend::{Backend, Performance, Person, Recording, Work};
 use crate::selectors::{PersonSelector, WorkSelector};
 use crate::widgets::{List, Widget};
 use crate::navigator::{NavigationHandle, Screen};

@@ -1,4 +1,3 @@
-use crate::database::DbThread;
 use crate::player::Player;
 use anyhow::Result;
 use futures_channel::mpsc;
@@ -8,6 +7,9 @@ use std::rc::Rc;
 
 pub mod client;
 pub use client::*;
+
+pub mod database;
+pub use database::*;
 
 pub mod library;
 pub use library::*;

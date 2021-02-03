@@ -1,4 +1,4 @@
-use crate::database::Recording;
+use crate::backend::Recording;
 use crate::navigator::{NavigationHandle, Screen};
 use crate::widgets::Widget;
 use glib::clone;

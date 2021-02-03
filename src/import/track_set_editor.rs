@@ -1,8 +1,7 @@
 use super::source::Source;
 use super::track_editor::TrackEditor;
 use super::track_selector::TrackSelector;
-use crate::backend::Backend;
-use crate::database::Recording;
+use crate::backend::{Backend, Recording};
 use crate::navigator::{NavigationHandle, Screen};
 use crate::selectors::{PersonSelector, RecordingSelector};
 use crate::widgets::{List, Widget};

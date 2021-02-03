@@ -1,6 +1,5 @@
 use super::selector::Selector;
-use crate::backend::Backend;
-use crate::database::Instrument;
+use crate::backend::{Backend, Instrument};
 use crate::editors::InstrumentEditor;
 use crate::navigator::{NavigationHandle, Screen};
 use crate::widgets::Widget;

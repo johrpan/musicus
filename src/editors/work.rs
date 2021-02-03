@@ -1,6 +1,7 @@
 use super::work_part::WorkPartEditor;
+use crate::backend::generate_id;
+use crate::backend::{Instrument, Person, Work, WorkPart, WorkSection};
 use super::work_section::WorkSectionEditor;
-use crate::database::*;
 use crate::selectors::{InstrumentSelector, PersonSelector};
 use crate::navigator::{NavigationHandle, Screen};
 use crate::widgets::{List, Widget};

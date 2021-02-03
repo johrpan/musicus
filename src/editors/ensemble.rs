@@ -1,6 +1,5 @@
-use crate::backend::Backend;
-use crate::database::generate_id;
-use crate::database::Ensemble;
+use crate::backend::generate_id;
+use crate::backend::{Backend, Ensemble};
 use crate::navigator::{NavigationHandle, Screen};
 use crate::widgets::{Editor, EntryRow, Section, UploadSection, Widget};
 use anyhow::Result;

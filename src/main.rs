@@ -16,7 +16,6 @@ mod macros;
 
 mod backend;
 mod config;
-mod database;
 mod editors;
 mod import;
 mod navigator;

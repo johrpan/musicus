@@ -1,4 +1,4 @@
-use crate::database::*;
+use crate::backend::{Person, WorkPart};
 use crate::selectors::PersonSelector;
 use crate::navigator::{NavigationHandle, Screen};
 use crate::widgets::Widget;

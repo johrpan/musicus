@@ -1,6 +1,5 @@
 use super::RecordingScreen;
-use crate::backend::Backend;
-use crate::database::{Ensemble, Recording};
+use crate::backend::{Backend, Ensemble, Recording};
 use crate::editors::EnsembleEditor;
 use crate::navigator::{NavigatorWindow, NavigationHandle, Screen};
 use crate::widgets;

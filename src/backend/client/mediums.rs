@@ -1,5 +1,4 @@
-use super::Backend;
-use crate::database::Medium;
+use crate::backend::{Backend, Medium};
 use anyhow::Result;
 
 impl Backend {
