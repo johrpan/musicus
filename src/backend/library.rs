@@ -1,5 +1,4 @@
-use super::{Backend, BackendState, DbThread};
-use crate::player::Player;
+use super::{Backend, BackendState, DbThread, Player};
 use anyhow::Result;
 use gio::prelude::*;
 use std::path::PathBuf;

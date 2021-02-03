@@ -19,7 +19,6 @@ mod config;
 mod editors;
 mod import;
 mod navigator;
-mod player;
 mod preferences;
 mod screens;
 mod selectors;

@@ -1,4 +1,4 @@
-use crate::player::*;
+use crate::backend::{Player, PlaylistItem};
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;

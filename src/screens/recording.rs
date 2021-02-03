@@ -1,7 +1,6 @@
-use crate::backend::{Backend, Recording, TrackSet};
+use crate::backend::{Backend, PlaylistItem, Recording, TrackSet};
 use crate::editors::RecordingEditor;
 use crate::navigator::{NavigatorWindow, NavigationHandle, Screen};
-use crate::player::PlaylistItem;
 use crate::widgets;
 use crate::widgets::{List, Section, Widget};
 use gettextrs::gettext;

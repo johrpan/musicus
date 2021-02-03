@@ -1,4 +1,4 @@
-use crate::player::*;
+use crate::backend::{Player, PlaylistItem};
 use crate::widgets::*;
 use gettextrs::gettext;
 use glib::clone;

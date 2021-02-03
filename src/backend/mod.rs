@@ -1,4 +1,3 @@
-use crate::player::Player;
 use anyhow::Result;
 use futures_channel::mpsc;
 use std::cell::RefCell;
@@ -13,6 +12,9 @@ pub use database::*;
 
 pub mod library;
 pub use library::*;
+
+pub mod player;
+pub use player::*;
 
 mod secure;
 
