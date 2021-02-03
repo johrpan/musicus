@@ -50,6 +50,7 @@ impl Section {
         let button = gtk::ButtonBuilder::new()
             .has_frame(false)
             .valign(gtk::Align::Center)
+            .margin_top(12)
             .icon_name(icon_name)
             .build();
 
