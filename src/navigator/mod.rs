@@ -99,7 +99,7 @@ impl Navigator {
             .vexpand(true)
             .build();
 
-        widget.add_child(empty_screen);
+        widget.add_named(empty_screen, Some("empty_screen"));
 
         let this = Rc::new(Self {
             widget,
@@ -193,6 +193,8 @@ impl Navigator {
                 let widget = screen.get_widget();
                 self.widget.set_visible_child(&widget);
             } else {
+                self.widget.set_visible_child_name("empty_screen");
+
                 if let Some(cb) = &*self.back_cb.borrow() {
                     cb()
                 }

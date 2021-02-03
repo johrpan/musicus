@@ -4,7 +4,7 @@ use crate::import::SourceSelector;
 use crate::preferences::Preferences;
 use crate::screens::*;
 use crate::widgets::*;
-use crate::navigator::NavigatorWindow;
+use crate::navigator::{Navigator, NavigatorWindow};
 use futures::prelude::*;
 use gettextrs::gettext;
 use gio::prelude::*;
@@ -44,7 +44,7 @@ impl Window {
         stack.add_named(&player_screen.widget, Some("player_screen"));
 
         let poe_list = PoeList::new(backend.clone());
-        let navigator = Navigator::new(&window, &empty_screen);
+        let navigator = Navigator::new(backend.clone(), &window, &empty_screen);
         navigator.set_back_cb(clone!(@strong leaflet, @strong sidebar_box => move || {
             leaflet.set_visible_child(&sidebar_box);
         }));
@@ -178,14 +178,17 @@ impl Window {
             .poe_list
             .set_selected_cb(clone!(@strong result => move |poe| {
                 result.leaflet.set_visible_child(&result.navigator.widget);
-                match poe {
-                    PersonOrEnsemble::Person(person) => {
-                        result.navigator.clone().replace(PersonScreen::new(result.backend.clone(), person.clone()));
+                let poe = poe.to_owned();
+                spawn!(@clone result, async move {
+                    match poe {
+                        PersonOrEnsemble::Person(person) => {
+                            replace!(result.navigator, PersonScreen, person.clone()).await;
+                        }
+                        PersonOrEnsemble::Ensemble(ensemble) => {
+                            replace!(result.navigator, EnsembleScreen, ensemble.clone()).await;
+                        }
                     }
-                    PersonOrEnsemble::Ensemble(ensemble) => {
-                        result.navigator.clone().replace(EnsembleScreen::new(result.backend.clone(), ensemble.clone()));
-                    }
-                }
+                });
             }));
 
         result
