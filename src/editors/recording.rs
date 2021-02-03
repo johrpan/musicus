@@ -1,8 +1,9 @@
 use super::performance::PerformanceEditor;
 use crate::backend::Backend;
 use crate::database::*;
-use crate::selectors::{PersonSelector, WorkSelector};
-use crate::widgets::{List, Navigator, NavigatorScreen};
+use crate::selectors::PersonSelector;
+use crate::widgets::{List, Widget};
+use crate::navigator::{NavigationHandle, Screen};
 use anyhow::Result;
 use gettextrs::gettext;
 use glib::clone;
@@ -14,8 +15,8 @@ use std::rc::Rc;
 
 /// A widget for creating or editing a recording.
 pub struct RecordingEditor {
-    pub widget: gtk::Stack,
-    backend: Rc<Backend>,
+    handle: NavigationHandle<Recording>,
+    widget: gtk::Stack,
     save_button: gtk::Button,
     info_bar: gtk::InfoBar,
     work_row: libadwaita::ActionRow,
@@ -25,13 +26,11 @@ pub struct RecordingEditor {
     id: String,
     work: RefCell<Option<Work>>,
     performances: RefCell<Vec<Performance>>,
-    selected_cb: RefCell<Option<Box<dyn Fn(Recording) -> ()>>>,
-    navigator: RefCell<Option<Rc<Navigator>>>,
 }
 
-impl RecordingEditor {
+impl Screen<Option<Recording>, Recording> for RecordingEditor {
     /// Create a new recording editor widget and optionally initialize it.
-    pub fn new(backend: Rc<Backend>, recording: Option<Recording>) -> Rc<Self> {
+    fn new(recording: Option<Recording>, handle: NavigationHandle<Recording>) -> Rc<Self> {
         // Create UI
 
         let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/recording_editor.ui");
@@ -59,8 +58,8 @@ impl RecordingEditor {
         };
 
         let this = Rc::new(RecordingEditor {
+            handle,
             widget,
-            backend,
             save_button,
             info_bar,
             work_row,
@@ -70,107 +69,67 @@ impl RecordingEditor {
             id,
             work: RefCell::new(work),
             performances: RefCell::new(performances),
-            selected_cb: RefCell::new(None),
-            navigator: RefCell::new(None),
         });
 
         // Connect signals and callbacks
 
-        back_button.connect_clicked(clone!(@strong this => move |_| {
-            let navigator = this.navigator.borrow().clone();
-            if let Some(navigator) = navigator {
-                navigator.clone().pop();
-            }
+        back_button.connect_clicked(clone!(@weak this => move |_| {
+            this.handle.pop(None);
         }));
 
-        this.save_button
-            .connect_clicked(clone!(@strong this => move |_| {
-                let context = glib::MainContext::default();
-                let clone = this.clone();
-                context.spawn_local(async move {
-                    clone.widget.set_visible_child_name("loading");
-                    match clone.clone().save().await {
-                        Ok(_) => {
-                            let navigator = clone.navigator.borrow().clone();
-                            if let Some(navigator) = navigator {
-                                navigator.clone().pop();
-                            }
-                        }
-                        Err(_) => {
-                            clone.info_bar.set_revealed(true);
-                            clone.widget.set_visible_child_name("content");
-                        }
+        this.save_button.connect_clicked(clone!(@weak this => move |_| {
+            spawn!(@clone this, async move {
+                this.widget.set_visible_child_name("loading");
+                match this.save().await {
+                    Ok(recording) => {
+                        this.handle.pop(Some(recording));
                     }
-
-                });
-            }));
-
-        work_button.connect_clicked(clone!(@strong this => move |_| {
-            let navigator = this.navigator.borrow().clone();
-            if let Some(navigator) = navigator {
-                let person_selector = PersonSelector::new(this.backend.clone());
-
-                person_selector.set_selected_cb(clone!(@strong this, @strong navigator => move |person| {
-                    let work_selector = WorkSelector::new(this.backend.clone(), person.clone());
-                    
-                    work_selector.set_selected_cb(clone!(@strong this, @strong navigator => move |work| {
-                        this.work_selected(&work);
-                        this.work.replace(Some(work.clone()));
-
-                        navigator.clone().pop();
-                        navigator.clone().pop();
-                    }));
-
-                    navigator.clone().push(work_selector);
-                }));
-
-                navigator.push(person_selector);
-            }
+                    Err(_) => {
+                        this.info_bar.set_revealed(true);
+                        this.widget.set_visible_child_name("content");
+                    }
+                }
+            });
         }));
 
-        this.performance_list.set_make_widget_cb(clone!(@strong this => move |index| {
+        work_button.connect_clicked(clone!(@weak this => move |_| {
+            spawn!(@clone this, async move {
+                // TODO: We need the pushed screen to return a work here.
+            });
+        }));
+
+        this.performance_list.set_make_widget_cb(clone!(@weak this => move |index| {
             let performance = &this.performances.borrow()[index];
 
             let delete_button = gtk::Button::from_icon_name(Some("user-trash-symbolic"));
             delete_button.set_valign(gtk::Align::Center);
 
-            delete_button.connect_clicked(clone!(@strong this => move |_| {
-                    let length = {
-                        let mut performances = this.performances.borrow_mut();
-                        performances.remove(index);
-                        performances.len()
-                    };
+            delete_button.connect_clicked(clone!(@weak this => move |_| {
+                let length = {
+                    let mut performances = this.performances.borrow_mut();
+                    performances.remove(index);
+                    performances.len()
+                };
 
-                    this.performance_list.update(length);
+                this.performance_list.update(length);
             }));
 
             let edit_button = gtk::Button::from_icon_name(Some("document-edit-symbolic"));
             edit_button.set_valign(gtk::Align::Center);
 
-            edit_button.connect_clicked(clone!(@strong this => move |_| {
-                    let navigator = this.navigator.borrow().clone();
-                    if let Some(navigator) = navigator {
-                        let performance = &this.performances.borrow()[index];
+            edit_button.connect_clicked(clone!(@weak this => move |_| {
+                spawn!(@clone this, async move {
+                    let performance = &this.performances.borrow()[index];
+                    if let Some(performance) = push!(this.handle, PerformanceEditor, Some(performance.to_owned())).await {
+                        let length = {
+                            let mut performances = this.performances.borrow_mut();
+                            performances[index] = performance;
+                            performances.len()
+                        };
 
-                        let editor = PerformanceEditor::new(
-                            this.backend.clone(),
-                            Some(performance.clone()),
-                        );
-
-                        editor.set_selected_cb(clone!(@strong this, @strong navigator => move |performance| {
-                            let length = {
-                                let mut performances = this.performances.borrow_mut();
-                                performances[index] = performance;
-                                performances.len()
-                            };
-
-                            this.performance_list.update(length);
-
-                            navigator.clone().pop();
-                        }));
-
-                        navigator.push(editor);
+                        this.performance_list.update(length);
                     }
+                });
             }));
 
             let row = libadwaita::ActionRow::new();
@@ -184,11 +143,8 @@ impl RecordingEditor {
         }));
 
         add_performer_button.connect_clicked(clone!(@strong this => move |_| {
-            let navigator = this.navigator.borrow().clone();
-            if let Some(navigator) = navigator {
-                let editor = PerformanceEditor::new(this.backend.clone(), None);
-
-                editor.set_selected_cb(clone!(@strong this, @strong navigator => move |performance| {
+            spawn!(@clone this, async move {
+                if let Some(performance) = push!(this.handle, PerformanceEditor, None).await {
                     let length = {
                         let mut performances = this.performances.borrow_mut();
                         performances.push(performance);
@@ -196,12 +152,8 @@ impl RecordingEditor {
                     };
 
                     this.performance_list.update(length);
-
-                    navigator.clone().pop();
-                }));
-
-                navigator.push(editor);
-            }
+                }
+            });
         }));
 
         // Initialize
@@ -215,12 +167,9 @@ impl RecordingEditor {
 
         this
     }
+}
 
-    /// Set the closure to be called if the recording was created.
-    pub fn set_selected_cb<F: Fn(Recording) -> () + 'static>(&self, cb: F) {
-        self.selected_cb.replace(Some(Box::new(cb)));
-    }
-
+impl RecordingEditor {
     /// Update the UI according to work.    
     fn work_selected(&self, work: &Work) {
         self.work_row.set_title(Some(&gettext("Work")));
@@ -229,7 +178,7 @@ impl RecordingEditor {
     }
 
     /// Save the recording and possibly upload it to the server.
-    async fn save(self: Rc<Self>) -> Result<()> {
+    async fn save(self: &Rc<Self>) -> Result<Recording> {
         let recording = Recording {
             id: self.id.clone(),
             work: self
@@ -243,40 +192,23 @@ impl RecordingEditor {
 
         let upload = self.upload_switch.get_active();
         if upload {
-            self.backend.post_recording(&recording).await?;
+            self.handle.backend.post_recording(&recording).await?;
         }
 
-        self.backend
+        self.handle.backend
             .db()
             .update_recording(recording.clone().into())
             .await
             .unwrap();
 
-        self.backend.library_changed();
+        self.handle.backend.library_changed();
 
-        if let Some(cb) = &*self.selected_cb.borrow() {
-            cb(recording.clone());
-        }
-
-        let navigator = self.navigator.borrow().clone();
-        if let Some(navigator) = navigator {
-            navigator.clone().pop();
-        }
-
-        Ok(())
+        Ok(recording)
     }
 }
 
-impl NavigatorScreen for RecordingEditor {
-    fn attach_navigator(&self, navigator: Rc<Navigator>) {
-        self.navigator.replace(Some(navigator));
-    }
-
+impl Widget for RecordingEditor {
     fn get_widget(&self) -> gtk::Widget {
         self.widget.clone().upcast()
-    }
-
-    fn detach_navigator(&self) {
-        self.navigator.replace(None);
     }
 }

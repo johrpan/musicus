@@ -3,7 +3,8 @@ use super::{WorkScreen, RecordingScreen};
 use crate::backend::Backend;
 use crate::database::{Person, Recording, Work};
 use crate::editors::PersonEditor;
-use crate::widgets::{List, Navigator, NavigatorScreen, NavigatorWindow, Screen, Section};
+use crate::navigator::NavigatorWindow;
+use crate::widgets::{List, Navigator, NavigatorScreen, Screen, Section};
 
 use gettextrs::gettext;
 use glib::clone;
@@ -54,9 +55,10 @@ impl PersonScreen {
 
 
         this.widget.add_action(&gettext("Edit person"), clone!(@strong this => move || {
-            let editor = PersonEditor::new(this.backend.clone(), Some(this.person.clone()));
-            let window = NavigatorWindow::new(editor);
-            window.show();
+            spawn!(@clone this, async move {
+                let window = NavigatorWindow::new(this.backend.clone());
+                replace!(window.navigator, PersonEditor, None).await;
+            });
         }));
 
         this.widget.add_action(&gettext("Delete person"), clone!(@strong this => move || {

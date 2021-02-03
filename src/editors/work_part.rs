@@ -1,7 +1,7 @@
-use crate::backend::Backend;
 use crate::database::*;
 use crate::selectors::PersonSelector;
-use crate::widgets::{Navigator, NavigatorScreen};
+use crate::navigator::{NavigationHandle, Screen};
+use crate::widgets::Widget;
 use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
@@ -12,19 +12,17 @@ use std::rc::Rc;
 
 /// A dialog for creating or editing a work part.
 pub struct WorkPartEditor {
-    backend: Rc<Backend>,
+    handle: NavigationHandle<WorkPart>,
     widget: gtk::Box,
     title_entry: gtk::Entry,
     composer_row: libadwaita::ActionRow,
     reset_composer_button: gtk::Button,
     composer: RefCell<Option<Person>>,
-    ready_cb: RefCell<Option<Box<dyn Fn(WorkPart) -> ()>>>,
-    navigator: RefCell<Option<Rc<Navigator>>>,
 }
 
-impl WorkPartEditor {
+impl Screen<Option<WorkPart>, WorkPart> for WorkPartEditor {
     /// Create a new part editor and optionally initialize it.
-    pub fn new(backend: Rc<Backend>, part: Option<WorkPart>) -> Rc<Self> {
+    fn new(part: Option<WorkPart>, handle: NavigationHandle<WorkPart>) -> Rc<Self> {
         // Create UI
 
         let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/work_part_editor.ui");
@@ -46,53 +44,36 @@ impl WorkPartEditor {
         };
 
         let this = Rc::new(Self {
-            backend,
+            handle,
             widget,
             title_entry,
             composer_row,
             reset_composer_button,
             composer: RefCell::new(composer),
-            ready_cb: RefCell::new(None),
-            navigator: RefCell::new(None),
         });
 
         // Connect signals and callbacks
 
-        back_button.connect_clicked(clone!(@strong this => move |_| {
-            let navigator = this.navigator.borrow().clone();
-            if let Some(navigator) = navigator {
-                navigator.pop();
-            }
+        back_button.connect_clicked(clone!(@weak this => move |_| {
+            this.handle.pop(None);
         }));
 
-        save_button.connect_clicked(clone!(@strong this => move |_| {
-            if let Some(cb) = &*this.ready_cb.borrow() {
-                cb(WorkPart {
-                    title: this.title_entry.get_text().unwrap().to_string(),
-                    composer: this.composer.borrow().clone(),
-                });
-            }
+        save_button.connect_clicked(clone!(@weak this => move |_| {
+            let part = WorkPart {
+                title: this.title_entry.get_text().unwrap().to_string(),
+                composer: this.composer.borrow().clone(),
+            };
 
-            let navigator = this.navigator.borrow().clone();
-            if let Some(navigator) = navigator {
-                navigator.pop();
-            }
+            this.handle.pop(Some(part));
         }));
 
         composer_button.connect_clicked(clone!(@strong this => move |_| {
-            let navigator = this.navigator.borrow().clone();
-            if let Some(navigator) = navigator {
-                let selector = PersonSelector::new(this.backend.clone());
-
-                selector.set_selected_cb(clone!(@strong this, @strong navigator => move |person| {
-                    this.show_composer(Some(person));
-                    this.composer.replace(Some(person.clone()));
-                    navigator.clone().pop();
-                }));
-
-                navigator.push(selector);
-            }
-
+            spawn!(@clone this, async move {
+                if let Some(person) = push!(this.handle, PersonSelector).await {
+                    this.show_composer(Some(&person));
+                    this.composer.replace(Some(person.to_owned()));
+                }
+            });
         }));
 
         this.reset_composer_button
@@ -109,12 +90,9 @@ impl WorkPartEditor {
 
         this
     }
+}
 
-    /// Set the closure to be called when the user wants to save the part.
-    pub fn set_ready_cb<F: Fn(WorkPart) -> () + 'static>(&self, cb: F) {
-        self.ready_cb.replace(Some(Box::new(cb)));
-    }
-
+impl WorkPartEditor {
     /// Update the UI according to person.
     fn show_composer(&self, person: Option<&Person>) {
         if let Some(person) = person {
@@ -129,16 +107,8 @@ impl WorkPartEditor {
     }
 }
 
-impl NavigatorScreen for WorkPartEditor {
-    fn attach_navigator(&self, navigator: Rc<Navigator>) {
-        self.navigator.replace(Some(navigator));
-    }
-
+impl Widget for WorkPartEditor {
     fn get_widget(&self) -> gtk::Widget {
         self.widget.clone().upcast()
-    }
-
-    fn detach_navigator(&self) {
-        self.navigator.replace(None);
     }
 }

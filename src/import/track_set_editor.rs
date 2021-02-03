@@ -3,8 +3,9 @@ use super::track_editor::TrackEditor;
 use super::track_selector::TrackSelector;
 use crate::backend::Backend;
 use crate::database::Recording;
-use crate::selectors::{PersonSelector, RecordingSelector, WorkSelector};
-use crate::widgets::{List, Navigator, NavigatorScreen};
+use crate::navigator::{NavigationHandle, Screen};
+use crate::selectors::PersonSelector;
+use crate::widgets::{List, Widget};
 use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
@@ -32,7 +33,7 @@ pub struct TrackData {
 
 /// A screen for editing a set of tracks for one recording.
 pub struct TrackSetEditor {
-    backend: Rc<Backend>,
+    handle: NavigationHandle<TrackSetData>,
     source: Rc<Box<dyn Source>>,
     widget: gtk::Box,
     save_button: gtk::Button,
@@ -40,13 +41,11 @@ pub struct TrackSetEditor {
     track_list: Rc<List>,
     recording: RefCell<Option<Recording>>,
     tracks: RefCell<Vec<TrackData>>,
-    done_cb: RefCell<Option<Box<dyn Fn(TrackSetData)>>>,
-    navigator: RefCell<Option<Rc<Navigator>>>,
 }
 
-impl TrackSetEditor {
+impl Screen<Rc<Box<dyn Source>>, TrackSetData> for TrackSetEditor {
     /// Create a new track set editor.
-    pub fn new(backend: Rc<Backend>, source: Rc<Box<dyn Source>>) -> Rc<Self> {
+    fn new(source: Rc<Box<dyn Source>>, handle: NavigationHandle<TrackSetData>) -> Rc<Self> {
         // Create UI
 
         let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/track_set_editor.ui");
@@ -63,7 +62,7 @@ impl TrackSetEditor {
         tracks_frame.set_child(Some(&track_list.widget));
 
         let this = Rc::new(Self {
-            backend,
+            handle,
             source,
             widget,
             save_button,
@@ -71,71 +70,30 @@ impl TrackSetEditor {
             track_list,
             recording: RefCell::new(None),
             tracks: RefCell::new(Vec::new()),
-            done_cb: RefCell::new(None),
-            navigator: RefCell::new(None),
         });
 
         // Connect signals and callbacks
 
-        back_button.connect_clicked(clone!(@strong this => move |_| {
-            let navigator = this.navigator.borrow().clone();
-            if let Some(navigator) = navigator {
-                navigator.pop();
-            }
+        back_button.connect_clicked(clone!(@weak this => move |_| {
+            this.handle.pop(None);
         }));
 
-        this.save_button.connect_clicked(clone!(@strong this => move |_| {
-            if let Some(cb) = &*this.done_cb.borrow() {
-                let data = TrackSetData {
-                    recording: this.recording.borrow().clone().unwrap(),
-                    tracks: this.tracks.borrow().clone(),
-                };
+        this.save_button.connect_clicked(clone!(@weak this => move |_| {
+            let data = TrackSetData {
+                recording: this.recording.borrow().clone().unwrap(),
+                tracks: this.tracks.borrow().clone(),
+            };
 
-                cb(data);
-            }
-
-            let navigator = this.navigator.borrow().clone();
-            if let Some(navigator) = navigator {
-                navigator.pop();
-            }
+            this.handle.pop(Some(data));
         }));
 
-        select_recording_button.connect_clicked(clone!(@strong this => move |_| {
-            let navigator = this.navigator.borrow().clone();
-            if let Some(navigator) = navigator {
-                let person_selector = PersonSelector::new(this.backend.clone());
-
-                person_selector.set_selected_cb(clone!(@strong this, @strong navigator => move |person| {
-                    let work_selector = WorkSelector::new(this.backend.clone(), person.clone());
-
-                    work_selector.set_selected_cb(clone!(@strong this, @strong navigator => move |work| {
-                        let recording_selector = RecordingSelector::new(this.backend.clone(), work.clone());
-
-                        recording_selector.set_selected_cb(clone!(@strong this, @strong navigator => move |recording| {
-                            this.recording.replace(Some(recording.clone()));
-                            this.recording_selected();
-
-                            navigator.clone().pop();
-                            navigator.clone().pop();
-                            navigator.clone().pop();
-                        }));
-
-                        navigator.clone().push(recording_selector);
-                    }));
-
-                    navigator.clone().push(work_selector);
-                }));
-
-                navigator.clone().push(person_selector);
-            }
+        select_recording_button.connect_clicked(clone!(@weak this => move |_| {
+            // TODO: We need to push a screen returning a recording here.
         }));
 
-        edit_tracks_button.connect_clicked(clone!(@strong this => move |_| {
-            let navigator = this.navigator.borrow().clone();
-            if let Some(navigator) = navigator {
-                let selector = TrackSelector::new(Rc::clone(&this.source));
-
-                selector.set_selected_cb(clone!(@strong this => move |selection| {
+        edit_tracks_button.connect_clicked(clone!(@weak this => move |_| {
+            spawn!(@clone this, async move {
+                if let Some(selection) = push!(this.handle, TrackSelector, Rc::clone(&this.source)).await {
                     let mut tracks = Vec::new();
 
                     for index in selection {
@@ -151,13 +109,11 @@ impl TrackSetEditor {
                     this.tracks.replace(tracks);
                     this.track_list.update(length);
                     this.autofill_parts();
-                }));
-
-                navigator.push(selector);
-            }
+                }
+            });
         }));
 
-        this.track_list.set_make_widget_cb(clone!(@strong this => move |index| {
+        this.track_list.set_make_widget_cb(clone!(@weak this => move |index| {
             let track = &this.tracks.borrow()[index];
 
             let mut title_parts = Vec::<String>::new();
@@ -190,26 +146,21 @@ impl TrackSetEditor {
             row.add_suffix(&edit_button);
             row.set_activatable_widget(Some(&edit_button));
 
-            edit_button.connect_clicked(clone!(@strong this => move |_| {
+            edit_button.connect_clicked(clone!(@weak this => move |_| {
                 let recording = this.recording.borrow().clone();
-                let navigator = this.navigator.borrow().clone();
+                if let Some(recording) = recording {
+                    spawn!(@clone this, async move {
+                        let track = &this.tracks.borrow()[index];
+                        if let Some(selection) = push!(this.handle, TrackEditor, (recording, track.work_parts.clone())).await {
+                            {
+                                let mut tracks = this.tracks.borrow_mut();
+                                let mut track = &mut tracks[index];
+                                track.work_parts = selection;
+                            };
 
-                if let (Some(recording), Some(navigator)) = (recording, navigator) {
-                    let track = &this.tracks.borrow()[index];
-
-                    let editor = TrackEditor::new(recording, track.work_parts.clone());
-
-                    editor.set_selected_cb(clone!(@strong this => move |selection| {
-                        {
-                            let mut tracks = this.tracks.borrow_mut();
-                            let mut track = &mut tracks[index];
-                            track.work_parts = selection;
-                        };
-
-                        this.update_tracks();
-                    }));
-
-                    navigator.push(editor);
+                            this.update_tracks();
+                        }
+                    });
                 }
             }));
 
@@ -218,12 +169,9 @@ impl TrackSetEditor {
 
         this
     }
+}
 
-    /// Set the closure to be called when the user has created the track set.
-    pub fn set_done_cb<F: Fn(TrackSetData) + 'static>(&self, cb: F) {
-        self.done_cb.replace(Some(Box::new(cb)));
-    }
-
+impl TrackSetEditor {
     /// Set everything up after selecting a recording.
     fn recording_selected(&self) {
         if let Some(recording) = &*self.recording.borrow() {
@@ -260,21 +208,9 @@ impl TrackSetEditor {
     }
 }
 
-impl NavigatorScreen for TrackSetEditor {
-    fn attach_navigator(&self, navigator: Rc<Navigator>) {
-        self.navigator.replace(Some(navigator));
-    }
-
+impl Widget for TrackSetEditor {
     fn get_widget(&self) -> gtk::Widget {
         self.widget.clone().upcast()
     }
-
-    fn detach_navigator(&self) {
-        self.navigator.replace(None);
-    }
 }
-
-
-
-
 

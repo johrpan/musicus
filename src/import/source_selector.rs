@@ -3,7 +3,8 @@ use super::disc_source::DiscSource;
 use super::folder_source::FolderSource;
 use super::source::Source;
 use crate::backend::Backend;
-use crate::widgets::{Navigator, NavigatorScreen};
+use crate::navigator::{NavigationHandle, Screen};
+use crate::widgets::Widget;
 use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
@@ -14,16 +15,15 @@ use std::rc::Rc;
 
 /// A dialog for starting to import music.
 pub struct SourceSelector {
-    backend: Rc<Backend>,
+    handle: NavigationHandle<()>,
     widget: gtk::Box,
     stack: gtk::Stack,
     info_bar: gtk::InfoBar,
-    navigator: RefCell<Option<Rc<Navigator>>>,
 }
 
-impl SourceSelector {
+impl Screen<(), ()> for SourceSelector {
     /// Create a new source selector.
-    pub fn new(backend: Rc<Backend>) -> Rc<Self> {
+    fn new(_: (), handle: NavigationHandle<()>) -> Rc<Self> {
         // Create UI
 
         let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/source_selector.ui");
@@ -36,60 +36,47 @@ impl SourceSelector {
         get_widget!(builder, gtk::Button, disc_button);
 
         let this = Rc::new(Self {
-            backend,
+            handle,
             widget,
             stack,
             info_bar,
-            navigator: RefCell::new(None),
         });
 
         // Connect signals and callbacks
 
-        back_button.connect_clicked(clone!(@strong this => move |_| {
-            let navigator = this.navigator.borrow().clone();
-            if let Some(navigator) = navigator {
-                navigator.pop();
-            }
+        back_button.connect_clicked(clone!(@weak this => move |_| {
+            this.handle.pop(None);
         }));
 
-        folder_button.connect_clicked(clone!(@strong this => move |_| {
-            let window = this.navigator.borrow().clone().unwrap().window.clone();
+        folder_button.connect_clicked(clone!(@weak this => move |_| {
             let dialog = gtk::FileChooserDialog::new(
                 Some(&gettext("Select folder")),
-                Some(&window),
+                Some(&this.handle.window),
                 gtk::FileChooserAction::SelectFolder,
                 &[
                     (&gettext("Cancel"), gtk::ResponseType::Cancel),
                     (&gettext("Select"), gtk::ResponseType::Accept),
                 ]);
 
-            dialog.connect_response(clone!(@strong this => move |dialog, response| {
+            dialog.connect_response(clone!(@weak this => move |dialog, response| {
                 this.stack.set_visible_child_name("loading");
                 dialog.hide();
 
                 if let gtk::ResponseType::Accept = response {
                     if let Some(file) = dialog.get_file() {
                         if let Some(path) = file.get_path() {
-                            let context = glib::MainContext::default();
-                            let clone = this.clone();
-                            context.spawn_local(async move {
+                            spawn!(@clone this, async move {
                                 let folder = FolderSource::new(PathBuf::from(path));
                                 match folder.load().await {
                                     Ok(_) => {
-                                        let navigator = clone.navigator.borrow().clone();
-                                        if let Some(navigator) = navigator {
-                                            let source = Rc::new(Box::new(folder) as Box<dyn Source>);
-                                            let editor = MediumEditor::new(clone.backend.clone(), source);
-                                            navigator.push(editor);
-                                        }
-
-                                        clone.info_bar.set_revealed(false);
-                                        clone.stack.set_visible_child_name("start");
+                                        let source = Rc::new(Box::new(folder) as Box<dyn Source>);
+                                        push!(this.handle, MediumEditor, source).await;
+                                        this.handle.pop(Some(()));
                                     }
                                     Err(_) => {
                                         // TODO: Present error.
-                                        clone.info_bar.set_revealed(true);
-                                        clone.stack.set_visible_child_name("start");
+                                        this.info_bar.set_revealed(true);
+                                        this.stack.set_visible_child_name("start");
                                     }
                                 }
                             });
@@ -101,29 +88,21 @@ impl SourceSelector {
             dialog.show();
         }));
 
-        disc_button.connect_clicked(clone!(@strong this => move |_| {
+        disc_button.connect_clicked(clone!(@weak this => move |_| {
             this.stack.set_visible_child_name("loading");
 
-            let context = glib::MainContext::default();
-            let clone = this.clone();
-            context.spawn_local(async move {
+            spawn!(@clone this, async move {
                 let disc = DiscSource::new().unwrap();
                 match disc.load().await {
                     Ok(_) => {
-                        let navigator = clone.navigator.borrow().clone();
-                        if let Some(navigator) = navigator {
-                            let source = Rc::new(Box::new(disc) as Box<dyn Source>);
-                            let editor = MediumEditor::new(clone.backend.clone(), source);
-                            navigator.push(editor);
-                        }
-
-                        clone.info_bar.set_revealed(false);
-                        clone.stack.set_visible_child_name("start");
+                        let source = Rc::new(Box::new(disc) as Box<dyn Source>);
+                        push!(this.handle, MediumEditor, source).await;
+                        this.handle.pop(Some(()));
                     }
                     Err(_) => {
                         // TODO: Present error.
-                        clone.info_bar.set_revealed(true);
-                        clone.stack.set_visible_child_name("start");
+                        this.info_bar.set_revealed(true);
+                        this.stack.set_visible_child_name("start");
                     }
                 }
             });
@@ -133,16 +112,8 @@ impl SourceSelector {
     }
 }
 
-impl NavigatorScreen for SourceSelector {
-    fn attach_navigator(&self, navigator: Rc<Navigator>) {
-        self.navigator.replace(Some(navigator));
-    }
-
+impl Widget for SourceSelector {
     fn get_widget(&self) -> gtk::Widget {
         self.widget.clone().upcast()
-    }
-
-    fn detach_navigator(&self) {
-        self.navigator.replace(None);
     }
 }

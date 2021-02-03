@@ -3,7 +3,8 @@ use super::RecordingScreen;
 use crate::backend::Backend;
 use crate::database::{Ensemble, Recording};
 use crate::editors::EnsembleEditor;
-use crate::widgets::{List, Navigator, NavigatorScreen, NavigatorWindow, Screen, Section};
+use crate::navigator::NavigatorWindow;
+use crate::widgets::{List, Navigator, NavigatorScreen, Screen, Section};
 
 use gettextrs::gettext;
 use glib::clone;
@@ -49,9 +50,10 @@ impl EnsembleScreen {
 
 
         this.widget.add_action(&gettext("Edit ensemble"), clone!(@strong this => move || {
-            let editor = EnsembleEditor::new(this.backend.clone(), Some(this.ensemble.clone()));
-            let window = NavigatorWindow::new(editor);
-            window.show();
+            spawn!(@clone this, async move {
+                let window = NavigatorWindow::new(this.backend.clone());
+                replace!(window.navigator, EnsembleEditor, None).await;
+            });
         }));
 
         this.widget.add_action(&gettext("Delete ensemble"), clone!(@strong this => move || {

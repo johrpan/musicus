@@ -2,7 +2,8 @@ use super::source::Source;
 use super::track_set_editor::{TrackSetData, TrackSetEditor};
 use crate::database::{generate_id, Medium, Track, TrackSet};
 use crate::backend::Backend;
-use crate::widgets::{List, Navigator, NavigatorScreen};
+use crate::navigator::{NavigationHandle, Screen};
+use crate::widgets::{List, Widget};
 use anyhow::{anyhow, Result};
 use glib::clone;
 use glib::prelude::*;
@@ -14,7 +15,7 @@ use std::rc::Rc;
 
 /// A dialog for editing metadata while importing music into the music library.
 pub struct MediumEditor {
-    backend: Rc<Backend>,
+    handle: NavigationHandle<()>,
     source: Rc<Box<dyn Source>>,
     widget: gtk::Stack,
     done_button: gtk::Button,
@@ -24,12 +25,11 @@ pub struct MediumEditor {
     publish_switch: gtk::Switch,
     track_set_list: Rc<List>,
     track_sets: RefCell<Vec<TrackSetData>>,
-    navigator: RefCell<Option<Rc<Navigator>>>,
 }
 
-impl MediumEditor {
+impl Screen<Rc<Box<dyn Source>>, ()> for MediumEditor {
     /// Create a new medium editor.
-    pub fn new(backend: Rc<Backend>, source: Rc<Box<dyn Source>>) -> Rc<Self> {
+    fn new(source: Rc<Box<dyn Source>>, handle: NavigationHandle<()>) -> Rc<Self> {
         // Create UI
 
         let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/medium_editor.ui");
@@ -48,7 +48,7 @@ impl MediumEditor {
         frame.set_child(Some(&list.widget));
 
         let this = Rc::new(Self {
-            backend,
+            handle,
             source,
             widget,
             done_button,
@@ -58,40 +58,30 @@ impl MediumEditor {
             publish_switch,
             track_set_list: list,
             track_sets: RefCell::new(Vec::new()),
-            navigator: RefCell::new(None),
         });
 
         // Connect signals and callbacks
 
-        back_button.connect_clicked(clone!(@strong this => move |_| {
-            let navigator = this.navigator.borrow().clone();
-            if let Some(navigator) = navigator {
-                navigator.pop();
-            }
+        back_button.connect_clicked(clone!(@weak this => move |_| {
+            this.handle.pop(None);
         }));
 
-        this.done_button.connect_clicked(clone!(@strong this => move |_| {
-            let context = glib::MainContext::default();
-            let clone = this.clone();
-            context.spawn_local(async move {
-                clone.widget.set_visible_child_name("loading");
-                match clone.clone().save().await {
+        this.done_button.connect_clicked(clone!(@weak this => move |_| {
+            this.widget.set_visible_child_name("loading");
+            spawn!(@clone this, async move {
+                match this.save().await {
                     Ok(_) => (),
                     Err(err) => {
+                        // TODO: Display errors.
                         println!("{:?}", err);
-                        // clone.info_bar.set_revealed(true);
                     }
                 }
-
             });
         }));
 
-        add_button.connect_clicked(clone!(@strong this => move |_| {
-            let navigator = this.navigator.borrow().clone();
-            if let Some(navigator) = navigator {
-                let editor = TrackSetEditor::new(this.backend.clone(), Rc::clone(&this.source));
-
-                editor.set_done_cb(clone!(@strong this => move |track_set| {
+        add_button.connect_clicked(clone!(@weak this => move |_| {
+            spawn!(@clone this, async move {
+                if let Some(track_set) = push!(this.handle, TrackSetEditor, Rc::clone(&this.source)).await {
                     let length = {
                         let mut track_sets = this.track_sets.borrow_mut();
                         track_sets.push(track_set);
@@ -99,13 +89,11 @@ impl MediumEditor {
                     };
 
                     this.track_set_list.update(length);
-                }));
-
-                navigator.push(editor);
-            }
+                }
+            });
         }));
 
-        this.track_set_list.set_make_widget_cb(clone!(@strong this => move |index| {
+        this.track_set_list.set_make_widget_cb(clone!(@weak this => move |index| {
             let track_set = &this.track_sets.borrow()[index];
 
             let title = track_set.recording.work.get_title();
@@ -124,39 +112,38 @@ impl MediumEditor {
             row.add_suffix(&edit_button);
             row.set_activatable_widget(Some(&edit_button));
 
-            edit_button.connect_clicked(clone!(@strong this => move |_| {
-
+            edit_button.connect_clicked(clone!(@weak this => move |_| {
+                // TODO: Implement editing.
             }));
 
             row.upcast()
         }));
 
-        // Copy the source in the background.
-        let context = glib::MainContext::default();
-        let clone = this.clone();
-        context.spawn_local(async move {
-            match clone.source.copy().await {
+        spawn!(@clone this, async move {
+            match this.source.copy().await {
                 Err(error) => {
                     // TODO: Present error.
                     println!("Failed to copy source: {}", error);
                 },
                 Ok(_) => {
-                    clone.done_stack.set_visible_child(&clone.done);
-                    clone.done_button.set_sensitive(true);
+                    this.done_stack.set_visible_child(&this.done);
+                    this.done_button.set_sensitive(true);
                 }
             }
         });
 
         this
     }
+}
 
+impl MediumEditor {
     /// Save the medium and possibly upload it to the server.
-    async fn save(self: Rc<Self>) -> Result<()> {
+    async fn save(&self) -> Result<()> {
         let name = self.name_entry.get_text().unwrap().to_string();
 
         // Create a new directory in the music library path for the imported medium.
 
-        let mut path = self.backend.get_music_library_path().unwrap().clone();
+        let mut path = self.handle.backend.get_music_library_path().unwrap().clone();
         path.push(&name);
         std::fs::create_dir(&path)?;
 
@@ -205,35 +192,22 @@ impl MediumEditor {
 
         let upload = self.publish_switch.get_active();
         if upload {
-            self.backend.post_medium(&medium).await?;
+            self.handle.backend.post_medium(&medium).await?;
         }
 
-        self.backend
+        self.handle.backend
             .db()
             .update_medium(medium.clone())
             .await?;
 
-        self.backend.library_changed();
-
-        let navigator = self.navigator.borrow().clone();
-        if let Some(navigator) = navigator {
-            navigator.clone().pop();
-        }
+        self.handle.backend.library_changed();
 
         Ok(())
     }
 }
 
-impl NavigatorScreen for MediumEditor {
-    fn attach_navigator(&self, navigator: Rc<Navigator>) {
-        self.navigator.replace(Some(navigator));
-    }
-
+impl Widget for MediumEditor {
     fn get_widget(&self) -> gtk::Widget {
         self.widget.clone().upcast()
-    }
-
-    fn detach_navigator(&self) {
-        self.navigator.replace(None);
     }
 }

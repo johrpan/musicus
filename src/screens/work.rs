@@ -3,7 +3,8 @@ use super::RecordingScreen;
 use crate::backend::Backend;
 use crate::database::{Work, Recording};
 use crate::editors::WorkEditor;
-use crate::widgets::{List, Navigator, NavigatorScreen, NavigatorWindow, Screen, Section};
+use crate::navigator::NavigatorWindow;
+use crate::widgets::{List, Navigator, NavigatorScreen, Screen, Section};
 
 use gettextrs::gettext;
 use glib::clone;
@@ -50,9 +51,10 @@ impl WorkScreen {
 
 
         this.widget.add_action(&gettext("Edit work"), clone!(@strong this => move || {
-            let editor = WorkEditor::new(this.backend.clone(), Some(this.work.clone()));
-            let window = NavigatorWindow::new(editor);
-            window.show();
+            spawn!(@clone this, async move {
+                let window = NavigatorWindow::new(this.backend.clone());
+                replace!(window.navigator, WorkEditor, None).await;
+            });
         }));
 
         this.widget.add_action(&gettext("Delete work"), clone!(@strong this => move || {

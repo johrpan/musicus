@@ -1,7 +1,8 @@
 use crate::backend::Backend;
 use crate::database::generate_id;
 use crate::database::Person;
-use crate::widgets::{Editor, EntryRow, Navigator, NavigatorScreen, Section, UploadSection};
+use crate::navigator::{NavigationHandle, Screen};
+use crate::widgets::{Editor, EntryRow, Section, UploadSection, Widget};
 use anyhow::Result;
 use gettextrs::gettext;
 use glib::clone;
@@ -11,7 +12,7 @@ use std::rc::Rc;
 
 /// A dialog for creating or editing a person.
 pub struct PersonEditor {
-    backend: Rc<Backend>,
+    handle: NavigationHandle<Person>,
 
     /// The ID of the person that is edited or a newly generated one.
     id: String,
@@ -20,13 +21,11 @@ pub struct PersonEditor {
     first_name: EntryRow,
     last_name: EntryRow,
     upload: UploadSection,
-    saved_cb: RefCell<Option<Box<dyn Fn(Person) -> ()>>>,
-    navigator: RefCell<Option<Rc<Navigator>>>,
 }
 
-impl PersonEditor {
+impl Screen<Option<Person>, Person> for PersonEditor {
     /// Create a new person editor and optionally initialize it.
-    pub fn new(backend: Rc<Backend>, person: Option<Person>) -> Rc<Self> {
+    fn new(person: Option<Person>, handle: NavigationHandle<Person>) -> Rc<Self> {
         let editor = Editor::new();
         editor.set_title("Person");
 
@@ -57,56 +56,42 @@ impl PersonEditor {
         };
 
         let this = Rc::new(Self {
-            backend,
+            handle,
             id,
             editor,
             first_name,
             last_name,
             upload,
-            saved_cb: RefCell::new(None),
-            navigator: RefCell::new(None),
         });
 
         // Connect signals and callbacks
 
-        this.editor.set_back_cb(clone!(@strong this => move || {
-            let navigator = this.navigator.borrow().clone();
-            if let Some(navigator) = navigator {
-                navigator.pop();
-            }
+        this.editor.set_back_cb(clone!(@weak this => move || {
+            this.handle.pop(None);
         }));
 
         this.editor.set_save_cb(clone!(@strong this => move || {
-            let context = glib::MainContext::default();
-            let clone = this.clone();
-            context.spawn_local(async move {
-                clone.editor.loading();
-                match clone.clone().save().await {
-                    Ok(_) => {
-                        let navigator = clone.navigator.borrow().clone();
-                        if let Some(navigator) = navigator {
-                            navigator.pop();
-                        }
+            spawn!(@clone this, async move {
+                this.editor.loading();
+                match this.save().await {
+                    Ok(person) => {
+                        this.handle.pop(Some(person));
                     }
                     Err(err) => {
                         let description = gettext!("Cause: {}", err);
-                        clone.editor.error(&gettext("Failed to save person!"), &description);
+                        this.editor.error(&gettext("Failed to save person!"), &description);
                     }
                 }
-
             });
         }));
 
         this
     }
+}
 
-    /// Set the closure to be called if the person was saved.
-    pub fn set_saved_cb<F: Fn(Person) -> () + 'static>(&self, cb: F) {
-        self.saved_cb.replace(Some(Box::new(cb)));
-    }
-
+impl PersonEditor {
     /// Save the person and possibly upload it to the server.
-    async fn save(self: Rc<Self>) -> Result<()> {
+    async fn save(self: &Rc<Self>) -> Result<Person> {
         let first_name = self.first_name.get_text();
         let last_name = self.last_name.get_text();
 
@@ -117,31 +102,19 @@ impl PersonEditor {
         };
 
         if self.upload.get_active() {
-            self.backend.post_person(&person).await?;
+            self.handle.backend.post_person(&person).await?;
         }
 
-        self.backend.db().update_person(person.clone()).await?;
-        self.backend.library_changed();
+        self.handle.backend.db().update_person(person.clone()).await?;
+        self.handle.backend.library_changed();
 
-        if let Some(cb) = &*self.saved_cb.borrow() {
-            cb(person.clone());
-        }
-
-        Ok(())
+        Ok(person)
     }
 }
 
-impl NavigatorScreen for PersonEditor {
-    fn attach_navigator(&self, navigator: Rc<Navigator>) {
-        self.navigator.replace(Some(navigator));
-    }
-
+impl Widget for PersonEditor {
     fn get_widget(&self) -> gtk::Widget {
         self.editor.widget.clone().upcast()
-    }
-
-    fn detach_navigator(&self) {
-        self.navigator.replace(None);
     }
 }
 

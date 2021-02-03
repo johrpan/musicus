@@ -1,7 +1,8 @@
 use crate::backend::Backend;
 use crate::database::Recording;
 use crate::editors::RecordingEditor;
-use crate::widgets::{List, Navigator, NavigatorScreen, NavigatorWindow, Screen, Section};
+use crate::navigator::NavigatorWindow;
+use crate::widgets::{List, Navigator, NavigatorScreen, Screen, Section};
 
 use gettextrs::gettext;
 use glib::clone;
@@ -48,9 +49,10 @@ impl RecordingScreen {
 
 
         this.widget.add_action(&gettext("Edit recording"), clone!(@strong this => move || {
-            let editor = RecordingEditor::new(this.backend.clone(), Some(this.recording.clone()));
-            let window = NavigatorWindow::new(editor);
-            window.show();
+            spawn!(@clone this, async move {
+                let window = NavigatorWindow::new(this.backend.clone());
+                replace!(window.navigator, RecordingEditor, None).await;
+            });
         }));
 
         this.widget.add_action(&gettext("Delete recording"), clone!(@strong this => move || {

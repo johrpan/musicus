@@ -1,5 +1,6 @@
 use super::source::Source;
-use crate::widgets::{Navigator, NavigatorScreen};
+use crate::navigator::{NavigationHandle, Screen};
+use crate::widgets::Widget;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
@@ -9,17 +10,16 @@ use std::rc::Rc;
 
 /// A screen for selecting tracks from a source.
 pub struct TrackSelector {
+    handle: NavigationHandle<Vec<usize>>,
     source: Rc<Box<dyn Source>>,
     widget: gtk::Box,
     select_button: gtk::Button,
     selection: RefCell<Vec<usize>>,
-    selected_cb: RefCell<Option<Box<dyn Fn(Vec<usize>)>>>,
-    navigator: RefCell<Option<Rc<Navigator>>>,
 }
 
-impl TrackSelector {
+impl Screen<Rc<Box<dyn Source>>, Vec<usize>> for TrackSelector {
     /// Create a new track selector.
-    pub fn new(source: Rc<Box<dyn Source>>) -> Rc<Self> {
+    fn new(source: Rc<Box<dyn Source>>, handle: NavigationHandle<Vec<usize>>) -> Rc<Self> {
         // Create UI
 
         let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/track_selector.ui");
@@ -36,33 +36,22 @@ impl TrackSelector {
         tracks_frame.set_child(Some(&track_list));
 
         let this = Rc::new(Self {
+            handle,
             source,
             widget,
             select_button,
             selection: RefCell::new(Vec::new()),
-            selected_cb: RefCell::new(None),
-            navigator: RefCell::new(None),
         });
 
         // Connect signals and callbacks
 
-        back_button.connect_clicked(clone!(@strong this => move |_| {
-            let navigator = this.navigator.borrow().clone();
-            if let Some(navigator) = navigator {
-                navigator.pop();
-            }
+        back_button.connect_clicked(clone!(@weak this => move |_| {
+            this.handle.pop(None);
         }));
 
-        this.select_button.connect_clicked(clone!(@strong this => move |_| {
-            let navigator = this.navigator.borrow().clone();
-            if let Some(navigator) = navigator {
-                navigator.pop();
-            }
-
-            if let Some(cb) = &*this.selected_cb.borrow() {
-                let selection = this.selection.borrow().clone();
-                cb(selection);
-            }
+        this.select_button.connect_clicked(clone!(@weak this => move |_| {
+            let selection = this.selection.borrow().clone();
+            this.handle.pop(Some(selection));
         }));
 
         let tracks = this.source.tracks().unwrap();
@@ -70,7 +59,7 @@ impl TrackSelector {
         for (index, track) in tracks.iter().enumerate() {
             let check = gtk::CheckButton::new();
 
-            check.connect_toggled(clone!(@strong this => move |check| {
+            check.connect_toggled(clone!(@weak this => move |check| {
                 let mut selection = this.selection.borrow_mut();
                 if check.get_active() {
                     selection.push(index);
@@ -98,25 +87,10 @@ impl TrackSelector {
 
         this
     }
-
-    /// Set the closure to be called when the user has selected tracks. The
-    /// closure will be called with the indices of the selected tracks as its
-    /// argument.
-    pub fn set_selected_cb<F: Fn(Vec<usize>) + 'static>(&self, cb: F) {
-        self.selected_cb.replace(Some(Box::new(cb)));
-    }
 }
 
-impl NavigatorScreen for TrackSelector {
-    fn attach_navigator(&self, navigator: Rc<Navigator>) {
-        self.navigator.replace(Some(navigator));
-    }
-
+impl Widget for TrackSelector {
     fn get_widget(&self) -> gtk::Widget {
         self.widget.clone().upcast()
-    }
-
-    fn detach_navigator(&self) {
-        self.navigator.replace(None);
     }
 }

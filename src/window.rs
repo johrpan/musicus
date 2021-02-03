@@ -4,6 +4,7 @@ use crate::import::SourceSelector;
 use crate::preferences::Preferences;
 use crate::screens::*;
 use crate::widgets::*;
+use crate::navigator::NavigatorWindow;
 use futures::prelude::*;
 use gettextrs::gettext;
 use gio::prelude::*;
@@ -95,18 +96,10 @@ impl Window {
         }));
 
         add_button.connect_clicked(clone!(@strong result => move |_| {
-            // let editor = TracksEditor::new(result.backend.clone(), None, Vec::new());
-
-            // editor.set_callback(clone!(@strong result => move || {
-            //     result.reload();
-            // }));
-
-            // let window = NavigatorWindow::new(editor);
-            // window.show();
-
-            let dialog = SourceSelector::new(result.backend.clone());
-            let window = NavigatorWindow::new(dialog);
-            window.show();
+            spawn!(@clone result, async move {
+                let window = NavigatorWindow::new(result.backend.clone());
+                replace!(window.navigator, SourceSelector).await;
+            });
         }));
 
         result

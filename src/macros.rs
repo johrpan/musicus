@@ -18,7 +18,7 @@ macro_rules! push {
     ($handle:expr, $screen:ty) => {
         $handle.push::<_, _, $screen>(())
     };
-    ($handle:expr, $screen:ty, $input:ident) => {
+    ($handle:expr, $screen:ty, $input:expr) => {
         $handle.push::<_, _, $screen>($input)
     };
 }
@@ -43,7 +43,7 @@ macro_rules! replace {
     ($navigator:expr, $screen:ty) => {
         $navigator.replace::<_, _, $screen>(())
     };
-    ($navigator:expr, $screen:ty, $input:ident) => {
+    ($navigator:expr, $screen:ty, $input:expr) => {
         $navigator.replace::<_, _, $screen>($input)
     };
 }

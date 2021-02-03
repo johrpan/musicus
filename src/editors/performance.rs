@@ -1,7 +1,8 @@
 use crate::backend::Backend;
 use crate::database::*;
+use crate::navigator::{NavigationHandle, Screen};
 use crate::selectors::{EnsembleSelector, InstrumentSelector, PersonSelector};
-use crate::widgets::{Editor, Navigator, NavigatorScreen, Section, ButtonRow, Widget};
+use crate::widgets::{Editor, Section, ButtonRow, Widget};
 use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
@@ -11,7 +12,7 @@ use std::rc::Rc;
 
 /// A dialog for editing a performance within a recording.
 pub struct PerformanceEditor {
-    backend: Rc<Backend>,
+    handle: NavigationHandle<Performance>,
     editor: Editor,
     person_row: ButtonRow,
     ensemble_row: ButtonRow,
@@ -20,13 +21,11 @@ pub struct PerformanceEditor {
     person: RefCell<Option<Person>>,
     ensemble: RefCell<Option<Ensemble>>,
     role: RefCell<Option<Instrument>>,
-    selected_cb: RefCell<Option<Box<dyn Fn(Performance) -> ()>>>,
-    navigator: RefCell<Option<Rc<Navigator>>>,
 }
 
-impl PerformanceEditor {
+impl Screen<Option<Performance>, Performance> for PerformanceEditor {
     /// Create a new performance editor.
-    pub fn new(backend: Rc<Backend>, performance: Option<Performance>) -> Rc<Self> {
+    fn new(performance: Option<Performance>, handle: NavigationHandle<Performance>) -> Rc<Self> {
         let editor = Editor::new();
         editor.set_title("Performance");
         editor.set_may_save(false);
@@ -68,7 +67,7 @@ impl PerformanceEditor {
         editor.add_content(&role_section);
 
         let this = Rc::new(PerformanceEditor {
-            backend,
+            handle,
             editor,
             person_row,
             ensemble_row,
@@ -77,79 +76,51 @@ impl PerformanceEditor {
             person: RefCell::new(None),
             ensemble: RefCell::new(None),
             role: RefCell::new(None),
-            selected_cb: RefCell::new(None),
-            navigator: RefCell::new(None),
         });
 
-        this.editor.set_back_cb(clone!(@strong this => move || {
-            let navigator = this.navigator.borrow().clone();
-            if let Some(navigator) = navigator {
-                navigator.pop();
-            }
+        this.editor.set_back_cb(clone!(@weak this => move || {
+            this.handle.pop(None);
         }));
 
         this.editor.set_save_cb(clone!(@weak this => move || {
-            if let Some(cb) = &*this.selected_cb.borrow() {
-                cb(Performance {
-                    person: this.person.borrow().clone(),
-                    ensemble: this.ensemble.borrow().clone(),
-                    role: this.role.borrow().clone(),
-                });
-            }
+            let performance = Performance {
+                person: this.person.borrow().clone(),
+                ensemble: this.ensemble.borrow().clone(),
+                role: this.role.borrow().clone(),
+            };
 
-            let navigator = this.navigator.borrow().clone();
-            if let Some(navigator) = navigator {
-                navigator.pop();
-            }
+            this.handle.pop(Some(performance));
         }));
 
         this.person_row.set_cb(clone!(@weak this => move || {
-            let navigator = this.navigator.borrow().clone();
-            if let Some(navigator) = navigator {
-                let selector = PersonSelector::new(this.backend.clone());
-
-                selector.set_selected_cb(clone!(@strong this, @strong navigator => move |person| {
+            spawn!(@clone this, async move {
+                if let Some(person) = push!(this.handle, PersonSelector).await {
                     this.show_person(Some(&person));
                     this.person.replace(Some(person.clone()));
                     this.show_ensemble(None);
                     this.ensemble.replace(None);
-                    navigator.clone().pop();
-                }));
-
-                navigator.push(selector);
-            }
+                }
+            });
         }));
 
         this.ensemble_row.set_cb(clone!(@weak this => move || {
-            let navigator = this.navigator.borrow().clone();
-            if let Some(navigator) = navigator {
-                let selector = EnsembleSelector::new(this.backend.clone());
-
-                selector.set_selected_cb(clone!(@strong this, @strong navigator => move |ensemble| {
+            spawn!(@clone this, async move {
+                if let Some(ensemble) = push!(this.handle, EnsembleSelector).await {
                     this.show_person(None);
                     this.person.replace(None);
                     this.show_ensemble(Some(&ensemble));
-                    this.ensemble.replace(Some(ensemble.clone()));
-                    navigator.clone().pop();
-                }));
-
-                navigator.push(selector);
-            }
+                    this.ensemble.replace(None);
+                }
+            });
         }));
 
         this.role_row.set_cb(clone!(@weak this => move || {
-            let navigator = this.navigator.borrow().clone();
-                if let Some(navigator) = navigator {
-                let selector = InstrumentSelector::new(this.backend.clone());
-
-                selector.set_selected_cb(clone!(@strong this, @strong navigator => move |role| {
+            spawn!(@clone this, async move {
+                if let Some(role) = push!(this.handle, InstrumentSelector).await {
                     this.show_role(Some(&role));
-                    this.role.replace(Some(role.clone()));
-                    navigator.clone().pop();
-                }));
-
-                navigator.push(selector);
-            }
+                    this.role.replace(Some(role));
+                }
+            });
         }));
 
         this.reset_role_button.connect_clicked(clone!(@weak this => move |_| {
@@ -176,12 +147,9 @@ impl PerformanceEditor {
 
         this
     }
+}
 
-    /// Set a closure to be called when the user has chosen to save the performance.
-    pub fn set_selected_cb<F: Fn(Performance) -> () + 'static>(&self, cb: F) {
-        self.selected_cb.replace(Some(Box::new(cb)));
-    }
-
+impl PerformanceEditor {
     /// Update the UI according to person.
     fn show_person(&self, person: Option<&Person>) {
         if let Some(person) = person {
@@ -214,16 +182,8 @@ impl PerformanceEditor {
     }
 }
 
-impl NavigatorScreen for PerformanceEditor {
-    fn attach_navigator(&self, navigator: Rc<Navigator>) {
-        self.navigator.replace(Some(navigator));
-    }
-
+impl Widget for PerformanceEditor {
     fn get_widget(&self) -> gtk::Widget {
         self.editor.widget.clone().upcast()
-    }
-
-    fn detach_navigator(&self) {
-        self.navigator.replace(None);
     }
 }

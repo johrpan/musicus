@@ -1,9 +1,9 @@
 use super::work_part::WorkPartEditor;
 use super::work_section::WorkSectionEditor;
-use crate::backend::Backend;
 use crate::database::*;
 use crate::selectors::{InstrumentSelector, PersonSelector};
-use crate::widgets::{List, Navigator, NavigatorScreen};
+use crate::navigator::{NavigationHandle, Screen};
+use crate::widgets::{List, Widget};
 use anyhow::Result;
 use gettextrs::gettext;
 use glib::clone;
@@ -32,8 +32,8 @@ impl PartOrSection {
 
 /// A widget for editing and creating works.
 pub struct WorkEditor {
+    handle: NavigationHandle<Work>,
     widget: gtk::Stack,
-    backend: Rc<Backend>,
     save_button: gtk::Button,
     title_entry: gtk::Entry,
     info_bar: gtk::InfoBar,
@@ -45,13 +45,11 @@ pub struct WorkEditor {
     composer: RefCell<Option<Person>>,
     instruments: RefCell<Vec<Instrument>>,
     structure: RefCell<Vec<PartOrSection>>,
-    saved_cb: RefCell<Option<Box<dyn Fn(Work) -> ()>>>,
-    navigator: RefCell<Option<Rc<Navigator>>>,
 }
 
-impl WorkEditor {
+impl Screen<Option<Work>, Work> for WorkEditor {
     /// Create a new work editor widget and optionally initialize it.
-    pub fn new(backend: Rc<Backend>, work: Option<Work>) -> Rc<Self> {
+    fn new(work: Option<Work>, handle: NavigationHandle<Work>) -> Rc<Self> {
         // Create UI
 
         let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/work_editor.ui");
@@ -100,8 +98,8 @@ impl WorkEditor {
         };
 
         let this = Rc::new(Self {
+            handle,
             widget,
-            backend,
             save_button,
             id,
             info_bar,
@@ -113,57 +111,39 @@ impl WorkEditor {
             composer: RefCell::new(composer),
             instruments: RefCell::new(instruments),
             structure: RefCell::new(structure),
-            saved_cb: RefCell::new(None),
-            navigator: RefCell::new(None),
         });
 
         // Connect signals and callbacks
 
-        back_button.connect_clicked(clone!(@strong this => move |_| {
-            let navigator = this.navigator.borrow().clone();
-            if let Some(navigator) = navigator {
-                navigator.pop();
-            }
+        back_button.connect_clicked(clone!(@weak this => move |_| {
+            this.handle.pop(None);
         }));
 
-        this.save_button
-            .connect_clicked(clone!(@strong this => move |_| {
-                let context = glib::MainContext::default();
-                let clone = this.clone();
-                context.spawn_local(async move {
-                    clone.widget.set_visible_child_name("loading");
-                    match clone.clone().save().await {
-                        Ok(_) => {
-                            let navigator = clone.navigator.borrow().clone();
-                            if let Some(navigator) = navigator {
-                                navigator.pop();
-                            }
-                        }
-                        Err(_) => {
-                            clone.info_bar.set_revealed(true);
-                            clone.widget.set_visible_child_name("content");
-                        }
+        this.save_button.connect_clicked(clone!(@weak this => move |_| {
+            spawn!(@clone this, async move {
+                this.widget.set_visible_child_name("loading");
+                match this.save().await {
+                    Ok(work) => {
+                        this.handle.pop(Some(work));
                     }
-
-                });
-            }));
-
-        composer_button.connect_clicked(clone!(@strong this => move |_| {
-            let navigator = this.navigator.borrow().clone();
-            if let Some(navigator) = navigator {
-                let selector = PersonSelector::new(this.backend.clone());
-
-                selector.set_selected_cb(clone!(@strong this, @strong navigator => move |person| {
-                    this.show_composer(person);
-                    this.composer.replace(Some(person.clone()));
-                    navigator.clone().pop();
-                }));
-
-                navigator.push(selector);
-            }
+                    Err(_) => {
+                        this.info_bar.set_revealed(true);
+                        this.widget.set_visible_child_name("content");
+                    }
+                }
+            });
         }));
 
-        this.instrument_list.set_make_widget_cb(clone!(@strong this => move |index| {
+        composer_button.connect_clicked(clone!(@weak this => move |_| {
+            spawn!(@clone this, async move {
+                if let Some(person) = push!(this.handle, PersonSelector).await {
+                    this.show_composer(&person);
+                    this.composer.replace(Some(person.to_owned()));
+                }
+            });
+        }));
+
+        this.instrument_list.set_make_widget_cb(clone!(@weak this => move |index| {
             let instrument = &this.instruments.borrow()[index];
 
             let delete_button = gtk::Button::from_icon_name(Some("user-trash-symbolic"));
@@ -186,12 +166,9 @@ impl WorkEditor {
             row.upcast()
         }));
 
-        add_instrument_button.connect_clicked(clone!(@strong this => move |_| {
-            let navigator = this.navigator.borrow().clone();
-            if let Some(navigator) = navigator {
-                let selector = InstrumentSelector::new(this.backend.clone());
-
-                selector.set_selected_cb(clone!(@strong this, @strong navigator => move |instrument| {
+        add_instrument_button.connect_clicked(clone!(@weak this => move |_| {
+            spawn!(@clone this, async move {
+                if let Some(instrument) = push!(this.handle, InstrumentSelector).await {
                     let length = {
                         let mut instruments = this.instruments.borrow_mut();
                         instruments.push(instrument.clone());
@@ -199,20 +176,17 @@ impl WorkEditor {
                     };
 
                     this.instrument_list.update(length);
-                    navigator.clone().pop();
-                }));
-
-                navigator.push(selector);
-            }
+                }
+            });
         }));
 
-        this.part_list.set_make_widget_cb(clone!(@strong this => move |index| {
+        this.part_list.set_make_widget_cb(clone!(@weak this => move |index| {
             let pos = &this.structure.borrow()[index];
 
             let delete_button = gtk::Button::from_icon_name(Some("user-trash-symbolic"));
             delete_button.set_valign(gtk::Align::Center);
 
-            delete_button.connect_clicked(clone!(@strong this => move |_| {
+            delete_button.connect_clicked(clone!(@weak this => move |_| {
                 let length = {
                     let mut structure = this.structure.borrow_mut();
                     structure.remove(index);
@@ -225,14 +199,11 @@ impl WorkEditor {
             let edit_button = gtk::Button::from_icon_name(Some("document-edit-symbolic"));
             edit_button.set_valign(gtk::Align::Center);
 
-            edit_button.connect_clicked(clone!(@strong this => move |_| {
-                let navigator = this.navigator.borrow().clone();
-                if let Some(navigator) = navigator {
+            edit_button.connect_clicked(clone!(@weak this => move |_| {
+                spawn!(@clone this, async move {
                     match this.structure.borrow()[index].clone() {
                         PartOrSection::Part(part) => {
-                            let editor = WorkPartEditor::new(this.backend.clone(), Some(part));
-
-                            editor.set_ready_cb(clone!(@strong this, @strong navigator => move |part| {
+                            if let Some(part) = push!(this.handle, WorkPartEditor, Some(part)).await {
                                 let length = {
                                     let mut structure = this.structure.borrow_mut();
                                     structure[index] = PartOrSection::Part(part);
@@ -240,15 +211,10 @@ impl WorkEditor {
                                 };
 
                                 this.part_list.update(length);
-                                navigator.clone().pop();
-                            }));
-
-                            navigator.push(editor);
+                            }
                         }
                         PartOrSection::Section(section) => {
-                            let editor = WorkSectionEditor::new(Some(section));
-
-                            editor.set_ready_cb(clone!(@strong this, @strong navigator => move |section| {
+                            if let Some(section) = push!(this.handle, WorkSectionEditor, Some(section)).await {
                                 let length = {
                                     let mut structure = this.structure.borrow_mut();
                                     structure[index] = PartOrSection::Section(section);
@@ -256,13 +222,10 @@ impl WorkEditor {
                                 };
 
                                 this.part_list.update(length);
-                                navigator.clone().pop();
-                            }));
-
-                            navigator.push(editor);
+                            }
                         }
                     }
-                }
+                });
             }));
 
             let row = libadwaita::ActionRow::new();
@@ -280,7 +243,7 @@ impl WorkEditor {
             row.upcast()
         }));
 
-        this.part_list.set_move_cb(clone!(@strong this => move |old_index, new_index| {
+        this.part_list.set_move_cb(clone!(@weak this => move |old_index, new_index| {
             let length = {
                 let mut structure = this.structure.borrow_mut();
                 structure.swap(old_index, new_index);
@@ -290,12 +253,9 @@ impl WorkEditor {
             this.part_list.update(length);
         }));
 
-        add_part_button.connect_clicked(clone!(@strong this => move |_| {
-            let navigator = this.navigator.borrow().clone();
-            if let Some(navigator) = navigator {
-                let editor = WorkPartEditor::new(this.backend.clone(), None);
-
-                editor.set_ready_cb(clone!(@strong this, @strong navigator => move |part| {
+        add_part_button.connect_clicked(clone!(@weak this => move |_| {
+            spawn!(@clone this, async move {
+                if let Some(part) = push!(this.handle, WorkPartEditor, None).await {
                     let length = {
                         let mut structure = this.structure.borrow_mut();
                         structure.push(PartOrSection::Part(part));
@@ -303,19 +263,13 @@ impl WorkEditor {
                     };
 
                     this.part_list.update(length);
-                    navigator.clone().pop();
-                }));
-
-                navigator.push(editor);
-            }
+                }
+            });
         }));
 
         add_section_button.connect_clicked(clone!(@strong this => move |_| {
-            let navigator = this.navigator.borrow().clone();
-            if let Some(navigator) = navigator {
-                let editor = WorkSectionEditor::new(None);
-
-                editor.set_ready_cb(clone!(@strong this, @strong navigator => move |section| {
+            spawn!(@clone this, async move {
+                if let Some(section) = push!(this.handle, WorkSectionEditor, None).await {
                     let length = {
                         let mut structure = this.structure.borrow_mut();
                         structure.push(PartOrSection::Section(section));
@@ -323,11 +277,8 @@ impl WorkEditor {
                     };
 
                     this.part_list.update(length);
-                    navigator.clone().pop();
-                }));
-
-                navigator.push(editor);
-            }
+                }
+            });
         }));
 
         // Initialization
@@ -341,12 +292,9 @@ impl WorkEditor {
 
         this
     }
+}
 
-    /// The closure to call when a work was created.
-    pub fn set_saved_cb<F: Fn(Work) -> () + 'static>(&self, cb: F) {
-        self.saved_cb.replace(Some(Box::new(cb)));
-    }
-
+impl WorkEditor {
     /// Update the UI according to person.
     fn show_composer(&self, person: &Person) {
         self.composer_row.set_title(Some(&gettext("Composer")));
@@ -355,7 +303,7 @@ impl WorkEditor {
     }
 
     /// Save the work and possibly upload it to the server.
-    async fn save(self: Rc<Self>) -> Result<()> {
+    async fn save(self: &Rc<Self>) -> Result<Work> {
         let mut section_count: usize = 0;
         let mut parts = Vec::new();
         let mut sections = Vec::new();
@@ -387,35 +335,23 @@ impl WorkEditor {
 
         let upload = self.upload_switch.get_active();
         if upload {
-            self.backend.post_work(&work).await?;
+            self.handle.backend.post_work(&work).await?;
         }
 
-        self.backend
+        self.handle.backend
             .db()
             .update_work(work.clone().into())
             .await
             .unwrap();
 
-        self.backend.library_changed();
+        self.handle.backend.library_changed();
 
-        if let Some(cb) = &*self.saved_cb.borrow() {
-            cb(work.clone());
-        }
-
-        Ok(())
+        Ok(work)
     }
 }
 
-impl NavigatorScreen for WorkEditor {
-    fn attach_navigator(&self, navigator: Rc<Navigator>) {
-        self.navigator.replace(Some(navigator));
-    }
-
+impl Widget for WorkEditor {
     fn get_widget(&self) -> gtk::Widget {
         self.widget.clone().upcast()
-    }
-
-    fn detach_navigator(&self) {
-        self.navigator.replace(None);
     }
 }
