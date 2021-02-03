@@ -1,7 +1,7 @@
 use super::performance::PerformanceEditor;
 use crate::backend::Backend;
 use crate::database::*;
-use crate::selectors::PersonSelector;
+use crate::selectors::{PersonSelector, WorkSelector};
 use crate::widgets::{List, Widget};
 use crate::navigator::{NavigationHandle, Screen};
 use anyhow::Result;
@@ -94,7 +94,10 @@ impl Screen<Option<Recording>, Recording> for RecordingEditor {
 
         work_button.connect_clicked(clone!(@weak this => move |_| {
             spawn!(@clone this, async move {
-                // TODO: We need the pushed screen to return a work here.
+                if let Some(work) = push!(this.handle, WorkSelector).await {
+                    this.work_selected(&work);
+                    this.work.replace(Some(work));
+                }
             });
         }));
 

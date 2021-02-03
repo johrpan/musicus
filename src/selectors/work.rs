@@ -1,8 +1,9 @@
 use super::selector::Selector;
 use crate::backend::Backend;
 use crate::database::{Person, Work};
-use crate::editors::WorkEditor;
-use crate::widgets::{Navigator, NavigatorScreen};
+use crate::editors::{PersonEditor, WorkEditor};
+use crate::navigator::{NavigationHandle, Screen};
+use crate::widgets::Widget;
 use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
@@ -12,110 +13,146 @@ use std::rc::Rc;
 
 /// A screen for selecting a work.
 pub struct WorkSelector {
-    backend: Rc<Backend>,
-    person: Person,
-    selector: Rc<Selector<Work>>,
-    selected_cb: RefCell<Option<Box<dyn Fn(&Work) -> ()>>>,
-    navigator: RefCell<Option<Rc<Navigator>>>,
+    handle: NavigationHandle<Work>,
+    selector: Rc<Selector<Person>>,
 }
 
-impl WorkSelector {
-    /// Create a new work selector for works by a specific composer.
-    pub fn new(backend: Rc<Backend>, person: Person) -> Rc<Self> {
+impl Screen<(), Work> for WorkSelector {
+    fn new(_: (), handle: NavigationHandle<Work>) -> Rc<Self> {
         // Create UI
 
-        let selector = Selector::<Work>::new();
-        selector.set_title(&gettext("Select work"));
-        selector.set_subtitle(&person.name_fl());
+        let selector = Selector::<Person>::new();
+        selector.set_title(&gettext("Select composer"));
 
         let this = Rc::new(Self {
-            backend,
-            person,
+            handle,
             selector,
-            selected_cb: RefCell::new(None),
-            navigator: RefCell::new(None),
         });
 
         // Connect signals and callbacks
 
-        this.selector.set_back_cb(clone!(@strong this => move || {
-            let navigator = this.navigator.borrow().clone();
-            if let Some(navigator) = navigator {
-                navigator.pop();
-            }
+        this.selector.set_back_cb(clone!(@weak this => move || {
+            this.handle.pop(None);
         }));
 
-        this.selector.set_add_cb(clone!(@strong this => move || {
-            let navigator = this.navigator.borrow().clone();
-            if let Some(navigator) = navigator {
-                let work = Work::new(this.person.clone());
+        this.selector.set_add_cb(clone!(@weak this => move || {
+            spawn!(@clone this, async move {
+                if let Some(person) = push!(this.handle, PersonEditor, None).await {
+                    // We can assume that there are no existing works of this composer and
+                    // immediately show the work editor. Going back from the work editor will
+                    // correctly show the person selector again.
 
-                let editor = WorkEditor::new(this.backend.clone(), Some(work));
-
-                editor
-                    .set_saved_cb(clone!(@strong this, @strong navigator => move |work| {
-                        navigator.clone().pop();
-                        this.select(&work);
-                    }));
-
-                navigator.push(editor);
-            }
+                    let work = Work::new(person);
+                    if let Some(work) = push!(this.handle, WorkEditor, Some(work)).await {
+                        this.handle.pop(Some(work));
+                    }
+                }
+            });
         }));
 
-        this.selector
-            .set_load_online(clone!(@strong this => move || {
-                let clone = this.clone();
-                async move { clone.backend.get_works(&clone.person.id).await }
-            }));
+        this.selector.set_load_online(clone!(@weak this => move || {
+            async move { this.handle.backend.get_persons().await }
+        }));
 
-        this.selector
-            .set_load_local(clone!(@strong this => move || {
-                let clone = this.clone();
-                async move { clone.backend.db().get_works(&clone.person.id).await.unwrap() }
-            }));
+        this.selector.set_load_local(clone!(@weak this => move || {
+            async move { this.handle.backend.db().get_persons().await.unwrap() }
+        }));
 
-        this.selector.set_make_widget(clone!(@strong this => move |work| {
+        this.selector.set_make_widget(clone!(@weak this => move |person| {
             let row = libadwaita::ActionRow::new();
             row.set_activatable(true);
-            row.set_title(Some(&work.title));
+            row.set_title(Some(&person.name_lf()));
 
-            let work = work.to_owned();
-            row.connect_activated(clone!(@strong this => move |_| {
-                this.select(&work);
+            let person = person.to_owned();
+            row.connect_activated(clone!(@weak this => move |_| {
+                // Instead of returning the person from here, like the person selector does, we
+                // show a second selector for choosing the work.
+
+                let person = person.clone();
+                spawn!(@clone this, async move {
+                    if let Some(work) = push!(this.handle, WorkSelectorWorkScreen, person).await {
+                        this.handle.pop(Some(work));
+                    }
+                });
             }));
 
             row.upcast()
         }));
 
         this.selector
-            .set_filter(|search, work| work.title.to_lowercase().contains(search));
+            .set_filter(|search, person| person.name_fl().to_lowercase().contains(search));
 
         this
     }
-
-    /// Set the closure to be called when an item is selected.
-    pub fn set_selected_cb<F: Fn(&Work) -> () + 'static>(&self, cb: F) {
-        self.selected_cb.replace(Some(Box::new(cb)));
-    }
-
-    /// Select a work.
-    fn select(&self, work: &Work) {
-        if let Some(cb) = &*self.selected_cb.borrow() {
-            cb(&work);
-        }
-    }
 }
 
-impl NavigatorScreen for WorkSelector {
-    fn attach_navigator(&self, navigator: Rc<Navigator>) {
-        self.navigator.replace(Some(navigator));
-    }
-
+impl Widget for WorkSelector {
     fn get_widget(&self) -> gtk::Widget {
         self.selector.widget.clone().upcast()
     }
+}
 
-    fn detach_navigator(&self) {
-        self.navigator.replace(None);
+/// The actual work selector that is displayed after the user has selected a composer.
+struct WorkSelectorWorkScreen {
+    handle: NavigationHandle<Work>,
+    person: Person,
+    selector: Rc<Selector<Work>>,
+}
+
+impl Screen<Person, Work> for WorkSelectorWorkScreen {
+    fn new(person: Person, handle: NavigationHandle<Work>) -> Rc<Self> {
+        let selector = Selector::<Work>::new();
+        selector.set_title(&gettext("Select work"));
+        selector.set_subtitle(&person.name_fl());
+
+        let this = Rc::new(Self {
+            handle,
+            person,
+            selector,
+        });
+
+        this.selector.set_back_cb(clone!(@weak this => move || {
+            this.handle.pop(None);
+        }));
+
+        this.selector.set_add_cb(clone!(@weak this => move || {
+            spawn!(@clone this, async move {
+                let work = Work::new(this.person.clone());
+                if let Some(work) = push!(this.handle, WorkEditor, Some(work)).await {
+                    this.handle.pop(Some(work));
+                }
+            });
+        }));
+
+        this.selector.set_load_online(clone!(@weak this => move || {
+            async move { this.handle.backend.get_works(&this.person.id).await }
+        }));
+
+        this.selector.set_load_local(clone!(@weak this => move || {
+            async move { this.handle.backend.db().get_works(&this.person.id).await.unwrap() }
+        }));
+
+        this.selector.set_make_widget(clone!(@weak this => move |work| {
+            let row = libadwaita::ActionRow::new();
+            row.set_activatable(true);
+            row.set_title(Some(&work.title));
+
+            let work = work.to_owned();
+            row.connect_activated(clone!(@weak this => move |_| {
+                this.handle.pop(Some(work.clone()));
+            }));
+
+            row.upcast()
+        }));
+
+        this.selector.set_filter(|search, work| work.title.to_lowercase().contains(search));
+
+        this
+    }
+}
+
+impl Widget for WorkSelectorWorkScreen {
+    fn get_widget(&self) -> gtk::Widget {
+        self.selector.widget.clone().upcast()
     }
 }

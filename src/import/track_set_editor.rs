@@ -4,7 +4,7 @@ use super::track_selector::TrackSelector;
 use crate::backend::Backend;
 use crate::database::Recording;
 use crate::navigator::{NavigationHandle, Screen};
-use crate::selectors::PersonSelector;
+use crate::selectors::{PersonSelector, RecordingSelector};
 use crate::widgets::{List, Widget};
 use gettextrs::gettext;
 use glib::clone;
@@ -88,7 +88,12 @@ impl Screen<Rc<Box<dyn Source>>, TrackSetData> for TrackSetEditor {
         }));
 
         select_recording_button.connect_clicked(clone!(@weak this => move |_| {
-            // TODO: We need to push a screen returning a recording here.
+            spawn!(@clone this, async move {
+                if let Some(recording) = push!(this.handle, RecordingSelector).await {
+                    this.recording.replace(Some(recording));
+                    this.recording_selected();
+                }
+            });
         }));
 
         edit_tracks_button.connect_clicked(clone!(@weak this => move |_| {
