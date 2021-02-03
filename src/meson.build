@@ -97,8 +97,6 @@ sources = files(
   'widgets/indexed_list_model.rs',
   'widgets/list.rs',
   'widgets/mod.rs',
-  'widgets/navigator.rs',
-  'widgets/navigator_window.rs',
   'widgets/player_bar.rs',
   'widgets/poe_list.rs',
   'widgets/screen.rs',

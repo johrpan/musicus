@@ -12,12 +12,6 @@ pub use entry_row::*;
 pub mod list;
 pub use list::*;
 
-pub mod navigator;
-pub use navigator::*;
-
-pub mod navigator_window;
-pub use navigator_window::*;
-
 pub mod player_bar;
 pub use player_bar::*;
 
