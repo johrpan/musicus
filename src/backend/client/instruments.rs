@@ -1,5 +1,4 @@
-use crate::backend::{Backend, Instrument};
-use anyhow::Result;
+use crate::backend::{Backend, Instrument, Result};
 
 impl Backend {
     /// Get all available instruments from the server.

@@ -1,5 +1,4 @@
-use crate::backend::{Backend, Medium};
-use anyhow::Result;
+use crate::backend::{Backend, Medium, Result};
 
 impl Backend {
     /// Get all available mediums from the server, that contain the specified

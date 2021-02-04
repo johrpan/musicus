@@ -1,5 +1,4 @@
-use crate::backend::{Backend, Ensemble};
-use anyhow::Result;
+use crate::backend::{Backend, Ensemble, Result};
 
 impl Backend {
     /// Get all available ensembles from the server.

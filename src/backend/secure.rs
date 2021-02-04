@@ -1,5 +1,4 @@
-use crate::backend::LoginData;
-use anyhow::Result;
+use crate::backend::{LoginData, Result};
 use futures_channel::oneshot;
 use secret_service::{Collection, EncryptionType, SecretService};
 use std::collections::HashMap;

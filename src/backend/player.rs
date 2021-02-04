@@ -1,6 +1,4 @@
-use crate::backend::TrackSet;
-use anyhow::anyhow;
-use anyhow::Result;
+use crate::backend::{Error, Result, TrackSet};
 use gstreamer_player::prelude::*;
 use std::cell::{Cell, RefCell};
 use std::path::PathBuf;
@@ -122,9 +120,7 @@ impl Player {
 
     pub fn add_item(&self, item: PlaylistItem) -> Result<()> {
         if item.indices.is_empty() {
-            Err(anyhow!(
-                "Tried to add playlist item without tracks to playlist!"
-            ))
+            Err(Error::Other("Tried to add an empty playlist item!"))
         } else {
             let was_empty = {
                 let mut playlist = self.playlist.borrow_mut();
@@ -188,11 +184,13 @@ impl Player {
     }
 
     pub fn previous(&self) -> Result<()> {
-        let mut current_item = self.current_item.get().ok_or(anyhow!("No current item!"))?;
+        let mut current_item = self.current_item.get()
+            .ok_or(Error::Other("Player tried to access non existant current item."))?;
+
         let mut current_track = self
             .current_track
             .get()
-            .ok_or(anyhow!("No current track!"))?;
+            .ok_or(Error::Other("Player tried to access non existant current track."))?;
 
         let playlist = self.playlist.borrow();
         if current_track > 0 {
@@ -201,7 +199,7 @@ impl Player {
             current_item -= 1;
             current_track = playlist[current_item].indices.len() - 1;
         } else {
-            return Err(anyhow!("No previous track!"));
+            return Err(Error::Other("No existing previous track."));
         }
 
         self.set_track(current_item, current_track)
@@ -223,11 +221,12 @@ impl Player {
     }
 
     pub fn next(&self) -> Result<()> {
-        let mut current_item = self.current_item.get().ok_or(anyhow!("No current item!"))?;
+        let mut current_item = self.current_item.get()
+            .ok_or(Error::Other("Player tried to access non existant current item."))?;
         let mut current_track = self
             .current_track
             .get()
-            .ok_or(anyhow!("No current track!"))?;
+            .ok_or(Error::Other("Player tried to access non existant current track."))?;
 
         let playlist = self.playlist.borrow();
         let item = &playlist[current_item];
@@ -237,7 +236,7 @@ impl Player {
             current_item += 1;
             current_track = 0;
         } else {
-            return Err(anyhow!("No next track!"));
+            return Err(Error::Other("No existing previous track."));
         }
 
         self.set_track(current_item, current_track)

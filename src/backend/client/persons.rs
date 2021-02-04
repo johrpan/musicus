@@ -1,5 +1,4 @@
-use crate::backend::{Backend, Person};
-use anyhow::Result;
+use crate::backend::{Backend, Person, Result};
 
 impl Backend {
     /// Get all available persons from the server.

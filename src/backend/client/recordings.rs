@@ -1,5 +1,4 @@
-use crate::backend::{Backend, Recording};
-use anyhow::Result;
+use crate::backend::{Backend, Recording, Result};
 
 impl Backend {
     /// Get all available recordings from the server.

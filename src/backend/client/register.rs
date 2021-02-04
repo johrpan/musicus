@@ -1,5 +1,4 @@
-use super::Backend;
-use anyhow::{anyhow, Result};
+use crate::backend::{Backend, Result};
 use isahc::http::StatusCode;
 use isahc::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -35,7 +34,7 @@ impl Backend {
     /// Register a new user and return whether the process suceeded. This will
     /// not store the new login credentials.
     pub async fn register(&self, data: UserRegistration) -> Result<bool> {
-        let server_url = self.get_server_url().ok_or(anyhow!("No server URL set!"))?;
+        let server_url = self.server_url()?;
 
         let mut response = Request::post(format!("{}/users", server_url))
             .timeout(Duration::from_secs(10))

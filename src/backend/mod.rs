@@ -1,4 +1,3 @@
-use anyhow::Result;
 use futures_channel::mpsc;
 use std::cell::RefCell;
 use std::path::PathBuf;
@@ -9,6 +8,9 @@ pub use client::*;
 
 pub mod database;
 pub use database::*;
+
+pub mod error;
+pub use error::*;
 
 pub mod library;
 pub use library::*;

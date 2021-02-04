@@ -1,6 +1,4 @@
-use super::secure;
-use super::Backend;
-use anyhow::{anyhow, bail, Result};
+use crate::backend::{Backend, Error, Result, secure};
 use gio::prelude::*;
 use isahc::http::StatusCode;
 use isahc::prelude::*;
@@ -74,9 +72,18 @@ impl Backend {
         self.server_url.borrow().clone()
     }
 
+    /// Require the server URL to be set.
+    fn server_url(&self) -> Result<String> {
+        self.get_server_url().ok_or(Error::Other("The server URL is not available!"))
+    }
+
     /// Get the currently stored login credentials.
     pub fn get_login_data(&self) -> Option<LoginData> {
         self.login_data.borrow().clone()
+    }
+
+    fn login_data(&self) -> Result<LoginData> {
+        self.get_login_data().ok_or(Error::Other("The login data is unset!"))
     }
 
     /// Set the user credentials to use.
@@ -89,8 +96,8 @@ impl Backend {
 
     /// Try to login a user with the provided credentials and return, wether the login suceeded.
     pub async fn login(&self) -> Result<bool> {
-        let server_url = self.get_server_url().ok_or(anyhow!("No server URL set!"))?;
-        let data = self.get_login_data().ok_or(anyhow!("No login data set!"))?;
+        let server_url = self.server_url()?;
+        let data = self.login_data()?;
 
         let request = Request::post(format!("{}/login", server_url))
             .timeout(Duration::from_secs(10))
@@ -106,7 +113,7 @@ impl Backend {
                 true
             }
             StatusCode::UNAUTHORIZED => false,
-            _ => bail!("Unexpected response status!"),
+            status_code => Err(Error::UnexpectedResponse(status_code))?,
         };
 
         Ok(success)
@@ -114,7 +121,7 @@ impl Backend {
 
     /// Make an unauthenticated get request to the server.
     async fn get(&self, url: &str) -> Result<String> {
-        let server_url = self.get_server_url().ok_or(anyhow!("No server URL set!"))?;
+        let server_url = self.server_url()?;
 
         let mut response = Request::get(format!("{}/{}", server_url, url))
             .timeout(Duration::from_secs(10))
@@ -138,7 +145,7 @@ impl Backend {
                     if self.login().await? {
                         response = self.post_priv(url, body).await?;
                     } else {
-                        bail!("Login failed!");
+                        Err(Error::LoginFailed)?;
                     }
                 }
 
@@ -148,7 +155,7 @@ impl Backend {
                 let mut response = if self.login().await? {
                     self.post_priv(url, body).await?
                 } else {
-                    bail!("Login failed!");
+                    Err(Error::LoginFailed)?
                 };
 
                 response.text_async().await?
@@ -160,8 +167,8 @@ impl Backend {
 
     /// Post something to the server assuming there is a valid login token.
     async fn post_priv(&self, url: &str, body: String) -> Result<Response<Body>> {
-        let server_url = self.get_server_url().ok_or(anyhow!("No server URL set!"))?;
-        let token = self.get_token().ok_or(anyhow!("No login token!"))?;
+        let server_url = self.server_url()?;
+        let token = self.get_token().ok_or(Error::Other("No login token found!"))?;
 
         let response = Request::post(format!("{}/{}", server_url, url))
             .timeout(Duration::from_secs(10))

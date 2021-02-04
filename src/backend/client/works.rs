@@ -1,5 +1,4 @@
-use crate::backend::{Backend, Work};
-use anyhow::Result;
+use crate::backend::{Backend, Result, Work};
 
 impl Backend {
     /// Get all available works from the server.

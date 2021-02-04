@@ -1,5 +1,5 @@
+use crate::backend::Result;
 use crate::widgets::List;
-use anyhow::Result;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
