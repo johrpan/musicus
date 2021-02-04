@@ -1,0 +1,11 @@
+[package]
+name = "musicus_client"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+isahc = "0.9.12"
+musicus_database = { version = "0.1.0", path = "../musicus_database" }
+serde = { version = "1.0.117", features = ["derive"] }
+serde_json = "1.0.59"
+thiserror = "1.0.23"

@@ -20,6 +20,6 @@ i18n = import('i18n')
 subdir('data')
 subdir('po')
 subdir('res')
-subdir('src')
+subdir('crates/musicus/src')
 
 meson.add_install_script('build-aux/postinstall.py')
