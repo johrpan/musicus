@@ -74,7 +74,7 @@ impl Backend {
             }
         }
 
-        if let Some(data) = secure::load_login_data()? {
+        if let Some(data) = Self::load_login_data().await? {
             self.client.set_login_data(data);
         }
 
@@ -95,7 +95,7 @@ impl Backend {
 
     /// Set the user credentials to use.
     pub async fn set_login_data(&self, data: LoginData) -> Result<()> {
-        secure::store_login_data(data.clone()).await?;
+        Self::store_login_data(data.clone()).await?;
         self.client.set_login_data(data);
         Ok(())
     }
