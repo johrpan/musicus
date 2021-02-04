@@ -1,7 +1,6 @@
 use super::generate_id;
 use super::schema::{instrumentations, work_parts, work_sections, works};
-use super::{Database, Instrument, Person};
-use anyhow::{anyhow, Error, Result};
+use super::{Database, DatabaseError, Instrument, Person, DatabaseResult};
 use diesel::prelude::*;
 use diesel::{Insertable, Queryable};
 use serde::{Deserialize, Serialize};
@@ -106,10 +105,10 @@ impl Work {
 impl Database {
     /// Update an existing work or insert a new one.
     // TODO: Think about also inserting related items.
-    pub fn update_work(&self, work: Work) -> Result<()> {
+    pub fn update_work(&self, work: Work) -> DatabaseResult<()> {
         self.defer_foreign_keys()?;
 
-        self.connection.transaction::<(), Error, _>(|| {
+        self.connection.transaction::<(), DatabaseError, _>(|| {
             let work_id = &work.id;
             self.delete_work(work_id)?;
 
@@ -163,7 +162,7 @@ impl Database {
                         let row = WorkPartRow {
                             id: rand::random(),
                             work: work_id.to_string(),
-                            part_index: index.try_into()?,
+                            part_index: index as i64,
                             title: part.title,
                             composer: part.composer.map(|person| person.id),
                         };
@@ -178,7 +177,7 @@ impl Database {
                             id: rand::random(),
                             work: work_id.to_string(),
                             title: section.title,
-                            before_index: section.before_index.try_into()?,
+                            before_index: section.before_index as i64,
                         };
 
                         diesel::insert_into(work_sections::table)
@@ -195,7 +194,7 @@ impl Database {
     }
 
     /// Get an existing work.
-    pub fn get_work(&self, id: &str) -> Result<Option<Work>> {
+    pub fn get_work(&self, id: &str) -> DatabaseResult<Option<Work>> {
         let row = works::table
             .filter(works::id.eq(id))
             .load::<WorkRow>(&self.connection)?
@@ -211,7 +210,7 @@ impl Database {
     }
 
     /// Retrieve all available information on a work from related tables.
-    fn get_work_data(&self, row: WorkRow) -> Result<Work> {
+    fn get_work_data(&self, row: WorkRow) -> DatabaseResult<Work> {
         let mut instruments: Vec<Instrument> = Vec::new();
 
         let instrumentations = instrumentations::table
@@ -222,7 +221,11 @@ impl Database {
             let id = &instrumentation.instrument;
             instruments.push(
                 self.get_instrument(id)?
-                    .ok_or(anyhow!("No instrument with ID: {}", id))?,
+                    .ok_or(DatabaseError::Other(format!(
+                        "Failed to get instrument ({}) for work ({}).",
+                        id,
+                        row.id,
+                    )))?
             );
         }
 
@@ -238,7 +241,11 @@ impl Database {
                 composer: match part_row.composer {
                     Some(composer) => Some(
                         self.get_person(&composer)?
-                            .ok_or(anyhow!("No person with ID: {}", composer))?,
+                            .ok_or(DatabaseError::Other(format!(
+                                "Failed to get person ({}) for work ({}).",
+                                composer,
+                                row.id,
+                            )))?
                     ),
                     None => None,
                 },
@@ -254,14 +261,18 @@ impl Database {
         for section_row in section_rows {
             sections.push(WorkSection {
                 title: section_row.title,
-                before_index: section_row.before_index.try_into()?,
+                before_index: section_row.before_index as usize,
             });
         }
 
         let person_id = &row.composer;
         let person = self
             .get_person(person_id)?
-            .ok_or(anyhow!("Person doesn't exist: {}", person_id))?;
+            .ok_or(DatabaseError::Other(format!(
+                "Failed to get person ({}) for work ({}).",
+                person_id,
+                row.id,
+            )))?;
 
         Ok(Work {
             id: row.id,
@@ -275,13 +286,13 @@ impl Database {
 
     /// Delete an existing work. This will fail if there are still other tables that relate to
     /// this work except for the things that are part of the information on the work it
-    pub fn delete_work(&self, id: &str) -> Result<()> {
+    pub fn delete_work(&self, id: &str) -> DatabaseResult<()> {
         diesel::delete(works::table.filter(works::id.eq(id))).execute(&self.connection)?;
         Ok(())
     }
 
     /// Get all existing works by a composer and related information from other tables.
-    pub fn get_works(&self, composer_id: &str) -> Result<Vec<Work>> {
+    pub fn get_works(&self, composer_id: &str) -> DatabaseResult<Vec<Work>> {
         let mut works: Vec<Work> = Vec::new();
 
         let rows = works::table

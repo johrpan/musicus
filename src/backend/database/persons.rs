@@ -1,6 +1,5 @@
 use super::schema::persons;
-use super::Database;
-use anyhow::Result;
+use super::{Database, DatabaseResult};
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -27,7 +26,7 @@ impl Person {
 
 impl Database {
     /// Update an existing person or insert a new one.
-    pub fn update_person(&self, person: Person) -> Result<()> {
+    pub fn update_person(&self, person: Person) -> DatabaseResult<()> {
         self.defer_foreign_keys()?;
 
         self.connection.transaction(|| {
@@ -40,7 +39,7 @@ impl Database {
     }
 
     /// Get an existing person.
-    pub fn get_person(&self, id: &str) -> Result<Option<Person>> {
+    pub fn get_person(&self, id: &str) -> DatabaseResult<Option<Person>> {
         let person = persons::table
             .filter(persons::id.eq(id))
             .load::<Person>(&self.connection)?
@@ -51,14 +50,14 @@ impl Database {
     }
 
     /// Delete an existing person.
-    pub fn delete_person(&self, id: &str) -> Result<()> {
+    pub fn delete_person(&self, id: &str) -> DatabaseResult<()> {
         diesel::delete(persons::table.filter(persons::id.eq(id))).execute(&self.connection)?;
 
         Ok(())
     }
 
     /// Get all existing persons.
-    pub fn get_persons(&self) -> Result<Vec<Person>> {
+    pub fn get_persons(&self) -> DatabaseResult<Vec<Person>> {
         let persons = persons::table.load::<Person>(&self.connection)?;
 
         Ok(persons)

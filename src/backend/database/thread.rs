@@ -1,37 +1,36 @@
 use super::*;
-use anyhow::Result;
 use futures_channel::oneshot;
 use futures_channel::oneshot::Sender;
 use std::sync::mpsc;
 use std::thread;
 
 /// An action the database thread can perform.
-enum Action {
-    UpdatePerson(Person, Sender<Result<()>>),
-    GetPerson(String, Sender<Result<Option<Person>>>),
-    DeletePerson(String, Sender<Result<()>>),
-    GetPersons(Sender<Result<Vec<Person>>>),
-    UpdateInstrument(Instrument, Sender<Result<()>>),
-    GetInstrument(String, Sender<Result<Option<Instrument>>>),
-    DeleteInstrument(String, Sender<Result<()>>),
-    GetInstruments(Sender<Result<Vec<Instrument>>>),
-    UpdateWork(Work, Sender<Result<()>>),
-    DeleteWork(String, Sender<Result<()>>),
-    GetWorks(String, Sender<Result<Vec<Work>>>),
-    UpdateEnsemble(Ensemble, Sender<Result<()>>),
-    GetEnsemble(String, Sender<Result<Option<Ensemble>>>),
-    DeleteEnsemble(String, Sender<Result<()>>),
-    GetEnsembles(Sender<Result<Vec<Ensemble>>>),
-    UpdateRecording(Recording, Sender<Result<()>>),
-    DeleteRecording(String, Sender<Result<()>>),
-    GetRecordingsForPerson(String, Sender<Result<Vec<Recording>>>),
-    GetRecordingsForEnsemble(String, Sender<Result<Vec<Recording>>>),
-    GetRecordingsForWork(String, Sender<Result<Vec<Recording>>>),
-    RecordingExists(String, Sender<Result<bool>>),
-    UpdateMedium(Medium, Sender<Result<()>>),
-    GetMedium(String, Sender<Result<Option<Medium>>>),
-    DeleteMedium(String, Sender<Result<()>>),
-    GetTrackSets(String, Sender<Result<Vec<TrackSet>>>),
+pub enum Action {
+    UpdatePerson(Person, Sender<DatabaseResult<()>>),
+    GetPerson(String, Sender<DatabaseResult<Option<Person>>>),
+    DeletePerson(String, Sender<DatabaseResult<()>>),
+    GetPersons(Sender<DatabaseResult<Vec<Person>>>),
+    UpdateInstrument(Instrument, Sender<DatabaseResult<()>>),
+    GetInstrument(String, Sender<DatabaseResult<Option<Instrument>>>),
+    DeleteInstrument(String, Sender<DatabaseResult<()>>),
+    GetInstruments(Sender<DatabaseResult<Vec<Instrument>>>),
+    UpdateWork(Work, Sender<DatabaseResult<()>>),
+    DeleteWork(String, Sender<DatabaseResult<()>>),
+    GetWorks(String, Sender<DatabaseResult<Vec<Work>>>),
+    UpdateEnsemble(Ensemble, Sender<DatabaseResult<()>>),
+    GetEnsemble(String, Sender<DatabaseResult<Option<Ensemble>>>),
+    DeleteEnsemble(String, Sender<DatabaseResult<()>>),
+    GetEnsembles(Sender<DatabaseResult<Vec<Ensemble>>>),
+    UpdateRecording(Recording, Sender<DatabaseResult<()>>),
+    DeleteRecording(String, Sender<DatabaseResult<()>>),
+    GetRecordingsForPerson(String, Sender<DatabaseResult<Vec<Recording>>>),
+    GetRecordingsForEnsemble(String, Sender<DatabaseResult<Vec<Recording>>>),
+    GetRecordingsForWork(String, Sender<DatabaseResult<Vec<Recording>>>),
+    RecordingExists(String, Sender<DatabaseResult<bool>>),
+    UpdateMedium(Medium, Sender<DatabaseResult<()>>),
+    GetMedium(String, Sender<DatabaseResult<Option<Medium>>>),
+    DeleteMedium(String, Sender<DatabaseResult<()>>),
+    GetTrackSets(String, Sender<DatabaseResult<Vec<TrackSet>>>),
     Stop(Sender<()>),
 }
 
@@ -44,7 +43,7 @@ pub struct DbThread {
 
 impl DbThread {
     /// Create a new database connection in a background thread.
-    pub async fn new(path: String) -> Result<Self> {
+    pub async fn new(path: String) -> DatabaseResult<Self> {
         let (action_sender, action_receiver) = mpsc::channel();
         let (ready_sender, ready_receiver) = oneshot::channel();
 
@@ -150,14 +149,14 @@ impl DbThread {
     }
 
     /// Update an existing person or insert a new one.
-    pub async fn update_person(&self, person: Person) -> Result<()> {
+    pub async fn update_person(&self, person: Person) -> DatabaseResult<()> {
         let (sender, receiver) = oneshot::channel();
         self.action_sender.send(UpdatePerson(person, sender))?;
         receiver.await?
     }
 
     /// Get an existing person.
-    pub async fn get_person(&self, id: &str) -> Result<Option<Person>> {
+    pub async fn get_person(&self, id: &str) -> DatabaseResult<Option<Person>> {
         let (sender, receiver) = oneshot::channel();
         self.action_sender.send(GetPerson(id.to_string(), sender))?;
         receiver.await?
@@ -165,7 +164,7 @@ impl DbThread {
 
     /// Delete an existing person. This will fail, if there are still other items referencing
     /// this person.
-    pub async fn delete_person(&self, id: &str) -> Result<()> {
+    pub async fn delete_person(&self, id: &str) -> DatabaseResult<()> {
         let (sender, receiver) = oneshot::channel();
         self.action_sender
             .send(DeletePerson(id.to_string(), sender))?;
@@ -173,14 +172,14 @@ impl DbThread {
     }
 
     /// Get all existing persons.
-    pub async fn get_persons(&self) -> Result<Vec<Person>> {
+    pub async fn get_persons(&self) -> DatabaseResult<Vec<Person>> {
         let (sender, receiver) = oneshot::channel();
         self.action_sender.send(GetPersons(sender))?;
         receiver.await?
     }
 
     /// Update an existing instrument or insert a new one.
-    pub async fn update_instrument(&self, instrument: Instrument) -> Result<()> {
+    pub async fn update_instrument(&self, instrument: Instrument) -> DatabaseResult<()> {
         let (sender, receiver) = oneshot::channel();
         self.action_sender
             .send(UpdateInstrument(instrument, sender))?;
@@ -188,7 +187,7 @@ impl DbThread {
     }
 
     /// Get an existing instrument.
-    pub async fn get_instrument(&self, id: &str) -> Result<Option<Instrument>> {
+    pub async fn get_instrument(&self, id: &str) -> DatabaseResult<Option<Instrument>> {
         let (sender, receiver) = oneshot::channel();
         self.action_sender
             .send(GetInstrument(id.to_string(), sender))?;
@@ -197,7 +196,7 @@ impl DbThread {
 
     /// Delete an existing instrument. This will fail, if there are still other items referencing
     /// this instrument.
-    pub async fn delete_instrument(&self, id: &str) -> Result<()> {
+    pub async fn delete_instrument(&self, id: &str) -> DatabaseResult<()> {
         let (sender, receiver) = oneshot::channel();
         self.action_sender
             .send(DeleteInstrument(id.to_string(), sender))?;
@@ -205,14 +204,14 @@ impl DbThread {
     }
 
     /// Get all existing instruments.
-    pub async fn get_instruments(&self) -> Result<Vec<Instrument>> {
+    pub async fn get_instruments(&self) -> DatabaseResult<Vec<Instrument>> {
         let (sender, receiver) = oneshot::channel();
         self.action_sender.send(GetInstruments(sender))?;
         receiver.await?
     }
 
     /// Update an existing work or insert a new one.
-    pub async fn update_work(&self, work: Work) -> Result<()> {
+    pub async fn update_work(&self, work: Work) -> DatabaseResult<()> {
         let (sender, receiver) = oneshot::channel();
         self.action_sender.send(UpdateWork(work, sender))?;
         receiver.await?
@@ -220,7 +219,7 @@ impl DbThread {
 
     /// Delete an existing work. This will fail, if there are still other items referencing
     /// this work.
-    pub async fn delete_work(&self, id: &str) -> Result<()> {
+    pub async fn delete_work(&self, id: &str) -> DatabaseResult<()> {
         let (sender, receiver) = oneshot::channel();
         self.action_sender
             .send(DeleteWork(id.to_string(), sender))?;
@@ -228,7 +227,7 @@ impl DbThread {
     }
 
     /// Get information on all existing works by a composer.
-    pub async fn get_works(&self, person_id: &str) -> Result<Vec<Work>> {
+    pub async fn get_works(&self, person_id: &str) -> DatabaseResult<Vec<Work>> {
         let (sender, receiver) = oneshot::channel();
         self.action_sender
             .send(GetWorks(person_id.to_string(), sender))?;
@@ -236,14 +235,14 @@ impl DbThread {
     }
 
     /// Update an existing ensemble or insert a new one.
-    pub async fn update_ensemble(&self, ensemble: Ensemble) -> Result<()> {
+    pub async fn update_ensemble(&self, ensemble: Ensemble) -> DatabaseResult<()> {
         let (sender, receiver) = oneshot::channel();
         self.action_sender.send(UpdateEnsemble(ensemble, sender))?;
         receiver.await?
     }
 
     /// Get an existing ensemble.
-    pub async fn get_ensemble(&self, id: &str) -> Result<Option<Ensemble>> {
+    pub async fn get_ensemble(&self, id: &str) -> DatabaseResult<Option<Ensemble>> {
         let (sender, receiver) = oneshot::channel();
         self.action_sender
             .send(GetEnsemble(id.to_string(), sender))?;
@@ -252,7 +251,7 @@ impl DbThread {
 
     /// Delete an existing ensemble. This will fail, if there are still other items referencing
     /// this ensemble.
-    pub async fn delete_ensemble(&self, id: &str) -> Result<()> {
+    pub async fn delete_ensemble(&self, id: &str) -> DatabaseResult<()> {
         let (sender, receiver) = oneshot::channel();
         self.action_sender
             .send(DeleteEnsemble(id.to_string(), sender))?;
@@ -260,14 +259,14 @@ impl DbThread {
     }
 
     /// Get all existing ensembles.
-    pub async fn get_ensembles(&self) -> Result<Vec<Ensemble>> {
+    pub async fn get_ensembles(&self) -> DatabaseResult<Vec<Ensemble>> {
         let (sender, receiver) = oneshot::channel();
         self.action_sender.send(GetEnsembles(sender))?;
         receiver.await?
     }
 
     /// Update an existing recording or insert a new one.
-    pub async fn update_recording(&self, recording: Recording) -> Result<()> {
+    pub async fn update_recording(&self, recording: Recording) -> DatabaseResult<()> {
         let (sender, receiver) = oneshot::channel();
         self.action_sender
             .send(UpdateRecording(recording, sender))?;
@@ -275,7 +274,7 @@ impl DbThread {
     }
 
     /// Delete an existing recording.
-    pub async fn delete_recording(&self, id: &str) -> Result<()> {
+    pub async fn delete_recording(&self, id: &str) -> DatabaseResult<()> {
         let (sender, receiver) = oneshot::channel();
         self.action_sender
             .send(DeleteRecording(id.to_string(), sender))?;
@@ -283,7 +282,7 @@ impl DbThread {
     }
 
     /// Get information on all recordings in which a person performs.
-    pub async fn get_recordings_for_person(&self, person_id: &str) -> Result<Vec<Recording>> {
+    pub async fn get_recordings_for_person(&self, person_id: &str) -> DatabaseResult<Vec<Recording>> {
         let (sender, receiver) = oneshot::channel();
         self.action_sender
             .send(GetRecordingsForPerson(person_id.to_string(), sender))?;
@@ -291,7 +290,7 @@ impl DbThread {
     }
 
     /// Get information on all recordings in which an ensemble performs.
-    pub async fn get_recordings_for_ensemble(&self, ensemble_id: &str) -> Result<Vec<Recording>> {
+    pub async fn get_recordings_for_ensemble(&self, ensemble_id: &str) -> DatabaseResult<Vec<Recording>> {
         let (sender, receiver) = oneshot::channel();
         self.action_sender
             .send(GetRecordingsForEnsemble(ensemble_id.to_string(), sender))?;
@@ -299,7 +298,7 @@ impl DbThread {
     }
 
     /// Get information on all recordings of a work.
-    pub async fn get_recordings_for_work(&self, work_id: &str) -> Result<Vec<Recording>> {
+    pub async fn get_recordings_for_work(&self, work_id: &str) -> DatabaseResult<Vec<Recording>> {
         let (sender, receiver) = oneshot::channel();
         self.action_sender
             .send(GetRecordingsForWork(work_id.to_string(), sender))?;
@@ -307,7 +306,7 @@ impl DbThread {
     }
 
     /// Check whether a recording exists within the database.
-    pub async fn recording_exists(&self, id: &str) -> Result<bool> {
+    pub async fn recording_exists(&self, id: &str) -> DatabaseResult<bool> {
         let (sender, receiver) = oneshot::channel();
         self.action_sender
             .send(RecordingExists(id.to_string(), sender))?;
@@ -315,7 +314,7 @@ impl DbThread {
     }
 
     /// Update an existing medium or insert a new one.
-    pub async fn update_medium(&self, medium: Medium) -> Result<()> {
+    pub async fn update_medium(&self, medium: Medium) -> DatabaseResult<()> {
         let (sender, receiver) = oneshot::channel();
         self.action_sender.send(UpdateMedium(medium, sender))?;
         receiver.await?
@@ -323,7 +322,7 @@ impl DbThread {
 
     /// Delete an existing medium. This will fail, if there are still other
     /// items referencing this medium.
-    pub async fn delete_medium(&self, id: &str) -> Result<()> {
+    pub async fn delete_medium(&self, id: &str) -> DatabaseResult<()> {
         let (sender, receiver) = oneshot::channel();
 
         self.action_sender
@@ -333,21 +332,21 @@ impl DbThread {
     }
 
     /// Get an existing medium.
-    pub async fn get_medium(&self, id: &str) -> Result<Option<Medium>> {
+    pub async fn get_medium(&self, id: &str) -> DatabaseResult<Option<Medium>> {
         let (sender, receiver) = oneshot::channel();
         self.action_sender.send(GetMedium(id.to_owned(), sender))?;
         receiver.await?
     }
 
     /// Get all track sets for a recording.
-    pub async fn get_track_sets(&self, recording_id: &str) -> Result<Vec<TrackSet>> {
+    pub async fn get_track_sets(&self, recording_id: &str) -> DatabaseResult<Vec<TrackSet>> {
         let (sender, receiver) = oneshot::channel();
         self.action_sender.send(GetTrackSets(recording_id.to_owned(), sender))?;
         receiver.await?
     }
 
     /// Stop the database thread. Any future access to the database will fail.
-    pub async fn stop(&self) -> Result<()> {
+    pub async fn stop(&self) -> DatabaseResult<()> {
         let (sender, receiver) = oneshot::channel();
         self.action_sender.send(Stop(sender))?;
         Ok(receiver.await?)

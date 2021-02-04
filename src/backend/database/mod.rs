@@ -1,8 +1,10 @@
-use anyhow::Result;
 use diesel::prelude::*;
 
 pub mod ensembles;
 pub use ensembles::*;
+
+pub mod error;
+pub use error::*;
 
 pub mod instruments;
 pub use instruments::*;
@@ -42,7 +44,7 @@ pub struct Database {
 
 impl Database {
     /// Create a new database interface and run migrations if necessary.
-    pub fn new(file_name: &str) -> Result<Database> {
+    pub fn new(file_name: &str) -> DatabaseResult<Database> {
         let connection = SqliteConnection::establish(file_name)?;
 
         diesel::sql_query("PRAGMA foreign_keys = ON").execute(&connection)?;
@@ -52,7 +54,7 @@ impl Database {
     }
 
     /// Defer all foreign keys for the next transaction.
-    fn defer_foreign_keys(&self) -> Result<()> {
+    fn defer_foreign_keys(&self) -> DatabaseResult<()> {
         diesel::sql_query("PRAGMA defer_foreign_keys = ON").execute(&self.connection)?;
         Ok(())
     }

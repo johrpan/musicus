@@ -1,7 +1,6 @@
 use super::generate_id;
 use super::schema::{ensembles, performances, persons, recordings};
-use super::{Database, Ensemble, Instrument, Person, Work};
-use anyhow::{anyhow, Error, Result};
+use super::{Database, Ensemble, DatabaseError, Instrument, Person, DatabaseResult, Work};
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -120,9 +119,9 @@ impl Recording {
 impl Database {
     /// Update an existing recording or insert a new one.
     // TODO: Think about whether to also insert the other items.
-    pub fn update_recording(&self, recording: Recording) -> Result<()> {
+    pub fn update_recording(&self, recording: Recording) -> DatabaseResult<()> {
         self.defer_foreign_keys()?;
-        self.connection.transaction::<(), Error, _>(|| {
+        self.connection.transaction::<(), DatabaseError, _>(|| {
             let recording_id = &recording.id;
             self.delete_recording(recording_id)?;
 
@@ -180,7 +179,7 @@ impl Database {
     }
 
     /// Check whether the database contains a recording.
-    pub fn recording_exists(&self, id: &str) -> Result<bool> {
+    pub fn recording_exists(&self, id: &str) -> DatabaseResult<bool> {
         let exists = recordings::table
             .filter(recordings::id.eq(id))
             .load::<RecordingRow>(&self.connection)?
@@ -191,7 +190,7 @@ impl Database {
     }
 
     /// Get an existing recording.
-    pub fn get_recording(&self, id: &str) -> Result<Option<Recording>> {
+    pub fn get_recording(&self, id: &str) -> DatabaseResult<Option<Recording>> {
         let row = recordings::table
             .filter(recordings::id.eq(id))
             .load::<RecordingRow>(&self.connection)?
@@ -207,7 +206,7 @@ impl Database {
     }
 
     /// Retrieve all available information on a recording from related tables.
-    fn get_recording_data(&self, row: RecordingRow) -> Result<Recording> {
+    fn get_recording_data(&self, row: RecordingRow) -> DatabaseResult<Recording> {
         let mut performance_descriptions: Vec<Performance> = Vec::new();
 
         let performance_rows = performances::table
@@ -219,21 +218,33 @@ impl Database {
                 person: match row.person {
                     Some(id) => Some(
                         self.get_person(&id)?
-                            .ok_or(anyhow!("No person with ID: {}", id))?,
+                            .ok_or(DatabaseError::Other(format!(
+                                "Failed to get person ({}) for recording ({}).",
+                                id,
+                                row.id,
+                            )))?
                     ),
                     None => None,
                 },
                 ensemble: match row.ensemble {
                     Some(id) => Some(
                         self.get_ensemble(&id)?
-                            .ok_or(anyhow!("No ensemble with ID: {}", id))?,
+                            .ok_or(DatabaseError::Other(format!(
+                                "Failed to get ensemble ({}) for recording ({}).",
+                                id,
+                                row.id,
+                            )))?
                     ),
                     None => None,
                 },
                 role: match row.role {
                     Some(id) => Some(
                         self.get_instrument(&id)?
-                            .ok_or(anyhow!("No instrument with ID: {}", id))?,
+                            .ok_or(DatabaseError::Other(format!(
+                                "Failed to get instrument ({}) for recording ({}).",
+                                id,
+                                row.id,
+                            )))?
                     ),
                     None => None,
                 },
@@ -243,7 +254,11 @@ impl Database {
         let work_id = &row.work;
         let work = self
             .get_work(work_id)?
-            .ok_or(anyhow!("Work doesn't exist: {}", work_id))?;
+            .ok_or(DatabaseError::Other(format!(
+                "Failed to get work ({}) for recording ({}).",
+                work_id,
+                row.id,
+            )))?;
 
         let recording_description = Recording {
             id: row.id,
@@ -256,7 +271,7 @@ impl Database {
     }
 
     /// Get all available information on all recordings where a person is performing.
-    pub fn get_recordings_for_person(&self, person_id: &str) -> Result<Vec<Recording>> {
+    pub fn get_recordings_for_person(&self, person_id: &str) -> DatabaseResult<Vec<Recording>> {
         let mut recordings: Vec<Recording> = Vec::new();
 
         let rows = recordings::table
@@ -274,7 +289,7 @@ impl Database {
     }
 
     /// Get all available information on all recordings where an ensemble is performing.
-    pub fn get_recordings_for_ensemble(&self, ensemble_id: &str) -> Result<Vec<Recording>> {
+    pub fn get_recordings_for_ensemble(&self, ensemble_id: &str) -> DatabaseResult<Vec<Recording>> {
         let mut recordings: Vec<Recording> = Vec::new();
 
         let rows = recordings::table
@@ -292,7 +307,7 @@ impl Database {
     }
 
     /// Get allavailable information on all recordings of a work.
-    pub fn get_recordings_for_work(&self, work_id: &str) -> Result<Vec<Recording>> {
+    pub fn get_recordings_for_work(&self, work_id: &str) -> DatabaseResult<Vec<Recording>> {
         let mut recordings: Vec<Recording> = Vec::new();
 
         let rows = recordings::table
@@ -308,7 +323,7 @@ impl Database {
 
     /// Delete an existing recording. This will fail if there are still references to this
     /// recording from other tables that are not directly part of the recording data.
-    pub fn delete_recording(&self, id: &str) -> Result<()> {
+    pub fn delete_recording(&self, id: &str) -> DatabaseResult<()> {
         diesel::delete(recordings::table.filter(recordings::id.eq(id)))
             .execute(&self.connection)?;
         Ok(())

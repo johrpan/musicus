@@ -1,6 +1,5 @@
 use super::schema::instruments;
-use super::Database;
-use anyhow::Result;
+use super::{Database, DatabaseResult};
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -14,7 +13,7 @@ pub struct Instrument {
 
 impl Database {
     /// Update an existing instrument or insert a new one.
-    pub fn update_instrument(&self, instrument: Instrument) -> Result<()> {
+    pub fn update_instrument(&self, instrument: Instrument) -> DatabaseResult<()> {
         self.defer_foreign_keys()?;
 
         self.connection.transaction(|| {
@@ -27,7 +26,7 @@ impl Database {
     }
 
     /// Get an existing instrument.
-    pub fn get_instrument(&self, id: &str) -> Result<Option<Instrument>> {
+    pub fn get_instrument(&self, id: &str) -> DatabaseResult<Option<Instrument>> {
         let instrument = instruments::table
             .filter(instruments::id.eq(id))
             .load::<Instrument>(&self.connection)?
@@ -38,7 +37,7 @@ impl Database {
     }
 
     /// Delete an existing instrument.
-    pub fn delete_instrument(&self, id: &str) -> Result<()> {
+    pub fn delete_instrument(&self, id: &str) -> DatabaseResult<()> {
         diesel::delete(instruments::table.filter(instruments::id.eq(id)))
             .execute(&self.connection)?;
 
@@ -46,7 +45,7 @@ impl Database {
     }
 
     /// Get all existing instruments.
-    pub fn get_instruments(&self) -> Result<Vec<Instrument>> {
+    pub fn get_instruments(&self) -> DatabaseResult<Vec<Instrument>> {
         let instruments = instruments::table.load::<Instrument>(&self.connection)?;
 
         Ok(instruments)

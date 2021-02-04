@@ -1,7 +1,6 @@
 use super::generate_id;
 use super::schema::{mediums, recordings, track_sets, tracks};
-use super::{Database, Recording};
-use anyhow::{anyhow, Error, Result};
+use super::{Database, DatabaseError, Recording, DatabaseResult};
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -80,10 +79,10 @@ struct TrackRow {
 
 impl Database {
     /// Update an existing medium or insert a new one.
-    pub fn update_medium(&self, medium: Medium) -> Result<()> {
+    pub fn update_medium(&self, medium: Medium) -> DatabaseResult<()> {
         self.defer_foreign_keys()?;
 
-        self.connection.transaction::<(), Error, _>(|| {
+        self.connection.transaction::<(), DatabaseError, _>(|| {
             let medium_id = &medium.id;
 
             // This will also delete the track sets and tracks.
@@ -153,7 +152,7 @@ impl Database {
     }
 
     /// Get an existing medium.
-    pub fn get_medium(&self, id: &str) -> Result<Option<Medium>> {
+    pub fn get_medium(&self, id: &str) -> DatabaseResult<Option<Medium>> {
         let row = mediums::table
             .filter(mediums::id.eq(id))
             .load::<MediumRow>(&self.connection)?
@@ -170,13 +169,13 @@ impl Database {
 
     /// Delete a medium and all of its tracks. This will fail, if the music
     /// library contains audio files referencing any of those tracks.
-    pub fn delete_medium(&self, id: &str) -> Result<()> {
+    pub fn delete_medium(&self, id: &str) -> DatabaseResult<()> {
         diesel::delete(mediums::table.filter(mediums::id.eq(id))).execute(&self.connection)?;
         Ok(())
     }
 
     /// Get all available track sets for a recording.
-    pub fn get_track_sets(&self, recording_id: &str) -> Result<Vec<TrackSet>> {
+    pub fn get_track_sets(&self, recording_id: &str) -> DatabaseResult<Vec<TrackSet>> {
         let mut track_sets: Vec<TrackSet> = Vec::new();
 
         let rows = track_sets::table
@@ -194,7 +193,7 @@ impl Database {
     }
 
     /// Retrieve all available information on a medium from related tables.
-    fn get_medium_data(&self, row: MediumRow) -> Result<Medium> {
+    fn get_medium_data(&self, row: MediumRow) -> DatabaseResult<Medium> {
         let track_set_rows = track_sets::table
             .filter(track_sets::medium.eq(&row.id))
             .order_by(track_sets::index)
@@ -218,12 +217,16 @@ impl Database {
     }
 
     /// Convert a track set row from the database to an actual track set.
-    fn get_track_set_from_row(&self, row: TrackSetRow) -> Result<TrackSet> {
+    fn get_track_set_from_row(&self, row: TrackSetRow) -> DatabaseResult<TrackSet> {
         let recording_id = row.recording;
 
         let recording = self
             .get_recording(&recording_id)?
-            .ok_or_else(|| anyhow!("No recording with ID: {}", recording_id))?;
+            .ok_or(DatabaseError::Other(format!(
+                "Failed to get recording ({}) for track set ({}).",
+                recording_id,
+                row.id,
+            )))?;
 
         let track_rows = tracks::table
             .filter(tracks::track_set.eq(row.id))
@@ -236,8 +239,14 @@ impl Database {
             let work_parts = track_row
                 .work_parts
                 .split(',')
-                .map(|part_index| Ok(str::parse(part_index)?))
-                .collect::<Result<Vec<usize>>>()?;
+                .map(|part_index| {
+                    str::parse(part_index)
+                        .or(Err(DatabaseError::Other(format!(
+                            "Failed to parse part index from '{}'.",
+                            track_row.work_parts,
+                        )))?)
+                })
+                .collect::<DatabaseResult<Vec<usize>>>()?;
 
             let track = Track {
                 work_parts,
