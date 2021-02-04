@@ -158,6 +158,11 @@ impl Window {
                         clone.navigator.reset();
 
                         let player = clone.backend.get_player().unwrap();
+
+                        player.set_raise_cb(clone!(@weak clone => move || {
+                            clone.window.present();
+                        }));
+
                         clone.player_bar.set_player(Some(player.clone()));
                         clone.player_screen.clone().set_player(Some(player));
                     }

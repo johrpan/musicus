@@ -1,9 +1,12 @@
 use crate::{Error, Result};
+use mpris_player::{Metadata, MprisPlayer, PlaybackStatus};
 use musicus_database::TrackSet;
+use glib::clone;
 use gstreamer_player::prelude::*;
 use std::cell::{Cell, RefCell};
 use std::path::PathBuf;
 use std::rc::Rc;
+use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct PlaylistItem {
@@ -14,6 +17,7 @@ pub struct PlaylistItem {
 pub struct Player {
     music_library_path: PathBuf,
     player: gstreamer_player::Player,
+    mpris: Arc<MprisPlayer>,
     playlist: RefCell<Vec<PlaylistItem>>,
     current_item: Cell<Option<usize>>,
     current_track: Cell<Option<usize>>,
@@ -23,6 +27,7 @@ pub struct Player {
     duration_cbs: RefCell<Vec<Box<dyn Fn(u64)>>>,
     playing_cbs: RefCell<Vec<Box<dyn Fn(bool)>>>,
     position_cbs: RefCell<Vec<Box<dyn Fn(u64)>>>,
+    raise_cb: RefCell<Option<Box<dyn Fn()>>>,
 }
 
 impl Player {
@@ -34,9 +39,24 @@ impl Player {
         player.set_config(config).unwrap();
         player.set_video_track_enabled(false);
 
+        let mpris = MprisPlayer::new(
+            "de.johrpan.musicus".to_string(),
+            "Musicus".to_string(),
+            "de.johrpan.musicus.desktop".to_string(),
+        );
+
+
+        mpris.set_can_raise(true);
+        mpris.set_can_play(false);
+        mpris.set_can_go_previous(false);
+        mpris.set_can_go_next(false);
+        mpris.set_can_seek(false);
+        mpris.set_can_set_fullscreen(false);
+
         let result = Rc::new(Self {
             music_library_path,
             player: player.clone(),
+            mpris,
             playlist: RefCell::new(Vec::new()),
             current_item: Cell::new(None),
             current_track: Cell::new(None),
@@ -46,6 +66,7 @@ impl Player {
             duration_cbs: RefCell::new(Vec::new()),
             playing_cbs: RefCell::new(Vec::new()),
             position_cbs: RefCell::new(Vec::new()),
+            raise_cb: RefCell::new(None),
         });
 
         let clone = fragile::Fragile::new(result.clone());
@@ -56,9 +77,12 @@ impl Player {
             } else {
                 clone.player.stop();
                 clone.playing.replace(false);
+
                 for cb in &*clone.playing_cbs.borrow() {
                     cb(false);
                 }
+
+                clone.mpris.set_playback_status(PlaybackStatus::Paused);
             }
         });
 
@@ -75,6 +99,37 @@ impl Player {
                 cb(duration.mseconds().unwrap());
             }
         });
+
+        result.mpris.connect_play_pause(clone!(@weak result => move || {
+            result.play_pause();
+        }));
+
+        result.mpris.connect_play(clone!(@weak result => move || {
+            if !result.is_playing() {
+                result.play_pause();
+            }
+        }));
+
+        result.mpris.connect_pause(clone!(@weak result => move || {
+            if result.is_playing() {
+                result.play_pause();
+            }
+        }));
+
+        result.mpris.connect_previous(clone!(@weak result => move || {
+            let _ = result.previous();
+        }));
+
+        result.mpris.connect_next(clone!(@weak result => move || {
+            let _ = result.next();
+        }));
+
+        result.mpris.connect_raise(clone!(@weak result => move || {
+            let cb = result.raise_cb.borrow();
+            if let Some(cb) = &*cb {
+                cb()
+            }
+        }));
 
         result
     }
@@ -97,6 +152,10 @@ impl Player {
 
     pub fn add_position_cb<F: Fn(u64) + 'static>(&self, cb: F) {
         self.position_cbs.borrow_mut().push(Box::new(cb));
+    }
+
+    pub fn set_raise_cb<F: Fn() + 'static>(&self, cb: F) {
+        self.raise_cb.replace(Some(Box::new(cb)));
     }
 
     pub fn get_playlist(&self) -> Vec<PlaylistItem> {
@@ -144,6 +203,9 @@ impl Player {
                 for cb in &*self.playing_cbs.borrow() {
                     cb(true);
                 }
+
+                self.mpris.set_can_play(true);
+                self.mpris.set_playback_status(PlaybackStatus::Playing);
             }
 
             Ok(())
@@ -158,6 +220,8 @@ impl Player {
             for cb in &*self.playing_cbs.borrow() {
                 cb(false);
             }
+
+            self.mpris.set_playback_status(PlaybackStatus::Paused);
         } else {
             self.player.play();
             self.playing.set(true);
@@ -165,6 +229,8 @@ impl Player {
             for cb in &*self.playing_cbs.borrow() {
                 cb(true);
             }
+
+            self.mpris.set_playback_status(PlaybackStatus::Playing);
         }
     }
 
@@ -244,14 +310,12 @@ impl Player {
     }
 
     pub fn set_track(&self, current_item: usize, current_track: usize) -> Result<()> {
+        let item = &self.playlist.borrow()[current_item];
+        let track = &item.track_set.tracks[current_track];
+
         let uri = format!(
             "file://{}",
-            self.music_library_path
-                .join(
-                    self.playlist.borrow()[current_item].track_set.tracks[current_track].path.clone(),
-                )
-                .to_str()
-                .unwrap(),
+            self.music_library_path.join(track.path.clone()).to_str().unwrap(),
         );
 
         self.player.set_uri(&uri);
@@ -265,6 +329,26 @@ impl Player {
         for cb in &*self.track_cbs.borrow() {
             cb(current_item, current_track);
         }
+
+        let mut parts = Vec::<String>::new();
+        for part in &track.work_parts {
+            parts.push(item.track_set.recording.work.parts[*part].title.clone());
+        }
+
+        let mut title = item.track_set.recording.work.get_title();
+        if !parts.is_empty() {
+            title = format!("{}: {}", title, parts.join(", "));
+        }
+
+        let subtitle = item.track_set.recording.get_performers();
+
+        let mut metadata = Metadata::new();
+        metadata.artist = Some(vec![title]);
+        metadata.title = Some(subtitle);
+
+        self.mpris.set_metadata(metadata);
+        self.mpris.set_can_go_previous(self.has_previous());
+        self.mpris.set_can_go_next(self.has_next());
 
         Ok(())
     }
@@ -283,5 +367,7 @@ impl Player {
         for cb in &*self.playlist_cbs.borrow() {
             cb(Vec::new());
         }
+
+        self.mpris.set_can_play(false);
     }
 }

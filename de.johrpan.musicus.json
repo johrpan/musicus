@@ -15,6 +15,8 @@
         "--socket=pulseaudio",
         "--filesystem=host",
         "--talk-name=org.freedesktop.secrets",
+    	"--talk-name=org.mpris.MediaPlayer2.Player",
+        "--own-name=org.mpris.MediaPlayer2.de.johrpan.musicus",
         "--device=all"
     ],
     "build-options" : {
