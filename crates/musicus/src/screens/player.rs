@@ -67,6 +67,9 @@ impl Screen<(), ()> for PlayerScreen {
         let list = List::new();
         frame.set_child(Some(&list.widget));
 
+        let position_controller = gtk::GestureClick::new();
+        position_scale.add_controller(&position_controller);
+
         let this = Rc::new(Self {
             handle,
             widget,
@@ -90,12 +93,16 @@ impl Screen<(), ()> for PlayerScreen {
 
         let player = &this.handle.backend.pl();
 
-        player.add_playlist_cb(clone!(@weak this => move |playlist| {
+        player.add_playlist_cb(clone!(@weak this => @default-return (), move |playlist| {
+            if playlist.is_empty() {
+                this.handle.pop(None);
+            }
+
             this.playlist.replace(playlist);
             this.show_playlist();
         }));
 
-        player.add_track_cb(clone!(@weak this, @weak player => move |current_item, current_track| {
+        player.add_track_cb(clone!(@weak this, @weak player => @default-return (), move |current_item, current_track| {
             this.previous_button.set_sensitive(this.handle.backend.pl().has_previous());
             this.next_button.set_sensitive(this.handle.backend.pl().has_next());
 
@@ -122,14 +129,14 @@ impl Screen<(), ()> for PlayerScreen {
             this.show_playlist();
         }));
 
-        player.add_duration_cb(clone!(@weak this => move |ms| {
+        player.add_duration_cb(clone!(@weak this => @default-return (), move |ms| {
             let min = ms / 60000;
             let sec = (ms % 60000) / 1000;
             this.duration_label.set_text(&format!("{}:{:02}", min, sec));
             this.position.set_upper(ms as f64);
         }));
 
-        player.add_playing_cb(clone!(@weak this => move |playing| {
+        player.add_playing_cb(clone!(@weak this => @default-return (), move |playing| {
             this.play_button.set_child(Some(if playing {
                 &this.pause_image
             } else {
@@ -137,7 +144,7 @@ impl Screen<(), ()> for PlayerScreen {
             }));
         }));
 
-        player.add_position_cb(clone!(@weak this => move |ms| {
+        player.add_position_cb(clone!(@weak this => @default-return (), move |ms| {
             if !this.seeking.get() {
                 let min = ms / 60000;
                 let sec = (ms % 60000) / 1000;
@@ -166,31 +173,24 @@ impl Screen<(), ()> for PlayerScreen {
             this.handle.backend.pl().clear();
         }));
 
-        // position_scale.connect_button_press_event(clone!(@strong seeking => move |_, _| {
-        //     seeking.replace(true);
-        //     Inhibit(false)
+        // position_controller.connect_pressed(clone!(@weak this => move |_, _, _, _| {
+        //     this.seeking.replace(true);
         // }));
 
-        // position_scale.connect_button_release_event(
-        //     clone!(@strong seeking, @strong position, @strong player => move |_, _| {
-        //         if let Some(player) = &*player.borrow() {
-        //             player.seek(position.get_value() as u64);
-        //         }
+        // position_controller.connect_unpaired_release(clone!(@weak this => move |_, _, _, _, _| {
+        //     this.handle.backend.pl().seek(this.position.get_value() as u64);
+        //     this.seeking.replace(false);
+        // }));
 
-        //         seeking.replace(false);
-        //         Inhibit(false)
-        //     }),
-        // );
+        // position_scale.connect_value_changed(clone!(@weak this => move |_| {
+        //     if this.seeking.get() {
+        //         let ms = this.position.get_value() as u64;
+        //         let min = ms / 60000;
+        //         let sec = (ms % 60000) / 1000;
 
-        position_scale.connect_value_changed(clone!(@strong this => move |_| {
-            if this.seeking.get() {
-                let ms = this.position.get_value() as u64;
-                let min = ms / 60000;
-                let sec = (ms % 60000) / 1000;
-
-                this.position_label.set_text(&format!("{}:{:02}", min, sec));
-            }
-        }));
+        //         this.position_label.set_text(&format!("{}:{:02}", min, sec));
+        //     }
+        // }));
 
         this.list.set_make_widget_cb(clone!(@weak this => move |index| {
             match this.items.borrow()[index] {
