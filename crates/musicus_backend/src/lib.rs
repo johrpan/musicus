@@ -39,12 +39,28 @@ pub enum BackendState {
 
 /// A collection of all backend state and functionality.
 pub struct Backend {
+    /// A future resolving to the next state of the backend. Initially, this should be assumed to
+    /// be BackendState::Loading. Changes should be awaited before calling init().
     pub state_stream: RefCell<mpsc::Receiver<BackendState>>,
+
+    /// The internal sender to publish the state via state_stream.
     state_sender: RefCell<mpsc::Sender<BackendState>>,
+
+    /// Access to GSettings.
     settings: gio::Settings,
+
+    /// The current path to the music library, which is used by the player and the database. This
+    /// is guaranteed to be Some, when the state is set to BackendState::Ready.
     music_library_path: RefCell<Option<PathBuf>>,
+
+    /// The database. This can be assumed to exist, when the state is set to BackendState::Ready.
     database: RefCell<Option<Rc<DbThread>>>,
+
+    /// The player handling playlist and playback. This can be assumed to exist, when the state is
+    /// set to BackendState::Ready.
     player: RefCell<Option<Rc<Player>>>,
+
+    /// A client for the Wolfgang server.
     client: Client,
 }
 
