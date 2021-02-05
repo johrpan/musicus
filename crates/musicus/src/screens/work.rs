@@ -7,7 +7,7 @@ use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
 use libadwaita::prelude::*;
-use musicus_backend::{Work, Recording};
+use musicus_backend::db::{Work, Recording};
 use std::cell::RefCell;
 use std::rc::Rc;
 

@@ -5,7 +5,7 @@ use crate::widgets::Widget;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
-use musicus_backend::LoginData;
+use musicus_backend::client::LoginData;
 use std::rc::Rc;
 
 /// A dialog for entering login credentials.
@@ -53,7 +53,7 @@ impl Screen<(), LoginData> for LoginDialog {
             };
 
             spawn!(@clone this, async move {
-                this.handle.backend.set_login_data(data.clone()).await.unwrap();
+                this.handle.backend.set_login_data(data.clone()).await;
                 if this.handle.backend.cl().login().await.unwrap() {
                     this.handle.pop(Some(data));
                 } else {

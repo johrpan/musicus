@@ -6,7 +6,7 @@ use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
 use libadwaita::prelude::*;
-use musicus_backend::Person;
+use musicus_backend::db::Person;
 use std::rc::Rc;
 
 /// A screen for selecting a person.

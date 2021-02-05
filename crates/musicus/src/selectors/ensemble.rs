@@ -6,7 +6,7 @@ use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
 use libadwaita::prelude::*;
-use musicus_backend::Ensemble;
+use musicus_backend::db::Ensemble;
 use std::rc::Rc;
 
 /// A screen for selecting a ensemble.

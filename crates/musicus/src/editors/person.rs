@@ -4,8 +4,7 @@ use anyhow::Result;
 use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
-use musicus_backend::generate_id;
-use musicus_backend::Person;
+use musicus_backend::db::{generate_id, Person};
 use std::rc::Rc;
 
 /// A dialog for creating or editing a person.

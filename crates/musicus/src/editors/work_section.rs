@@ -3,7 +3,7 @@ use crate::widgets::Widget;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
-use musicus_backend::WorkSection;
+use musicus_backend::db::WorkSection;
 use std::rc::Rc;
 
 /// A dialog for creating or editing a work section.

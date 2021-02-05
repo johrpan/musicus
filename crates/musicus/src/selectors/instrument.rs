@@ -6,7 +6,7 @@ use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
 use libadwaita::prelude::*;
-use musicus_backend::Instrument;
+use musicus_backend::db::Instrument;
 use std::rc::Rc;
 
 /// A screen for selecting a instrument.

@@ -6,7 +6,8 @@ use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
 use libadwaita::prelude::*;
-use musicus_backend::{PlaylistItem, Recording, TrackSet};
+use musicus_backend::PlaylistItem;
+use musicus_backend::db::{Recording, TrackSet};
 use std::cell::RefCell;
 use std::rc::Rc;
 

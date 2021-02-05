@@ -6,7 +6,7 @@ use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
 use libadwaita::prelude::*;
-use musicus_backend::{Person, Work};
+use musicus_backend::db::{Person, Work};
 use std::rc::Rc;
 
 /// A screen for selecting a work.

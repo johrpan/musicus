@@ -4,7 +4,7 @@ use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
 use libadwaita::prelude::*;
-use musicus_backend::Recording;
+use musicus_backend::db::Recording;
 use std::cell::RefCell;
 use std::rc::Rc;
 

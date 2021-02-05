@@ -8,8 +8,7 @@ use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
 use libadwaita::prelude::*;
-use musicus_backend::generate_id;
-use musicus_backend::{Performance, Recording, Work};
+use musicus_backend::db::{generate_id, Performance, Recording, Work};
 use std::cell::RefCell;
 use std::rc::Rc;
 

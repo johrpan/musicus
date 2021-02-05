@@ -1,18 +1,17 @@
 use futures_channel::mpsc;
 use gio::prelude::*;
 use log::warn;
+use musicus_client::{Client, LoginData};
+use musicus_database::DbThread;
 use std::cell::RefCell;
 use std::path::PathBuf;
 use std::rc::Rc;
 
-pub use musicus_client::*;
-pub use musicus_database::*;
+pub use musicus_client as client;
+pub use musicus_database as db;
 
 pub mod error;
 pub use error::*;
-
-// Override the identically named types from the other crates.
-pub use error::{Error, Result};
 
 pub mod library;
 pub use library::*;

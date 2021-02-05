@@ -2,7 +2,8 @@ use super::*;
 use glib::clone;
 use gtk_macros::get_widget;
 use libadwaita::prelude::*;
-use musicus_backend::{Backend, Person, Ensemble};
+use musicus_backend::Backend;
+use musicus_backend::db::{Person, Ensemble};
 use std::cell::RefCell;
 use std::rc::Rc;
 
