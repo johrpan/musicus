@@ -10,9 +10,6 @@ pub enum Error {
     #[error("An error happened using the SecretService.")]
     SecretServiceError(#[from] secret_service::Error),
 
-    #[error("An error happened in GLib.")]
-    GlibError(#[from] glib::BoolError),
-
     #[error("A channel was canceled.")]
     ChannelError(#[from] futures_channel::oneshot::Canceled),
 

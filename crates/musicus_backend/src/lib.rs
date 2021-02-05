@@ -1,5 +1,6 @@
 use futures_channel::mpsc;
 use gio::prelude::*;
+use log::warn;
 use std::cell::RefCell;
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -74,18 +75,24 @@ impl Backend {
             }
         }
 
-        if let Some(data) = Self::load_login_data().await? {
-            self.client.set_login_data(data);
+        match Self::load_login_data().await {
+            Ok(Some(data)) => self.client.set_login_data(data),
+            Err(err) => warn!("The login data could not be loaded from SecretService. It will not \
+                be available. Error message: {}", err),
+            _ => (),
         }
 
         Ok(())
     }
 
     /// Set the URL of the Musicus server to connect to.
-    pub fn set_server_url(&self, url: &str) -> Result<()> {
-        self.settings.set_string("server-url", url)?;
+    pub fn set_server_url(&self, url: &str) {
+        if let Err(err) = self.settings.set_string("server-url", url) {
+            warn!("An error happened while trying to save the server URL to GSettings. Most \
+                likely it will not be available at the next startup. Error message: {}", err);
+        }
+
         self.client.set_server_url(url);
-        Ok(())
     }
 
     /// Get the currently set server URL.
@@ -94,10 +101,14 @@ impl Backend {
     }
 
     /// Set the user credentials to use.
-    pub async fn set_login_data(&self, data: LoginData) -> Result<()> {
-        Self::store_login_data(data.clone()).await?;
+    pub async fn set_login_data(&self, data: LoginData) {
+        if let Err(err) = Self::store_login_data(data.clone()).await {
+            warn!("An error happened while trying to store the login data using SecretService. \
+                This means, that they will not be available at the next startup most likely. \
+                Error message: {}", err);
+        }
+
         self.client.set_login_data(data);
-        Ok(())
     }
 
     pub fn cl(&self) -> &Client {

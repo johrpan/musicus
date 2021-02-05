@@ -1,4 +1,4 @@
-use crate::{Backend, Result};
+use crate::{Backend, Error, Result};
 use musicus_client::LoginData;
 use futures_channel::oneshot;
 use secret_service::{Collection, EncryptionType, SecretService};
@@ -32,8 +32,12 @@ impl Backend {
 
         Ok(match item {
             Some(item) => {
-                // TODO: Delete the item when malformed.
-                let username = item.get_attributes()?.get("username").unwrap().to_owned();
+                let username = item
+                    .get_attributes()?
+                    .get("username")
+                    .ok_or(Error::Other("Missing username in SecretService attributes."))?
+                    .to_owned();
+
                 let password = std::str::from_utf8(&item.get_secret()?)?.to_owned();
 
                 Some(LoginData { username, password })
