@@ -353,6 +353,24 @@ impl Player {
         Ok(())
     }
 
+    pub fn send_data(&self) {
+        for cb in &*self.playlist_cbs.borrow() {
+            cb(self.playlist.borrow().clone());
+        }
+
+        for cb in &*self.track_cbs.borrow() {
+            cb(self.current_item.get().unwrap(), self.current_track.get().unwrap());
+        }
+
+        for cb in &*self.duration_cbs.borrow() {
+            cb(self.player.get_duration().mseconds().unwrap());
+        }
+
+        for cb in &*self.playing_cbs.borrow() {
+            cb(self.is_playing());
+        }
+    }
+
     pub fn clear(&self) {
         self.player.stop();
         self.playing.set(false);

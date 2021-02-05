@@ -3,11 +3,11 @@
     <gresource prefix="/de/johrpan/musicus">
         <file preprocess="xml-stripblanks">ui/editor.ui</file>
         <file preprocess="xml-stripblanks">ui/login_dialog.ui</file>
+        <file preprocess="xml-stripblanks">ui/main_screen.ui</file>
         <file preprocess="xml-stripblanks">ui/medium_editor.ui</file>
         <file preprocess="xml-stripblanks">ui/performance_editor.ui</file>
         <file preprocess="xml-stripblanks">ui/player_bar.ui</file>
         <file preprocess="xml-stripblanks">ui/player_screen.ui</file>
-        <file preprocess="xml-stripblanks">ui/poe_list.ui</file>
         <file preprocess="xml-stripblanks">ui/preferences.ui</file>
         <file preprocess="xml-stripblanks">ui/recording_editor.ui</file>
         <file preprocess="xml-stripblanks">ui/register_dialog.ui</file>
@@ -19,7 +19,6 @@
         <file preprocess="xml-stripblanks">ui/track_editor.ui</file>
         <file preprocess="xml-stripblanks">ui/track_selector.ui</file>
         <file preprocess="xml-stripblanks">ui/track_set_editor.ui</file>
-        <file preprocess="xml-stripblanks">ui/window.ui</file>
         <file preprocess="xml-stripblanks">ui/work_editor.ui</file>
         <file preprocess="xml-stripblanks">ui/work_part_editor.ui</file>
         <file preprocess="xml-stripblanks">ui/work_section_editor.ui</file>

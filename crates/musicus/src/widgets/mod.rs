@@ -15,9 +15,6 @@ pub use list::*;
 pub mod player_bar;
 pub use player_bar::*;
 
-pub mod poe_list;
-pub use poe_list::*;
-
 pub mod screen;
 pub use screen::*;
 

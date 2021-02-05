@@ -1,3 +1,4 @@
+use futures::prelude::*;
 use futures_channel::mpsc;
 use gio::prelude::*;
 use log::warn;
@@ -40,7 +41,7 @@ pub enum BackendState {
 pub struct Backend {
     /// A future resolving to the next state of the backend. Initially, this should be assumed to
     /// be BackendState::Loading. Changes should be awaited before calling init().
-    pub state_stream: RefCell<mpsc::Receiver<BackendState>>,
+    state_stream: RefCell<mpsc::Receiver<BackendState>>,
 
     /// The internal sender to publish the state via state_stream.
     state_sender: RefCell<mpsc::Sender<BackendState>>,
@@ -80,8 +81,14 @@ impl Backend {
         }
     }
 
+    /// Wait for the next state change. Initially, the state should be assumed to be
+    /// BackendState::Loading. Changes should be awaited before calling init().
+    pub async fn next_state(&self) -> Option<BackendState> {
+        self.state_stream.borrow_mut().next().await
+    }
+
     /// Initialize the backend updating the state accordingly.
-    pub async fn init(self: Rc<Backend>) -> Result<()> {
+    pub async fn init(&self) -> Result<()> {
         self.init_library().await?;
 
         if let Some(url) = self.settings.get_string("server-url") {
@@ -95,6 +102,12 @@ impl Backend {
             Err(err) => warn!("The login data could not be loaded from SecretService. It will not \
                 be available. Error message: {}", err),
             _ => (),
+        }
+
+        if self.get_music_library_path().is_none() {
+            self.set_state(BackendState::NoMusicLibrary);
+        } else {
+            self.set_state(BackendState::Ready);
         }
 
         Ok(())
