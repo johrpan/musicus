@@ -224,10 +224,6 @@
   </object>
   <menu id="menu">
     <section>
-    <item>
-        <attribute name="label" translatable="yes">Import CD</attribute>
-        <attribute name="action">win.import-disc</attribute>
-      </item>
       <item>
         <attribute name="label" translatable="yes">Preferences</attribute>
         <attribute name="action">win.preferences</attribute>

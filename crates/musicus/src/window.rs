@@ -1,7 +1,7 @@
 use crate::config;
 use crate::import::SourceSelector;
 use crate::preferences::Preferences;
-use crate::screens::*;
+use crate::screens::{EnsembleScreen, PersonScreen, PlayerScreen};
 use crate::widgets::*;
 use crate::navigator::{Navigator, NavigatorWindow};
 use futures::prelude::*;
@@ -114,16 +114,6 @@ impl Window {
                 result.stack.set_visible_child_name("content");
             }));
 
-        // action!(
-        //     result.window,
-        //     "import-disc",
-        //     clone!(@strong result => move |_, _| {
-        //         let dialog = ImportDiscDialog::new(result.backend.clone());
-        //         let window = NavigatorWindow::new(dialog);
-        //         window.show();
-        //     })
-        // );
-
         action!(
             result.window,
             "preferences",
@@ -160,7 +150,7 @@ impl Window {
                         let player = clone.backend.get_player().unwrap();
 
                         player.set_raise_cb(clone!(@weak clone => move || {
-                            clone.window.present();
+                            clone.present();
                         }));
 
                         clone.player_bar.set_player(Some(player.clone()));
@@ -172,7 +162,7 @@ impl Window {
 
         let clone = result.clone();
         context.spawn_local(async move {
-            // This is not done in the async block below, because backend state changes may happen
+            // This is not done in the async block above, because backend state changes may happen
             // while this method is running.
             clone.backend.clone().init().await.unwrap();
         });
