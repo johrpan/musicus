@@ -14,9 +14,8 @@ use std::rc::Rc;
 /// A dialog for starting to import music.
 pub struct SourceSelector {
     handle: NavigationHandle<()>,
-    widget: gtk::Box,
-    stack: gtk::Stack,
-    info_bar: gtk::InfoBar,
+    widget: gtk::Stack,
+    status_page: libadwaita::StatusPage,
 }
 
 impl Screen<(), ()> for SourceSelector {
@@ -26,18 +25,17 @@ impl Screen<(), ()> for SourceSelector {
 
         let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/source_selector.ui");
 
-        get_widget!(builder, gtk::Box, widget);
+        get_widget!(builder, gtk::Stack, widget);
         get_widget!(builder, gtk::Button, back_button);
-        get_widget!(builder, gtk::Stack, stack);
-        get_widget!(builder, gtk::InfoBar, info_bar);
         get_widget!(builder, gtk::Button, folder_button);
         get_widget!(builder, gtk::Button, disc_button);
+        get_widget!(builder, libadwaita::StatusPage, status_page);
+        get_widget!(builder, gtk::Button, try_again_button);
 
         let this = Rc::new(Self {
             handle,
             widget,
-            stack,
-            info_bar,
+            status_page,
         });
 
         // Connect signals and callbacks
@@ -59,12 +57,13 @@ impl Screen<(), ()> for SourceSelector {
             dialog.set_modal(true);
 
             dialog.connect_response(clone!(@weak this => move |dialog, response| {
-                this.stack.set_visible_child_name("loading");
                 dialog.hide();
 
                 if let gtk::ResponseType::Accept = response {
                     if let Some(file) = dialog.get_file() {
                         if let Some(path) = file.get_path() {
+                            this.widget.set_visible_child_name("loading");
+
                             spawn!(@clone this, async move {
                                 let folder = FolderSource::new(PathBuf::from(path));
                                 match folder.load().await {
@@ -73,10 +72,9 @@ impl Screen<(), ()> for SourceSelector {
                                         push!(this.handle, MediumEditor, source).await;
                                         this.handle.pop(Some(()));
                                     }
-                                    Err(_) => {
-                                        // TODO: Present error.
-                                        this.info_bar.set_revealed(true);
-                                        this.stack.set_visible_child_name("start");
+                                    Err(err) => {
+                                        this.status_page.set_description(Some(&err.to_string()));
+                                        this.widget.set_visible_child_name("error");
                                     }
                                 }
                             });
@@ -89,7 +87,7 @@ impl Screen<(), ()> for SourceSelector {
         }));
 
         disc_button.connect_clicked(clone!(@weak this => move |_| {
-            this.stack.set_visible_child_name("loading");
+            this.widget.set_visible_child_name("loading");
 
             spawn!(@clone this, async move {
                 let disc = DiscSource::new().unwrap();
@@ -99,13 +97,16 @@ impl Screen<(), ()> for SourceSelector {
                         push!(this.handle, MediumEditor, source).await;
                         this.handle.pop(Some(()));
                     }
-                    Err(_) => {
-                        // TODO: Present error.
-                        this.info_bar.set_revealed(true);
-                        this.stack.set_visible_child_name("start");
+                    Err(err) => {
+                        this.status_page.set_description(Some(&err.to_string()));
+                        this.widget.set_visible_child_name("error");
                     }
                 }
             });
+        }));
+
+        try_again_button.connect_clicked(clone!(@weak this => move |_| {
+            this.widget.set_visible_child_name("content");
         }));
 
         this

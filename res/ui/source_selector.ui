@@ -2,96 +2,124 @@
 <interface>
   <requires lib="gtk" version="4.0"/>
   <requires lib="libadwaita" version="1.0"/>
-  <object class="GtkBox" id="widget">
-    <property name="orientation">vertical</property>
+  <object class="GtkStack" id="widget">
+    <property name="transition-type">crossfade</property>
     <child>
-      <object class="AdwHeaderBar">
-        <property name="show-start-title-buttons">false</property>
-        <property name="show-end-title-buttons">false</property>
-        <property name="title-widget">
-          <object class="GtkLabel">
-            <property name="label" translatable="yes">Import music</property>
-            <style>
-              <class name="title"/>
-            </style>
-          </object>
-        </property>
-        <child>
-          <object class="GtkButton" id="back_button">
+      <object class="GtkStackPage">
+        <property name="name">content</property>
+        <property name="child">
+          <object class="GtkBox">
+            <property name="orientation">vertical</property>
             <child>
-              <object class="GtkImage">
-                <property name="icon-name">go-previous-symbolic</property>
+              <object class="AdwHeaderBar">
+                <property name="show-start-title-buttons">false</property>
+                <property name="show-end-title-buttons">false</property>
+                <property name="title-widget">
+                  <object class="AdwWindowTitle" id="window_title"/>
+                </property>
+                <child>
+                  <object class="GtkButton" id="back_button">
+                    <property name="icon-name">go-previous-symbolic</property>
+                  </object>
+                </child>
+              </object>
+            </child>
+            <child>
+              <object class="AdwStatusPage">
+                <property name="vexpand">true</property>
+                <property name="icon-name">folder-music-symbolic</property>
+                <property name="title" translatable="yes">Import music</property>
+                <property name="description" translatable="yes">Select the source which contains the new audio files below.</property>
+                <child>
+                  <object class="GtkBox">
+                    <property name="orientation">horizontal</property>
+                    <property name="homogeneous">true</property>
+                    <property name="spacing">6</property>
+                    <property name="halign">center</property>
+                    <child>
+                      <object class="GtkButton" id="folder_button">
+                        <property name="label" translatable="true">Select folder</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkButton" id="disc_button">
+                        <property name="label" translatable="true">Copy audio CD</property>
+                      </object>
+                    </child>
+                  </object>
+                </child>
               </object>
             </child>
           </object>
-        </child>
+        </property>
       </object>
     </child>
     <child>
-      <object class="GtkStack" id="stack">
-        <property name="transition-type">crossfade</property>
-        <child>
-          <object class="GtkStackPage">
-            <property name="name">start</property>
-            <property name="child">
-              <object class="GtkBox">
-                <property name="orientation">vertical</property>
-                <child>
-                  <object class="GtkInfoBar" id="info_bar">
-                    <property name="message-type">error</property>
-                    <property name="revealed">False</property>
-                    <child>
-                      <object class="GtkLabel">
-                        <property name="label" translatable="yes">Failed to load the CD. Make sure you have inserted it into your drive.</property>
-                        <property name="wrap">True</property>
-                      </object>
-                    </child>
+      <object class="GtkStackPage">
+        <property name="name">loading</property>
+        <property name="child">
+          <object class="GtkBox">
+            <property name="orientation">vertical</property>
+            <child>
+              <object class="AdwHeaderBar">
+                <property name="show-start-title-buttons">false</property>
+                <property name="show-end-title-buttons">false</property>
+                <property name="title-widget">
+                  <object class="AdwWindowTitle">
+                    <property name="title" translatable="true">Loading</property>
                   </object>
-                </child>
-                <child>
-                  <object class="AdwStatusPage">
-                    <property name="vexpand">true</property>
-                    <property name="icon-name">folder-music-symbolic</property>
-                    <property name="title" translatable="yes">Import music</property>
-                    <property name="description" translatable="yes">Select the source which contains the new audio files below.</property>
-                    <child>
-                      <object class="GtkBox">
-                        <property name="orientation">horizontal</property>
-                        <property name="homogeneous">true</property>
-                        <property name="spacing">6</property>
-                        <property name="halign">center</property>
-                        <child>
-                          <object class="GtkButton" id="folder_button">
-                            <property name="label" translatable="true">Select folder</property>
-                          </object>
-                        </child>
-                        <child>
-                          <object class="GtkButton" id="disc_button">
-                            <property name="label" translatable="true">Copy audio CD</property>
-                          </object>
-                        </child>
-                      </object>
-                    </child>
-                  </object>
-                </child>
+                </property>
               </object>
-            </property>
-          </object>
-        </child>
-        <child>
-          <object class="GtkStackPage">
-            <property name="name">loading</property>
-            <property name="child">
+            </child>
+            <child>
               <object class="GtkSpinner">
-                <property name="spinning">True</property>
-                <property name="halign">center</property>
-                <property name="valign">center</property>
                 <property name="hexpand">true</property>
                 <property name="vexpand">true</property>
+                <property name="halign">center</property>
+                <property name="valign">center</property>
+                <property name="width-request">32</property>
+                <property name="height-request">32</property>
+                <property name="spinning">true</property>
               </object>
-            </property>
+            </child>
           </object>
-        </child>
+        </property>
+      </object>
+    </child>
+    <child>
+      <object class="GtkStackPage">
+        <property name="name">error</property>
+        <property name="child">
+          <object class="GtkBox">
+            <property name="orientation">vertical</property>
+            <child>
+              <object class="AdwHeaderBar">
+                <property name="show-start-title-buttons">false</property>
+                <property name="show-end-title-buttons">false</property>
+                <property name="title-widget">
+                  <object class="AdwWindowTitle">
+                    <property name="title" translatable="yes">Error</property>
+                  </object>
+                </property>
+              </object>
+            </child>
+            <child>
+              <object class="AdwStatusPage" id="status_page">
+                <property name="icon-name">dialog-error-symbolic</property>
+                <property name="title">Error</property>
+                <child>
+                  <object class="GtkButton" id="try_again_button">
+                    <property name="label" translatable="yes">Try again</property>
+                    <property name="hexpand">true</property>
+                    <property name="vexpand">true</property>
+                    <property name="halign">center</property>
+                    <property name="valign">center</property>
+                  </object>
+                </child>
+              </object>
+            </child>
+          </object>
+        </property>
       </object>
     </child>
   </object>
