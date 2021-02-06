@@ -29,6 +29,8 @@ pub enum Action {
     RecordingExists(String, Sender<Result<bool>>),
     UpdateMedium(Medium, Sender<Result<()>>),
     GetMedium(String, Sender<Result<Option<Medium>>>),
+    GetMediumsForPerson(String, Sender<Result<Vec<Medium>>>),
+    GetMediumsForEnsemble(String, Sender<Result<Vec<Medium>>>),
     DeleteMedium(String, Sender<Result<()>>),
     GetTrackSets(String, Sender<Result<Vec<TrackSet>>>),
     Stop(Sender<()>),
@@ -129,6 +131,12 @@ impl DbThread {
                     }
                     GetMedium(id, sender) => {
                         sender.send(db.get_medium(&id)).unwrap();
+                    }
+                    GetMediumsForPerson(id, sender) => {
+                        sender.send(db.get_mediums_for_person(&id)).unwrap();
+                    }
+                    GetMediumsForEnsemble(id, sender) => {
+                        sender.send(db.get_mediums_for_ensemble(&id)).unwrap();
                     }
                     DeleteMedium(id, sender) => {
                         sender.send(db.delete_medium(&id)).unwrap();
@@ -335,6 +343,20 @@ impl DbThread {
     pub async fn get_medium(&self, id: &str) -> Result<Option<Medium>> {
         let (sender, receiver) = oneshot::channel();
         self.action_sender.send(GetMedium(id.to_owned(), sender))?;
+        receiver.await?
+    }
+
+    /// Get all mediums on which a person performs.
+    pub async fn get_mediums_for_person(&self, id: &str) -> Result<Vec<Medium>> {
+        let (sender, receiver) = oneshot::channel();
+        self.action_sender.send(GetMediumsForPerson(id.to_owned(), sender))?;
+        receiver.await?
+    }
+
+    /// Get all mediums on which an ensemble performs.
+    pub async fn get_mediums_for_ensemble(&self, id: &str) -> Result<Vec<Medium>> {
+        let (sender, receiver) = oneshot::channel();
+        self.action_sender.send(GetMediumsForEnsemble(id.to_owned(), sender))?;
         receiver.await?
     }
 

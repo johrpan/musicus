@@ -1,5 +1,5 @@
 use super::generate_id;
-use super::schema::{mediums, recordings, track_sets, tracks};
+use super::schema::{ensembles, mediums, performances, persons, recordings, track_sets, tracks};
 use super::{Database, Error, Recording, Result};
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -165,6 +165,50 @@ impl Database {
         };
 
         Ok(medium)
+    }
+
+    /// Get mediums on which this person is performing.
+    pub fn get_mediums_for_person(&self, person_id: &str) -> Result<Vec<Medium>> {
+        let mut mediums: Vec<Medium> = Vec::new();
+
+        let rows = mediums::table
+            .inner_join(track_sets::table.on(track_sets::medium.eq(mediums::id)))
+            .inner_join(recordings::table.on(recordings::id.eq(track_sets::recording)))
+            .inner_join(performances::table.on(performances::recording.eq(recordings::id)))
+            .inner_join(persons::table.on(persons::id.nullable().eq(performances::person)))
+            .filter(persons::id.eq(person_id))
+            .select(mediums::table::all_columns())
+            .distinct()
+            .load::<MediumRow>(&self.connection)?;
+
+        for row in rows {
+            let medium = self.get_medium_data(row)?;
+            mediums.push(medium);
+        }
+
+        Ok(mediums)
+    }
+
+    /// Get mediums on which this ensemble is performing.
+    pub fn get_mediums_for_ensemble(&self, ensemble_id: &str) -> Result<Vec<Medium>> {
+        let mut mediums: Vec<Medium> = Vec::new();
+
+        let rows = mediums::table
+            .inner_join(track_sets::table.on(track_sets::medium.eq(mediums::id)))
+            .inner_join(recordings::table.on(recordings::id.eq(track_sets::recording)))
+            .inner_join(performances::table.on(performances::recording.eq(recordings::id)))
+            .inner_join(ensembles::table.on(ensembles::id.nullable().eq(performances::ensemble)))
+            .filter(ensembles::id.eq(ensemble_id))
+            .select(mediums::table::all_columns())
+            .distinct()
+            .load::<MediumRow>(&self.connection)?;
+
+        for row in rows {
+            let medium = self.get_medium_data(row)?;
+            mediums.push(medium);
+        }
+
+        Ok(mediums)
     }
 
     /// Delete a medium and all of its tracks. This will fail, if the music
