@@ -108,7 +108,7 @@ impl Screen<Option<Performance>, Performance> for PerformanceEditor {
                     this.show_person(None);
                     this.person.replace(None);
                     this.show_ensemble(Some(&ensemble));
-                    this.ensemble.replace(None);
+                    this.ensemble.replace(Some(ensemble));
                 }
             });
         }));
