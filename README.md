@@ -4,6 +4,21 @@ This is a desktop app for Musicus.
 
 https://musicus.org
 
+# Current status
+
+Musicus is currently under heavy development. After reaching a state that is
+acceptable to the venturous public, an initial release will happen. Below is an
+outline of the things that need to be done to reach this first milestone.
+Please note, that this list was started midway and thus doesn't include a lot
+of work, that has already been done. The list has no particular order.
+
+- [ ] More robust file management when importing
+- [ ] A way to select existing mediums and to add a DiscID to them
+- [ ] Fine grained handling of library updates
+- [ ] Input validation in all editors
+- [ ] Improvements on error display and recovery
+- [ ] Restrictions on deletion of items
+
 ## Hacking
 
 ### Building
