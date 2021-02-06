@@ -1,3 +1,4 @@
+use isahc::{AsyncBody, Request, Response};
 use isahc::http::StatusCode;
 use isahc::prelude::*;
 use serde::Serialize;
@@ -88,7 +89,7 @@ impl Client {
 
         let success = match response.status() {
             StatusCode::OK => {
-                let token = response.text_async().await?;
+                let token = response.text().await?;
                 self.token.replace(Some(token));
                 true
             }
@@ -109,7 +110,7 @@ impl Client {
             .send_async()
             .await?;
 
-        let body = response.text_async().await?;
+        let body = response.text().await?;
 
         Ok(body)
     }
@@ -128,7 +129,7 @@ impl Client {
                 }
             }
 
-            response.text_async().await?
+            response.text().await?
         } else {
             let mut response = if self.login().await? {
                 self.post_priv(url, body).await?
@@ -136,14 +137,14 @@ impl Client {
                 Err(Error::LoginFailed)?
             };
 
-            response.text_async().await?
+            response.text().await?
         };
 
         Ok(body)
     }
 
     /// Post something to the server assuming there is a valid login token.
-    async fn post_priv(&self, url: &str, body: String) -> Result<Response<Body>> {
+    async fn post_priv(&self, url: &str, body: String) -> Result<Response<AsyncBody>> {
         let server_url = self.server_url()?;
         let token = self.token()?;
 

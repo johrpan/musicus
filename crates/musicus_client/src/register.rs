@@ -1,4 +1,5 @@
 use crate::{Client, Result};
+use isahc::Request;
 use isahc::http::StatusCode;
 use isahc::prelude::*;
 use serde::{Deserialize, Serialize};
