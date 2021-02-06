@@ -56,6 +56,8 @@ impl Screen<(), ()> for WelcomeScreen {
                     (&gettext("Select"), gtk::ResponseType::Accept),
                 ]);
 
+            dialog.set_modal(true);
+
             dialog.connect_response(clone!(@weak this => move |dialog, response| {
                 if let gtk::ResponseType::Accept = response {
                     if let Some(file) = dialog.get_file() {

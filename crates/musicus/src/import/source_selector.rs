@@ -56,6 +56,8 @@ impl Screen<(), ()> for SourceSelector {
                     (&gettext("Select"), gtk::ResponseType::Accept),
                 ]);
 
+            dialog.set_modal(true);
+
             dialog.connect_response(clone!(@weak this => move |dialog, response| {
                 this.stack.set_visible_child_name("loading");
                 dialog.hide();
