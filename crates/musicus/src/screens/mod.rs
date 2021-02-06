@@ -4,6 +4,9 @@ pub use ensemble::*;
 pub mod main;
 pub use main::*;
 
+pub mod medium;
+pub use medium::*;
+
 pub mod person;
 pub use person::*;
 

@@ -1,4 +1,4 @@
-use super::RecordingScreen;
+use super::{MediumScreen, RecordingScreen};
 use crate::editors::EnsembleEditor;
 use crate::navigator::{NavigatorWindow, NavigationHandle, Screen};
 use crate::widgets;
@@ -99,8 +99,12 @@ impl Screen<Ensemble, ()> for EnsembleScreen {
             row.set_activatable(true);
             row.set_title(Some(&medium.name));
 
+            let medium = medium.to_owned();
             row.connect_activated(clone!(@weak this => move |_| {
-                // TODO: Show medium screen.
+                let medium = medium.clone();
+                spawn!(@clone this, async move {
+                    push!(this.handle, MediumScreen, medium.clone()).await;
+                });
             }));
 
             row.upcast()
