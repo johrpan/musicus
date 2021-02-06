@@ -7,7 +7,7 @@ use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
 use libadwaita::prelude::*;
-use musicus_backend::db::{Person, Recording, Work};
+use musicus_backend::db::{Medium, Person, Recording, Work};
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -18,8 +18,10 @@ pub struct PersonScreen {
     widget: widgets::Screen,
     work_list: Rc<List>,
     recording_list: Rc<List>,
+    medium_list: Rc<List>,
     works: RefCell<Vec<Work>>,
     recordings: RefCell<Vec<Recording>>,
+    mediums: RefCell<Vec<Medium>>,
 }
 
 impl Screen<Person, ()> for PersonScreen {
@@ -31,6 +33,7 @@ impl Screen<Person, ()> for PersonScreen {
 
         let work_list = List::new();
         let recording_list = List::new();
+        let medium_list = List::new();
 
         let this = Rc::new(Self {
             handle,
@@ -38,8 +41,10 @@ impl Screen<Person, ()> for PersonScreen {
             widget,
             work_list,
             recording_list,
+            medium_list,
             works: RefCell::new(Vec::new()),
             recordings: RefCell::new(Vec::new()),
+            mediums: RefCell::new(Vec::new()),
         });
 
         this.widget.set_back_cb(clone!(@weak this => move || {
@@ -64,6 +69,7 @@ impl Screen<Person, ()> for PersonScreen {
         this.widget.set_search_cb(clone!(@weak this => move || {
             this.work_list.invalidate_filter();
             this.recording_list.invalidate_filter();
+            this.medium_list.invalidate_filter();
         }));
 
         this.work_list.set_make_widget_cb(clone!(@weak this => move |index| {
@@ -117,6 +123,27 @@ impl Screen<Person, ()> for PersonScreen {
             search.is_empty() || text.to_lowercase().contains(&search)
         }));
 
+        this.medium_list.set_make_widget_cb(clone!(@weak this => move |index| {
+            let medium = &this.mediums.borrow()[index];
+
+            let row = libadwaita::ActionRow::new();
+            row.set_activatable(true);
+            row.set_title(Some(&medium.name));
+
+            row.connect_activated(clone!(@weak this => move |_| {
+                // TODO: Show medium screen.
+            }));
+
+            row.upcast()
+        }));
+
+        this.medium_list.set_filter_cb(clone!(@weak this => move |index| {
+            let medium = &this.mediums.borrow()[index];
+            let search = this.widget.get_search();
+            let name = medium.name.to_lowercase();
+            search.is_empty() || name.contains(&search)
+        }));
+
         // Load the content asynchronously.
 
         spawn!(@clone this, async move {
@@ -131,6 +158,13 @@ impl Screen<Person, ()> for PersonScreen {
                 .backend
                 .db()
                 .get_recordings_for_person(&this.person.id)
+                .await
+                .unwrap();
+
+            let mediums = this.handle
+                .backend
+                .db()
+                .get_mediums_for_person(&this.person.id)
                 .await
                 .unwrap();
 
@@ -149,6 +183,15 @@ impl Screen<Person, ()> for PersonScreen {
                 this.recording_list.update(length);
 
                 let section = Section::new("Recordings", &this.recording_list.widget);
+                this.widget.add_content(&section.widget);
+            }
+
+            if !mediums.is_empty() {
+                let length = mediums.len();
+                this.mediums.replace(mediums);
+                this.medium_list.update(length);
+
+                let section = Section::new("Mediums", &this.medium_list.widget);
                 this.widget.add_content(&section.widget);
             }
 

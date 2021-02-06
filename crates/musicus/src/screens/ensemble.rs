@@ -7,7 +7,7 @@ use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
 use libadwaita::prelude::*;
-use musicus_backend::db::{Ensemble, Recording};
+use musicus_backend::db::{Ensemble, Medium, Recording};
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -17,7 +17,9 @@ pub struct EnsembleScreen {
     ensemble: Ensemble,
     widget: widgets::Screen,
     recording_list: Rc<List>,
+    medium_list: Rc<List>,
     recordings: RefCell<Vec<Recording>>,
+    mediums: RefCell<Vec<Medium>>,
 }
 
 impl Screen<Ensemble, ()> for EnsembleScreen {
@@ -28,13 +30,16 @@ impl Screen<Ensemble, ()> for EnsembleScreen {
         widget.set_title(&ensemble.name);
 
         let recording_list = List::new();
+        let medium_list = List::new();
 
         let this = Rc::new(Self {
             handle,
             ensemble,
             widget,
             recording_list,
+            medium_list,
             recordings: RefCell::new(Vec::new()),
+            mediums: RefCell::new(Vec::new()),
         });
 
         this.widget.set_back_cb(clone!(@weak this => move || {
@@ -58,6 +63,7 @@ impl Screen<Ensemble, ()> for EnsembleScreen {
 
         this.widget.set_search_cb(clone!(@weak this => move || {
             this.recording_list.invalidate_filter();
+            this.medium_list.invalidate_filter();
         }));
 
         this.recording_list.set_make_widget_cb(clone!(@weak this => move |index| {
@@ -86,6 +92,27 @@ impl Screen<Ensemble, ()> for EnsembleScreen {
             search.is_empty() || text.to_lowercase().contains(&search)
         }));
 
+        this.medium_list.set_make_widget_cb(clone!(@weak this => move |index| {
+            let medium = &this.mediums.borrow()[index];
+
+            let row = libadwaita::ActionRow::new();
+            row.set_activatable(true);
+            row.set_title(Some(&medium.name));
+
+            row.connect_activated(clone!(@weak this => move |_| {
+                // TODO: Show medium screen.
+            }));
+
+            row.upcast()
+        }));
+
+        this.medium_list.set_filter_cb(clone!(@weak this => move |index| {
+            let medium = &this.mediums.borrow()[index];
+            let search = this.widget.get_search();
+            let name = medium.name.to_lowercase();
+            search.is_empty() || name.contains(&search)
+        }));
+
         // Load the content asynchronously.
 
         spawn!(@clone this, async move {
@@ -96,12 +123,28 @@ impl Screen<Ensemble, ()> for EnsembleScreen {
                 .await
                 .unwrap();
 
+            let mediums = this.handle
+                .backend
+                .db()
+                .get_mediums_for_ensemble(&this.ensemble.id)
+                .await
+                .unwrap();
+
             if !recordings.is_empty() {
                 let length = recordings.len();
                 this.recordings.replace(recordings);
                 this.recording_list.update(length);
 
                 let section = Section::new("Recordings", &this.recording_list.widget);
+                this.widget.add_content(&section.widget);
+            }
+
+            if !mediums.is_empty() {
+                let length = mediums.len();
+                this.mediums.replace(mediums);
+                this.medium_list.update(length);
+
+                let section = Section::new("Mediums", &this.medium_list.widget);
                 this.widget.add_content(&section.widget);
             }
 
