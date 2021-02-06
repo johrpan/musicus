@@ -20,6 +20,13 @@ impl Backend {
         receiver.await?
     }
 
+    /// Delete all stored secrets.
+    pub(super) async fn delete_secrets() -> Result<()> {
+        let (sender, receiver) = oneshot::channel();
+        thread::spawn(move || sender.send(Self::delete_secrets_priv()).unwrap());
+        receiver.await?
+    }
+
     /// Get the login credentials from secret storage.
     fn load_login_data_priv() -> Result<Option<LoginData>> {
         let ss = SecretService::new(EncryptionType::Dh)?;
@@ -52,7 +59,7 @@ impl Backend {
         let collection = Self::get_collection(&ss)?;
 
         let key = "musicus-login-data";
-        Self::delete_secrets(&collection, key)?;
+        Self::delete_secrets_for_key(&collection, key)?;
 
         let mut attributes = HashMap::new();
         attributes.insert("username", data.username.as_str());
@@ -61,8 +68,19 @@ impl Backend {
         Ok(())
     }
 
+    /// Delete all stored secrets.
+    fn delete_secrets_priv() -> Result<()> {
+        let ss = SecretService::new(EncryptionType::Dh)?;
+        let collection = Self::get_collection(&ss)?;
+
+        let key = "musicus-login-data";
+        Self::delete_secrets_for_key(&collection, key)?;
+
+        Ok(())
+    }
+
     /// Delete all stored secrets for the provided key.
-    fn delete_secrets(collection: &Collection, key: &str) -> Result<()> {
+    fn delete_secrets_for_key(collection: &Collection, key: &str) -> Result<()> {
         let items = collection.get_all_items()?;
 
         for item in items {

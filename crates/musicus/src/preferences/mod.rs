@@ -96,8 +96,12 @@ impl Preferences {
             window.set_transient_for(&this.window);
 
             spawn!(@clone this, async move {
-                if let Some(data) = replace!(window.navigator, LoginDialog).await {
-                    this.login_row.set_subtitle(Some(&data.username));
+                if let Some(data) = replace!(window.navigator, LoginDialog, this.backend.get_login_data()).await {
+                    if let Some(data) = data {
+                        this.login_row.set_subtitle(Some(&data.username));
+                    } else {
+                        this.login_row.set_subtitle(Some(&gettext("Not logged in")));
+                    }
                 }
             });
         }));

@@ -100,29 +100,74 @@
                           </object>
                         </child>
                         <child>
-                          <object class="GtkLabel">
-                            <property name="halign">start</property>
-                            <property name="label" translatable="yes">Create a new account</property>
-                            <attributes>
-                              <attribute name="weight" value="bold"/>
-                            </attributes>
+                          <object class="GtkBox" id="register_box">
+                            <property name="orientation">vertical</property>
+                            <property name="spacing">12</property>
+                            <child>
+                              <object class="GtkLabel">
+                                <property name="halign">start</property>
+                                <property name="label" translatable="yes">Create a new account</property>
+                                <attributes>
+                                  <attribute name="weight" value="bold"/>
+                                </attributes>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkFrame">
+                                <property name="valign">start</property>
+                                <child>
+                                  <object class="GtkListBox">
+                                    <property name="selection-mode">none</property>
+                                    <child>
+                                      <object class="AdwActionRow">
+                                        <property name="activatable">True</property>
+                                        <property name="title" translatable="yes">Register a new account</property>
+                                        <property name="activatable-widget">register_button</property>
+                                        <child>
+                                          <object class="GtkButton" id="register_button">
+                                            <property name="label" translatable="yes">Start</property>
+                                            <property name="valign">center</property>
+                                          </object>
+                                        </child>
+                                      </object>
+                                    </child>
+                                  </object>
+                                </child>
+                              </object>
+                            </child>
                           </object>
                         </child>
                         <child>
-                          <object class="GtkFrame">
-                            <property name="valign">start</property>
+                          <object class="GtkBox" id="logout_box">
+                            <property name="orientation">vertical</property>
+                            <property name="spacing">12</property>
+                            <property name="visible">false</property>
                             <child>
-                              <object class="GtkListBox">
-                                <property name="selection-mode">none</property>
+                              <object class="GtkLabel">
+                                <property name="halign">start</property>
+                                <property name="label" translatable="yes">Logout</property>
+                                <attributes>
+                                  <attribute name="weight" value="bold"/>
+                                </attributes>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkFrame">
+                                <property name="valign">start</property>
                                 <child>
-                                  <object class="AdwActionRow">
-                                    <property name="activatable">True</property>
-                                    <property name="title" translatable="yes">Register a new account</property>
-                                    <property name="activatable-widget">register_button</property>
+                                  <object class="GtkListBox">
+                                    <property name="selection-mode">none</property>
                                     <child>
-                                      <object class="GtkButton" id="register_button">
-                                        <property name="label" translatable="yes">Start</property>
-                                        <property name="valign">center</property>
+                                      <object class="AdwActionRow">
+                                        <property name="activatable">True</property>
+                                        <property name="title" translatable="yes">Don't use an account</property>
+                                        <property name="activatable-widget">logout_button</property>
+                                        <child>
+                                          <object class="GtkButton" id="logout_button">
+                                            <property name="label" translatable="yes">Logout</property>
+                                            <property name="valign">center</property>
+                                          </object>
+                                        </child>
                                       </object>
                                     </child>
                                   </object>

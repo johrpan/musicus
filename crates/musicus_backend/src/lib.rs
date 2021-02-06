@@ -98,7 +98,7 @@ impl Backend {
         }
 
         match Self::load_login_data().await {
-            Ok(Some(data)) => self.client.set_login_data(data),
+            Ok(Some(data)) => self.client.set_login_data(Some(data)),
             Err(err) => warn!("The login data could not be loaded from SecretService. It will not \
                 be available. Error message: {}", err),
             _ => (),
@@ -129,11 +129,19 @@ impl Backend {
     }
 
     /// Set the user credentials to use.
-    pub async fn set_login_data(&self, data: LoginData) {
-        if let Err(err) = Self::store_login_data(data.clone()).await {
-            warn!("An error happened while trying to store the login data using SecretService. \
-                This means, that they will not be available at the next startup most likely. \
-                Error message: {}", err);
+    pub async fn set_login_data(&self, data: Option<LoginData>) {
+        if let Some(data) = &data {
+            if let Err(err) = Self::store_login_data(data.clone()).await {
+                warn!("An error happened while trying to store the login data using SecretService. \
+                    This means, that they will not be available at the next startup most likely. \
+                    Error message: {}", err);
+            }
+        } else {
+            if let Err(err) = Self::delete_secrets().await {
+                warn!("An error happened while trying to delete the login data from SecretService. \
+                    This may result in the login data being reloaded at the next startup. Error \
+                    message: {}", err);
+            }
         }
 
         self.client.set_login_data(data);

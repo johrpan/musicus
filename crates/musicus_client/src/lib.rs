@@ -65,8 +65,8 @@ impl Client {
     }
 
     /// Set the user credentials to use.
-    pub fn set_login_data(&self, data: LoginData) {
-        self.login_data.replace(Some(data));
+    pub fn set_login_data(&self, data: Option<LoginData>) {
+        self.login_data.replace(data);
         self.token.replace(None);
     }
 
