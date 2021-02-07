@@ -22,6 +22,8 @@ pub struct MediumEditor {
     done: gtk::Image,
     name_entry: gtk::Entry,
     publish_switch: gtk::Switch,
+    status_page: libadwaita::StatusPage,
+    disc_status_page: libadwaita::StatusPage,
     track_set_list: Rc<List>,
     track_sets: RefCell<Vec<TrackSetData>>,
 }
@@ -42,6 +44,10 @@ impl Screen<Rc<Box<dyn Source>>, ()> for MediumEditor {
         get_widget!(builder, gtk::Switch, publish_switch);
         get_widget!(builder, gtk::Button, add_button);
         get_widget!(builder, gtk::Frame, frame);
+        get_widget!(builder, libadwaita::StatusPage, status_page);
+        get_widget!(builder, gtk::Button, try_again_button);
+        get_widget!(builder, libadwaita::StatusPage, disc_status_page);
+        get_widget!(builder, gtk::Button, cancel_button);
 
         let list = List::new();
         frame.set_child(Some(&list.widget));
@@ -55,6 +61,8 @@ impl Screen<Rc<Box<dyn Source>>, ()> for MediumEditor {
             done,
             name_entry,
             publish_switch,
+            status_page,
+            disc_status_page,
             track_set_list: list,
             track_sets: RefCell::new(Vec::new()),
         });
@@ -69,10 +77,10 @@ impl Screen<Rc<Box<dyn Source>>, ()> for MediumEditor {
             this.widget.set_visible_child_name("loading");
             spawn!(@clone this, async move {
                 match this.save().await {
-                    Ok(_) => (),
+                    Ok(_) => this.handle.pop(Some(())),
                     Err(err) => {
-                        // TODO: Display errors.
-                        println!("{:?}", err);
+                        this.status_page.set_description(Some(&err.to_string()));
+                        this.widget.set_visible_child_name("error");
                     }
                 }
             });
@@ -118,11 +126,19 @@ impl Screen<Rc<Box<dyn Source>>, ()> for MediumEditor {
             row.upcast()
         }));
 
+        try_again_button.connect_clicked(clone!(@weak this => move |_| {
+            this.widget.set_visible_child_name("content");
+        }));
+
+        cancel_button.connect_clicked(clone!(@weak this => move |_| {
+            this.handle.pop(None);
+        }));
+
         spawn!(@clone this, async move {
             match this.source.copy().await {
-                Err(error) => {
-                    // TODO: Present error.
-                    println!("Failed to copy source: {}", error);
+                Err(err) => {
+                    this.disc_status_page.set_description(Some(&err.to_string()));
+                    this.widget.set_visible_child_name("disc_error");
                 },
                 Ok(_) => {
                     this.done_stack.set_visible_child(&this.done);

@@ -165,5 +165,77 @@
         </property>
       </object>
     </child>
+    <child>
+      <object class="GtkStackPage">
+        <property name="name">error</property>
+        <property name="child">
+          <object class="GtkBox">
+            <property name="orientation">vertical</property>
+            <child>
+              <object class="AdwHeaderBar">
+                <property name="show-start-title-buttons">false</property>
+                <property name="show-end-title-buttons">false</property>
+                <property name="title-widget">
+                  <object class="AdwWindowTitle">
+                    <property name="title" translatable="yes">Error</property>
+                  </object>
+                </property>
+              </object>
+            </child>
+            <child>
+              <object class="AdwStatusPage" id="status_page">
+                <property name="icon-name">dialog-error-symbolic</property>
+                <property name="title">Error</property>
+                <child>
+                  <object class="GtkButton" id="try_again_button">
+                    <property name="label" translatable="yes">Try again</property>
+                    <property name="hexpand">true</property>
+                    <property name="vexpand">true</property>
+                    <property name="halign">center</property>
+                    <property name="valign">center</property>
+                  </object>
+                </child>
+              </object>
+            </child>
+          </object>
+        </property>
+      </object>
+    </child>
+    <child>
+      <object class="GtkStackPage">
+        <property name="name">disc_error</property>
+        <property name="child">
+          <object class="GtkBox">
+            <property name="orientation">vertical</property>
+            <child>
+              <object class="AdwHeaderBar">
+                <property name="show-start-title-buttons">false</property>
+                <property name="show-end-title-buttons">false</property>
+                <property name="title-widget">
+                  <object class="AdwWindowTitle">
+                    <property name="title" translatable="yes">Error</property>
+                  </object>
+                </property>
+              </object>
+            </child>
+            <child>
+              <object class="AdwStatusPage" id="disc_status_page">
+                <property name="icon-name">action-unavailable-symbolic</property>
+                <property name="title">Error</property>
+                <child>
+                  <object class="GtkButton" id="cancel_button">
+                    <property name="label" translatable="yes">Cancel</property>
+                    <property name="hexpand">true</property>
+                    <property name="vexpand">true</property>
+                    <property name="halign">center</property>
+                    <property name="valign">center</property>
+                  </object>
+                </child>
+              </object>
+            </child>
+          </object>
+        </property>
+      </object>
+    </child>
   </object>
 </interface>
