@@ -3,8 +3,5 @@
 /build
 /builddir
 /flatpak
-/src/config.rs
-/src/resources.rs
 /target
 Cargo.lock
-test.sqlite
