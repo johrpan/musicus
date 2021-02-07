@@ -66,26 +66,6 @@
                         </child>
                       </object>
                     </child>
-                    <child>
-                      <object class="AdwActionRow" id="composer_row">
-                        <property name="activatable">True</property>
-                        <property name="title" translatable="yes">Select a composer</property>
-                        <property name="activatable-widget">composer_button</property>
-                        <child>
-                          <object class="GtkButton" id="reset_composer_button">
-                            <property name="visible">false</property>
-                            <property name="icon-name">user-trash-symbolic</property>
-                            <property name="valign">center</property>
-                          </object>
-                        </child>
-                        <child>
-                          <object class="GtkButton" id="composer_button">
-                            <property name="label" translatable="yes">Select</property>
-                            <property name="valign">center</property>
-                          </object>
-                        </child>
-                      </object>
-                    </child>
                   </object>
                 </child>
               </object>

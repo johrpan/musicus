@@ -25,8 +25,7 @@ CREATE TABLE "work_parts" (
     "id" BIGINT NOT NULL PRIMARY KEY,
     "work" TEXT NOT NULL REFERENCES "works"("id") ON DELETE CASCADE,
     "part_index" BIGINT NOT NULL,
-    "title" TEXT NOT NULL,
-    "composer" TEXT REFERENCES "persons"("id")
+    "title" TEXT NOT NULL
 );
 
 CREATE TABLE "work_sections" (

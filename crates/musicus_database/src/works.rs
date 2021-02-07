@@ -41,7 +41,6 @@ struct WorkPartRow {
     pub work: String,
     pub part_index: i64,
     pub title: String,
-    pub composer: Option<String>,
 }
 
 /// Table row data for a work section.
@@ -58,7 +57,6 @@ struct WorkSectionRow {
 #[serde(rename_all = "camelCase")]
 pub struct WorkPart {
     pub title: String,
-    pub composer: Option<Person>,
 }
 
 /// A heading between work parts.
@@ -123,14 +121,6 @@ impl Database {
                 }
             }
 
-            for part in &work.parts {
-                if let Some(person) = &part.composer {
-                    if self.get_person(&person.id)?.is_none() {
-                        self.update_person(person.clone())?;
-                    }
-                }
-            }
-
             // Add the actual work.
 
             let row: WorkRow = work.clone().into();
@@ -163,7 +153,6 @@ impl Database {
                             work: work_id.to_string(),
                             part_index: index as i64,
                             title: part.title,
-                            composer: part.composer.map(|person| person.id),
                         };
 
                         diesel::insert_into(work_parts::table)
@@ -237,17 +226,6 @@ impl Database {
         for part_row in part_rows {
             parts.push(WorkPart {
                 title: part_row.title,
-                composer: match part_row.composer {
-                    Some(composer) => Some(
-                        self.get_person(&composer)?
-                            .ok_or(Error::Other(format!(
-                                "Failed to get person ({}) for work ({}).",
-                                composer,
-                                row.id,
-                            )))?
-                    ),
-                    None => None,
-                },
             });
         }
 
