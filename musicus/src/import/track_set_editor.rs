@@ -154,8 +154,8 @@ impl Screen<Rc<Box<dyn Source>>, TrackSetData> for TrackSetEditor {
                 let recording = this.recording.borrow().clone();
                 if let Some(recording) = recording {
                     spawn!(@clone this, async move {
-                        let track = &this.tracks.borrow()[index];
-                        if let Some(selection) = push!(this.handle, TrackEditor, (recording, track.work_parts.clone())).await {
+                        let work_parts = this.tracks.borrow()[index].work_parts.clone();
+                        if let Some(selection) = push!(this.handle, TrackEditor, (recording, work_parts)).await {
                             {
                                 let mut tracks = this.tracks.borrow_mut();
                                 let mut track = &mut tracks[index];
