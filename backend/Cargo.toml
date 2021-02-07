@@ -13,8 +13,8 @@ gstreamer = "0.16.4"
 gstreamer-player = "0.16.3"
 log = "0.4.14"
 mpris-player = "0.6.0"
-musicus_client = { version = "0.1.0", path = "../musicus_client" }
-musicus_database = { version = "0.1.0", path = "../musicus_database" }
+musicus_client = { version = "0.1.0", path = "../client" }
+musicus_database = { version = "0.1.0", path = "../database" }
 secret-service = "2.0.1"
 thiserror = "1.0.23"
 

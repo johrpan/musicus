@@ -2,7 +2,6 @@
 name = "musicus_database"
 version = "0.1.0"
 edition = "2018"
-workspace = "../.."
 
 [dependencies]
 diesel = { version = "1.4.5", features = ["sqlite"] }
