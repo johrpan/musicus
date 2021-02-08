@@ -280,19 +280,23 @@ impl Database {
         let mut tracks = Vec::new();
 
         for track_row in track_rows {
+            let mut part_indices = Vec::new();
+
             let work_parts = track_row
                 .work_parts
-                .split(',')
-                .map(|part_index| {
-                    str::parse(part_index)
-                        .or(Err(Error::Other(
-                            format!("Failed to parse part index from '{}'.", track_row.work_parts,
-                        ))))
-                })
-                .collect::<Result<Vec<usize>>>()?;
+                .split(',');
+
+            for part_index in work_parts {
+                if !part_index.is_empty() {
+                    let index = str::parse(part_index)
+                        .or(Err(Error::Other(format!("Failed to parse part index from '{}'.", track_row.work_parts))))?;
+
+                    part_indices.push(index);
+                }
+            }
 
             let track = Track {
-                work_parts,
+                work_parts: part_indices,
                 path: track_row.path,
             };
 
