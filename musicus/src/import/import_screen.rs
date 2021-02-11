@@ -1,6 +1,7 @@
 use super::medium_editor::MediumEditor;
 use super::medium_preview::MediumPreview;
 use crate::navigator::{NavigationHandle, Screen};
+use crate::selectors::MediumSelector;
 use crate::widgets::Widget;
 use glib::clone;
 use gtk::prelude::*;
@@ -144,7 +145,11 @@ impl Screen<Arc<ImportSession>, ()> for ImportScreen {
         }));
 
         select_button.connect_clicked(clone!(@weak this => move |_| {
-            debug!("TODO: Show medium selector.");
+            spawn!(@clone this, async move {
+                if let Some(medium) = push!(this.handle, MediumSelector).await {
+                    this.select_medium(medium);
+                }
+            });
         }));
 
         add_button.connect_clicked(clone!(@weak this => move |_| {
