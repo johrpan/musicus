@@ -106,6 +106,8 @@
               <object class="AdwStatusPage" id="status_page">
                 <property name="icon-name">network-error-symbolic</property>
                 <property name="title">Error</property>
+                <property name="vexpand">true</property>
+                <pr>
                 <child>
                   <object class="GtkButton" id="try_again_button">
                     <property name="label" translatable="yes">Try again</property>

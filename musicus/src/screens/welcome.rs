@@ -34,6 +34,7 @@ impl Screen<(), ()> for WelcomeScreen {
             .description(&gettext("Get startet by selecting the folder containing your music \
                 files! Musicus will create a new database there or open one that already exists."))
             .child(&button)
+            .vexpand(true)
             .build();
 
         button.add_css_class("suggested-action");
