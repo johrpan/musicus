@@ -105,7 +105,7 @@ impl<T> Selector<T> {
             match &*this.filter.borrow() {
                 Some(filter) => {
                     let item = &this.items.borrow()[index];
-                    let search = this.search_entry.get_text().unwrap().to_string().to_lowercase();
+                    let search = this.search_entry.get_text().to_string().to_lowercase();
                     search.is_empty() || filter(&search, item)
                 }
                 None => true,

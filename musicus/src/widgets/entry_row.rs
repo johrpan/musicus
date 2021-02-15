@@ -39,6 +39,6 @@ impl EntryRow {
 
     /// Get the text that was entered by the user.
     pub fn get_text(&self) -> String {
-        self.entry.get_text().unwrap().to_string()
+        self.entry.get_text().to_string()
     }
 }

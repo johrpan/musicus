@@ -322,7 +322,7 @@ impl WorkEditor {
 
         let work = Work {
             id: self.id.clone(),
-            title: self.title_entry.get_text().unwrap().to_string(),
+            title: self.title_entry.get_text().to_string(),
             composer: self
                 .composer
                 .borrow()

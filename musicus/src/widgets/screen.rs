@@ -98,7 +98,7 @@ impl Screen {
 
     /// Get the current search string.
     pub fn get_search(&self) -> String {
-        self.search_entry.get_text().unwrap().to_string().to_lowercase()
+        self.search_entry.get_text().to_string().to_lowercase()
     }
 
     /// Hide the loading page and switch to the content.

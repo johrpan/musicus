@@ -135,7 +135,7 @@ impl Screen<(), ()> for MainScreen {
 
         this.poe_list.set_filter_cb(clone!(@weak this => move |index| {
             let poe = &this.poes.borrow()[index];
-            let search = this.search_entry.get_text().unwrap().to_string().to_lowercase();
+            let search = this.search_entry.get_text().to_string().to_lowercase();
             let title = poe.get_title().to_lowercase();
             search.is_empty() || title.contains(&search)
         }));

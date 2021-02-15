@@ -154,7 +154,7 @@ impl Screen<Rc<Box<dyn Source>>, ()> for MediumEditor {
 impl MediumEditor {
     /// Save the medium and possibly upload it to the server.
     async fn save(&self) -> Result<()> {
-        let name = self.name_entry.get_text().unwrap().to_string();
+        let name = self.name_entry.get_text().to_string();
 
         // Create a new directory in the music library path for the imported medium.
 
@@ -200,7 +200,7 @@ impl MediumEditor {
 
         let medium = Medium {
             id: generate_id(),
-            name: self.name_entry.get_text().unwrap().to_string(),
+            name: self.name_entry.get_text().to_string(),
             discid: self.source.discid(),
             tracks: track_sets,
         };

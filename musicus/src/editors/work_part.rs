@@ -43,7 +43,7 @@ impl Screen<Option<WorkPart>, WorkPart> for  WorkPartEditor {
 
         save_button.connect_clicked(clone!(@weak this => move |_| {
             let section = WorkPart {
-                title: this.title_entry.get_text().unwrap().to_string(),
+                title: this.title_entry.get_text().to_string(),
             };
 
             this.handle.pop(Some(section));

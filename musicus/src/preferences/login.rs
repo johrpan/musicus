@@ -57,8 +57,8 @@ impl Screen<Option<LoginData>, Option<LoginData>> for LoginDialog {
             this.widget.set_visible_child_name("loading");
 
             let data = LoginData {
-                username: this.username_entry.get_text().unwrap().to_string(),
-                password: this.password_entry.get_text().unwrap().to_string(),
+                username: this.username_entry.get_text().to_string(),
+                password: this.password_entry.get_text().to_string(),
             };
 
             spawn!(@clone this, async move {

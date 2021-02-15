@@ -44,7 +44,7 @@ impl Screen<Option<WorkSection>, WorkSection> for  WorkSectionEditor {
         save_button.connect_clicked(clone!(@weak this => move |_| {
             let section = WorkSection {
                 before_index: 0,
-                title: this.title_entry.get_text().unwrap().to_string(),
+                title: this.title_entry.get_text().to_string(),
             };
 
             this.handle.pop(Some(section));

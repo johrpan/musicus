@@ -188,7 +188,7 @@ impl RecordingEditor {
                 .borrow()
                 .clone()
                 .expect("Tried to create recording without work!"),
-            comment: self.comment_entry.get_text().unwrap().to_string(),
+            comment: self.comment_entry.get_text().to_string(),
             performances: self.performances.borrow().clone(),
         };
 
