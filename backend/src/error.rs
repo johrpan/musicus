@@ -7,6 +7,7 @@ pub enum Error {
     #[error(transparent)]
     DatabaseError(#[from] musicus_database::Error),
 
+    #[cfg(target_os = "linux")]
     #[error("An error happened using the SecretService.")]
     SecretServiceError(#[from] secret_service::Error),
 

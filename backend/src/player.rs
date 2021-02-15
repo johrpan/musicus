@@ -1,5 +1,4 @@
 use crate::{Error, Result};
-use mpris_player::{Metadata, MprisPlayer, PlaybackStatus};
 use musicus_database::TrackSet;
 use glib::clone;
 use gstreamer_player::prelude::*;
@@ -7,6 +6,9 @@ use std::cell::{Cell, RefCell};
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Arc;
+
+#[cfg(target_os = "linux")]
+use mpris_player::{Metadata, MprisPlayer, PlaybackStatus};
 
 #[derive(Clone)]
 pub struct PlaylistItem {
@@ -17,7 +19,6 @@ pub struct PlaylistItem {
 pub struct Player {
     music_library_path: PathBuf,
     player: gstreamer_player::Player,
-    mpris: Arc<MprisPlayer>,
     playlist: RefCell<Vec<PlaylistItem>>,
     current_item: Cell<Option<usize>>,
     current_track: Cell<Option<usize>>,
@@ -28,6 +29,9 @@ pub struct Player {
     playing_cbs: RefCell<Vec<Box<dyn Fn(bool)>>>,
     position_cbs: RefCell<Vec<Box<dyn Fn(u64)>>>,
     raise_cb: RefCell<Option<Box<dyn Fn()>>>,
+
+    #[cfg(target_os = "linux")]
+    mpris: Arc<MprisPlayer>,
 }
 
 impl Player {
@@ -39,24 +43,9 @@ impl Player {
         player.set_config(config).unwrap();
         player.set_video_track_enabled(false);
 
-        let mpris = MprisPlayer::new(
-            "de.johrpan.musicus".to_string(),
-            "Musicus".to_string(),
-            "de.johrpan.musicus.desktop".to_string(),
-        );
-
-
-        mpris.set_can_raise(true);
-        mpris.set_can_play(false);
-        mpris.set_can_go_previous(false);
-        mpris.set_can_go_next(false);
-        mpris.set_can_seek(false);
-        mpris.set_can_set_fullscreen(false);
-
         let result = Rc::new(Self {
             music_library_path,
             player: player.clone(),
-            mpris,
             playlist: RefCell::new(Vec::new()),
             current_item: Cell::new(None),
             current_track: Cell::new(None),
@@ -67,6 +56,23 @@ impl Player {
             playing_cbs: RefCell::new(Vec::new()),
             position_cbs: RefCell::new(Vec::new()),
             raise_cb: RefCell::new(None),
+            #[cfg(target_os = "linux")]
+            mpris: {
+                let mpris = MprisPlayer::new(
+                    "de.johrpan.musicus".to_string(),
+                    "Musicus".to_string(),
+                    "de.johrpan.musicus.desktop".to_string(),
+                );
+
+                mpris.set_can_raise(true);
+                mpris.set_can_play(false);
+                mpris.set_can_go_previous(false);
+                mpris.set_can_go_next(false);
+                mpris.set_can_seek(false);
+                mpris.set_can_set_fullscreen(false);
+
+                mpris
+            },
         });
 
         let clone = fragile::Fragile::new(result.clone());
@@ -82,6 +88,7 @@ impl Player {
                     cb(false);
                 }
 
+                #[cfg(target_os = "linux")]
                 clone.mpris.set_playback_status(PlaybackStatus::Paused);
             }
         });
@@ -100,36 +107,39 @@ impl Player {
             }
         });
 
-        result.mpris.connect_play_pause(clone!(@weak result => move || {
-            result.play_pause();
-        }));
-
-        result.mpris.connect_play(clone!(@weak result => move || {
-            if !result.is_playing() {
+        #[cfg(target_os = "linux")]
+        {
+            result.mpris.connect_play_pause(clone!(@weak result => move || {
                 result.play_pause();
-            }
-        }));
+            }));
 
-        result.mpris.connect_pause(clone!(@weak result => move || {
-            if result.is_playing() {
-                result.play_pause();
-            }
-        }));
+            result.mpris.connect_play(clone!(@weak result => move || {
+                if !result.is_playing() {
+                    result.play_pause();
+                }
+            }));
 
-        result.mpris.connect_previous(clone!(@weak result => move || {
-            let _ = result.previous();
-        }));
+            result.mpris.connect_pause(clone!(@weak result => move || {
+                if result.is_playing() {
+                    result.play_pause();
+                }
+            }));
 
-        result.mpris.connect_next(clone!(@weak result => move || {
-            let _ = result.next();
-        }));
+            result.mpris.connect_previous(clone!(@weak result => move || {
+                let _ = result.previous();
+            }));
 
-        result.mpris.connect_raise(clone!(@weak result => move || {
-            let cb = result.raise_cb.borrow();
-            if let Some(cb) = &*cb {
-                cb()
-            }
-        }));
+            result.mpris.connect_next(clone!(@weak result => move || {
+                let _ = result.next();
+            }));
+
+            result.mpris.connect_raise(clone!(@weak result => move || {
+                let cb = result.raise_cb.borrow();
+                if let Some(cb) = &*cb {
+                    cb()
+                }
+            }));
+        }
 
         result
     }
@@ -204,8 +214,11 @@ impl Player {
                     cb(true);
                 }
 
-                self.mpris.set_can_play(true);
-                self.mpris.set_playback_status(PlaybackStatus::Playing);
+                #[cfg(target_os = "linux")]
+                {
+                    self.mpris.set_can_play(true);
+                    self.mpris.set_playback_status(PlaybackStatus::Playing);
+                }
             }
 
             Ok(())
@@ -221,6 +234,7 @@ impl Player {
                 cb(false);
             }
 
+            #[cfg(target_os = "linux")]
             self.mpris.set_playback_status(PlaybackStatus::Paused);
         } else {
             self.player.play();
@@ -230,6 +244,7 @@ impl Player {
                 cb(true);
             }
 
+            #[cfg(target_os = "linux")]
             self.mpris.set_playback_status(PlaybackStatus::Playing);
         }
     }
@@ -330,25 +345,28 @@ impl Player {
             cb(current_item, current_track);
         }
 
-        let mut parts = Vec::<String>::new();
-        for part in &track.work_parts {
-            parts.push(item.track_set.recording.work.parts[*part].title.clone());
+        #[cfg(target_os = "linux")]
+        {
+            let mut parts = Vec::<String>::new();
+            for part in &track.work_parts {
+                parts.push(item.track_set.recording.work.parts[*part].title.clone());
+            }
+
+            let mut title = item.track_set.recording.work.get_title();
+            if !parts.is_empty() {
+                title = format!("{}: {}", title, parts.join(", "));
+            }
+
+            let subtitle = item.track_set.recording.get_performers();
+
+            let mut metadata = Metadata::new();
+            metadata.artist = Some(vec![title]);
+            metadata.title = Some(subtitle);
+
+            self.mpris.set_metadata(metadata);
+            self.mpris.set_can_go_previous(self.has_previous());
+            self.mpris.set_can_go_next(self.has_next());
         }
-
-        let mut title = item.track_set.recording.work.get_title();
-        if !parts.is_empty() {
-            title = format!("{}: {}", title, parts.join(", "));
-        }
-
-        let subtitle = item.track_set.recording.get_performers();
-
-        let mut metadata = Metadata::new();
-        metadata.artist = Some(vec![title]);
-        metadata.title = Some(subtitle);
-
-        self.mpris.set_metadata(metadata);
-        self.mpris.set_can_go_previous(self.has_previous());
-        self.mpris.set_can_go_next(self.has_next());
 
         Ok(())
     }
@@ -386,6 +404,7 @@ impl Player {
             cb(Vec::new());
         }
 
+        #[cfg(target_os = "linux")]
         self.mpris.set_can_play(false);
     }
 }

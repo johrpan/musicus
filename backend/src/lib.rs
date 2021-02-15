@@ -20,6 +20,7 @@ pub use library::*;
 pub mod player;
 pub use player::*;
 
+#[cfg(all(feature = "dbus"))]
 mod secure;
 
 /// General states the application can be in.
@@ -97,6 +98,7 @@ impl Backend {
             }
         }
 
+        #[cfg(all(feature = "dbus"))]
         match Self::load_login_data().await {
             Ok(Some(data)) => self.client.set_login_data(Some(data)),
             Err(err) => warn!("The login data could not be loaded from SecretService. It will not \
@@ -130,6 +132,7 @@ impl Backend {
 
     /// Set the user credentials to use.
     pub async fn set_login_data(&self, data: Option<LoginData>) {
+        #[cfg(all(feature = "dbus"))]
         if let Some(data) = &data {
             if let Err(err) = Self::store_login_data(data.clone()).await {
                 warn!("An error happened while trying to store the login data using SecretService. \
