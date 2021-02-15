@@ -86,7 +86,7 @@ impl Screen<Recording, ()> for RecordingScreen {
         }));
 
         this.list.set_make_widget_cb(clone!(@weak this => move |index| {
-            match this.items.borrow()[index] {
+            let widget = match this.items.borrow()[index] {
                 ListItem::Track(track_set_index, track_index) => {
                     let track_set = &this.track_sets.borrow()[track_set_index];
                     let track = &track_set.tracks[track_index];
@@ -111,7 +111,9 @@ impl Screen<Recording, ()> for RecordingScreen {
                     let separator = gtk::Separator::new(gtk::Orientation::Horizontal);
                     separator.upcast()
                 }
-            }
+            };
+
+            widget
         }));
 
         // Load the content asynchronously.

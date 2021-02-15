@@ -193,7 +193,7 @@ impl Screen<(), ()> for PlayerScreen {
         // }));
 
         this.list.set_make_widget_cb(clone!(@weak this => move |index| {
-            match this.items.borrow()[index] {
+            let widget = match this.items.borrow()[index] {
                 ListItem::Header(item_index) => {
                     let playlist_item = &this.playlist.borrow()[item_index];
                     let recording = &playlist_item.track_set.recording;
@@ -246,7 +246,9 @@ impl Screen<(), ()> for PlayerScreen {
                     let separator = gtk::Separator::new(gtk::Orientation::Horizontal);
                     separator.upcast()
                 }
-            }
+            };
+
+            widget
         }));
 
         player.send_data();
