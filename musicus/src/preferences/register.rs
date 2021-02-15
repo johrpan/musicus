@@ -59,7 +59,7 @@ impl Screen<(), LoginData> for RegisterDialog {
             let password = this.password_entry.get_text().unwrap().to_string();
             let repeat = this.repeat_password_entry.get_text().unwrap().to_string();
 
-            if (password != repeat) {
+            if password != repeat {
                 // TODO: Show error and validate other input.
             } else {
                 this.widget.set_visible_child_name("loading");
