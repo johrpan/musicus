@@ -1,4 +1,4 @@
-project('musicus', 'rust',
+project('musicus',
     version: '0.1.0',
     meson_version: '>= 0.50.0',
     license: 'AGPLv3+',
