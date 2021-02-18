@@ -190,7 +190,7 @@ impl Player {
 
     pub fn add_item(&self, item: PlaylistItem) -> Result<()> {
         if item.indices.is_empty() {
-            Err(Error::Other("Tried to add an empty playlist item!"))
+            Err(Error::Other(String::from("Tried to add an empty playlist item!")))
         } else {
             let was_empty = {
                 let mut playlist = self.playlist.borrow_mut();
@@ -267,12 +267,12 @@ impl Player {
 
     pub fn previous(&self) -> Result<()> {
         let mut current_item = self.current_item.get()
-            .ok_or(Error::Other("Player tried to access non existant current item."))?;
+            .ok_or(Error::Other(String::from("Player tried to access non existant current item.")))?;
 
         let mut current_track = self
             .current_track
             .get()
-            .ok_or(Error::Other("Player tried to access non existant current track."))?;
+            .ok_or(Error::Other(String::from("Player tried to access non existant current track.")))?;
 
         let playlist = self.playlist.borrow();
         if current_track > 0 {
@@ -281,7 +281,7 @@ impl Player {
             current_item -= 1;
             current_track = playlist[current_item].indices.len() - 1;
         } else {
-            return Err(Error::Other("No existing previous track."));
+            return Err(Error::Other(String::from("No existing previous track.")));
         }
 
         self.set_track(current_item, current_track)
@@ -304,11 +304,11 @@ impl Player {
 
     pub fn next(&self) -> Result<()> {
         let mut current_item = self.current_item.get()
-            .ok_or(Error::Other("Player tried to access non existant current item."))?;
+            .ok_or(Error::Other(String::from("Player tried to access non existant current item.")))?;
         let mut current_track = self
             .current_track
             .get()
-            .ok_or(Error::Other("Player tried to access non existant current track."))?;
+            .ok_or(Error::Other(String::from("Player tried to access non existant current track.")))?;
 
         let playlist = self.playlist.borrow();
         let item = &playlist[current_item];
@@ -318,7 +318,7 @@ impl Player {
             current_item += 1;
             current_track = 0;
         } else {
-            return Err(Error::Other("No existing previous track."));
+            return Err(Error::Other(String::from("No existing previous track.")));
         }
 
         self.set_track(current_item, current_track)
@@ -328,12 +328,14 @@ impl Player {
         let item = &self.playlist.borrow()[current_item];
         let track = &item.track_set.tracks[current_track];
 
-        let uri = format!(
-            "file://{}",
-            self.music_library_path.join(track.path.clone()).to_str().unwrap(),
-        );
+        let path = self.music_library_path.join(track.path.clone())
+            .into_os_string().into_string().unwrap();
+
+        let uri = glib::filename_to_uri(&path, None)
+            .or(Err(Error::Other(format!("Failed to create URI from path: {}", path))))?;
 
         self.player.set_uri(&uri);
+
         if self.is_playing() {
             self.player.play();
         }

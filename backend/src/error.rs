@@ -18,7 +18,7 @@ pub enum Error {
     Utf8Error(#[from] std::str::Utf8Error),
 
     #[error("An error happened: {0}")]
-    Other(&'static str),
+    Other(String),
 }
 
 
