@@ -37,6 +37,13 @@ sources = files(
   'resources.rs',
 )
 
+system = host_machine.system()
+if system == 'windows'
+  output = meson.project_name() + '.exe'
+else
+  output = meson.project_name()
+endif
+
 cargo_script = find_program(join_paths(meson.source_root(), 'build-aux/cargo.sh'))
 cargo_release = custom_target(
   'cargo-build',
@@ -44,7 +51,7 @@ cargo_release = custom_target(
   input: sources,
   build_always_stale: true,
   depends: resources,
-  output: meson.project_name(),
+  output: output,
   console: true,
   install: true,
   install_dir: get_option('bindir'),
@@ -54,6 +61,6 @@ cargo_release = custom_target(
     meson.source_root(),
     '@OUTPUT@',
     get_option('buildtype'),
-    meson.project_name(),
+    output,
   ]
 )

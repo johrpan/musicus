@@ -8,17 +8,21 @@ export OUTPUT="$3"
 export BUILDTYPE="$4"
 export APP_BIN="$5"
 
+if [ -z ${CARGO_BUILD_TARGET+defined} ]; then
+    CARGO_OUTPUT_PATH="${CARGO_TARGET_DIR}"
+else
+    CARGO_OUTPUT_PATH="${CARGO_TARGET_DIR}/${CARGO_BUILD_TARGET}"
+fi
 
-if [ $BUILDTYPE = "release" ]
-then
+if [ $BUILDTYPE = "release" ]; then
     echo "RELEASE MODE"
     cargo build --manifest-path \
         "$MESON_SOURCE_ROOT"/Cargo.toml --release && \
-        cp "$CARGO_TARGET_DIR"/release/"$APP_BIN" "$OUTPUT"
+        cp "$CARGO_OUTPUT_PATH"/release/"$APP_BIN" "$OUTPUT"
 else
     echo "DEBUG MODE"
     cargo build --manifest-path \
         "$MESON_SOURCE_ROOT"/Cargo.toml --verbose && \
-        cp "$CARGO_TARGET_DIR"/debug/"$APP_BIN" "$OUTPUT"
+        cp "$CARGO_OUTPUT_PATH"/debug/"$APP_BIN" "$OUTPUT"
 fi
 
