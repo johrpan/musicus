@@ -1,21 +1,22 @@
-use super::source::Source;
 use super::track_set_editor::{TrackSetData, TrackSetEditor};
 use crate::navigator::{NavigationHandle, Screen};
 use crate::widgets::{List, Widget};
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use glib::clone;
 use glib::prelude::*;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
 use libadwaita::prelude::*;
 use musicus_backend::db::{generate_id, Medium, Track, TrackSet};
+use musicus_backend::import::ImportSession;
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::sync::Arc;
 
 /// A dialog for editing metadata while importing music into the music library.
 pub struct MediumEditor {
     handle: NavigationHandle<()>,
-    source: Rc<Box<dyn Source>>,
+    session: Arc<ImportSession>,
     widget: gtk::Stack,
     done_button: gtk::Button,
     done_stack: gtk::Stack,
@@ -28,9 +29,9 @@ pub struct MediumEditor {
     track_sets: RefCell<Vec<TrackSetData>>,
 }
 
-impl Screen<Rc<Box<dyn Source>>, ()> for MediumEditor {
+impl Screen<Arc<ImportSession>, ()> for MediumEditor {
     /// Create a new medium editor.
-    fn new(source: Rc<Box<dyn Source>>, handle: NavigationHandle<()>) -> Rc<Self> {
+    fn new(session: Arc<ImportSession>, handle: NavigationHandle<()>) -> Rc<Self> {
         // Create UI
 
         let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/medium_editor.ui");
@@ -54,7 +55,7 @@ impl Screen<Rc<Box<dyn Source>>, ()> for MediumEditor {
 
         let this = Rc::new(Self {
             handle,
-            source,
+            session,
             widget,
             done_button,
             done_stack,
@@ -88,7 +89,7 @@ impl Screen<Rc<Box<dyn Source>>, ()> for MediumEditor {
 
         add_button.connect_clicked(clone!(@weak this => move |_| {
             spawn!(@clone this, async move {
-                if let Some(track_set) = push!(this.handle, TrackSetEditor, Rc::clone(&this.source)).await {
+                if let Some(track_set) = push!(this.handle, TrackSetEditor, Arc::clone(&this.session)).await {
                     let length = {
                         let mut track_sets = this.track_sets.borrow_mut();
                         track_sets.push(track_set);
@@ -135,7 +136,7 @@ impl Screen<Rc<Box<dyn Source>>, ()> for MediumEditor {
         }));
 
         spawn!(@clone this, async move {
-            match this.source.copy().await {
+            match this.session.copy().await {
                 Err(err) => {
                     this.disc_status_page.set_description(Some(&err.to_string()));
                     this.widget.set_visible_child_name("disc_error");
@@ -165,7 +166,7 @@ impl MediumEditor {
         // Convert the track set data to real track sets.
 
         let mut track_sets = Vec::new();
-        let source_tracks = self.source.tracks().ok_or_else(|| anyhow!("Tracks not loaded!"))?;
+        let import_tracks = self.session.tracks();
 
         for track_set_data in &*self.track_sets.borrow() {
             let mut tracks = Vec::new();
@@ -173,12 +174,12 @@ impl MediumEditor {
             for track_data in &track_set_data.tracks {
                 // Copy the corresponding audio file to the music library.
 
-                let track_source = &source_tracks[track_data.track_source];
+                let import_track = &import_tracks[track_data.track_source];
 
                 let mut track_path = path.clone();
-                track_path.push(track_source.path.file_name().unwrap());
+                track_path.push(import_track.path.file_name().unwrap());
 
-                std::fs::copy(&track_source.path, &track_path)?;
+                std::fs::copy(&import_track.path, &track_path)?;
 
                 // Create the real track.
 
@@ -201,7 +202,7 @@ impl MediumEditor {
         let medium = Medium {
             id: generate_id(),
             name: self.name_entry.get_text().to_string(),
-            discid: self.source.discid(),
+            discid: Some(self.session.source_id().to_owned()),
             tracks: track_sets,
         };
 

@@ -1,13 +1,11 @@
 use super::medium_editor::MediumEditor;
-use super::disc_source::DiscSource;
-use super::folder_source::FolderSource;
-use super::source::Source;
 use crate::navigator::{NavigationHandle, Screen};
 use crate::widgets::Widget;
 use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
+use musicus_backend::import::ImportSession;
 use std::path::PathBuf;
 use std::rc::Rc;
 
@@ -65,11 +63,9 @@ impl Screen<(), ()> for SourceSelector {
                             this.widget.set_visible_child_name("loading");
 
                             spawn!(@clone this, async move {
-                                let folder = FolderSource::new(PathBuf::from(path));
-                                match folder.load().await {
-                                    Ok(_) => {
-                                        let source = Rc::new(Box::new(folder) as Box<dyn Source>);
-                                        push!(this.handle, MediumEditor, source).await;
+                                match ImportSession::folder(PathBuf::from(path)).await {
+                                    Ok(session) => {
+                                        push!(this.handle, MediumEditor, session).await;
                                         this.handle.pop(Some(()));
                                     }
                                     Err(err) => {
@@ -90,11 +86,9 @@ impl Screen<(), ()> for SourceSelector {
             this.widget.set_visible_child_name("loading");
 
             spawn!(@clone this, async move {
-                let disc = DiscSource::new().unwrap();
-                match disc.load().await {
-                    Ok(_) => {
-                        let source = Rc::new(Box::new(disc) as Box<dyn Source>);
-                        push!(this.handle, MediumEditor, source).await;
+                match ImportSession::audio_cd().await {
+                    Ok(session) => {
+                        push!(this.handle, MediumEditor, session).await;
                         this.handle.pop(Some(()));
                     }
                     Err(err) => {

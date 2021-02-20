@@ -43,22 +43,6 @@
         "*.a"
     ],
     "modules" : [
-    	{
-            "name": "libdiscid",
-            "buildsystem": "cmake-ninja",
-	    "builddir" : true,
-            "sources": [
-                {
-                    "type": "archive",
-                    "url": "https://github.com/metabrainz/libdiscid/archive/v0.6.2.tar.gz",
-                    "sha256": "a9b73b030603ce707941a3aab4f46649fa5029025e7e2bfbbe0c3c93a86d7b20"
-                }
-            ],
-            "cleanup": [
-                "/include",
-                "/lib/pkgconfig"
-            ]
-        },
         {
             "name": "cdparanoia",
             "buildsystem": "simple",

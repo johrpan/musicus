@@ -1,7 +1,4 @@
-mod disc_source;
-mod folder_source;
 mod medium_editor;
-mod source;
 mod source_selector;
 mod track_editor;
 mod track_selector;

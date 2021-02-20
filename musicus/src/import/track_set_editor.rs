@@ -1,4 +1,3 @@
-use super::source::Source;
 use super::track_editor::TrackEditor;
 use super::track_selector::TrackSelector;
 use crate::navigator::{NavigationHandle, Screen};
@@ -10,8 +9,10 @@ use gtk::prelude::*;
 use gtk_macros::get_widget;
 use libadwaita::prelude::*;
 use musicus_backend::db::Recording;
+use musicus_backend::import::ImportSession;
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::sync::Arc;
 
 /// A track set before being imported.
 #[derive(Clone, Debug)]
@@ -33,7 +34,7 @@ pub struct TrackData {
 /// A screen for editing a set of tracks for one recording.
 pub struct TrackSetEditor {
     handle: NavigationHandle<TrackSetData>,
-    source: Rc<Box<dyn Source>>,
+    session: Arc<ImportSession>,
     widget: gtk::Box,
     save_button: gtk::Button,
     recording_row: libadwaita::ActionRow,
@@ -42,9 +43,9 @@ pub struct TrackSetEditor {
     tracks: RefCell<Vec<TrackData>>,
 }
 
-impl Screen<Rc<Box<dyn Source>>, TrackSetData> for TrackSetEditor {
+impl Screen<Arc<ImportSession>, TrackSetData> for TrackSetEditor {
     /// Create a new track set editor.
-    fn new(source: Rc<Box<dyn Source>>, handle: NavigationHandle<TrackSetData>) -> Rc<Self> {
+    fn new(session: Arc<ImportSession>, handle: NavigationHandle<TrackSetData>) -> Rc<Self> {
         // Create UI
 
         let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/track_set_editor.ui");
@@ -62,7 +63,7 @@ impl Screen<Rc<Box<dyn Source>>, TrackSetData> for TrackSetEditor {
 
         let this = Rc::new(Self {
             handle,
-            source,
+            session,
             widget,
             save_button,
             recording_row,
@@ -97,7 +98,7 @@ impl Screen<Rc<Box<dyn Source>>, TrackSetData> for TrackSetEditor {
 
         edit_tracks_button.connect_clicked(clone!(@weak this => move |_| {
             spawn!(@clone this, async move {
-                if let Some(selection) = push!(this.handle, TrackSelector, Rc::clone(&this.source)).await {
+                if let Some(selection) = push!(this.handle, TrackSelector, Arc::clone(&this.session)).await {
                     let mut tracks = Vec::new();
 
                     for index in selection {
@@ -134,7 +135,7 @@ impl Screen<Rc<Box<dyn Source>>, TrackSetData> for TrackSetEditor {
                 title_parts.join(", ")
             };
 
-            let tracks = this.source.tracks().unwrap();
+            let tracks = this.session.tracks();
             let track_name = &tracks[track.track_source].name;
 
             let edit_image = gtk::Image::from_icon_name(Some("document-edit-symbolic"));

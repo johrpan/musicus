@@ -1,25 +1,26 @@
-use super::source::Source;
 use crate::navigator::{NavigationHandle, Screen};
 use crate::widgets::Widget;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
 use libadwaita::prelude::*;
+use musicus_backend::import::ImportSession;
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::sync::Arc;
 
 /// A screen for selecting tracks from a source.
 pub struct TrackSelector {
     handle: NavigationHandle<Vec<usize>>,
-    source: Rc<Box<dyn Source>>,
+    session: Arc<ImportSession>,
     widget: gtk::Box,
     select_button: gtk::Button,
     selection: RefCell<Vec<usize>>,
 }
 
-impl Screen<Rc<Box<dyn Source>>, Vec<usize>> for TrackSelector {
+impl Screen<Arc<ImportSession>, Vec<usize>> for TrackSelector {
     /// Create a new track selector.
-    fn new(source: Rc<Box<dyn Source>>, handle: NavigationHandle<Vec<usize>>) -> Rc<Self> {
+    fn new(session: Arc<ImportSession>, handle: NavigationHandle<Vec<usize>>) -> Rc<Self> {
         // Create UI
 
         let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/track_selector.ui");
@@ -37,7 +38,7 @@ impl Screen<Rc<Box<dyn Source>>, Vec<usize>> for TrackSelector {
 
         let this = Rc::new(Self {
             handle,
-            source,
+            session,
             widget,
             select_button,
             selection: RefCell::new(Vec::new()),
@@ -54,7 +55,7 @@ impl Screen<Rc<Box<dyn Source>>, Vec<usize>> for TrackSelector {
             this.handle.pop(Some(selection));
         }));
 
-        let tracks = this.source.tracks().unwrap();
+        let tracks = this.session.tracks();
 
         for (index, track) in tracks.iter().enumerate() {
             let check = gtk::CheckButton::new();

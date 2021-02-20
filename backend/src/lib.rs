@@ -10,6 +10,7 @@ use std::rc::Rc;
 
 pub use musicus_client as client;
 pub use musicus_database as db;
+pub use musicus_import as import;
 
 pub mod error;
 pub use error::*;
