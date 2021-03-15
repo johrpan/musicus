@@ -67,8 +67,8 @@ impl Screen<(), ()> for PlayerScreen {
         let list = List::new();
         frame.set_child(Some(&list.widget));
 
-        let position_controller = gtk::GestureClick::new();
-        position_scale.add_controller(&position_controller);
+        let event_controller = gtk::EventControllerLegacy::new();
+        position_scale.add_controller(&event_controller);
 
         let this = Rc::new(Self {
             handle,
@@ -173,24 +173,35 @@ impl Screen<(), ()> for PlayerScreen {
             this.handle.backend.pl().clear();
         }));
 
-        // position_controller.connect_pressed(clone!(@weak this => move |_, _, _, _| {
-        //     this.seeking.replace(true);
-        // }));
+        event_controller.connect_event(clone!(@weak this => move |_, event| {
+            if let Some(event) = event.downcast_ref::<gdk::ButtonEvent>() {
+                if event.get_button() == gdk::BUTTON_PRIMARY {
+                    match event.get_event_type() {
+                        gdk::EventType::ButtonPress => {
+                            this.seeking.replace(true);
+                        }
+                        gdk::EventType::ButtonRelease => {
+                            this.handle.backend.pl().seek(this.position.get_value() as u64);
+                            this.seeking.replace(false);
+                        }
+                        _ => (),
+                    }
+                }
 
-        // position_controller.connect_unpaired_release(clone!(@weak this => move |_, _, _, _, _| {
-        //     this.handle.backend.pl().seek(this.position.get_value() as u64);
-        //     this.seeking.replace(false);
-        // }));
+            }
 
-        // position_scale.connect_value_changed(clone!(@weak this => move |_| {
-        //     if this.seeking.get() {
-        //         let ms = this.position.get_value() as u64;
-        //         let min = ms / 60000;
-        //         let sec = (ms % 60000) / 1000;
+            glib::signal::Inhibit(false)
+        }));
 
-        //         this.position_label.set_text(&format!("{}:{:02}", min, sec));
-        //     }
-        // }));
+        position_scale.connect_value_changed(clone!(@weak this => move |_| {
+            if this.seeking.get() {
+                let ms = this.position.get_value() as u64;
+                let min = ms / 60000;
+                let sec = (ms % 60000) / 1000;
+
+                this.position_label.set_text(&format!("{}:{:02}", min, sec));
+            }
+        }));
 
         this.list.set_make_widget_cb(clone!(@weak this => move |index| {
             let widget = match this.items.borrow()[index] {
