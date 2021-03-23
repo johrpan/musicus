@@ -32,14 +32,25 @@
                 <property name="margin-bottom">6</property>
                 <property name="orientation">vertical</property>
                 <child>
-                  <object class="GtkLabel">
-                    <property name="halign">start</property>
+                  <object class="GtkBox">
                     <property name="margin-top">12</property>
                     <property name="margin-bottom">6</property>
-                    <property name="label" translatable="yes">Matching metadata</property>
-                    <attributes>
-                      <attribute name="weight" value="bold"/>
-                    </attributes>
+                    <child>
+                      <object class="GtkLabel">
+                        <property name="hexpand">true</property>
+                        <property name="halign">start</property>
+                        <property name="label" translatable="yes">Matching metadata</property>
+                        <attributes>
+                          <attribute name="weight" value="bold"/>
+                        </attributes>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkCheckButton" id="server_check_button">
+                        <property name="label" translatable="yes">Use the Musicus server</property>
+                        <property name="active">True</property>
+                      </object>
+                    </child>
                   </object>
                 </child>
                 <child>

@@ -7,6 +7,7 @@ use gtk::prelude::*;
 use gtk_macros::get_widget;
 use libadwaita::prelude::*;
 use log::debug;
+use musicus_backend::Error;
 use musicus_backend::db::Medium;
 use musicus_backend::import::ImportSession;
 use std::rc::Rc;
@@ -17,6 +18,7 @@ pub struct ImportScreen {
     handle: NavigationHandle<()>,
     session: Arc<ImportSession>,
     widget: gtk::Box,
+    server_check_button: gtk::CheckButton,
     matching_stack: gtk::Stack,
     error_row: libadwaita::ActionRow,
     matching_list: gtk::ListBox,
@@ -29,7 +31,13 @@ impl ImportScreen {
 
         let this = self;
         spawn!(@clone this, async move {
-            match this.handle.backend.db().get_mediums_by_source_id(this.session.source_id()).await {
+            let mediums: Result<Vec<Medium>, Error> = if this.server_check_button.get_active() {
+                this.handle.backend.cl().get_mediums_by_discid(this.session.source_id()).await.map_err(|err| err.into())
+            } else {
+                this.handle.backend.db().get_mediums_by_source_id(this.session.source_id()).await.map_err(|err| err.into())
+            };
+
+            match mediums {
                 Ok(mediums) => {
                     if !mediums.is_empty() {
                         this.show_matches(mediums);
@@ -99,6 +107,7 @@ impl Screen<Arc<ImportSession>, ()> for ImportScreen {
         get_widget!(builder, gtk::Stack, matching_stack);
         get_widget!(builder, gtk::Button, try_again_button);
         get_widget!(builder, libadwaita::ActionRow, error_row);
+        get_widget!(builder, gtk::CheckButton, server_check_button);
         get_widget!(builder, gtk::ListBox, matching_list);
         get_widget!(builder, gtk::Button, select_button);
         get_widget!(builder, gtk::Button, add_button);
@@ -107,6 +116,7 @@ impl Screen<Arc<ImportSession>, ()> for ImportScreen {
             handle,
             session,
             widget,
+            server_check_button,
             matching_stack,
             error_row,
             matching_list,
@@ -116,6 +126,10 @@ impl Screen<Arc<ImportSession>, ()> for ImportScreen {
 
         back_button.connect_clicked(clone!(@weak this => move |_| {
             this.handle.pop(None);
+        }));
+
+        this.server_check_button.connect_toggled(clone!(@weak this => move |_| {
+            this.load_matches();
         }));
 
         try_again_button.connect_clicked(clone!(@weak this => move |_| {
