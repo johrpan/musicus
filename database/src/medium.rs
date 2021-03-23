@@ -167,6 +167,22 @@ impl Database {
         Ok(medium)
     }
 
+    /// Get mediums that have a specific source ID.
+    pub fn get_mediums_by_source_id(&self, source_id: &str) -> Result<Vec<Medium>> {
+        let mut mediums: Vec<Medium> = Vec::new();
+
+        let rows = mediums::table
+            .filter(mediums::discid.nullable().eq(source_id))
+            .load::<MediumRow>(&self.connection)?;
+
+        for row in rows {
+            let medium = self.get_medium_data(row)?;
+            mediums.push(medium);
+        }
+
+        Ok(mediums)
+    }
+
     /// Get mediums on which this person is performing.
     pub fn get_mediums_for_person(&self, person_id: &str) -> Result<Vec<Medium>> {
         let mut mediums: Vec<Medium> = Vec::new();

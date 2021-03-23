@@ -29,6 +29,7 @@ pub enum Action {
     RecordingExists(String, Sender<Result<bool>>),
     UpdateMedium(Medium, Sender<Result<()>>),
     GetMedium(String, Sender<Result<Option<Medium>>>),
+    GetMediumsBySourceId(String, Sender<Result<Vec<Medium>>>),
     GetMediumsForPerson(String, Sender<Result<Vec<Medium>>>),
     GetMediumsForEnsemble(String, Sender<Result<Vec<Medium>>>),
     DeleteMedium(String, Sender<Result<()>>),
@@ -131,6 +132,9 @@ impl DbThread {
                     }
                     GetMedium(id, sender) => {
                         sender.send(db.get_medium(&id)).unwrap();
+                    }
+                    GetMediumsBySourceId(id, sender) => {
+                        sender.send(db.get_mediums_by_source_id(&id)).unwrap();
                     }
                     GetMediumsForPerson(id, sender) => {
                         sender.send(db.get_mediums_for_person(&id)).unwrap();
@@ -343,6 +347,13 @@ impl DbThread {
     pub async fn get_medium(&self, id: &str) -> Result<Option<Medium>> {
         let (sender, receiver) = oneshot::channel();
         self.action_sender.send(GetMedium(id.to_owned(), sender))?;
+        receiver.await?
+    }
+
+    /// Get all mediums with the specified source ID.
+    pub async fn get_mediums_by_source_id(&self, id: &str) -> Result<Vec<Medium>> {
+        let (sender, receiver) = oneshot::channel();
+        self.action_sender.send(GetMediumsBySourceId(id.to_owned(), sender))?;
         receiver.await?
     }
 
