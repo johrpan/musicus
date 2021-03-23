@@ -78,7 +78,10 @@ impl ImportScreen {
                 .build();
 
             row.connect_activated(clone!(@weak this => move |_| {
-                debug!("Medium selected: {}", medium.name);
+                let medium = medium.clone();
+                spawn!(@clone this, async move {
+                    push!(this.handle, MediumPreview, (this.session.clone(), medium.clone())).await;
+                });
             }));
 
             this.matching_list.append(&row);
