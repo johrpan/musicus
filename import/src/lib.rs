@@ -1,4 +1,4 @@
-pub use session::{ImportSession, ImportTrack};
+pub use session::{ImportSession, ImportTrack, State};
 pub use error::{Error, Result};
 
 pub mod error;
