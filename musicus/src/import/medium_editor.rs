@@ -15,7 +15,7 @@ use std::sync::Arc;
 
 /// A dialog for editing metadata while importing music into the music library.
 pub struct MediumEditor {
-    handle: NavigationHandle<()>,
+    handle: NavigationHandle<Medium>,
     session: Arc<ImportSession>,
     widget: gtk::Stack,
     done_button: gtk::Button,
@@ -27,9 +27,9 @@ pub struct MediumEditor {
     track_sets: RefCell<Vec<TrackSetData>>,
 }
 
-impl Screen<Arc<ImportSession>, ()> for MediumEditor {
+impl Screen<Arc<ImportSession>, Medium> for MediumEditor {
     /// Create a new medium editor.
-    fn new(session: Arc<ImportSession>, handle: NavigationHandle<()>) -> Rc<Self> {
+    fn new(session: Arc<ImportSession>, handle: NavigationHandle<Medium>) -> Rc<Self> {
         // Create UI
 
         let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/medium_editor.ui");
@@ -72,7 +72,7 @@ impl Screen<Arc<ImportSession>, ()> for MediumEditor {
             this.widget.set_visible_child_name("loading");
             spawn!(@clone this, async move {
                 match this.save().await {
-                    Ok(_) => this.handle.pop(Some(())),
+                    Ok(medium) => this.handle.pop(Some(medium)),
                     Err(err) => {
                         this.status_page.set_description(Some(&err.to_string()));
                         this.widget.set_visible_child_name("error");
@@ -135,7 +135,7 @@ impl Screen<Arc<ImportSession>, ()> for MediumEditor {
 
 impl MediumEditor {
     /// Save the medium and possibly upload it to the server.
-    async fn save(&self) -> Result<()> {
+    async fn save(&self) -> Result<Medium> {
         let name = self.name_entry.get_text().to_string();
 
         // Create a new directory in the music library path for the imported medium.
@@ -199,7 +199,7 @@ impl MediumEditor {
 
         self.handle.backend.library_changed();
 
-        Ok(())
+        Ok(medium)
     }
 }
 
