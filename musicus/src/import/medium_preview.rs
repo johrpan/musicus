@@ -28,6 +28,8 @@ impl Screen<(Arc<ImportSession>, Medium), ()> for MediumPreview {
 
         get_widget!(builder, gtk::Box, widget);
         get_widget!(builder, gtk::Button, back_button);
+        get_widget!(builder, gtk::Button, import_button);
+        get_widget!(builder, gtk::Stack, done_stack);
         get_widget!(builder, gtk::Box, medium_box);
         get_widget!(builder, gtk::Label, name_label);
 

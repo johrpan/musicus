@@ -22,6 +22,13 @@ pub struct Medium {
     pub tracks: Vec<TrackSet>,
 }
 
+impl Medium {
+    /// Get an iterator that iterates through all tracks within this medium in order.
+    pub fn track_iter<'a>(&'a self) -> TrackIter<'a> {
+        TrackIter::new(self)
+    }
+}
+
 /// A set of tracks of one recording within a medium.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -75,6 +82,49 @@ struct TrackRow {
     pub index: i32,
     pub work_parts: String,
     pub path: String,
+}
+
+/// An iterator that iterates through all tracks within a medium in order.
+pub struct TrackIter<'a> {
+    medium: &'a Medium,
+    track_set_index: usize,
+    track_index: usize,
+}
+
+impl<'a> TrackIter<'a> {
+    /// Create a new iterator that iterates through tracks within the provided medium.
+    fn new(medium: &'a Medium) -> Self {
+        Self {
+            medium,
+            track_set_index: 0,
+            track_index: 0,
+        }
+    }
+}
+
+impl<'a> Iterator for TrackIter<'a> {
+    type Item = &'a Track;
+
+    fn next(&mut self) -> Option<&'a Track> {
+        match self.medium.tracks.get(self.track_set_index) {
+            Some(track_set) => {
+                match track_set.tracks.get(self.track_index) {
+                    Some(track) => {
+                        if self.track_index + 1 < track_set.tracks.len() {
+                            self.track_index += 1;
+                        } else {
+                            self.track_set_index += 1;
+                            self.track_index = 0;
+                        }
+
+                        Some(track)
+                    }
+                    None => None,
+                }
+            }
+            None => None,
+        }
+    }
 }
 
 impl Database {
