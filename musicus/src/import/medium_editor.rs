@@ -19,8 +19,6 @@ pub struct MediumEditor {
     session: Arc<ImportSession>,
     widget: gtk::Stack,
     done_button: gtk::Button,
-    done_stack: gtk::Stack,
-    done: gtk::Image,
     name_entry: gtk::Entry,
     publish_switch: gtk::Switch,
     status_page: libadwaita::StatusPage,
@@ -39,8 +37,6 @@ impl Screen<Arc<ImportSession>, ()> for MediumEditor {
         get_widget!(builder, gtk::Stack, widget);
         get_widget!(builder, gtk::Button, back_button);
         get_widget!(builder, gtk::Button, done_button);
-        get_widget!(builder, gtk::Stack, done_stack);
-        get_widget!(builder, gtk::Image, done);
         get_widget!(builder, gtk::Entry, name_entry);
         get_widget!(builder, gtk::Switch, publish_switch);
         get_widget!(builder, gtk::Button, add_button);
@@ -58,8 +54,6 @@ impl Screen<Arc<ImportSession>, ()> for MediumEditor {
             session,
             widget,
             done_button,
-            done_stack,
-            done,
             name_entry,
             publish_switch,
             status_page,
