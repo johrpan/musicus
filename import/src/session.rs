@@ -2,8 +2,24 @@ use crate::{disc, folder};
 use crate::error::Result;
 use std::path::PathBuf;
 use std::thread;
-use std::sync::Arc;
-use tokio::sync::oneshot;
+use std::sync::{Arc, Mutex};
+use tokio::sync::{oneshot, watch};
+
+/// The current state of the import process.
+#[derive(Clone, Debug)]
+pub enum State {
+    /// The import process has not been started yet.
+    Waiting,
+
+    /// The audio is copied from the source.
+    Copying,
+
+    /// The audio files are ready to be imported into the music library.
+    Ready,
+
+    /// An error has happened.
+    Error,
+}
 
 /// Interface for importing audio tracks from a medium or folder.
 pub struct ImportSession {
@@ -15,10 +31,16 @@ pub struct ImportSession {
 
     /// A closure that has to be called to copy the tracks if set.
     pub(super) copy: Option<Box<dyn Fn() -> Result<()> + Send + Sync>>,
+
+    /// Sender through which listeners are notified of state changes.
+    pub(super) state_sender: watch::Sender<State>,
+
+    /// Receiver for state changes.
+    pub(super) state_receiver: Mutex<watch::Receiver<State>>,
 }
 
 impl ImportSession {
-    /// Create a new import session for a audio CD.
+    /// Create a new import session for an audio CD.
     pub async fn audio_cd() -> Result<Arc<Self>> {
         let (sender, receiver) = oneshot::channel();
 
@@ -52,20 +74,33 @@ impl ImportSession {
         &self.tracks
     }
 
-    /// Copy the tracks to their advertised locations, if neccessary.
-    pub async fn copy(self: &Arc<Self>) -> Result<()> {
+    /// Retrieve the current state of the import process.
+    pub fn state(&self) -> State {
+        self.state_receiver.lock().unwrap().borrow().clone()
+    }
+
+    /// Wait for the next state change and get the new state.
+    pub async fn state_change(&self) -> State {
+        match self.state_receiver.lock().unwrap().changed().await {
+            Ok(()) => self.state(),
+            Err(_) => State::Error,
+        }
+    }
+
+    /// Copy the tracks to their advertised locations in the background, if neccessary. The state
+    /// will be updated as the import is done.
+    pub fn copy(self: &Arc<Self>) {
         if self.copy.is_some() {
             let clone = Arc::clone(self);
-            let (sender, receiver) = oneshot::channel();
 
             thread::spawn(move || {
                 let copy = clone.copy.as_ref().unwrap();
-                sender.send(copy()).unwrap();
-            });
 
-            receiver.await?
-        } else {
-            Ok(())
+                match copy() {
+                    Ok(()) => clone.state_sender.send(State::Ready).unwrap(),
+                    Err(_) => clone.state_sender.send(State::Error).unwrap(),
+                }
+            });
         }
     }
 }

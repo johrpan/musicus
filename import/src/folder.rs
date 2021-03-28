@@ -1,13 +1,17 @@
 use crate::error::{Error, Result};
-use crate::session::{ImportSession, ImportTrack};
+use crate::session::{ImportSession, ImportTrack, State};
 use gstreamer::ClockTime;
 use gstreamer_pbutils::Discoverer;
 use log::{warn, info};
 use sha2::{Sha256, Digest};
 use std::path::PathBuf;
+use std::sync::Mutex;
+use tokio::sync::watch;
 
 /// Create a new import session for the specified folder.
 pub(super) fn new(path: PathBuf) -> Result<ImportSession> {
+    let (state_sender, state_receiver) = watch::channel(State::Ready);
+
     let mut tracks = Vec::new();
     let mut number: u32 = 1;
     let mut hasher = Sha256::new();
@@ -58,6 +62,8 @@ pub(super) fn new(path: PathBuf) -> Result<ImportSession> {
         source_id,
         tracks,
         copy: None,
+        state_sender,
+        state_receiver: Mutex::new(state_receiver),
     };
 
     Ok(session)

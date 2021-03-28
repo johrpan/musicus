@@ -135,19 +135,6 @@ impl Screen<Arc<ImportSession>, ()> for MediumEditor {
             this.handle.pop(None);
         }));
 
-        spawn!(@clone this, async move {
-            match this.session.copy().await {
-                Err(err) => {
-                    this.disc_status_page.set_description(Some(&err.to_string()));
-                    this.widget.set_visible_child_name("disc_error");
-                },
-                Ok(_) => {
-                    this.done_stack.set_visible_child(&this.done);
-                    this.done_button.set_sensitive(true);
-                }
-            }
-        });
-
         this
     }
 }

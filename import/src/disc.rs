@@ -1,14 +1,18 @@
 use crate::error::{Error, Result};
-use crate::session::{ImportSession, ImportTrack};
+use crate::session::{ImportSession, ImportTrack, State};
 use gstreamer::prelude::*;
 use gstreamer::{ClockTime, ElementFactory, MessageType, MessageView, TocEntryType};
 use gstreamer::tags::{Duration, TrackNumber};
+use log::info;
 use sha2::{Sha256, Digest};
 use std::path::PathBuf;
-use log::info;
+use std::sync::Mutex;
+use tokio::sync::watch;
 
 /// Create a new import session for the default disc drive.
 pub(super) fn new() -> Result<ImportSession> {
+    let (state_sender, state_receiver) = watch::channel(State::Waiting);
+
     let mut tracks = Vec::new();
     let mut hasher = Sha256::new();
 
@@ -145,6 +149,8 @@ pub(super) fn new() -> Result<ImportSession> {
         source_id,
         tracks,
         copy: Some(Box::new(copy)),
+        state_sender,
+        state_receiver: Mutex::new(state_receiver),
     };
 
     Ok(session)
