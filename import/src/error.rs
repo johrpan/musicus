@@ -62,8 +62,8 @@ impl Error {
     }
 }
 
-impl From<futures_channel::oneshot::Canceled> for Error {
-    fn from(err: futures_channel::oneshot::Canceled) -> Self {
+impl From<tokio::sync::oneshot::error::RecvError> for Error {
+    fn from(err: tokio::sync::oneshot::error::RecvError) -> Self {
         Self::us(err)
     }
 }

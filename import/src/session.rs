@@ -1,9 +1,9 @@
 use crate::{disc, folder};
 use crate::error::Result;
-use futures_channel::oneshot;
 use std::path::PathBuf;
 use std::thread;
 use std::sync::Arc;
+use tokio::sync::oneshot;
 
 /// Interface for importing audio tracks from a medium or folder.
 pub struct ImportSession {
