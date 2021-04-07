@@ -6,20 +6,9 @@ use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
 use libadwaita::prelude::*;
-use musicus_backend::PlaylistItem;
-use musicus_backend::db::{Recording, TrackSet};
+use musicus_backend::db::{Recording, Track};
 use std::cell::RefCell;
 use std::rc::Rc;
-
-/// Representation of one entry within the track list.
-enum ListItem {
-    /// A track row. This hold an index to the track set and an index to the
-    /// track within the track set.
-    Track(usize, usize),
-
-    /// A separator intended for use between track sets.
-    Separator,
-}
 
 /// A screen for showing a recording.
 pub struct RecordingScreen {
@@ -27,8 +16,7 @@ pub struct RecordingScreen {
     recording: Recording,
     widget: widgets::Screen,
     list: Rc<List>,
-    track_sets: RefCell<Vec<TrackSet>>,
-    items: RefCell<Vec<ListItem>>,
+    tracks: RefCell<Vec<Track>>,
 }
 
 impl Screen<Recording, ()> for RecordingScreen {
@@ -48,22 +36,12 @@ impl Screen<Recording, ()> for RecordingScreen {
             recording,
             widget,
             list,
-            track_sets: RefCell::new(Vec::new()),
-            items: RefCell::new(Vec::new()),
+            tracks: RefCell::new(Vec::new()),
         });
 
         section.add_action("media-playback-start-symbolic", clone!(@weak this => move || {
-            if let Some(player) = this.handle.backend.get_player() {
-                if let Some(track_set) = this.track_sets.borrow().get(0).cloned() {
-                    let indices = (0..track_set.tracks.len()).collect();
-
-                    let playlist_item = PlaylistItem {
-                        track_set,
-                        indices,
-                    };
-
-                    player.add_item(playlist_item).unwrap();
-                }
+            for track in &*this.tracks.borrow() {
+                this.handle.backend.pl().add_item(track.clone()).unwrap();
             }
         }));
 
@@ -86,47 +64,36 @@ impl Screen<Recording, ()> for RecordingScreen {
         }));
 
         this.list.set_make_widget_cb(clone!(@weak this => move |index| {
-            let widget = match this.items.borrow()[index] {
-                ListItem::Track(track_set_index, track_index) => {
-                    let track_set = &this.track_sets.borrow()[track_set_index];
-                    let track = &track_set.tracks[track_index];
+            let track = &this.tracks.borrow()[index];
 
-                    let mut title_parts = Vec::<String>::new();
-                    for part in &track.work_parts {
-                        title_parts.push(this.recording.work.parts[*part].title.clone());
-                    }
+            let mut title_parts = Vec::<String>::new();
+            for part in &track.work_parts {
+                title_parts.push(this.recording.work.parts[*part].title.clone());
+            }
 
-                    let title = if title_parts.is_empty() {
-                        gettext("Unknown")
-                    } else {
-                        title_parts.join(", ")
-                    };
-
-                    let row = libadwaita::ActionRow::new();
-                    row.set_title(Some(&title));
-
-                    row.upcast()
-                }
-                ListItem::Separator => {
-                    let separator = gtk::Separator::new(gtk::Orientation::Horizontal);
-                    separator.upcast()
-                }
+            let title = if title_parts.is_empty() {
+                gettext("Unknown")
+            } else {
+                title_parts.join(", ")
             };
 
-            widget
+            let row = libadwaita::ActionRow::new();
+            row.set_title(Some(&title));
+
+            row.upcast()
         }));
 
         // Load the content asynchronously.
 
         spawn!(@clone this, async move {
-            let track_sets = this.handle
+            let tracks = this.handle
                 .backend
                 .db()
-                .get_track_sets(&this.recording.id)
+                .get_tracks(&this.recording.id)
                 .await
                 .unwrap();
 
-            this.show_track_sets(track_sets);
+            this.show_tracks(tracks);
             this.widget.ready();
         });
 
@@ -135,26 +102,10 @@ impl Screen<Recording, ()> for RecordingScreen {
 }
 
 impl RecordingScreen {
-    /// Update the track sets variable as well as the user interface.
-    fn show_track_sets(&self, track_sets: Vec<TrackSet>) {
-        let mut first = true;
-        let mut items = Vec::new();
-
-        for (track_set_index, track_set) in track_sets.iter().enumerate() {
-            if !first {
-                items.push(ListItem::Separator);
-            } else {
-                first = false;
-            }
-
-            for (track_index, _) in track_set.tracks.iter().enumerate() {
-                items.push(ListItem::Track(track_set_index, track_index));
-            }
-        }
-
-        let length = items.len();
-        self.items.replace(items);
-        self.track_sets.replace(track_sets);
+    /// Update the tracks variable as well as the user interface.
+    fn show_tracks(&self, tracks: Vec<Track>) {
+        let length = tracks.len();
+        self.tracks.replace(tracks);
         self.list.update(length);
     }
 }

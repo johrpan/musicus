@@ -1,5 +1,5 @@
 use super::generate_id;
-use super::schema::{ensembles, mediums, performances, persons, recordings, track_sets, tracks};
+use super::schema::{ensembles, mediums, performances, persons, recordings, tracks};
 use super::{Database, Error, Recording, Result};
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -18,32 +18,17 @@ pub struct Medium {
     /// If applicable, the MusicBrainz DiscID.
     pub discid: Option<String>,
 
-    /// The tracks of the medium, grouped by recording.
-    pub tracks: Vec<TrackSet>,
-}
-
-impl Medium {
-    /// Get an iterator that iterates through all tracks within this medium in order.
-    pub fn track_iter<'a>(&'a self) -> TrackIter<'a> {
-        TrackIter::new(self)
-    }
-}
-
-/// A set of tracks of one recording within a medium.
-#[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct TrackSet {
-    /// The recording to which the tracks belong.
-    pub recording: Recording,
-
-    /// The actual tracks.
+    /// The tracks of the medium.
     pub tracks: Vec<Track>,
 }
 
-/// A track within a recording on a medium.
+/// A track on a medium.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Track {
+    /// The recording on this track.
+    pub recording: Recording,
+
     /// The work parts that are played on this track. They are indices to the
     /// work parts of the work that is associated with the recording.
     pub work_parts: Vec<usize>,
@@ -63,23 +48,14 @@ struct MediumRow {
     pub discid: Option<String>,
 }
 
-/// Table data for a [`TrackSet`].
-#[derive(Insertable, Queryable, Debug, Clone)]
-#[table_name = "track_sets"]
-struct TrackSetRow {
-    pub id: String,
-    pub medium: String,
-    pub index: i32,
-    pub recording: String,
-}
-
 /// Table data for a [`Track`].
 #[derive(Insertable, Queryable, Debug, Clone)]
 #[table_name = "tracks"]
 struct TrackRow {
     pub id: String,
-    pub track_set: String,
+    pub medium: String,
     pub index: i32,
+    pub recording: String,
     pub work_parts: String,
     pub path: String,
 }
@@ -135,7 +111,7 @@ impl Database {
         self.connection.transaction::<(), Error, _>(|| {
             let medium_id = &medium.id;
 
-            // This will also delete the track sets and tracks.
+            // This will also delete the tracks.
             self.delete_medium(medium_id)?;
 
             // Add the new medium.
@@ -150,49 +126,34 @@ impl Database {
                 .values(medium_row)
                 .execute(&self.connection)?;
 
-            for (index, track_set) in medium.tracks.iter().enumerate() {
-                // Add associated items from the server, if they don't already
-                // exist.
+            for (index, track) in medium.tracks.iter().enumerate() {
+                // Add associated items from the server, if they don't already exist.
 
-                if self.get_recording(&track_set.recording.id)?.is_none() {
-                    self.update_recording(track_set.recording.clone())?;
+                if self.get_recording(&track.recording.id)?.is_none() {
+                    self.update_recording(track.recording.clone())?;
                 }
 
-                // Add the actual track set data.
+                // Add the actual track data.
 
-                let track_set_id = generate_id();
+                let work_parts = track
+                    .work_parts
+                    .iter()
+                    .map(|part_index| part_index.to_string())
+                    .collect::<Vec<String>>()
+                    .join(",");
 
-                let track_set_row = TrackSetRow {
-                    id: track_set_id.clone(),
+                let track_row = TrackRow {
+                    id: generate_id(),
                     medium: medium_id.to_owned(),
                     index: index as i32,
-                    recording: track_set.recording.id.clone(),
+                    recording: track.recording.id.clone(),
+                    work_parts,
+                    path: track.path.clone(),
                 };
 
-                diesel::insert_into(track_sets::table)
-                    .values(track_set_row)
+                diesel::insert_into(tracks::table)
+                    .values(track_row)
                     .execute(&self.connection)?;
-
-                for (index, track) in track_set.tracks.iter().enumerate() {
-                    let work_parts = track
-                        .work_parts
-                        .iter()
-                        .map(|part_index| part_index.to_string())
-                        .collect::<Vec<String>>()
-                        .join(",");
-
-                    let track_row = TrackRow {
-                        id: generate_id(),
-                        track_set: track_set_id.clone(),
-                        index: index as i32,
-                        work_parts,
-                        path: track.path.clone(),
-                    };
-
-                    diesel::insert_into(tracks::table)
-                        .values(track_row)
-                        .execute(&self.connection)?;
-                }
             }
 
             Ok(())
@@ -238,8 +199,8 @@ impl Database {
         let mut mediums: Vec<Medium> = Vec::new();
 
         let rows = mediums::table
-            .inner_join(track_sets::table.on(track_sets::medium.eq(mediums::id)))
-            .inner_join(recordings::table.on(recordings::id.eq(track_sets::recording)))
+            .inner_join(tracks::table.on(tracks::medium.eq(mediums::id)))
+            .inner_join(recordings::table.on(recordings::id.eq(tracks::recording)))
             .inner_join(performances::table.on(performances::recording.eq(recordings::id)))
             .inner_join(persons::table.on(persons::id.nullable().eq(performances::person)))
             .filter(persons::id.eq(person_id))
@@ -260,8 +221,8 @@ impl Database {
         let mut mediums: Vec<Medium> = Vec::new();
 
         let rows = mediums::table
-            .inner_join(track_sets::table.on(track_sets::medium.eq(mediums::id)))
-            .inner_join(recordings::table.on(recordings::id.eq(track_sets::recording)))
+            .inner_join(tracks::table.on(tracks::medium.eq(tracks::id)))
+            .inner_join(recordings::table.on(recordings::id.eq(tracks::recording)))
             .inner_join(performances::table.on(performances::recording.eq(recordings::id)))
             .inner_join(ensembles::table.on(ensembles::id.nullable().eq(performances::ensemble)))
             .filter(ensembles::id.eq(ensemble_id))
@@ -284,93 +245,81 @@ impl Database {
         Ok(())
     }
 
-    /// Get all available track sets for a recording.
-    pub fn get_track_sets(&self, recording_id: &str) -> Result<Vec<TrackSet>> {
-        let mut track_sets: Vec<TrackSet> = Vec::new();
+    /// Get all available tracks for a recording.
+    pub fn get_tracks(&self, recording_id: &str) -> Result<Vec<Track>> {
+        let mut tracks: Vec<Track> = Vec::new();
 
-        let rows = track_sets::table
-            .inner_join(recordings::table.on(recordings::id.eq(track_sets::recording)))
+        let rows = tracks::table
+            .inner_join(recordings::table.on(recordings::id.eq(tracks::recording)))
             .filter(recordings::id.eq(recording_id))
-            .select(track_sets::table::all_columns())
-            .load::<TrackSetRow>(&self.connection)?;
+            .select(tracks::table::all_columns())
+            .load::<TrackRow>(&self.connection)?;
 
         for row in rows {
-            let track_set = self.get_track_set_from_row(row)?;
-            track_sets.push(track_set);
+            let track = self.get_track_from_row(row)?;
+            tracks.push(track);
         }
 
-        Ok(track_sets)
+        Ok(tracks)
     }
 
     /// Retrieve all available information on a medium from related tables.
     fn get_medium_data(&self, row: MediumRow) -> Result<Medium> {
-        let track_set_rows = track_sets::table
-            .filter(track_sets::medium.eq(&row.id))
-            .order_by(track_sets::index)
-            .load::<TrackSetRow>(&self.connection)?;
-
-        let mut track_sets = Vec::new();
-
-        for track_set_row in track_set_rows {
-            let track_set = self.get_track_set_from_row(track_set_row)?;
-            track_sets.push(track_set);
-        }
-
-        let medium = Medium {
-            id: row.id,
-            name: row.name,
-            discid: row.discid,
-            tracks: track_sets,
-        };
-
-        Ok(medium)
-    }
-
-    /// Convert a track set row from the database to an actual track set.
-    fn get_track_set_from_row(&self, row: TrackSetRow) -> Result<TrackSet> {
-        let recording_id = row.recording;
-
-        let recording = self
-            .get_recording(&recording_id)?
-            .ok_or(Error::Other(format!(
-                "Failed to get recording ({}) for track set ({}).",
-                recording_id,
-                row.id,
-            )))?;
-
         let track_rows = tracks::table
-            .filter(tracks::track_set.eq(row.id))
+            .filter(tracks::medium.eq(&row.id))
             .order_by(tracks::index)
             .load::<TrackRow>(&self.connection)?;
 
         let mut tracks = Vec::new();
 
         for track_row in track_rows {
-            let mut part_indices = Vec::new();
-
-            let work_parts = track_row
-                .work_parts
-                .split(',');
-
-            for part_index in work_parts {
-                if !part_index.is_empty() {
-                    let index = str::parse(part_index)
-                        .or(Err(Error::Other(format!("Failed to parse part index from '{}'.", track_row.work_parts))))?;
-
-                    part_indices.push(index);
-                }
-            }
-
-            let track = Track {
-                work_parts: part_indices,
-                path: track_row.path,
-            };
-
+            let track = self.get_track_from_row(track_row)?;
             tracks.push(track);
         }
 
-        let track_set = TrackSet { recording, tracks };
+        let medium = Medium {
+            id: row.id,
+            name: row.name,
+            discid: row.discid,
+            tracks,
+        };
 
-        Ok(track_set)
+        Ok(medium)
+    }
+
+    /// Convert a track row from the database to an actual track.
+    fn get_track_from_row(&self, row: TrackRow) -> Result<Track> {
+        let recording_id = row.recording;
+
+        let recording = self
+            .get_recording(&recording_id)?
+            .ok_or(Error::Other(format!(
+                "Failed to get recording ({}) for track ({}).",
+                recording_id,
+                row.id,
+            )))?;
+
+        let mut part_indices = Vec::new();
+
+        let work_parts = row
+            .work_parts
+            .split(',');
+
+        for part_index in work_parts {
+            if !part_index.is_empty() {
+                let index = str::parse(part_index)
+                    .or(Err(Error::Other(format!("Failed to parse part index from '{}'.", row.work_parts))))?;
+
+                part_indices.push(index);
+            }
+        }
+
+        let track = Track {
+            recording,
+            work_parts: part_indices,
+            path: row.path,
+        };
+
+        Ok(track)
     }
 }

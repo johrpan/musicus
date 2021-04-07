@@ -10,6 +10,5 @@ DROP TABLE "ensembles";
 DROP TABLE "recordings";
 DROP TABLE "performances";
 DROP TABLE "mediums";
-DROP TABLE "track_sets";
 DROP TABLE "tracks";
 

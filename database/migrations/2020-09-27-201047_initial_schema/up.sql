@@ -60,17 +60,11 @@ CREATE TABLE "mediums" (
     "discid" TEXT
 );
 
-CREATE TABLE "track_sets" (
+CREATE TABLE "tracks" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "medium" TEXT NOT NULL REFERENCES "mediums"("id") ON DELETE CASCADE,
     "index" INTEGER NOT NULL,
-    "recording" TEXT NOT NULL REFERENCES "recordings"("id")
-);
-
-CREATE TABLE "tracks" (
-    "id" TEXT NOT NULL PRIMARY KEY,
-    "track_set" TEXT NOT NULL REFERENCES "track_sets"("id") ON DELETE CASCADE,
-    "index" INTEGER NOT NULL,
+    "recording" TEXT NOT NULL REFERENCES "recordings"("id"),
     "work_parts" TEXT NOT NULL,
     "path" TEXT NOT NULL
 );

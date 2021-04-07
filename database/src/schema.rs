@@ -55,19 +55,11 @@ table! {
 }
 
 table! {
-    track_sets (id) {
+    tracks (id) {
         id -> Text,
         medium -> Text,
         index -> Integer,
         recording -> Text,
-    }
-}
-
-table! {
-    tracks (id) {
-        id -> Text,
-        track_set -> Text,
-        index -> Integer,
         work_parts -> Text,
         path -> Text,
     }
@@ -106,9 +98,8 @@ joinable!(performances -> instruments (role));
 joinable!(performances -> persons (person));
 joinable!(performances -> recordings (recording));
 joinable!(recordings -> works (work));
-joinable!(track_sets -> mediums (medium));
-joinable!(track_sets -> recordings (recording));
-joinable!(tracks -> track_sets (track_set));
+joinable!(tracks -> mediums (medium));
+joinable!(tracks -> recordings (recording));
 joinable!(work_parts -> works (work));
 joinable!(work_sections -> works (work));
 joinable!(works -> persons (composer));
@@ -121,7 +112,6 @@ allow_tables_to_appear_in_same_query!(
     performances,
     persons,
     recordings,
-    track_sets,
     tracks,
     work_parts,
     work_sections,
