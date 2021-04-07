@@ -1,12 +1,9 @@
-use super::medium_editor::MediumEditor;
 use crate::navigator::{NavigationHandle, Screen};
 use crate::widgets::Widget;
 use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
-use libadwaita::prelude::*;
-use log::debug;
 use musicus_backend::db::Medium;
 use musicus_backend::import::ImportSession;
 use std::rc::Rc;
@@ -49,29 +46,43 @@ impl Screen<(Arc<ImportSession>, Medium), ()> for MediumPreview {
 
         name_label.set_text(&medium.name);
 
-        for track_set in medium.tracks {
-            let recording = &track_set.recording;
+        let mut last_recording_id = "";
+        let mut last_list = None::<gtk::ListBox>;
 
-            let frame = gtk::FrameBuilder::new()
-                .margin_bottom(12)
-                .build();
+        for track in &medium.tracks {
+            if track.recording.id != last_recording_id {
+                last_recording_id = &track.recording.id;
 
-            let list = gtk::ListBoxBuilder::new()
-                .selection_mode(gtk::SelectionMode::None)
-                .build();
+                let list = gtk::ListBoxBuilder::new()
+                    .selection_mode(gtk::SelectionMode::None)
+                    .build();
 
-            let header = libadwaita::ActionRowBuilder::new()
-                .activatable(false)
-                .title(&recording.work.get_title())
-                .subtitle(&recording.get_performers())
-                .build();
+                let header = libadwaita::ActionRowBuilder::new()
+                    .activatable(false)
+                    .title(&track.recording.work.get_title())
+                    .subtitle(&track.recording.get_performers())
+                    .build();
 
-            list.append(&header);
+                list.append(&header);
 
-            for track in track_set.tracks {
+                if let Some(list) = &last_list {
+                    let frame = gtk::FrameBuilder::new()
+                        .margin_bottom(12)
+                        .build();
+
+                    frame.set_child(Some(list));
+                    medium_box.append(&frame);
+
+                    last_list = None;
+                }
+
+                last_list = Some(list);
+            }
+
+            if let Some(list) = &last_list {
                 let mut parts = Vec::<String>::new();
                 for part in &track.work_parts {
-                    parts.push(track_set.recording.work.parts[*part].title.clone());
+                    parts.push(track.recording.work.parts[*part].title.clone());
                 }
 
                 let title = if parts.is_empty() {
@@ -89,8 +100,14 @@ impl Screen<(Arc<ImportSession>, Medium), ()> for MediumPreview {
 
                 list.append(&row);
             }
+        }
 
-            frame.set_child(Some(&list));
+        if let Some(list) = &last_list {
+            let frame = gtk::FrameBuilder::new()
+                .margin_bottom(12)
+                .build();
+
+            frame.set_child(Some(list));
             medium_box.append(&frame);
         }
 
