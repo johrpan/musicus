@@ -1,5 +1,5 @@
 use crate::{Error, Result};
-use musicus_database::TrackSet;
+use musicus_database::Track;
 use glib::clone;
 use gstreamer_player::prelude::*;
 use std::cell::{Cell, RefCell};
@@ -10,21 +10,14 @@ use std::sync::Arc;
 #[cfg(target_os = "linux")]
 use mpris_player::{Metadata, MprisPlayer, PlaybackStatus};
 
-#[derive(Clone)]
-pub struct PlaylistItem {
-    pub track_set: TrackSet,
-    pub indices: Vec<usize>,
-}
-
 pub struct Player {
     music_library_path: PathBuf,
     player: gstreamer_player::Player,
-    playlist: RefCell<Vec<PlaylistItem>>,
-    current_item: Cell<Option<usize>>,
+    playlist: RefCell<Vec<Track>>,
     current_track: Cell<Option<usize>>,
     playing: Cell<bool>,
-    playlist_cbs: RefCell<Vec<Box<dyn Fn(Vec<PlaylistItem>)>>>,
-    track_cbs: RefCell<Vec<Box<dyn Fn(usize, usize)>>>,
+    playlist_cbs: RefCell<Vec<Box<dyn Fn(Vec<Track>)>>>,
+    track_cbs: RefCell<Vec<Box<dyn Fn(usize)>>>,
     duration_cbs: RefCell<Vec<Box<dyn Fn(u64)>>>,
     playing_cbs: RefCell<Vec<Box<dyn Fn(bool)>>>,
     position_cbs: RefCell<Vec<Box<dyn Fn(u64)>>>,
@@ -47,7 +40,6 @@ impl Player {
             music_library_path,
             player: player.clone(),
             playlist: RefCell::new(Vec::new()),
-            current_item: Cell::new(None),
             current_track: Cell::new(None),
             playing: Cell::new(false),
             playlist_cbs: RefCell::new(Vec::new()),
@@ -144,11 +136,11 @@ impl Player {
         result
     }
 
-    pub fn add_playlist_cb<F: Fn(Vec<PlaylistItem>) + 'static>(&self, cb: F) {
+    pub fn add_playlist_cb<F: Fn(Vec<Track>) + 'static>(&self, cb: F) {
         self.playlist_cbs.borrow_mut().push(Box::new(cb));
     }
 
-    pub fn add_track_cb<F: Fn(usize, usize) + 'static>(&self, cb: F) {
+    pub fn add_track_cb<F: Fn(usize) + 'static>(&self, cb: F) {
         self.track_cbs.borrow_mut().push(Box::new(cb));
     }
 
@@ -168,12 +160,8 @@ impl Player {
         self.raise_cb.replace(Some(Box::new(cb)));
     }
 
-    pub fn get_playlist(&self) -> Vec<PlaylistItem> {
+    pub fn get_playlist(&self) -> Vec<Track> {
         self.playlist.borrow().clone()
-    }
-
-    pub fn get_current_item(&self) -> Option<usize> {
-        self.current_item.get()
     }
 
     pub fn get_current_track(&self) -> Option<usize> {
@@ -188,41 +176,37 @@ impl Player {
         self.playing.get()
     }
 
-    pub fn add_item(&self, item: PlaylistItem) -> Result<()> {
-        if item.indices.is_empty() {
-            Err(Error::Other(String::from("Tried to add an empty playlist item!")))
-        } else {
-            let was_empty = {
-                let mut playlist = self.playlist.borrow_mut();
-                let was_empty = playlist.is_empty();
+    pub fn add_item(&self, item: Track) -> Result<()> {
+        let was_empty = {
+            let mut playlist = self.playlist.borrow_mut();
+            let was_empty = playlist.is_empty();
 
-                playlist.push(item);
+            playlist.push(item);
 
-                was_empty
-            };
+            was_empty
+        };
 
-            for cb in &*self.playlist_cbs.borrow() {
-                cb(self.playlist.borrow().clone());
-            }
-
-            if was_empty {
-                self.set_track(0, 0)?;
-                self.player.play();
-                self.playing.set(true);
-
-                for cb in &*self.playing_cbs.borrow() {
-                    cb(true);
-                }
-
-                #[cfg(target_os = "linux")]
-                {
-                    self.mpris.set_can_play(true);
-                    self.mpris.set_playback_status(PlaybackStatus::Playing);
-                }
-            }
-
-            Ok(())
+        for cb in &*self.playlist_cbs.borrow() {
+            cb(self.playlist.borrow().clone());
         }
+
+        if was_empty {
+            self.set_track(0)?;
+            self.player.play();
+            self.playing.set(true);
+
+            for cb in &*self.playing_cbs.borrow() {
+                cb(true);
+            }
+
+            #[cfg(target_os = "linux")]
+            {
+                self.mpris.set_can_play(true);
+                self.mpris.set_playback_status(PlaybackStatus::Playing);
+            }
+        }
+
+        Ok(())
     }
 
     pub fn play_pause(&self) {
@@ -254,79 +238,56 @@ impl Player {
     }
 
     pub fn has_previous(&self) -> bool {
-        if let Some(current_item) = self.current_item.get() {
-            if let Some(current_track) = self.current_track.get() {
-                current_track > 0 || current_item > 0
-            } else {
-                false
-            }
+        if let Some(current_track) = self.current_track.get() {
+            current_track > 0
         } else {
             false
         }
     }
 
     pub fn previous(&self) -> Result<()> {
-        let mut current_item = self.current_item.get()
-            .ok_or(Error::Other(String::from("Player tried to access non existant current item.")))?;
-
         let mut current_track = self
             .current_track
             .get()
             .ok_or(Error::Other(String::from("Player tried to access non existant current track.")))?;
 
-        let playlist = self.playlist.borrow();
         if current_track > 0 {
             current_track -= 1;
-        } else if current_item > 0 {
-            current_item -= 1;
-            current_track = playlist[current_item].indices.len() - 1;
         } else {
             return Err(Error::Other(String::from("No existing previous track.")));
         }
 
-        self.set_track(current_item, current_track)
+        self.set_track(current_track)
     }
 
     pub fn has_next(&self) -> bool {
-        if let Some(current_item) = self.current_item.get() {
-            if let Some(current_track) = self.current_track.get() {
-                let playlist = self.playlist.borrow();
-                let item = &playlist[current_item];
-
-                current_track + 1 < item.indices.len() || current_item + 1 < playlist.len()
-            } else {
-                false
-            }
+        if let Some(current_track) = self.current_track.get() {
+            let playlist = self.playlist.borrow();
+            current_track + 1 < playlist.len()
         } else {
             false
         }
     }
 
     pub fn next(&self) -> Result<()> {
-        let mut current_item = self.current_item.get()
-            .ok_or(Error::Other(String::from("Player tried to access non existant current item.")))?;
         let mut current_track = self
             .current_track
             .get()
             .ok_or(Error::Other(String::from("Player tried to access non existant current track.")))?;
 
         let playlist = self.playlist.borrow();
-        let item = &playlist[current_item];
-        if current_track + 1 < item.indices.len() {
+
+        if current_track + 1 < playlist.len() {
             current_track += 1;
-        } else if current_item + 1 < playlist.len() {
-            current_item += 1;
-            current_track = 0;
         } else {
-            return Err(Error::Other(String::from("No existing previous track.")));
+            return Err(Error::Other(String::from("No existing next track.")));
         }
 
-        self.set_track(current_item, current_track)
+        self.set_track(current_track)
     }
 
-    pub fn set_track(&self, current_item: usize, current_track: usize) -> Result<()> {
-        let item = &self.playlist.borrow()[current_item];
-        let track = &item.track_set.tracks[current_track];
+    pub fn set_track(&self, current_track: usize) -> Result<()> {
+        let track = &self.playlist.borrow()[current_track];
 
         let path = self.music_library_path.join(track.path.clone())
             .into_os_string().into_string().unwrap();
@@ -340,26 +301,25 @@ impl Player {
             self.player.play();
         }
 
-        self.current_item.set(Some(current_item));
         self.current_track.set(Some(current_track));
 
         for cb in &*self.track_cbs.borrow() {
-            cb(current_item, current_track);
+            cb(current_track);
         }
 
         #[cfg(target_os = "linux")]
         {
             let mut parts = Vec::<String>::new();
             for part in &track.work_parts {
-                parts.push(item.track_set.recording.work.parts[*part].title.clone());
+                parts.push(track.recording.work.parts[*part].title.clone());
             }
 
-            let mut title = item.track_set.recording.work.get_title();
+            let mut title = track.recording.work.get_title();
             if !parts.is_empty() {
                 title = format!("{}: {}", title, parts.join(", "));
             }
 
-            let subtitle = item.track_set.recording.get_performers();
+            let subtitle = track.recording.get_performers();
 
             let mut metadata = Metadata::new();
             metadata.artist = Some(vec![title]);
@@ -379,7 +339,7 @@ impl Player {
         }
 
         for cb in &*self.track_cbs.borrow() {
-            cb(self.current_item.get().unwrap(), self.current_track.get().unwrap());
+            cb(self.current_track.get().unwrap());
         }
 
         for cb in &*self.duration_cbs.borrow() {
@@ -394,7 +354,6 @@ impl Player {
     pub fn clear(&self) {
         self.player.stop();
         self.playing.set(false);
-        self.current_item.set(None);
         self.current_track.set(None);
         self.playlist.replace(Vec::new());
 

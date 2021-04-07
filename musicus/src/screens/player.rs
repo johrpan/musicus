@@ -5,21 +5,25 @@ use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
 use libadwaita::prelude::*;
-use musicus_backend::PlaylistItem;
+use musicus_backend::db::Track;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
 /// Elements for visually representing the playlist.
 enum ListItem {
-    /// A header shown on top of a track set. This contains an index
-    /// referencing the playlist item containing this track set.
-    Header(usize),
+    /// A playable track.
+    Track {
+        /// Index within the playlist.
+        index: usize,
 
-    /// A playable track. This contains an index to the playlist item, an
-    /// index to the track and whether it is the currently played one.
-    Track(usize, usize, bool),
+        /// Whether this is the first track of the recording.
+        first: bool,
 
-    /// A separator shown between track sets.
+        /// Whether this is the currently played track.
+        playing: bool,
+    },
+
+    /// A separator shown between recordings.
     Separator,
 }
 
@@ -37,10 +41,9 @@ pub struct PlayerScreen {
     play_image: gtk::Image,
     pause_image: gtk::Image,
     list: Rc<List>,
-    playlist: RefCell<Vec<PlaylistItem>>,
+    playlist: RefCell<Vec<Track>>,
     items: RefCell<Vec<ListItem>>,
     seeking: Cell<bool>,
-    current_item: Cell<usize>,
     current_track: Cell<usize>,
 }
 
@@ -87,7 +90,6 @@ impl Screen<(), ()> for PlayerScreen {
             items: RefCell::new(Vec::new()),
             playlist: RefCell::new(Vec::new()),
             seeking: Cell::new(false),
-            current_item: Cell::new(0),
             current_track: Cell::new(0),
         });
 
@@ -102,28 +104,26 @@ impl Screen<(), ()> for PlayerScreen {
             this.show_playlist();
         }));
 
-        player.add_track_cb(clone!(@weak this, @weak player => @default-return (), move |current_item, current_track| {
+        player.add_track_cb(clone!(@weak this, @weak player => @default-return (), move |current_track| {
             this.previous_button.set_sensitive(this.handle.backend.pl().has_previous());
             this.next_button.set_sensitive(this.handle.backend.pl().has_next());
 
-            let item = &this.playlist.borrow()[current_item];
-            let track = &item.track_set.tracks[current_track];
+            let track = &this.playlist.borrow()[current_track];
 
             let mut parts = Vec::<String>::new();
             for part in &track.work_parts {
-                parts.push(item.track_set.recording.work.parts[*part].title.clone());
+                parts.push(track.recording.work.parts[*part].title.clone());
             }
 
-            let mut title = item.track_set.recording.work.get_title();
+            let mut title = track.recording.work.get_title();
             if !parts.is_empty() {
                 title = format!("{}: {}", title, parts.join(", "));
             }
 
             this.title_label.set_text(&title);
-            this.subtitle_label.set_text(&item.track_set.recording.get_performers());
+            this.subtitle_label.set_text(&track.recording.get_performers());
             this.position_label.set_text("0:00");
 
-            this.current_item.set(current_item);
             this.current_track.set(current_track);
 
             this.show_playlist();
@@ -205,29 +205,17 @@ impl Screen<(), ()> for PlayerScreen {
 
         this.list.set_make_widget_cb(clone!(@weak this => move |index| {
             let widget = match this.items.borrow()[index] {
-                ListItem::Header(item_index) => {
-                    let playlist_item = &this.playlist.borrow()[item_index];
-                    let recording = &playlist_item.track_set.recording;
-
-                    let row = libadwaita::ActionRow::new();
-                    row.set_activatable(false);
-                    row.set_selectable(false);
-                    row.set_title(Some(&recording.work.get_title()));
-                    row.set_subtitle(Some(&recording.get_performers()));
-
-                    row.upcast()
-                }
-                ListItem::Track(item_index, track_index, playing) => {
-                    let playlist_item = &this.playlist.borrow()[item_index];
-                    let index = playlist_item.indices[track_index];
-                    let track = &playlist_item.track_set.tracks[index];
+                ListItem::Track {index, first, playing} => {
+                    let track = &this.playlist.borrow()[index];
 
                     let mut parts = Vec::<String>::new();
                     for part in &track.work_parts {
-                        parts.push(playlist_item.track_set.recording.work.parts[*part].title.clone());
+                        parts.push(track.recording.work.parts[*part].title.clone());
                     }
 
-                    let title = if parts.is_empty() {
+                    let title = if first {
+                        track.recording.work.get_title()
+                    } else if parts.is_empty() {
                         gettext("Unknown")
                     } else {
                         parts.join(", ")
@@ -238,8 +226,18 @@ impl Screen<(), ()> for PlayerScreen {
                     row.set_activatable(true);
                     row.set_title(Some(&title));
 
+                    if first {
+                        let subtitle = if !parts.is_empty() {
+                            format!("{}\n{}", track.recording.get_performers(), parts.join(", "))
+                        } else {
+                            track.recording.get_performers()
+                        };
+
+                        row.set_subtitle(Some(&subtitle));
+                    }
+
                     row.connect_activated(clone!(@weak this => move |_| {
-                        this.handle.backend.pl().set_track(item_index, track_index).unwrap();
+                        this.handle.backend.pl().set_track(index).unwrap();
                     }));
 
                     let icon = if playing {
@@ -272,25 +270,35 @@ impl PlayerScreen {
     /// Update the user interface according to the playlist.
     fn show_playlist(&self) {
         let playlist = self.playlist.borrow();
-        let current_item = self.current_item.get();
         let current_track = self.current_track.get();
 
         let mut first = true;
         let mut items = Vec::new();
 
-        for (item_index, playlist_item) in playlist.iter().enumerate() {
-            if !first {
-                items.push(ListItem::Separator);
+        let mut last_recording_id = "";
+
+        for (index, track) in playlist.iter().enumerate() {
+            let first_track = if track.recording.id != last_recording_id {
+                last_recording_id = &track.recording.id;
+
+                if !first {
+                    items.push(ListItem::Separator);
+                } else {
+                    first = false;
+                }
+
+                true
             } else {
-                first = false;
-            }
+                false
+            };
 
-            items.push(ListItem::Header(item_index));
+            let item = ListItem::Track {
+                index,
+                first: first_track,
+                playing: index == current_track,
+            };
 
-            for (index, _) in playlist_item.indices.iter().enumerate() {
-                let playing = current_item == item_index && current_track == index;
-                items.push(ListItem::Track(item_index, index, playing));
-            }
+            items.push(item);
         }
 
         let length = items.len();

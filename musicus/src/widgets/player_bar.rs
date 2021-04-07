@@ -1,7 +1,7 @@
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
-use musicus_backend::{Player, PlaylistItem};
+use musicus_backend::Player;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -83,7 +83,7 @@ impl PlayerBar {
         self.player.replace(player.clone());
 
         if let Some(player) = player {
-            let playlist = Rc::new(RefCell::new(Vec::<PlaylistItem>::new()));
+            let playlist = Rc::new(RefCell::new(Vec::new()));
 
             player.add_playlist_cb(clone!(
                 @strong player,
@@ -107,25 +107,24 @@ impl PlayerBar {
                 @strong self.title_label as title_label,
                 @strong self.subtitle_label as subtitle_label,
                 @strong self.position_label as position_label
-                => move |current_item, current_track| {
+                => move |current_track| {
                     previous_button.set_sensitive(player.has_previous());
                     next_button.set_sensitive(player.has_next());
 
-                    let item = &playlist.borrow()[current_item];
-                    let track = &item.track_set.tracks[current_track];
+                    let track = &playlist.borrow()[current_track];
 
                     let mut parts = Vec::<String>::new();
                     for part in &track.work_parts {
-                        parts.push(item.track_set.recording.work.parts[*part].title.clone());
+                        parts.push(track.recording.work.parts[*part].title.clone());
                     }
 
-                    let mut title = item.track_set.recording.work.get_title();
+                    let mut title = track.recording.work.get_title();
                     if !parts.is_empty() {
                         title = format!("{}: {}", title, parts.join(", "));
                     }
 
                     title_label.set_text(&title);
-                    subtitle_label.set_text(&item.track_set.recording.get_performers());
+                    subtitle_label.set_text(&track.recording.get_performers());
                     position_label.set_text("0:00");
                 }
             ));
