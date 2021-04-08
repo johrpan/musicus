@@ -5,7 +5,7 @@ use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
 use musicus_backend::db::Medium;
-use musicus_backend::import::ImportSession;
+use musicus_backend::import::{ImportSession, State};
 use std::rc::Rc;
 use std::sync::Arc;
 
@@ -14,6 +14,8 @@ pub struct MediumPreview {
     handle: NavigationHandle<()>,
     session: Arc<ImportSession>,
     widget: gtk::Box,
+    import_button: gtk::Button,
+    done_stack: gtk::Stack,
 }
 
 impl Screen<(Arc<ImportSession>, Medium), ()> for MediumPreview {
@@ -34,6 +36,8 @@ impl Screen<(Arc<ImportSession>, Medium), ()> for MediumPreview {
             handle,
             session,
             widget,
+            import_button,
+            done_stack,
         });
 
         // Connect signals and callbacks
@@ -111,7 +115,35 @@ impl Screen<(Arc<ImportSession>, Medium), ()> for MediumPreview {
             medium_box.append(&frame);
         }
 
+        this.handle_state(&this.session.state());
+        spawn!(@clone this, async move {
+            loop {
+                let state = this.session.state_change().await;
+                this.handle_state(&state);
+
+                match state {
+                    State::Ready | State::Error => break,
+                    _ => (),
+                }
+            }
+        });
+
         this
+    }
+}
+
+impl MediumPreview {
+    /// Handle a state change of the import process.
+    fn handle_state(&self, state: &State) {
+        match state {
+            State::Waiting => todo!("This shouldn't happen."),
+            State::Copying => self.done_stack.set_visible_child_name("loading"),
+            State::Ready => {
+                self.done_stack.set_visible_child_name("ready");
+                self.import_button.set_sensitive(true);
+            }
+            State::Error => todo!("Import error!"),
+        }
     }
 }
 
