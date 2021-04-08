@@ -80,7 +80,9 @@ impl ImportScreen {
             row.connect_activated(clone!(@weak this => move |_| {
                 let medium = medium.clone();
                 spawn!(@clone this, async move {
-                    push!(this.handle, MediumPreview, (this.session.clone(), medium.clone())).await;
+                    if let Some(()) = push!(this.handle, MediumPreview, (this.session.clone(), medium.clone())).await {
+                        this.handle.pop(Some(()));
+                    }
                 });
             }));
 
@@ -93,7 +95,9 @@ impl ImportScreen {
         let this = self;
 
         spawn!(@clone this, async move {
-            push!(this.handle, MediumPreview, (this.session.clone(), medium)).await;
+            if let Some(()) = push!(this.handle, MediumPreview, (this.session.clone(), medium)).await {
+                this.handle.pop(Some(()));
+            }
         });
     }
 }

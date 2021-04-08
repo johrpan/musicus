@@ -131,38 +131,18 @@ impl Screen<Arc<ImportSession>, Medium> for MediumEditor {
 }
 
 impl MediumEditor {
-    /// Save the medium and possibly upload it to the server.
+    /// Create the medium and, if necessary, upload it to the server.
     async fn save(&self) -> Result<Medium> {
-        let name = self.name_entry.get_text().to_string();
-
-        // Create a new directory in the music library path for the imported medium.
-
-        let mut path = self.handle.backend.get_music_library_path().unwrap().clone();
-        path.push(&name);
-        std::fs::create_dir(&path)?;
-
         // Convert the track set data to real track sets.
 
         let mut tracks = Vec::new();
-        let import_tracks = self.session.tracks();
 
         for track_set_data in &*self.track_sets.borrow() {
             for track_data in &track_set_data.tracks {
-                // Copy the corresponding audio file to the music library.
-
-                let import_track = &import_tracks[track_data.track_source];
-
-                let mut track_path = path.clone();
-                track_path.push(import_track.path.file_name().unwrap());
-
-                std::fs::copy(&import_track.path, &track_path)?;
-
-                // Create the real track.
-
                 let track = Track {
                     recording: track_set_data.recording.clone(),
                     work_parts: track_data.work_parts.clone(),
-                    path: track_path.to_str().unwrap().to_owned(),
+                    path: String::new(),
                 };
 
                 tracks.push(track);
@@ -181,12 +161,9 @@ impl MediumEditor {
             self.handle.backend.cl().post_medium(&medium).await?;
         }
 
-        self.handle.backend
-            .db()
-            .update_medium(medium.clone())
-            .await?;
-
-        self.handle.backend.library_changed();
+        // The medium is not added to the database, because the track paths are not known until the
+        // medium is actually imported into the music library. This step will be handled by the
+        // medium preview dialog.
 
         Ok(medium)
     }

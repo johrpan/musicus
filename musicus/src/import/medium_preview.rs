@@ -1,5 +1,6 @@
 use crate::navigator::{NavigationHandle, Screen};
 use crate::widgets::Widget;
+use anyhow::Result;
 use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
@@ -13,6 +14,7 @@ use std::sync::Arc;
 pub struct MediumPreview {
     handle: NavigationHandle<()>,
     session: Arc<ImportSession>,
+    medium: Medium,
     widget: gtk::Box,
     import_button: gtk::Button,
     done_stack: gtk::Stack,
@@ -35,6 +37,7 @@ impl Screen<(Arc<ImportSession>, Medium), ()> for MediumPreview {
         let this = Rc::new(Self {
             handle,
             session,
+            medium,
             widget,
             import_button,
             done_stack,
@@ -46,14 +49,21 @@ impl Screen<(Arc<ImportSession>, Medium), ()> for MediumPreview {
             this.handle.pop(None);
         }));
 
+        this.import_button.connect_clicked(clone!(@weak this => move |_| {
+            spawn!(@clone this, async move {
+                this.import().await.unwrap();
+                this.handle.pop(Some(()));
+            });
+        }));
+
         // Populate the widget
 
-        name_label.set_text(&medium.name);
+        name_label.set_text(&this.medium.name);
 
         let mut last_recording_id = "";
         let mut last_list = None::<gtk::ListBox>;
 
-        for track in &medium.tracks {
+        for track in &this.medium.tracks {
             if track.recording.id != last_recording_id {
                 last_recording_id = &track.recording.id;
 
@@ -144,6 +154,54 @@ impl MediumPreview {
             }
             State::Error => todo!("Import error!"),
         }
+    }
+
+    /// Copy the tracks to the music library and add the medium to the database.
+    async fn import(&self) -> Result<()> {
+        // Create a new directory in the music library path for the imported medium.
+
+        let mut path = self.handle.backend.get_music_library_path().unwrap().clone();
+        path.push(&self.medium.name);
+        std::fs::create_dir(&path)?;
+
+        // Copy the tracks to the music library.
+
+        let mut tracks = Vec::new();
+        let import_tracks = self.session.tracks();
+
+        for (index, track) in self.medium.tracks.iter().enumerate() {
+            let mut track = track.clone();
+
+            // Set the track path to the new audio file location.
+
+            let import_track = &import_tracks[index];
+            let mut track_path = path.clone();
+            track_path.push(import_track.path.file_name().unwrap());
+            track.path = track_path.to_str().unwrap().to_owned();
+
+            // Copy the corresponding audio file to the music library.
+            std::fs::copy(&import_track.path, &track_path)?;
+
+            tracks.push(track);
+        }
+
+        // Add the modified medium to the database.
+
+        let medium = Medium {
+            id: self.medium.id.clone(),
+            name: self.medium.name.clone(),
+            discid: self.medium.discid.clone(),
+            tracks,
+        };
+
+        self.handle.backend
+            .db()
+            .update_medium(medium.clone())
+            .await?;
+
+        self.handle.backend.library_changed();
+
+        Ok(())
     }
 }
 
