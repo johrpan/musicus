@@ -6,7 +6,6 @@ use log::{warn, info};
 use sha2::{Sha256, Digest};
 use std::fs::DirEntry;
 use std::path::PathBuf;
-use std::sync::Mutex;
 use tokio::sync::watch;
 
 /// Create a new import session for the specified folder.
@@ -65,7 +64,7 @@ pub(super) fn new(path: PathBuf) -> Result<ImportSession> {
         tracks,
         copy: None,
         state_sender,
-        state_receiver: Mutex::new(state_receiver),
+        state_receiver,
     };
 
     Ok(session)

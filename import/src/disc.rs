@@ -6,7 +6,6 @@ use gstreamer::tags::{Duration, TrackNumber};
 use log::info;
 use sha2::{Sha256, Digest};
 use std::path::PathBuf;
-use std::sync::Mutex;
 use tokio::sync::watch;
 
 /// Create a new import session for the default disc drive.
@@ -150,7 +149,7 @@ pub(super) fn new() -> Result<ImportSession> {
         tracks,
         copy: Some(Box::new(copy)),
         state_sender,
-        state_receiver: Mutex::new(state_receiver),
+        state_receiver,
     };
 
     Ok(session)

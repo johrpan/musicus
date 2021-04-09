@@ -2,7 +2,7 @@ use crate::{disc, folder};
 use crate::error::Result;
 use std::path::PathBuf;
 use std::thread;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use tokio::sync::{oneshot, watch};
 
 /// The current state of the import process.
@@ -36,7 +36,7 @@ pub struct ImportSession {
     pub(super) state_sender: watch::Sender<State>,
 
     /// Receiver for state changes.
-    pub(super) state_receiver: Mutex<watch::Receiver<State>>,
+    pub(super) state_receiver: watch::Receiver<State>,
 }
 
 impl ImportSession {
@@ -76,12 +76,13 @@ impl ImportSession {
 
     /// Retrieve the current state of the import process.
     pub fn state(&self) -> State {
-        self.state_receiver.lock().unwrap().borrow().clone()
+        self.state_receiver.borrow().clone()
     }
 
     /// Wait for the next state change and get the new state.
     pub async fn state_change(&self) -> State {
-        match self.state_receiver.lock().unwrap().changed().await {
+        let mut receiver = self.state_receiver.clone();
+        match receiver.changed().await {
             Ok(()) => self.state(),
             Err(_) => State::Error,
         }
