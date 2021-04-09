@@ -7,6 +7,7 @@ use gtk::prelude::*;
 use gtk_macros::get_widget;
 use musicus_backend::db::Medium;
 use musicus_backend::import::{ImportSession, State};
+use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Arc;
 
@@ -160,9 +161,9 @@ impl MediumPreview {
     async fn import(&self) -> Result<()> {
         // Create a new directory in the music library path for the imported medium.
 
-        let mut path = self.handle.backend.get_music_library_path().unwrap().clone();
-        path.push(&self.medium.name);
-        std::fs::create_dir(&path)?;
+        let music_library_path = self.handle.backend.get_music_library_path().unwrap();
+        let directory = PathBuf::from(&self.medium.name);
+        std::fs::create_dir(&music_library_path.join(&directory))?;
 
         // Copy the tracks to the music library.
 
@@ -175,12 +176,11 @@ impl MediumPreview {
             // Set the track path to the new audio file location.
 
             let import_track = &import_tracks[index];
-            let mut track_path = path.clone();
-            track_path.push(import_track.path.file_name().unwrap());
+            let track_path = directory.join(import_track.path.file_name().unwrap());
             track.path = track_path.to_str().unwrap().to_owned();
 
             // Copy the corresponding audio file to the music library.
-            std::fs::copy(&import_track.path, &track_path)?;
+            std::fs::copy(&import_track.path, &music_library_path.join(&track_path))?;
 
             tracks.push(track);
         }
