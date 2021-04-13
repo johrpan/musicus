@@ -4,6 +4,7 @@ use gstreamer::ClockTime;
 use gstreamer_pbutils::Discoverer;
 use log::{warn, info};
 use sha2::{Sha256, Digest};
+use std::fs::DirEntry;
 use std::path::PathBuf;
 use std::sync::Mutex;
 use tokio::sync::watch;
@@ -17,9 +18,10 @@ pub(super) fn new(path: PathBuf) -> Result<ImportSession> {
     let mut hasher = Sha256::new();
     let discoverer = Discoverer::new(ClockTime::from_seconds(1))?;
 
-    for entry in std::fs::read_dir(path)? {
-        let entry = entry?;
+    let mut entries = std::fs::read_dir(path)?.collect::<std::result::Result<Vec<DirEntry>, std::io::Error>>()?;
+    entries.sort_by(|entry1, entry2| entry1.file_name().cmp(&entry2.file_name()));
 
+    for entry in entries {
         if entry.file_type()?.is_file() {
             let path = entry.path();
 
