@@ -33,6 +33,10 @@ pub struct Track {
     /// work parts of the work that is associated with the recording.
     pub work_parts: Vec<usize>,
 
+    /// The index of the track within its source. This is used to associate
+    /// the metadata with the audio data from the source when importing.
+    pub source_index: usize,
+
     /// The path to the audio file containing this track. This will not be
     /// included when communicating with the server.
     #[serde(skip)]
@@ -57,6 +61,7 @@ struct TrackRow {
     pub index: i32,
     pub recording: String,
     pub work_parts: String,
+    pub source_index: i32,
     pub path: String,
 }
 
@@ -105,6 +110,7 @@ impl Database {
                     index: index as i32,
                     recording: track.recording.id.clone(),
                     work_parts,
+                    source_index: track.source_index as i32,
                     path: track.path.clone(),
                 };
 
@@ -274,6 +280,7 @@ impl Database {
         let track = Track {
             recording,
             work_parts: part_indices,
+            source_index: row.source_index as usize,
             path: row.path,
         };
 

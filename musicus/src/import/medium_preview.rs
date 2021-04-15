@@ -64,6 +64,8 @@ impl Screen<(Arc<ImportSession>, Medium), ()> for MediumPreview {
         let mut last_recording_id = "";
         let mut last_list = None::<gtk::ListBox>;
 
+        let import_tracks = this.session.tracks();
+
         for track in &this.medium.tracks {
             if track.recording.id != last_recording_id {
                 last_recording_id = &track.recording.id;
@@ -109,7 +111,7 @@ impl Screen<(Arc<ImportSession>, Medium), ()> for MediumPreview {
                 let row = libadwaita::ActionRowBuilder::new()
                     .activatable(false)
                     .title(&title)
-                    .subtitle(&track.path)
+                    .subtitle(&import_tracks[track.source_index].name)
                     .margin_start(12)
                     .build();
 
@@ -170,12 +172,12 @@ impl MediumPreview {
         let mut tracks = Vec::new();
         let import_tracks = self.session.tracks();
 
-        for (index, track) in self.medium.tracks.iter().enumerate() {
+        for track in &self.medium.tracks {
             let mut track = track.clone();
 
             // Set the track path to the new audio file location.
 
-            let import_track = &import_tracks[index];
+            let import_track = &import_tracks[track.source_index];
             let track_path = directory.join(import_track.path.file_name().unwrap());
             track.path = track_path.to_str().unwrap().to_owned();
 

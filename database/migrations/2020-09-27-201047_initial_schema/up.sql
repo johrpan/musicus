@@ -66,6 +66,7 @@ CREATE TABLE "tracks" (
     "index" INTEGER NOT NULL,
     "recording" TEXT NOT NULL REFERENCES "recordings"("id"),
     "work_parts" TEXT NOT NULL,
+    "source_index" INTEGER NOT NULL,
     "path" TEXT NOT NULL
 );
 

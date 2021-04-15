@@ -142,6 +142,7 @@ impl MediumEditor {
                 let track = Track {
                     recording: track_set_data.recording.clone(),
                     work_parts: track_data.work_parts.clone(),
+                    source_index: track_data.track_source,
                     path: String::new(),
                 };
 

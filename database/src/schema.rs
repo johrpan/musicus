@@ -61,6 +61,7 @@ table! {
         index -> Integer,
         recording -> Text,
         work_parts -> Text,
+        source_index -> Integer,
         path -> Text,
     }
 }

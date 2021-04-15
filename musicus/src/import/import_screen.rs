@@ -7,7 +7,6 @@ use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
 use libadwaita::prelude::*;
-use log::debug;
 use musicus_backend::Error;
 use musicus_backend::db::Medium;
 use musicus_backend::import::ImportSession;
