@@ -53,8 +53,8 @@ impl Screen<(), Medium> for MediumSelector {
             async move {
                 let mut poes = Vec::new();
 
-                let persons = this.handle.backend.db().get_persons().await?;
-                let ensembles = this.handle.backend.db().get_ensembles().await?;
+                let persons = this.handle.backend.cl().get_persons().await?;
+                let ensembles = this.handle.backend.cl().get_ensembles().await?;
 
                 for person in persons {
                     poes.push(PersonOrEnsemble::Person(person));
@@ -72,8 +72,8 @@ impl Screen<(), Medium> for MediumSelector {
             async move {
                 let mut poes = Vec::new();
 
-                let persons = this.handle.backend.cl().get_persons().await.unwrap();
-                let ensembles = this.handle.backend.cl().get_ensembles().await.unwrap();
+                let persons = this.handle.backend.db().get_persons().await.unwrap();
+                let ensembles = this.handle.backend.db().get_ensembles().await.unwrap();
 
                 for person in persons {
                     poes.push(PersonOrEnsemble::Person(person));
