@@ -73,7 +73,7 @@ impl ImportScreen {
         for medium in mediums {
             let row = libadwaita::ActionRowBuilder::new()
                 .title(&medium.name)
-                .subtitle(&format!("{} Recordings", medium.tracks.len()))
+                .subtitle(&format!("{} Tracks", medium.tracks.len()))
                 .activatable(true)
                 .build();
 
