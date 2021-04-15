@@ -109,38 +109,38 @@ impl Client {
             .body(())?
             .send_async()
             .await?;
-
-        let body = response.text().await?;
-
-        Ok(body)
+        
+        match response.status() {
+            StatusCode::OK => Ok(response.text().await?),
+            status_code => Err(Error::UnexpectedResponse(status_code)),
+        }
     }
 
     /// Make an authenticated post request to the server.
     async fn post(&self, url: &str, body: String) -> Result<String> {
-        let body = if self.token.borrow().is_some() {
+        // Try to do the request using a cached login token.
+        if self.token.borrow().is_some() {
             let mut response = self.post_priv(url, body.clone()).await?;
 
-            // Try one more time (maybe the token was expired)
-            if response.status() == StatusCode::UNAUTHORIZED {
-                if self.login().await? {
-                    response = self.post_priv(url, body).await?;
-                } else {
-                    Err(Error::LoginFailed)?;
-                }
+            // If authorization failed, try again below. Else, return early.
+            match response.status() {
+                StatusCode::UNAUTHORIZED => (),
+                StatusCode::OK => return Ok(response.text().await?),
+                status_code => return Err(Error::UnexpectedResponse(status_code)),
             }
+        }
 
-            response.text().await?
+        if self.login().await? {
+            let mut response = self.post_priv(url, body).await?;
+
+            match response.status() {
+                StatusCode::OK => Ok(response.text().await?),
+                StatusCode::UNAUTHORIZED => Err(Error::Unauthorized),
+                status_code => Err(Error::UnexpectedResponse(status_code)),
+            }
         } else {
-            let mut response = if self.login().await? {
-                self.post_priv(url, body).await?
-            } else {
-                Err(Error::LoginFailed)?
-            };
-
-            response.text().await?
-        };
-
-        Ok(body)
+            Err(Error::LoginFailed)
+        }
     }
 
     /// Post something to the server assuming there is a valid login token.
