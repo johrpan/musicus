@@ -1,5 +1,4 @@
 use super::import_screen::ImportScreen;
-use super::medium_editor::MediumEditor;
 use crate::navigator::{NavigationHandle, Screen};
 use crate::widgets::Widget;
 use gettextrs::gettext;
@@ -66,10 +65,8 @@ impl Screen<(), ()> for SourceSelector {
                             spawn!(@clone this, async move {
                                 match ImportSession::folder(PathBuf::from(path)).await {
                                     Ok(session) => {
-                                        // push!(this.handle, MediumEditor, session).await;
-                                        // this.handle.pop(Some(()));
-
-                                        push!(this.handle, ImportScreen, session).await;
+                                        let result = push!(this.handle, ImportScreen, session).await;
+                                        this.handle.pop(result);
                                     }
                                     Err(err) => {
                                         this.status_page.set_description(Some(&err.to_string()));
@@ -91,8 +88,8 @@ impl Screen<(), ()> for SourceSelector {
             spawn!(@clone this, async move {
                 match ImportSession::audio_cd().await {
                     Ok(session) => {
-                        push!(this.handle, MediumEditor, session).await;
-                        this.handle.pop(Some(()));
+                        let result = push!(this.handle, ImportScreen, session).await;
+                        this.handle.pop(result);
                     }
                     Err(err) => {
                         this.status_page.set_description(Some(&err.to_string()));
