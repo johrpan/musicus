@@ -162,7 +162,7 @@ impl MediumPreview {
         // Create a new directory in the music library path for the imported medium.
 
         let music_library_path = self.handle.backend.get_music_library_path().unwrap();
-        let directory = PathBuf::from(&self.medium.name);
+        let directory = PathBuf::from(&self.medium.id);
         std::fs::create_dir(&music_library_path.join(&directory))?;
 
         // Copy the tracks to the music library.
