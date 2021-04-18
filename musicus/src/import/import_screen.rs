@@ -153,7 +153,7 @@ impl Screen<Arc<ImportSession>, ()> for ImportScreen {
 
         add_button.connect_clicked(clone!(@weak this => move |_| {
             spawn!(@clone this, async move {
-                if let Some(medium) = push!(this.handle, MediumEditor, Arc::clone(&this.session)).await {
+                if let Some(medium) = push!(this.handle, MediumEditor, (Arc::clone(&this.session), None)).await {
                     this.select_medium(medium);
                 }
             });

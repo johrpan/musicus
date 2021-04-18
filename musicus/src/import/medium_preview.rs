@@ -1,12 +1,14 @@
+use super::medium_editor::MediumEditor;
 use crate::navigator::{NavigationHandle, Screen};
 use crate::widgets::Widget;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
 use musicus_backend::db::Medium;
 use musicus_backend::import::{ImportSession, State};
+use std::cell::RefCell;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -15,10 +17,12 @@ use std::sync::Arc;
 pub struct MediumPreview {
     handle: NavigationHandle<()>,
     session: Arc<ImportSession>,
-    medium: Medium,
+    medium: RefCell<Option<Medium>>,
     widget: gtk::Box,
     import_button: gtk::Button,
     done_stack: gtk::Stack,
+    name_label: gtk::Label,
+    medium_box: gtk::Box,
 }
 
 impl Screen<(Arc<ImportSession>, Medium), ()> for MediumPreview {
@@ -30,6 +34,7 @@ impl Screen<(Arc<ImportSession>, Medium), ()> for MediumPreview {
 
         get_widget!(builder, gtk::Box, widget);
         get_widget!(builder, gtk::Button, back_button);
+        get_widget!(builder, gtk::Button, edit_button);
         get_widget!(builder, gtk::Button, import_button);
         get_widget!(builder, gtk::Stack, done_stack);
         get_widget!(builder, gtk::Box, medium_box);
@@ -38,16 +43,27 @@ impl Screen<(Arc<ImportSession>, Medium), ()> for MediumPreview {
         let this = Rc::new(Self {
             handle,
             session,
-            medium,
+            medium: RefCell::new(None),
             widget,
             import_button,
             done_stack,
+            name_label,
+            medium_box,
         });
 
         // Connect signals and callbacks
 
         back_button.connect_clicked(clone!(@weak this => move |_| {
             this.handle.pop(None);
+        }));
+
+        edit_button.connect_clicked(clone!(@weak this => move |_| {
+            spawn!(@clone this, async move {
+                let old_medium = this.medium.borrow().clone().unwrap();
+                if let Some(medium) = push!(this.handle, MediumEditor, (this.session.clone(), Some(old_medium))).await {
+                    this.set_medium(medium);
+                }
+            });
         }));
 
         this.import_button.connect_clicked(clone!(@weak this => move |_| {
@@ -57,16 +73,50 @@ impl Screen<(Arc<ImportSession>, Medium), ()> for MediumPreview {
             });
         }));
 
-        // Populate the widget
+        this.set_medium(medium);
 
-        name_label.set_text(&this.medium.name);
+        this.handle_state(&this.session.state());
+        spawn!(@clone this, async move {
+            loop {
+                let state = this.session.state_change().await;
+                this.handle_state(&state);
+
+                match state {
+                    State::Ready | State::Error => break,
+                    _ => (),
+                }
+            }
+        });
+
+        this
+    }
+}
+
+impl MediumPreview {
+    /// Set a new medium and update the view accordingly.
+    fn set_medium(&self, medium: Medium) {
+        self.name_label.set_text(&medium.name);
+
+        if let Some(widget) = self.medium_box.get_first_child() {
+            let mut child = widget;
+
+            loop {
+                let next_child = child.get_next_sibling();
+                self.medium_box.remove(&child);
+
+                match next_child {
+                    Some(widget) => child = widget,
+                    None => break,
+                }
+            }
+        }
 
         let mut last_recording_id = "";
         let mut last_list = None::<gtk::ListBox>;
 
-        let import_tracks = this.session.tracks();
+        let import_tracks = self.session.tracks();
 
-        for track in &this.medium.tracks {
+        for track in &medium.tracks {
             if track.recording.id != last_recording_id {
                 last_recording_id = &track.recording.id;
 
@@ -88,9 +138,7 @@ impl Screen<(Arc<ImportSession>, Medium), ()> for MediumPreview {
                         .build();
 
                     frame.set_child(Some(list));
-                    medium_box.append(&frame);
-
-                    last_list = None;
+                    self.medium_box.append(&frame);
                 }
 
                 last_list = Some(list);
@@ -125,27 +173,12 @@ impl Screen<(Arc<ImportSession>, Medium), ()> for MediumPreview {
                 .build();
 
             frame.set_child(Some(list));
-            medium_box.append(&frame);
+            self.medium_box.append(&frame);
         }
 
-        this.handle_state(&this.session.state());
-        spawn!(@clone this, async move {
-            loop {
-                let state = this.session.state_change().await;
-                this.handle_state(&state);
-
-                match state {
-                    State::Ready | State::Error => break,
-                    _ => (),
-                }
-            }
-        });
-
-        this
+        self.medium.replace(Some(medium));
     }
-}
 
-impl MediumPreview {
     /// Handle a state change of the import process.
     fn handle_state(&self, state: &State) {
         match state {
@@ -161,10 +194,13 @@ impl MediumPreview {
 
     /// Copy the tracks to the music library and add the medium to the database.
     async fn import(&self) -> Result<()> {
+        let medium = self.medium.borrow();
+        let medium = medium.as_ref().ok_or(anyhow!("No medium set!"))?;
+
         // Create a new directory in the music library path for the imported medium.
 
         let music_library_path = self.handle.backend.get_music_library_path().unwrap();
-        let directory = PathBuf::from(&self.medium.id);
+        let directory = PathBuf::from(&medium.id);
         std::fs::create_dir(&music_library_path.join(&directory))?;
 
         // Copy the tracks to the music library.
@@ -172,7 +208,7 @@ impl MediumPreview {
         let mut tracks = Vec::new();
         let import_tracks = self.session.tracks();
 
-        for track in &self.medium.tracks {
+        for track in &medium.tracks {
             let mut track = track.clone();
 
             // Set the track path to the new audio file location.
@@ -190,9 +226,9 @@ impl MediumPreview {
         // Add the modified medium to the database.
 
         let medium = Medium {
-            id: self.medium.id.clone(),
-            name: self.medium.name.clone(),
-            discid: self.medium.discid.clone(),
+            id: medium.id.clone(),
+            name: medium.name.clone(),
+            discid: medium.discid.clone(),
             tracks,
         };
 

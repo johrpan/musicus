@@ -1,4 +1,4 @@
-use super::track_set_editor::{TrackSetData, TrackSetEditor};
+use super::track_set_editor::{TrackData, TrackSetData, TrackSetEditor};
 use crate::navigator::{NavigationHandle, Screen};
 use crate::widgets::{List, Widget};
 use anyhow::Result;
@@ -26,9 +26,9 @@ pub struct MediumEditor {
     track_sets: RefCell<Vec<TrackSetData>>,
 }
 
-impl Screen<Arc<ImportSession>, Medium> for MediumEditor {
+impl Screen<(Arc<ImportSession>, Option<Medium>), Medium> for MediumEditor {
     /// Create a new medium editor.
-    fn new(session: Arc<ImportSession>, handle: NavigationHandle<Medium>) -> Rc<Self> {
+    fn new((session, medium): (Arc<ImportSession>, Option<Medium>), handle: NavigationHandle<Medium>) -> Rc<Self> {
         // Create UI
 
         let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/medium_editor.ui");
@@ -125,6 +125,37 @@ impl Screen<Arc<ImportSession>, Medium> for MediumEditor {
         cancel_button.connect_clicked(clone!(@weak this => move |_| {
             this.handle.pop(None);
         }));
+
+        // Initialize, if necessary.
+
+        if let Some(medium) = medium {
+            this.name_entry.set_text(&medium.name);
+
+            let mut track_sets: Vec<TrackSetData> = Vec::new();
+
+            for track in medium.tracks {
+                let track_data = TrackData {
+                    track_source: track.source_index,
+                    work_parts: track.work_parts,
+                };
+
+                if let Some(track_set) = track_sets.last_mut() {
+                    if track.recording.id == track_set.recording.id {
+                        track_set.tracks.push(track_data);
+                        continue;
+                    }
+                }
+                
+                track_sets.push(TrackSetData {
+                    recording: track.recording,
+                    tracks: vec![track_data],
+                });
+            }
+
+            let length = track_sets.len();
+            this.track_sets.replace(track_sets);
+            this.track_set_list.update(length);
+        }
 
         this
     }

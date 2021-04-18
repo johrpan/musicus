@@ -53,6 +53,11 @@
             </style>
           </object>
         </child>
+        <child type="end">
+          <object class="GtkButton" id="edit_button">
+            <property name="icon-name">document-edit-symbolic</property>
+          </object>
+        </child>
       </object>
     </child>
     <child>
@@ -61,7 +66,7 @@
         <child>
           <object class="AdwClamp">
             <child>
-              <object class="GtkBox" id="medium_box">
+              <object class="GtkBox">
                 <property name="margin-start">6</property>
                 <property name="margin-end">6</property>
                 <property name="margin-bottom">6</property>
@@ -74,6 +79,11 @@
                     <attributes>
                       <attribute name="weight" value="bold"/>
                     </attributes>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkBox" id="medium_box">
+                    <property name="orientation">vertical</property>
                   </object>
                 </child>
               </object>
