@@ -1,7 +1,8 @@
 use crate::{Backend, BackendState, Player, Result};
-use musicus_database::DbThread;
+use futures::prelude::*;
 use gio::prelude::*;
 use log::warn;
+use musicus_database::DbThread;
 use std::path::PathBuf;
 use std::rc::Rc;
 
@@ -72,10 +73,14 @@ impl Backend {
         self.player.borrow().clone()
     }
 
+    /// Wait for the next library update.
+    pub async fn library_update(&self) {
+        self.library_updated_receiver.borrow_mut().next().await;
+    }
+
     /// Notify the frontend that the library was changed.
     pub fn library_changed(&self) {
-        self.set_state(BackendState::Loading);
-        self.set_state(BackendState::Ready);
+        self.library_updated_sender.borrow_mut().try_send(()).unwrap();
     }
 
     /// Get an interface to the player and panic if there is none.

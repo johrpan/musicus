@@ -55,6 +55,12 @@ pub struct Backend {
     /// is guaranteed to be Some, when the state is set to BackendState::Ready.
     music_library_path: RefCell<Option<PathBuf>>,
 
+    /// The receiver to which library update notifications are sent.
+    library_updated_receiver: RefCell<mpsc::Receiver<()>>,
+
+    /// The sender for sending library update notifications.
+    library_updated_sender: RefCell<mpsc::Sender<()>>,
+
     /// The database. This can be assumed to exist, when the state is set to BackendState::Ready.
     database: RefCell<Option<Rc<DbThread>>>,
 
@@ -71,12 +77,15 @@ impl Backend {
     /// and call init() afterwards.
     pub fn new() -> Self {
         let (state_sender, state_stream) = mpsc::channel(1024);
+        let (library_updated_sender, library_updated_receiver) = mpsc::channel(1024);
 
         Backend {
             state_stream: RefCell::new(state_stream),
             state_sender: RefCell::new(state_sender),
             settings: gio::Settings::new("de.johrpan.musicus"),
             music_library_path: RefCell::new(None),
+            library_updated_sender: RefCell::new(library_updated_sender),
+            library_updated_receiver: RefCell::new(library_updated_receiver),
             database: RefCell::new(None),
             player: RefCell::new(None),
             client: Client::new(),
