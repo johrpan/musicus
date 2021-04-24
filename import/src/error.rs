@@ -29,14 +29,6 @@ pub enum Error {
 }
 
 impl Error {
-    /// Create a new error without an explicit source.
-    pub(super) fn o(msg: String) -> Self {
-        Self::Unexpected {
-            msg,
-            source: None,
-        }
-    }
-
     /// Create a new error with an explicit source.
     pub(super) fn os(source: impl error::Error + Send + Sync + 'static) -> Self {
         Self::Unexpected {
