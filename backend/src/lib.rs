@@ -20,6 +20,8 @@ pub use error::*;
 pub mod library;
 pub use library::*;
 
+mod logger;
+
 pub mod player;
 pub use player::*;
 
@@ -70,8 +72,11 @@ pub struct Backend {
 
 impl Backend {
     /// Create a new backend initerface. The user interface should subscribe to the state stream
-    /// and call init() afterwards.
+    /// and call init() afterwards. There may be only one backend for a process and this method
+    /// may only be called exactly once. Otherwise it will panic.
     pub fn new() -> Self {
+        logger::register();
+
         let (state_sender, _) = broadcast::channel(1024);
         let (library_updated_sender, _) = broadcast::channel(1024);
 

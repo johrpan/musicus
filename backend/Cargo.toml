@@ -9,7 +9,7 @@ gio = "0.9.1"
 glib = "0.10.3"
 gstreamer = "0.16.4"
 gstreamer-player = "0.16.3"
-log = "0.4.14"
+log = { version = "0.4.14", features = ["std"] }
 musicus_client = { version = "0.1.0", path = "../client" }
 musicus_database = { version = "0.1.0", path = "../database" }
 musicus_import = { version = "0.1.0", path = "../import" }

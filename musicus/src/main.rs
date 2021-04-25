@@ -25,8 +25,6 @@ fn main() {
     gettextrs::bindtextdomain("musicus", config::LOCALEDIR);
     gettextrs::textdomain("musicus");
 
-    env_logger::init();
-
     gstreamer::init().expect("Failed to initialize GStreamer!");
     gtk::init().expect("Failed to initialize GTK!");
     libadwaita::init();
