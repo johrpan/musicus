@@ -10,6 +10,9 @@ pub enum Error {
     #[error(transparent)]
     QueryError(#[from] diesel::result::Error),
 
+    #[error("Missing item dependency ({0} {1})")]
+    MissingItem(&'static str, String),
+
     #[error(transparent)]
     SendError(#[from] std::sync::mpsc::SendError<super::thread::Action>),
 

@@ -218,47 +218,31 @@ impl Database {
                 person: match row.person {
                     Some(id) => Some(
                         self.get_person(&id)?
-                            .ok_or(Error::Other(format!(
-                                "Failed to get person ({}) for recording ({}).",
-                                id,
-                                row.id,
-                            )))?
+                            .ok_or(Error::MissingItem("person", id))?,
                     ),
                     None => None,
                 },
                 ensemble: match row.ensemble {
                     Some(id) => Some(
                         self.get_ensemble(&id)?
-                            .ok_or(Error::Other(format!(
-                                "Failed to get ensemble ({}) for recording ({}).",
-                                id,
-                                row.id,
-                            )))?
+                            .ok_or(Error::MissingItem("ensemble", id))?,
                     ),
                     None => None,
                 },
                 role: match row.role {
                     Some(id) => Some(
                         self.get_instrument(&id)?
-                            .ok_or(Error::Other(format!(
-                                "Failed to get instrument ({}) for recording ({}).",
-                                id,
-                                row.id,
-                            )))?
+                            .ok_or(Error::MissingItem("instrument", id))?,
                     ),
                     None => None,
                 },
             });
         }
 
-        let work_id = &row.work;
+        let work_id = row.work;
         let work = self
-            .get_work(work_id)?
-            .ok_or(Error::Other(format!(
-                "Failed to get work ({}) for recording ({}).",
-                work_id,
-                row.id,
-            )))?;
+            .get_work(&work_id)?
+            .ok_or(Error::MissingItem("work", work_id))?;
 
         let recording_description = Recording {
             id: row.id,

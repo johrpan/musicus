@@ -206,14 +206,10 @@ impl Database {
             .load::<InstrumentationRow>(&self.connection)?;
 
         for instrumentation in instrumentations {
-            let id = &instrumentation.instrument;
+            let id = instrumentation.instrument;
             instruments.push(
-                self.get_instrument(id)?
-                    .ok_or(Error::Other(format!(
-                        "Failed to get instrument ({}) for work ({}).",
-                        id,
-                        row.id,
-                    )))?
+                self.get_instrument(&id)?
+                    .ok_or(Error::MissingItem("instrument", id))?,
             );
         }
 
@@ -242,14 +238,10 @@ impl Database {
             });
         }
 
-        let person_id = &row.composer;
+        let person_id = row.composer;
         let person = self
-            .get_person(person_id)?
-            .ok_or(Error::Other(format!(
-                "Failed to get person ({}) for work ({}).",
-                person_id,
-                row.id,
-            )))?;
+            .get_person(&person_id)?
+            .ok_or(Error::MissingItem("person", person_id))?;
 
         Ok(Work {
             id: row.id,

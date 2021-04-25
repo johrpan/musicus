@@ -256,22 +256,18 @@ impl Database {
 
         let recording = self
             .get_recording(&recording_id)?
-            .ok_or(Error::Other(format!(
-                "Failed to get recording ({}) for track ({}).",
-                recording_id,
-                row.id,
-            )))?;
+            .ok_or(Error::MissingItem("recording", recording_id))?;
 
         let mut part_indices = Vec::new();
 
-        let work_parts = row
-            .work_parts
-            .split(',');
+        let work_parts = row.work_parts.split(',');
 
         for part_index in work_parts {
             if !part_index.is_empty() {
-                let index = str::parse(part_index)
-                    .or(Err(Error::Other(format!("Failed to parse part index from '{}'.", row.work_parts))))?;
+                let index = str::parse(part_index).or(Err(Error::Other(format!(
+                    "Failed to parse part index from '{}'.",
+                    row.work_parts
+                ))))?;
 
                 part_indices.push(index);
             }
