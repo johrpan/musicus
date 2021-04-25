@@ -1,6 +1,5 @@
 use super::*;
-use futures_channel::oneshot;
-use futures_channel::oneshot::Sender;
+use tokio::sync::oneshot::{self, Sender};
 use std::sync::mpsc;
 use std::thread;
 

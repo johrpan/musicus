@@ -14,7 +14,7 @@ pub enum Error {
     SendError(#[from] std::sync::mpsc::SendError<super::thread::Action>),
 
     #[error(transparent)]
-    ReceiveError(#[from] futures_channel::oneshot::Canceled),
+    ReceiveError(#[from] tokio::sync::oneshot::error::RecvError),
 
     #[error("Database error: {0}")]
     Other(String),
