@@ -2,6 +2,7 @@ use crate::{Client, Result};
 use isahc::Request;
 use isahc::http::StatusCode;
 use isahc::prelude::*;
+use log::info;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
@@ -14,7 +15,7 @@ pub struct Captcha {
 }
 
 /// Request body data for user registration.
-#[derive(Serialize, Debug, Clone)]
+#[derive(Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct UserRegistration {
     pub username: String,
@@ -27,6 +28,7 @@ pub struct UserRegistration {
 impl Client {
     /// Request a new captcha for registration.
     pub async fn get_captcha(&self) -> Result<Captcha> {
+        info!("Get captcha");
         let body = self.get("captcha").await?;
         let captcha = serde_json::from_str(&body)?;
         Ok(captcha)
@@ -35,6 +37,11 @@ impl Client {
     /// Register a new user and return whether the process suceeded. This will
     /// not store the new login credentials.
     pub async fn register(&self, data: UserRegistration) -> Result<bool> {
+        // Make sure to not log the password accidentally!
+        info!("Register user '{}'", data.username);
+        info!("Captcha ID: {}", data.captcha_id);
+        info!("Captcha answer: {}", data.answer);
+
         let server_url = self.server_url()?;
 
         let response = Request::post(format!("{}/users", server_url))

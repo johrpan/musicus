@@ -5,6 +5,7 @@ edition = "2018"
 
 [dependencies]
 isahc = "1.1.0"
+log = "0.4.14"
 musicus_database = { version = "0.1.0", path = "../database" }
 serde = { version = "1.0.117", features = ["derive"] }
 serde_json = "1.0.59"

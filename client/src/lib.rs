@@ -1,6 +1,7 @@
 use isahc::{AsyncBody, Request, Response};
 use isahc::http::StatusCode;
 use isahc::prelude::*;
+use log::info;
 use serde::Serialize;
 use std::time::Duration;
 use std::cell::RefCell;
@@ -77,6 +78,8 @@ impl Client {
 
     /// Try to login a user with the provided credentials and return, wether the login suceeded.
     pub async fn login(&self) -> Result<bool> {
+        info!("Login");
+
         let server_url = self.server_url()?;
         let data = self.login_data()?;
 
@@ -124,7 +127,7 @@ impl Client {
 
             // If authorization failed, try again below. Else, return early.
             match response.status() {
-                StatusCode::UNAUTHORIZED => (),
+                StatusCode::UNAUTHORIZED => info!("Token may be expired"),
                 StatusCode::OK => return Ok(response.text().await?),
                 status_code => return Err(Error::UnexpectedResponse(status_code)),
             }
