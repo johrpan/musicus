@@ -267,10 +267,8 @@ impl Database {
 
         for part_index in work_parts {
             if !part_index.is_empty() {
-                let index = str::parse(part_index).or(Err(Error::ParsingError(
-                    "part index",
-                    String::from(part_index),
-                )))?;
+                let index = str::parse(part_index)
+                    .map_err(|_| Error::ParsingError("part index", String::from(part_index)))?;
 
                 part_indices.push(index);
             }

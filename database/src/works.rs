@@ -130,51 +130,49 @@ impl Database {
                 .values(row)
                 .execute(&self.connection)?;
 
-            match work {
-                Work {
-                    instruments,
-                    parts,
-                    sections,
-                    ..
-                } => {
-                    for instrument in instruments {
-                        let row = InstrumentationRow {
-                            id: rand::random(),
-                            work: work_id.to_string(),
-                            instrument: instrument.id,
-                        };
+            let Work {
+                instruments,
+                parts,
+                sections,
+                ..
+            } = work;
 
-                        diesel::insert_into(instrumentations::table)
-                            .values(row)
-                            .execute(&self.connection)?;
-                    }
+            for instrument in instruments {
+                let row = InstrumentationRow {
+                    id: rand::random(),
+                    work: work_id.to_string(),
+                    instrument: instrument.id,
+                };
 
-                    for (index, part) in parts.into_iter().enumerate() {
-                        let row = WorkPartRow {
-                            id: rand::random(),
-                            work: work_id.to_string(),
-                            part_index: index as i64,
-                            title: part.title,
-                        };
+                diesel::insert_into(instrumentations::table)
+                    .values(row)
+                    .execute(&self.connection)?;
+            }
 
-                        diesel::insert_into(work_parts::table)
-                            .values(row)
-                            .execute(&self.connection)?;
-                    }
+            for (index, part) in parts.into_iter().enumerate() {
+                let row = WorkPartRow {
+                    id: rand::random(),
+                    work: work_id.to_string(),
+                    part_index: index as i64,
+                    title: part.title,
+                };
 
-                    for section in sections {
-                        let row = WorkSectionRow {
-                            id: rand::random(),
-                            work: work_id.to_string(),
-                            title: section.title,
-                            before_index: section.before_index as i64,
-                        };
+                diesel::insert_into(work_parts::table)
+                    .values(row)
+                    .execute(&self.connection)?;
+            }
 
-                        diesel::insert_into(work_sections::table)
-                            .values(row)
-                            .execute(&self.connection)?;
-                    }
-                }
+            for section in sections {
+                let row = WorkSectionRow {
+                    id: rand::random(),
+                    work: work_id.to_string(),
+                    title: section.title,
+                    before_index: section.before_index as i64,
+                };
+
+                diesel::insert_into(work_sections::table)
+                    .values(row)
+                    .execute(&self.connection)?;
             }
 
             Ok(())

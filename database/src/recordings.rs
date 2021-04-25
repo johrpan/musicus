@@ -49,11 +49,11 @@ impl Performance {
     /// Get a string representation of the performance.
     // TODO: Replace with impl Display.
     pub fn get_title(&self) -> String {
-        let mut text = String::from(if self.is_person() {
+        let mut text = if self.is_person() {
             self.unwrap_person().name_fl()
         } else {
             self.unwrap_ensemble().name
-        });
+        };
 
         if self.has_role() {
             text = text + " (" + &self.unwrap_role().name + ")";
@@ -249,7 +249,7 @@ impl Database {
         let recording_description = Recording {
             id: row.id,
             work,
-            comment: row.comment.clone(),
+            comment: row.comment,
             performances: performance_descriptions,
         };
 
