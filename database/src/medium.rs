@@ -264,10 +264,10 @@ impl Database {
 
         for part_index in work_parts {
             if !part_index.is_empty() {
-                let index = str::parse(part_index).or(Err(Error::Other(format!(
-                    "Failed to parse part index from '{}'.",
-                    row.work_parts
-                ))))?;
+                let index = str::parse(part_index).or(Err(Error::ParsingError(
+                    "part index",
+                    String::from(part_index),
+                )))?;
 
                 part_indices.push(index);
             }

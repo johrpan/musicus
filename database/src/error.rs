@@ -13,14 +13,14 @@ pub enum Error {
     #[error("Missing item dependency ({0} {1})")]
     MissingItem(&'static str, String),
 
+    #[error("Failed to parse {0} from '{1}'")]
+    ParsingError(&'static str, String),
+
     #[error(transparent)]
     SendError(#[from] std::sync::mpsc::SendError<super::thread::Action>),
 
     #[error(transparent)]
     ReceiveError(#[from] tokio::sync::oneshot::error::RecvError),
-
-    #[error("Database error: {0}")]
-    Other(String),
 }
 
 /// Return type for database methods.
