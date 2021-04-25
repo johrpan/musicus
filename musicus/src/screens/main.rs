@@ -153,24 +153,32 @@ impl Screen<(), ()> for MainScreen {
         // Load the content asynchronously.
 
         spawn!(@clone this, async move {
-            let mut poes = Vec::new();
+            loop {
+                this.navigator.reset();
 
-            let persons = this.handle.backend.db().get_persons().await.unwrap();
-            let ensembles = this.handle.backend.db().get_ensembles().await.unwrap();
+                let mut poes = Vec::new();
 
-            for person in persons {
-                poes.push(PersonOrEnsemble::Person(person));
+                let persons = this.handle.backend.db().get_persons().await.unwrap();
+                let ensembles = this.handle.backend.db().get_ensembles().await.unwrap();
+
+                for person in persons {
+                    poes.push(PersonOrEnsemble::Person(person));
+                }
+
+                for ensemble in ensembles {
+                    poes.push(PersonOrEnsemble::Ensemble(ensemble));
+                }
+
+                let length = poes.len();
+                this.poes.replace(poes);
+                this.poe_list.update(length);
+
+                this.stack.set_visible_child_name("content");
+
+                if this.handle.backend.library_update().await.is_err() {
+                    break;
+                }
             }
-
-            for ensemble in ensembles {
-                poes.push(PersonOrEnsemble::Ensemble(ensemble));
-            }
-
-            let length = poes.len();
-            this.poes.replace(poes);
-            this.poe_list.update(length);
-
-            this.stack.set_visible_child_name("content");
         });
 
         this
