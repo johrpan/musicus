@@ -28,7 +28,10 @@ pub struct MediumEditor {
 
 impl Screen<(Arc<ImportSession>, Option<Medium>), Medium> for MediumEditor {
     /// Create a new medium editor.
-    fn new((session, medium): (Arc<ImportSession>, Option<Medium>), handle: NavigationHandle<Medium>) -> Rc<Self> {
+    fn new(
+        (session, medium): (Arc<ImportSession>, Option<Medium>),
+        handle: NavigationHandle<Medium>,
+    ) -> Rc<Self> {
         // Create UI
 
         let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/medium_editor.ui");
@@ -65,20 +68,22 @@ impl Screen<(Arc<ImportSession>, Option<Medium>), Medium> for MediumEditor {
             this.handle.pop(None);
         }));
 
-        this.done_button.connect_clicked(clone!(@weak this => move |_| {
-            this.widget.set_visible_child_name("loading");
-            spawn!(@clone this, async move {
-                match this.save().await {
-                    Ok(medium) => this.handle.pop(Some(medium)),
-                    Err(err) => {
-                        this.status_page.set_description(Some(&err.to_string()));
-                        this.widget.set_visible_child_name("error");
+        this.done_button
+            .connect_clicked(clone!(@weak this => move |_| {
+                this.widget.set_visible_child_name("loading");
+                spawn!(@clone this, async move {
+                    match this.save().await {
+                        Ok(medium) => this.handle.pop(Some(medium)),
+                        Err(err) => {
+                            this.status_page.set_description(Some(&err.to_string()));
+                            this.widget.set_visible_child_name("error");
+                        }
                     }
-                }
-            });
-        }));
+                });
+            }));
 
-        this.name_entry.connect_changed(clone!(@weak this => move |_| this.validate()));
+        this.name_entry
+            .connect_changed(clone!(@weak this => move |_| this.validate()));
 
         add_button.connect_clicked(clone!(@weak this => move |_| {
             spawn!(@clone this, async move {
@@ -90,35 +95,37 @@ impl Screen<(Arc<ImportSession>, Option<Medium>), Medium> for MediumEditor {
                     };
 
                     this.track_set_list.update(length);
+                    this.validate();
                 }
             });
         }));
 
-        this.track_set_list.set_make_widget_cb(clone!(@weak this => move |index| {
-            let track_set = &this.track_sets.borrow()[index];
+        this.track_set_list
+            .set_make_widget_cb(clone!(@weak this => move |index| {
+                let track_set = &this.track_sets.borrow()[index];
 
-            let title = track_set.recording.work.get_title();
-            let subtitle = track_set.recording.get_performers();
+                let title = track_set.recording.work.get_title();
+                let subtitle = track_set.recording.get_performers();
 
-            let edit_image = gtk::Image::from_icon_name(Some("document-edit-symbolic"));
-            let edit_button = gtk::Button::new();
-            edit_button.set_has_frame(false);
-            edit_button.set_valign(gtk::Align::Center);
-            edit_button.set_child(Some(&edit_image));
+                let edit_image = gtk::Image::from_icon_name(Some("document-edit-symbolic"));
+                let edit_button = gtk::Button::new();
+                edit_button.set_has_frame(false);
+                edit_button.set_valign(gtk::Align::Center);
+                edit_button.set_child(Some(&edit_image));
 
-            let row = libadwaita::ActionRow::new();
-            row.set_activatable(true);
-            row.set_title(Some(&title));
-            row.set_subtitle(Some(&subtitle));
-            row.add_suffix(&edit_button);
-            row.set_activatable_widget(Some(&edit_button));
+                let row = libadwaita::ActionRow::new();
+                row.set_activatable(true);
+                row.set_title(Some(&title));
+                row.set_subtitle(Some(&subtitle));
+                row.add_suffix(&edit_button);
+                row.set_activatable_widget(Some(&edit_button));
 
-            edit_button.connect_clicked(clone!(@weak this => move |_| {
-                // TODO: Implement editing.
+                edit_button.connect_clicked(clone!(@weak this => move |_| {
+                    // TODO: Implement editing.
+                }));
+
+                row.upcast()
             }));
-
-            row.upcast()
-        }));
 
         try_again_button.connect_clicked(clone!(@weak this => move |_| {
             this.widget.set_visible_child_name("content");
@@ -147,7 +154,7 @@ impl Screen<(Arc<ImportSession>, Option<Medium>), Medium> for MediumEditor {
                         continue;
                     }
                 }
-                
+
                 track_sets.push(TrackSetData {
                     recording: track.recording,
                     tracks: vec![track_data],
@@ -168,7 +175,9 @@ impl Screen<(Arc<ImportSession>, Option<Medium>), Medium> for MediumEditor {
 impl MediumEditor {
     /// Validate inputs and enable/disable saving.
     fn validate(&self) {
-        self.done_button.set_sensitive(!self.name_entry.get_text().is_empty());
+        self.done_button.set_sensitive(
+            !self.name_entry.get_text().is_empty() && !self.track_sets.borrow().is_empty(),
+        );
     }
 
     /// Create the medium and, if necessary, upload it to the server.
