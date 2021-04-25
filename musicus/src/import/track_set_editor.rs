@@ -78,14 +78,15 @@ impl Screen<Arc<ImportSession>, TrackSetData> for TrackSetEditor {
             this.handle.pop(None);
         }));
 
-        this.save_button.connect_clicked(clone!(@weak this => move |_| {
-            let data = TrackSetData {
-                recording: this.recording.borrow().clone().unwrap(),
-                tracks: this.tracks.borrow().clone(),
-            };
+        this.save_button
+            .connect_clicked(clone!(@weak this => move |_| {
+                let data = TrackSetData {
+                    recording: this.recording.borrow().clone().unwrap(),
+                    tracks: this.tracks.borrow().clone(),
+                };
 
-            this.handle.pop(Some(data));
-        }));
+                this.handle.pop(Some(data));
+            }));
 
         select_recording_button.connect_clicked(clone!(@weak this => move |_| {
             spawn!(@clone this, async move {
@@ -172,6 +173,8 @@ impl Screen<Arc<ImportSession>, TrackSetData> for TrackSetEditor {
             row.upcast()
         }));
 
+        this.validate();
+
         this
     }
 }
@@ -180,11 +183,14 @@ impl TrackSetEditor {
     /// Set everything up after selecting a recording.
     fn recording_selected(&self) {
         if let Some(recording) = &*self.recording.borrow() {
-            self.recording_row.set_title(Some(&recording.work.get_title()));
-            self.recording_row.set_subtitle(Some(&recording.get_performers()));
+            self.recording_row
+                .set_title(Some(&recording.work.get_title()));
+            self.recording_row
+                .set_subtitle(Some(&recording.get_performers()));
             self.save_button.set_sensitive(true);
         }
 
+        // This will also call validate().
         self.autofill_parts();
     }
 
@@ -210,6 +216,13 @@ impl TrackSetEditor {
     fn update_tracks(&self) {
         let length = self.tracks.borrow().len();
         self.track_list.update(length);
+        self.validate();
+    }
+
+    /// Validate data and allow saving if possible.
+    fn validate(&self) {
+        self.save_button
+            .set_sensitive(self.recording.borrow().is_some() && !self.tracks.borrow().is_empty());
     }
 }
 
@@ -218,4 +231,3 @@ impl Widget for TrackSetEditor {
         self.widget.clone().upcast()
     }
 }
-
