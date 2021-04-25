@@ -2,6 +2,7 @@ use super::generate_id;
 use super::schema::{ensembles, mediums, performances, persons, recordings, tracks};
 use super::{Database, Error, Recording, Result};
 use diesel::prelude::*;
+use log::info;
 use serde::{Deserialize, Serialize};
 
 /// Representation of someting like a physical audio disc or a folder with
@@ -68,6 +69,7 @@ struct TrackRow {
 impl Database {
     /// Update an existing medium or insert a new one.
     pub fn update_medium(&self, medium: Medium) -> Result<()> {
+        info!("Updating medium {:?}", medium);
         self.defer_foreign_keys()?;
 
         self.connection.transaction::<(), Error, _>(|| {
@@ -204,6 +206,7 @@ impl Database {
     /// Delete a medium and all of its tracks. This will fail, if the music
     /// library contains audio files referencing any of those tracks.
     pub fn delete_medium(&self, id: &str) -> Result<()> {
+        info!("Deleting medium {}", id);
         diesel::delete(mediums::table.filter(mediums::id.eq(id))).execute(&self.connection)?;
         Ok(())
     }

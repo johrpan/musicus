@@ -2,6 +2,7 @@ use super::generate_id;
 use super::schema::{ensembles, performances, persons, recordings};
 use super::{Database, Ensemble, Error, Instrument, Person, Result, Work};
 use diesel::prelude::*;
+use log::info;
 use serde::{Deserialize, Serialize};
 
 /// Database table data for a recording.
@@ -120,6 +121,7 @@ impl Database {
     /// Update an existing recording or insert a new one.
     // TODO: Think about whether to also insert the other items.
     pub fn update_recording(&self, recording: Recording) -> Result<()> {
+        info!("Updating recording {:?}", recording);
         self.defer_foreign_keys()?;
         self.connection.transaction::<(), Error, _>(|| {
             let recording_id = &recording.id;
@@ -308,6 +310,7 @@ impl Database {
     /// Delete an existing recording. This will fail if there are still references to this
     /// recording from other tables that are not directly part of the recording data.
     pub fn delete_recording(&self, id: &str) -> Result<()> {
+        info!("Deleting recording {}", id);
         diesel::delete(recordings::table.filter(recordings::id.eq(id)))
             .execute(&self.connection)?;
         Ok(())

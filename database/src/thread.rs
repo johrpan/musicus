@@ -1,9 +1,11 @@
 use super::*;
+use log::debug;
 use tokio::sync::oneshot::{self, Sender};
 use std::sync::mpsc;
 use std::thread;
 
 /// An action the database thread can perform.
+#[derive(Debug)]
 pub enum Action {
     UpdatePerson(Person, Sender<Result<()>>),
     GetPerson(String, Sender<Result<Option<Person>>>),
@@ -50,6 +52,8 @@ impl DbThread {
         let (ready_sender, ready_receiver) = oneshot::channel();
 
         thread::spawn(move || {
+            debug!("Database thread for '{}' started", path);
+
             let db = match Database::new(&path) {
                 Ok(db) => {
                     ready_sender.send(Ok(())).unwrap();
@@ -62,6 +66,7 @@ impl DbThread {
             };
 
             for action in action_receiver {
+                debug!("Database thread for '{}' got action {:?}", path, action);
                 match action {
                     UpdatePerson(person, sender) => {
                         sender.send(db.update_person(person)).unwrap();
@@ -153,6 +158,8 @@ impl DbThread {
                     }
                 }
             }
+
+            debug!("Database thread for '{}' stopped", path);
         });
 
         ready_receiver.await??;

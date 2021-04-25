@@ -1,6 +1,7 @@
 use super::schema::instruments;
 use super::{Database, Result};
 use diesel::prelude::*;
+use log::info;
 use serde::{Deserialize, Serialize};
 
 /// An instrument or any other possible role within a recording.
@@ -14,6 +15,7 @@ pub struct Instrument {
 impl Database {
     /// Update an existing instrument or insert a new one.
     pub fn update_instrument(&self, instrument: Instrument) -> Result<()> {
+        info!("Updating instrument {:?}", instrument);
         self.defer_foreign_keys()?;
 
         self.connection.transaction(|| {
@@ -38,6 +40,7 @@ impl Database {
 
     /// Delete an existing instrument.
     pub fn delete_instrument(&self, id: &str) -> Result<()> {
+        info!("Deleting instrument {}", id);
         diesel::delete(instruments::table.filter(instruments::id.eq(id)))
             .execute(&self.connection)?;
 

@@ -1,6 +1,7 @@
 use super::schema::persons;
 use super::{Database, Result};
 use diesel::prelude::*;
+use log::info;
 use serde::{Deserialize, Serialize};
 
 /// A person that is a composer, an interpret or both.
@@ -27,6 +28,7 @@ impl Person {
 impl Database {
     /// Update an existing person or insert a new one.
     pub fn update_person(&self, person: Person) -> Result<()> {
+        info!("Updating person {:?}", person);
         self.defer_foreign_keys()?;
 
         self.connection.transaction(|| {
@@ -51,8 +53,8 @@ impl Database {
 
     /// Delete an existing person.
     pub fn delete_person(&self, id: &str) -> Result<()> {
+        info!("Deleting person {}", id);
         diesel::delete(persons::table.filter(persons::id.eq(id))).execute(&self.connection)?;
-
         Ok(())
     }
 

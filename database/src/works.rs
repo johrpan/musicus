@@ -3,6 +3,7 @@ use super::schema::{instrumentations, work_parts, work_sections, works};
 use super::{Database, Error, Instrument, Person, Result};
 use diesel::prelude::*;
 use diesel::{Insertable, Queryable};
+use log::info;
 use serde::{Deserialize, Serialize};
 
 /// Table row data for a work.
@@ -103,6 +104,7 @@ impl Database {
     /// Update an existing work or insert a new one.
     // TODO: Think about also inserting related items.
     pub fn update_work(&self, work: Work) -> Result<()> {
+        info!("Updating work {:?}", work);
         self.defer_foreign_keys()?;
 
         self.connection.transaction::<(), Error, _>(|| {
@@ -256,6 +258,7 @@ impl Database {
     /// Delete an existing work. This will fail if there are still other tables that relate to
     /// this work except for the things that are part of the information on the work it
     pub fn delete_work(&self, id: &str) -> Result<()> {
+        info!("Deleting work {}", id);
         diesel::delete(works::table.filter(works::id.eq(id))).execute(&self.connection)?;
         Ok(())
     }

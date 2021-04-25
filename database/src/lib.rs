@@ -7,6 +7,7 @@ extern crate diesel;
 extern crate diesel_migrations;
 
 use diesel::prelude::*;
+use log::info;
 
 pub mod ensembles;
 pub use ensembles::*;
@@ -53,9 +54,11 @@ pub struct Database {
 impl Database {
     /// Create a new database interface and run migrations if necessary.
     pub fn new(file_name: &str) -> Result<Database> {
+        info!("Opening database file '{}'", file_name);
         let connection = SqliteConnection::establish(file_name)?;
-
         diesel::sql_query("PRAGMA foreign_keys = ON").execute(&connection)?;
+
+        info!("Running migrations if necessary");
         embedded_migrations::run(&connection)?;
 
         Ok(Database { connection })
