@@ -52,7 +52,7 @@ impl Window {
         });
 
         spawn!(@clone this, async move {
-            while let Some(state) = this.backend.next_state().await {
+            while let Ok(state) = this.backend.next_state().await {
                 match state {
                     BackendState::Loading => this.navigator.reset(),
                     BackendState::NoMusicLibrary => this.show_welcome_screen(),

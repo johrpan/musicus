@@ -11,11 +11,11 @@ pub enum Error {
     #[error("An error happened using the SecretService.")]
     SecretServiceError(#[from] secret_service::Error),
 
-    #[error("A channel was canceled.")]
-    ChannelError(#[from] futures_channel::oneshot::Canceled),
-
     #[error("An error happened while decoding to UTF-8.")]
     Utf8Error(#[from] std::str::Utf8Error),
+
+    #[error("Failed to receive an event.")]
+    RecvError(#[from] tokio::sync::broadcast::error::RecvError),
 
     #[error("An error happened: {0}")]
     Other(String),
