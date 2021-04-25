@@ -10,10 +10,11 @@ use std::rc::Rc;
 pub struct WorkSectionEditor {
     handle: NavigationHandle<WorkSection>,
     widget: gtk::Box,
+    save_button: gtk::Button,
     title_entry: gtk::Entry,
 }
 
-impl Screen<Option<WorkSection>, WorkSection> for  WorkSectionEditor {
+impl Screen<Option<WorkSection>, WorkSection> for WorkSectionEditor {
     /// Create a new section editor and optionally initialize it.
     fn new(section: Option<WorkSection>, handle: NavigationHandle<WorkSection>) -> Rc<Self> {
         // Create UI
@@ -32,6 +33,7 @@ impl Screen<Option<WorkSection>, WorkSection> for  WorkSectionEditor {
         let this = Rc::new(Self {
             handle,
             widget,
+            save_button,
             title_entry,
         });
 
@@ -41,16 +43,30 @@ impl Screen<Option<WorkSection>, WorkSection> for  WorkSectionEditor {
             this.handle.pop(None);
         }));
 
-        save_button.connect_clicked(clone!(@weak this => move |_| {
-            let section = WorkSection {
-                before_index: 0,
-                title: this.title_entry.get_text().to_string(),
-            };
+        this.save_button
+            .connect_clicked(clone!(@weak this => move |_| {
+                let section = WorkSection {
+                    before_index: 0,
+                    title: this.title_entry.get_text().to_string(),
+                };
 
-            this.handle.pop(Some(section));
-        }));
+                this.handle.pop(Some(section));
+            }));
+
+        this.title_entry
+            .connect_changed(clone!(@weak this => move |_| this.validate()));
+
+        this.validate();
 
         this
+    }
+}
+
+impl WorkSectionEditor {
+    /// Validate inputs and enable/disable saving.
+    fn validate(&self) {
+        self.save_button
+            .set_sensitive(!self.title_entry.get_text().is_empty());
     }
 }
 

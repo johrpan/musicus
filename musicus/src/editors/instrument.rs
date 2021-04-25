@@ -75,11 +75,22 @@ impl Screen<Option<Instrument>, Instrument> for InstrumentEditor {
             });
         }));
 
+        this.name
+            .entry
+            .connect_changed(clone!(@weak this => move |_| this.validate()));
+
+        this.validate();
+
         this
     }
 }
 
 impl InstrumentEditor {
+    /// Validate inputs and enable/disable saving.
+    fn validate(&self) {
+        self.editor.set_may_save(!self.name.get_text().is_empty());
+    }
+
     /// Save the instrument and possibly upload it to the server.
     async fn save(&self) -> Result<Instrument> {
         let name = self.name.get_text();
@@ -90,10 +101,18 @@ impl InstrumentEditor {
         };
 
         if self.upload.get_active() {
-            self.handle.backend.cl().post_instrument(&instrument).await?;
+            self.handle
+                .backend
+                .cl()
+                .post_instrument(&instrument)
+                .await?;
         }
 
-        self.handle.backend.db().update_instrument(instrument.clone()).await?;
+        self.handle
+            .backend
+            .db()
+            .update_instrument(instrument.clone())
+            .await?;
         self.handle.backend.library_changed();
 
         Ok(instrument)
@@ -105,4 +124,3 @@ impl Widget for InstrumentEditor {
         self.editor.widget.clone().upcast()
     }
 }
-

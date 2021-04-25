@@ -1,7 +1,7 @@
 use super::work_part::WorkPartEditor;
 use super::work_section::WorkSectionEditor;
-use crate::selectors::{InstrumentSelector, PersonSelector};
 use crate::navigator::{NavigationHandle, Screen};
+use crate::selectors::{InstrumentSelector, PersonSelector};
 use crate::widgets::{List, Widget};
 use anyhow::Result;
 use gettextrs::gettext;
@@ -119,20 +119,21 @@ impl Screen<Option<Work>, Work> for WorkEditor {
             this.handle.pop(None);
         }));
 
-        this.save_button.connect_clicked(clone!(@weak this => move |_| {
-            spawn!(@clone this, async move {
-                this.widget.set_visible_child_name("loading");
-                match this.save().await {
-                    Ok(work) => {
-                        this.handle.pop(Some(work));
+        this.save_button
+            .connect_clicked(clone!(@weak this => move |_| {
+                spawn!(@clone this, async move {
+                    this.widget.set_visible_child_name("loading");
+                    match this.save().await {
+                        Ok(work) => {
+                            this.handle.pop(Some(work));
+                        }
+                        Err(_) => {
+                            this.info_bar.set_revealed(true);
+                            this.widget.set_visible_child_name("content");
+                        }
                     }
-                    Err(_) => {
-                        this.info_bar.set_revealed(true);
-                        this.widget.set_visible_child_name("content");
-                    }
-                }
-            });
-        }));
+                });
+            }));
 
         composer_button.connect_clicked(clone!(@weak this => move |_| {
             spawn!(@clone this, async move {
@@ -143,28 +144,32 @@ impl Screen<Option<Work>, Work> for WorkEditor {
             });
         }));
 
-        this.instrument_list.set_make_widget_cb(clone!(@weak this => move |index| {
-            let instrument = &this.instruments.borrow()[index];
+        this.title_entry
+            .connect_changed(clone!(@weak this => move |_| this.validate()));
 
-            let delete_button = gtk::Button::from_icon_name(Some("user-trash-symbolic"));
-            delete_button.set_valign(gtk::Align::Center);
+        this.instrument_list
+            .set_make_widget_cb(clone!(@weak this => move |index| {
+                let instrument = &this.instruments.borrow()[index];
 
-            delete_button.connect_clicked(clone!(@strong this => move |_| {
-                let length = {
-                    let mut instruments = this.instruments.borrow_mut();
-                    instruments.remove(index);
-                    instruments.len()
-                };
+                let delete_button = gtk::Button::from_icon_name(Some("user-trash-symbolic"));
+                delete_button.set_valign(gtk::Align::Center);
 
-                this.instrument_list.update(length);
+                delete_button.connect_clicked(clone!(@strong this => move |_| {
+                    let length = {
+                        let mut instruments = this.instruments.borrow_mut();
+                        instruments.remove(index);
+                        instruments.len()
+                    };
+
+                    this.instrument_list.update(length);
+                }));
+
+                let row = libadwaita::ActionRow::new();
+                row.set_title(Some(&instrument.name));
+                row.add_suffix(&delete_button);
+
+                row.upcast()
             }));
-
-            let row = libadwaita::ActionRow::new();
-            row.set_title(Some(&instrument.name));
-            row.add_suffix(&delete_button);
-
-            row.upcast()
-        }));
 
         add_instrument_button.connect_clicked(clone!(@weak this => move |_| {
             spawn!(@clone this, async move {
@@ -243,15 +248,16 @@ impl Screen<Option<Work>, Work> for WorkEditor {
             row.upcast()
         }));
 
-        this.part_list.set_move_cb(clone!(@weak this => move |old_index, new_index| {
-            let length = {
-                let mut structure = this.structure.borrow_mut();
-                structure.swap(old_index, new_index);
-                structure.len()
-            };
+        this.part_list
+            .set_move_cb(clone!(@weak this => move |old_index, new_index| {
+                let length = {
+                    let mut structure = this.structure.borrow_mut();
+                    structure.swap(old_index, new_index);
+                    structure.len()
+                };
 
-            this.part_list.update(length);
-        }));
+                this.part_list.update(length);
+            }));
 
         add_part_button.connect_clicked(clone!(@weak this => move |_| {
             spawn!(@clone this, async move {
@@ -299,7 +305,14 @@ impl WorkEditor {
     fn show_composer(&self, person: &Person) {
         self.composer_row.set_title(Some(&gettext("Composer")));
         self.composer_row.set_subtitle(Some(&person.name_fl()));
-        self.save_button.set_sensitive(true);
+        self.validate();
+    }
+
+    /// Validate inputs and enable/disable saving.
+    fn validate(&self) {
+        self.save_button.set_sensitive(
+            !self.title_entry.get_text().is_empty() && self.composer.borrow().is_some(),
+        );
     }
 
     /// Save the work and possibly upload it to the server.
@@ -338,7 +351,8 @@ impl WorkEditor {
             self.handle.backend.cl().post_work(&work).await?;
         }
 
-        self.handle.backend
+        self.handle
+            .backend
             .db()
             .update_work(work.clone().into())
             .await

@@ -82,11 +82,28 @@ impl Screen<Option<Person>, Person> for PersonEditor {
             });
         }));
 
+        this.first_name
+            .entry
+            .connect_changed(clone!(@weak this => move |_| this.validate()));
+
+        this.last_name
+            .entry
+            .connect_changed(clone!(@weak this => move |_| this.validate()));
+
+        this.validate();
+
         this
     }
 }
 
 impl PersonEditor {
+    /// Validate inputs and enable/disable saving.
+    fn validate(&self) {
+        self.editor.set_may_save(
+            !self.first_name.get_text().is_empty() && !self.last_name.get_text().is_empty(),
+        );
+    }
+
     /// Save the person and possibly upload it to the server.
     async fn save(self: &Rc<Self>) -> Result<Person> {
         let first_name = self.first_name.get_text();
@@ -102,7 +119,11 @@ impl PersonEditor {
             self.handle.backend.cl().post_person(&person).await?;
         }
 
-        self.handle.backend.db().update_person(person.clone()).await?;
+        self.handle
+            .backend
+            .db()
+            .update_person(person.clone())
+            .await?;
         self.handle.backend.library_changed();
 
         Ok(person)
@@ -114,4 +135,3 @@ impl Widget for PersonEditor {
         self.editor.widget.clone().upcast()
     }
 }
-

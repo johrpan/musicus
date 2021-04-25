@@ -7,7 +7,7 @@ pub struct EntryRow {
     pub widget: libadwaita::ActionRow,
 
     /// The managed entry.
-    entry: gtk::Entry,
+    pub entry: gtk::Entry,
 }
 
 impl EntryRow {

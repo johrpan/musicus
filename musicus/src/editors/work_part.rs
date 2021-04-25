@@ -10,10 +10,11 @@ use std::rc::Rc;
 pub struct WorkPartEditor {
     handle: NavigationHandle<WorkPart>,
     widget: gtk::Box,
+    save_button: gtk::Button,
     title_entry: gtk::Entry,
 }
 
-impl Screen<Option<WorkPart>, WorkPart> for  WorkPartEditor {
+impl Screen<Option<WorkPart>, WorkPart> for WorkPartEditor {
     /// Create a new part editor and optionally initialize it.
     fn new(section: Option<WorkPart>, handle: NavigationHandle<WorkPart>) -> Rc<Self> {
         // Create UI
@@ -32,6 +33,7 @@ impl Screen<Option<WorkPart>, WorkPart> for  WorkPartEditor {
         let this = Rc::new(Self {
             handle,
             widget,
+            save_button,
             title_entry,
         });
 
@@ -41,15 +43,29 @@ impl Screen<Option<WorkPart>, WorkPart> for  WorkPartEditor {
             this.handle.pop(None);
         }));
 
-        save_button.connect_clicked(clone!(@weak this => move |_| {
-            let section = WorkPart {
-                title: this.title_entry.get_text().to_string(),
-            };
+        this.save_button
+            .connect_clicked(clone!(@weak this => move |_| {
+                let section = WorkPart {
+                    title: this.title_entry.get_text().to_string(),
+                };
 
-            this.handle.pop(Some(section));
-        }));
+                this.handle.pop(Some(section));
+            }));
+
+        this.title_entry
+            .connect_changed(clone!(@weak this => move |_| this.validate()));
+
+        this.validate();
 
         this
+    }
+}
+
+impl WorkPartEditor {
+    /// Validate inputs and enable/disable saving.
+    fn validate(&self) {
+        self.save_button
+            .set_sensitive(!self.title_entry.get_text().is_empty());
     }
 }
 

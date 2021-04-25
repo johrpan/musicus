@@ -23,7 +23,7 @@ impl Screen<Option<Ensemble>, Ensemble> for EnsembleEditor {
     /// Create a new ensemble editor and optionally initialize it.
     fn new(ensemble: Option<Ensemble>, handle: NavigationHandle<Ensemble>) -> Rc<Self> {
         let editor = Editor::new();
-        editor.set_title("Ensemble/Role");
+        editor.set_title("Ensemble");
 
         let list = gtk::ListBoxBuilder::new()
             .selection_mode(gtk::SelectionMode::None)
@@ -75,11 +75,22 @@ impl Screen<Option<Ensemble>, Ensemble> for EnsembleEditor {
             });
         }));
 
+        this.name
+            .entry
+            .connect_changed(clone!(@weak this => move |_| this.validate()));
+        
+        this.validate();
+
         this
     }
 }
 
 impl EnsembleEditor {
+    /// Validate inputs and enable/disable saving.
+    fn validate(&self) {
+        self.editor.set_may_save(!self.name.get_text().is_empty());
+    }
+
     /// Save the ensemble and possibly upload it to the server.
     async fn save(&self) -> Result<Ensemble> {
         let name = self.name.get_text();
@@ -93,7 +104,11 @@ impl EnsembleEditor {
             self.handle.backend.cl().post_ensemble(&ensemble).await?;
         }
 
-        self.handle.backend.db().update_ensemble(ensemble.clone()).await?;
+        self.handle
+            .backend
+            .db()
+            .update_ensemble(ensemble.clone())
+            .await?;
         self.handle.backend.library_changed();
 
         Ok(ensemble)
@@ -105,4 +120,3 @@ impl Widget for EnsembleEditor {
         self.editor.widget.clone().upcast()
     }
 }
-

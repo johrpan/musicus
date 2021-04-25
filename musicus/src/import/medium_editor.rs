@@ -78,6 +78,8 @@ impl Screen<(Arc<ImportSession>, Option<Medium>), Medium> for MediumEditor {
             });
         }));
 
+        this.name_entry.connect_changed(clone!(@weak this => move |_| this.validate()));
+
         add_button.connect_clicked(clone!(@weak this => move |_| {
             spawn!(@clone this, async move {
                 if let Some(track_set) = push!(this.handle, TrackSetEditor, Arc::clone(&this.session)).await {
@@ -157,11 +159,18 @@ impl Screen<(Arc<ImportSession>, Option<Medium>), Medium> for MediumEditor {
             this.track_set_list.update(length);
         }
 
+        this.validate();
+
         this
     }
 }
 
 impl MediumEditor {
+    /// Validate inputs and enable/disable saving.
+    fn validate(&self) {
+        self.done_button.set_sensitive(!self.name_entry.get_text().is_empty());
+    }
+
     /// Create the medium and, if necessary, upload it to the server.
     async fn save(&self) -> Result<Medium> {
         // Convert the track set data to real track sets.
