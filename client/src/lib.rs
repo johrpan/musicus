@@ -97,7 +97,7 @@ impl Client {
                 true
             }
             StatusCode::UNAUTHORIZED => false,
-            status_code => Err(Error::UnexpectedResponse(status_code))?,
+            status_code => return Err(Error::UnexpectedResponse(status_code)),
         };
 
         Ok(success)
