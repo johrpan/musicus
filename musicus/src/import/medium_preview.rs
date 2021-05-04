@@ -18,11 +18,12 @@ pub struct MediumPreview {
     handle: NavigationHandle<()>,
     session: Arc<ImportSession>,
     medium: RefCell<Option<Medium>>,
-    widget: gtk::Box,
+    widget: gtk::Stack,
     import_button: gtk::Button,
     done_stack: gtk::Stack,
     name_label: gtk::Label,
     medium_box: gtk::Box,
+    status_page: libadwaita::StatusPage,
 }
 
 impl Screen<(Arc<ImportSession>, Medium), ()> for MediumPreview {
@@ -35,13 +36,15 @@ impl Screen<(Arc<ImportSession>, Medium), ()> for MediumPreview {
 
         let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/medium_preview.ui");
 
-        get_widget!(builder, gtk::Box, widget);
+        get_widget!(builder, gtk::Stack, widget);
         get_widget!(builder, gtk::Button, back_button);
         get_widget!(builder, gtk::Button, edit_button);
         get_widget!(builder, gtk::Button, import_button);
         get_widget!(builder, gtk::Stack, done_stack);
         get_widget!(builder, gtk::Box, medium_box);
         get_widget!(builder, gtk::Label, name_label);
+        get_widget!(builder, libadwaita::StatusPage, status_page);
+        get_widget!(builder, gtk::Button, try_again_button);
 
         let this = Rc::new(Self {
             handle,
@@ -52,6 +55,7 @@ impl Screen<(Arc<ImportSession>, Medium), ()> for MediumPreview {
             done_stack,
             name_label,
             medium_box,
+            status_page,
         });
 
         // Connect signals and callbacks
@@ -71,11 +75,22 @@ impl Screen<(Arc<ImportSession>, Medium), ()> for MediumPreview {
 
         this.import_button
             .connect_clicked(clone!(@weak this => move |_| {
+                this.widget.set_visible_child_name("loading");
+
                 spawn!(@clone this, async move {
-                    this.import().await.unwrap();
-                    this.handle.pop(Some(()));
+                    match this.import().await {
+                        Ok(()) => this.handle.pop(Some(())),
+                        Err(err) => {
+                            this.widget.set_visible_child_name("error");
+                            this.status_page.set_description(Some(&err.to_string()));
+                        }
+                    }
                 });
             }));
+
+        try_again_button.connect_clicked(clone!(@weak this => move |_| {
+            this.widget.set_visible_child_name("content");
+        }));
 
         this.set_medium(medium);
 
@@ -200,7 +215,7 @@ impl MediumPreview {
         // Create a new directory in the music library path for the imported medium.
 
         let music_library_path = self.handle.backend.get_music_library_path().unwrap();
-        
+
         let directory_name = sanitize_filename::sanitize_with_options(
             &medium.name,
             sanitize_filename::Options {
@@ -209,7 +224,7 @@ impl MediumPreview {
                 replacement: "",
             },
         );
-        
+
         let directory = PathBuf::from(&directory_name);
         std::fs::create_dir(&music_library_path.join(&directory))?;
 
