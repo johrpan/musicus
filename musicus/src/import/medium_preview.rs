@@ -27,7 +27,10 @@ pub struct MediumPreview {
 
 impl Screen<(Arc<ImportSession>, Medium), ()> for MediumPreview {
     /// Create a new medium preview screen.
-    fn new((session, medium): (Arc<ImportSession>, Medium), handle: NavigationHandle<()>) -> Rc<Self> {
+    fn new(
+        (session, medium): (Arc<ImportSession>, Medium),
+        handle: NavigationHandle<()>,
+    ) -> Rc<Self> {
         // Create UI
 
         let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/medium_preview.ui");
@@ -66,12 +69,13 @@ impl Screen<(Arc<ImportSession>, Medium), ()> for MediumPreview {
             });
         }));
 
-        this.import_button.connect_clicked(clone!(@weak this => move |_| {
-            spawn!(@clone this, async move {
-                this.import().await.unwrap();
-                this.handle.pop(Some(()));
-            });
-        }));
+        this.import_button
+            .connect_clicked(clone!(@weak this => move |_| {
+                spawn!(@clone this, async move {
+                    this.import().await.unwrap();
+                    this.handle.pop(Some(()));
+                });
+            }));
 
         this.set_medium(medium);
 
@@ -133,9 +137,7 @@ impl MediumPreview {
                 list.append(&header);
 
                 if let Some(list) = &last_list {
-                    let frame = gtk::FrameBuilder::new()
-                        .margin_bottom(12)
-                        .build();
+                    let frame = gtk::FrameBuilder::new().margin_bottom(12).build();
 
                     frame.set_child(Some(list));
                     self.medium_box.append(&frame);
@@ -168,9 +170,7 @@ impl MediumPreview {
         }
 
         if let Some(list) = &last_list {
-            let frame = gtk::FrameBuilder::new()
-                .margin_bottom(12)
-                .build();
+            let frame = gtk::FrameBuilder::new().margin_bottom(12).build();
 
             frame.set_child(Some(list));
             self.medium_box.append(&frame);
@@ -200,7 +200,17 @@ impl MediumPreview {
         // Create a new directory in the music library path for the imported medium.
 
         let music_library_path = self.handle.backend.get_music_library_path().unwrap();
-        let directory = PathBuf::from(&medium.id);
+        
+        let directory_name = sanitize_filename::sanitize_with_options(
+            &medium.name,
+            sanitize_filename::Options {
+                windows: true,
+                truncate: true,
+                replacement: "",
+            },
+        );
+        
+        let directory = PathBuf::from(&directory_name);
         std::fs::create_dir(&music_library_path.join(&directory))?;
 
         // Copy the tracks to the music library.
@@ -232,7 +242,8 @@ impl MediumPreview {
             tracks,
         };
 
-        self.handle.backend
+        self.handle
+            .backend
             .db()
             .update_medium(medium.clone())
             .await?;
