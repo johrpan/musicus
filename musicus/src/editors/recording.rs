@@ -45,6 +45,8 @@ impl Screen<Option<Recording>, Recording> for RecordingEditor {
         get_widget!(builder, gtk::Frame, performance_frame);
         get_widget!(builder, gtk::Button, add_performer_button);
 
+        upload_switch.set_active(handle.backend.use_server());
+
         let performance_list = List::new();
         performance_frame.set_child(Some(&performance_list.widget));
 

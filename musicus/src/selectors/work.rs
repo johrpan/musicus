@@ -19,7 +19,7 @@ impl Screen<(), Work> for WorkSelector {
     fn new(_: (), handle: NavigationHandle<Work>) -> Rc<Self> {
         // Create UI
 
-        let selector = Selector::<Person>::new();
+        let selector = Selector::<Person>::new(Rc::clone(&handle.backend));
         selector.set_title(&gettext("Select composer"));
 
         let this = Rc::new(Self {
@@ -99,7 +99,7 @@ struct WorkSelectorWorkScreen {
 
 impl Screen<Person, Work> for WorkSelectorWorkScreen {
     fn new(person: Person, handle: NavigationHandle<Work>) -> Rc<Self> {
-        let selector = Selector::<Work>::new();
+        let selector = Selector::<Work>::new(Rc::clone(&handle.backend));
         selector.set_title(&gettext("Select work"));
         selector.set_subtitle(&person.name_fl());
 

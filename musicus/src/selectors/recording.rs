@@ -19,7 +19,7 @@ impl Screen<(), Recording> for RecordingSelector {
     fn new(_: (), handle: NavigationHandle<Recording>) -> Rc<Self> {
         // Create UI
 
-        let selector = Selector::<Person>::new();
+        let selector = Selector::<Person>::new(Rc::clone(&handle.backend));
         selector.set_title(&gettext("Select composer"));
 
         let this = Rc::new(Self {
@@ -109,7 +109,7 @@ struct RecordingSelectorWorkScreen {
 
 impl Screen<Person, Work> for RecordingSelectorWorkScreen {
     fn new(person: Person, handle: NavigationHandle<Work>) -> Rc<Self> {
-        let selector = Selector::<Work>::new();
+        let selector = Selector::<Work>::new(Rc::clone(&handle.backend));
         selector.set_title(&gettext("Select work"));
         selector.set_subtitle(&person.name_fl());
 
@@ -174,7 +174,7 @@ struct RecordingSelectorRecordingScreen {
 
 impl Screen<Work, Recording> for RecordingSelectorRecordingScreen {
     fn new(work: Work, handle: NavigationHandle<Recording>) -> Rc<Self> {
-        let selector = Selector::<Recording>::new();
+        let selector = Selector::<Recording>::new(Rc::clone(&handle.backend));
         selector.set_title(&gettext("Select recording"));
         selector.set_subtitle(&work.get_title());
 

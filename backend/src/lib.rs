@@ -2,13 +2,10 @@ use gio::prelude::*;
 use log::warn;
 use musicus_client::{Client, LoginData};
 use musicus_database::DbThread;
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::path::PathBuf;
 use std::rc::Rc;
-use tokio::sync::{
-    broadcast,
-    broadcast::Sender,
-};
+use tokio::sync::{broadcast, broadcast::Sender};
 
 pub use musicus_client as client;
 pub use musicus_database as db;
@@ -52,6 +49,9 @@ pub struct Backend {
     /// Access to GSettings.
     settings: gio::Settings,
 
+    /// Whether the server should be used by default when searching for or changing items.
+    use_server: Cell<bool>,
+
     /// The current path to the music library, which is used by the player and the database. This
     /// is guaranteed to be Some, when the state is set to BackendState::Ready.
     music_library_path: RefCell<Option<PathBuf>>,
@@ -83,6 +83,7 @@ impl Backend {
         Backend {
             state_sender,
             settings: gio::Settings::new("de.johrpan.musicus"),
+            use_server: Cell::new(true),
             music_library_path: RefCell::new(None),
             library_updated_sender,
             database: RefCell::new(None),
@@ -125,6 +126,16 @@ impl Backend {
         }
 
         Ok(())
+    }
+
+    /// Whether the server should be used by default.
+    pub fn use_server(&self) -> bool {
+        self.use_server.get()
+    }
+
+    /// Set whether the server should be used by default.
+    pub fn set_use_server(&self, enabled: bool) {
+        self.use_server.set(enabled);
     }
 
     /// Set the URL of the Musicus server to connect to.

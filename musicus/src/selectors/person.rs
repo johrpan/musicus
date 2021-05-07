@@ -20,7 +20,7 @@ impl Screen<(), Person> for PersonSelector {
     fn new(_: (), handle: NavigationHandle<Person>) -> Rc<Self> {
         // Create UI
 
-        let selector = Selector::<Person>::new();
+        let selector = Selector::<Person>::new(Rc::clone(&handle.backend));
         selector.set_title(&gettext("Select person"));
 
         let this = Rc::new(Self {

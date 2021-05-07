@@ -1,12 +1,16 @@
 use super::Section;
-
 use gettextrs::gettext;
+use glib::clone;
 use libadwaita::prelude::*;
+use musicus_backend::Backend;
+use std::rc::Rc;
 
 /// A section showing a switch to enable uploading an item.
 pub struct UploadSection {
     /// The GTK widget of the wrapped section.
     pub widget: gtk::Box,
+
+    backend: Rc<Backend>,
 
     /// The upload switch.
     switch: gtk::Switch,
@@ -14,13 +18,13 @@ pub struct UploadSection {
 
 impl UploadSection {
     /// Create a new upload section which will be initially switched on.
-    pub fn new() -> Self {
+    pub fn new(backend: Rc<Backend>) -> Rc<Self> {
         let list = gtk::ListBoxBuilder::new()
             .selection_mode(gtk::SelectionMode::None)
             .build();
 
         let switch = gtk::SwitchBuilder::new()
-            .active(true)
+            .active(backend.use_server())
             .valign(gtk::Align::Center)
             .build();
 
@@ -35,10 +39,17 @@ impl UploadSection {
 
         let section = Section::new(&gettext("Upload"), &list);
 
-        Self {
+        let this = Rc::new(Self {
             widget: section.widget.clone(),
+            backend,
             switch,
-        }
+        });
+
+        this.switch.connect_property_state_notify(clone!(@weak this => move |_| {
+            this.backend.set_use_server(this.switch.get_state());
+        }));
+
+        this
     }
 
     /// Return whether the user has enabled the upload switch.

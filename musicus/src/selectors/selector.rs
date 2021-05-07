@@ -2,7 +2,7 @@ use crate::widgets::List;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
-use musicus_backend::Result;
+use musicus_backend::{Backend, Result};
 use std::cell::RefCell;
 use std::future::Future;
 use std::pin::Pin;
@@ -12,6 +12,7 @@ use std::rc::Rc;
 /// database and to search within the list.
 pub struct Selector<T: 'static> {
     pub widget: gtk::Box,
+    backend: Rc<Backend>,
     title_label: gtk::Label,
     subtitle_label: gtk::Label,
     search_entry: gtk::SearchEntry,
@@ -28,8 +29,9 @@ pub struct Selector<T: 'static> {
 }
 
 impl<T> Selector<T> {
-    /// Create a new selector.
-    pub fn new() -> Rc<Self> {
+    /// Create a new selector. `use_server` is used to decide whether to search
+    /// online initially.
+    pub fn new(backend: Rc<Backend>) -> Rc<Self> {
         // Create UI
 
         let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/selector.ui");
@@ -50,6 +52,7 @@ impl<T> Selector<T> {
 
         let this = Rc::new(Self {
             widget,
+            backend,
             title_label,
             subtitle_label,
             search_entry,
@@ -85,7 +88,10 @@ impl<T> Selector<T> {
 
         this.server_check_button
             .connect_toggled(clone!(@strong this => move |_| {
-                if this.server_check_button.get_active() {
+                let active = this.server_check_button.get_active();
+                this.backend.set_use_server(active);
+
+                if active {
                     this.clone().load_online();
                 } else {
                     this.clone().load_local();
@@ -117,7 +123,11 @@ impl<T> Selector<T> {
         }));
 
         // Initialize
-        this.clone().load_online();
+        if this.backend.use_server() {
+            this.clone().load_online();
+        } else {
+            this.server_check_button.set_active(false);
+        }
 
         this
     }

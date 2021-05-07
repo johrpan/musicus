@@ -97,6 +97,8 @@ impl Screen<Option<Work>, Work> for WorkEditor {
             None => (generate_id(), None, Vec::new(), Vec::new()),
         };
 
+        upload_switch.set_active(handle.backend.use_server());
+
         let this = Rc::new(Self {
             handle,
             widget,

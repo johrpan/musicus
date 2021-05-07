@@ -16,7 +16,7 @@ pub struct EnsembleEditor {
 
     editor: Editor,
     name: EntryRow,
-    upload: UploadSection,
+    upload: Rc<UploadSection>,
 }
 
 impl Screen<Option<Ensemble>, Ensemble> for EnsembleEditor {
@@ -33,7 +33,7 @@ impl Screen<Option<Ensemble>, Ensemble> for EnsembleEditor {
         list.append(&name.widget);
 
         let section = Section::new(&gettext("General"), &list);
-        let upload = UploadSection::new();
+        let upload = UploadSection::new(Rc::clone(&handle.backend));
 
         editor.add_content(&section.widget);
         editor.add_content(&upload.widget);

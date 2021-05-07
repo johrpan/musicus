@@ -35,7 +35,7 @@ impl Screen<(), Medium> for MediumSelector {
     fn new(_: (), handle: NavigationHandle<Medium>) -> Rc<Self> {
         // Create UI
 
-        let selector = Selector::<PersonOrEnsemble>::new();
+        let selector = Selector::<PersonOrEnsemble>::new(Rc::clone(&handle.backend));
         selector.set_title(&gettext("Select performer"));
 
         let this = Rc::new(Self {
@@ -127,7 +127,7 @@ struct MediumSelectorMediumScreen {
 
 impl Screen<PersonOrEnsemble, Medium> for MediumSelectorMediumScreen {
     fn new(poe: PersonOrEnsemble, handle: NavigationHandle<Medium>) -> Rc<Self> {
-        let selector = Selector::<Medium>::new();
+        let selector = Selector::<Medium>::new(Rc::clone(&handle.backend));
         selector.set_title(&gettext("Select medium"));
         selector.set_subtitle(&poe.get_title());
 

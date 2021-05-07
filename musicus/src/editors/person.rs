@@ -17,7 +17,7 @@ pub struct PersonEditor {
     editor: Editor,
     first_name: EntryRow,
     last_name: EntryRow,
-    upload: UploadSection,
+    upload: Rc<UploadSection>,
 }
 
 impl Screen<Option<Person>, Person> for PersonEditor {
@@ -37,7 +37,7 @@ impl Screen<Option<Person>, Person> for PersonEditor {
         list.append(&last_name.widget);
 
         let section = Section::new(&gettext("General"), &list);
-        let upload = UploadSection::new();
+        let upload = UploadSection::new(Rc::clone(&handle.backend));
 
         editor.add_content(&section.widget);
         editor.add_content(&upload.widget);

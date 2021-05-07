@@ -119,6 +119,8 @@ impl Screen<Arc<ImportSession>, ()> for ImportScreen {
         get_widget!(builder, gtk::Button, select_button);
         get_widget!(builder, gtk::Button, add_button);
 
+        server_check_button.set_active(handle.backend.use_server());
+
         let this = Rc::new(Self {
             handle,
             session,
@@ -136,6 +138,7 @@ impl Screen<Arc<ImportSession>, ()> for ImportScreen {
         }));
 
         this.server_check_button.connect_toggled(clone!(@weak this => move |_| {
+            this.handle.backend.set_use_server(this.server_check_button.get_active());
             this.load_matches();
         }));
 

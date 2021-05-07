@@ -47,6 +47,8 @@ impl Screen<(Arc<ImportSession>, Option<Medium>), Medium> for MediumEditor {
         get_widget!(builder, gtk::Button, try_again_button);
         get_widget!(builder, gtk::Button, cancel_button);
 
+        publish_switch.set_active(handle.backend.use_server());
+
         let list = List::new();
         frame.set_child(Some(&list.widget));
 
@@ -98,6 +100,10 @@ impl Screen<(Arc<ImportSession>, Option<Medium>), Medium> for MediumEditor {
                     this.validate();
                 }
             });
+        }));
+
+        this.publish_switch.connect_property_state_notify(clone!(@weak this => move |_| {
+            this.handle.backend.set_use_server(this.publish_switch.get_state());
         }));
 
         this.track_set_list

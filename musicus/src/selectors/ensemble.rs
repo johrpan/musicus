@@ -20,7 +20,7 @@ impl Screen<(), Ensemble> for EnsembleSelector {
     fn new(_: (), handle: NavigationHandle<Ensemble>) -> Rc<Self> {
         // Create UI
 
-        let selector = Selector::<Ensemble>::new();
+        let selector = Selector::<Ensemble>::new(Rc::clone(&handle.backend));
         selector.set_title(&gettext("Select ensemble"));
 
         let this = Rc::new(Self {
