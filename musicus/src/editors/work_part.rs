@@ -39,21 +39,21 @@ impl Screen<Option<WorkPart>, WorkPart> for WorkPartEditor {
 
         // Connect signals and callbacks
 
-        back_button.connect_clicked(clone!(@weak this => move |_| {
+        back_button.connect_clicked(clone!(@weak this =>  move |_| {
             this.handle.pop(None);
         }));
 
         this.save_button
-            .connect_clicked(clone!(@weak this => move |_| {
+            .connect_clicked(clone!(@weak this =>  move |_| {
                 let section = WorkPart {
-                    title: this.title_entry.get_text().to_string(),
+                    title: this.title_entry.text().to_string(),
                 };
 
                 this.handle.pop(Some(section));
             }));
 
         this.title_entry
-            .connect_changed(clone!(@weak this => move |_| this.validate()));
+            .connect_changed(clone!(@weak this =>  move |_| this.validate()));
 
         this.validate();
 
@@ -65,7 +65,7 @@ impl WorkPartEditor {
     /// Validate inputs and enable/disable saving.
     fn validate(&self) {
         self.save_button
-            .set_sensitive(!self.title_entry.get_text().is_empty());
+            .set_sensitive(!self.title_entry.text().is_empty());
     }
 }
 

@@ -31,8 +31,10 @@ impl Screen<(), ()> for WelcomeScreen {
         let welcome = libadwaita::StatusPageBuilder::new()
             .icon_name("folder-music-symbolic")
             .title(&gettext("Welcome to Musicus!"))
-            .description(&gettext("Get startet by selecting the folder containing your music \
-                files! Musicus will create a new database there or open one that already exists."))
+            .description(&gettext(
+                "Get startet by selecting the folder containing your music \
+                files! Musicus will create a new database there or open one that already exists.",
+            ))
             .child(&button)
             .vexpand(true)
             .build();
@@ -42,12 +44,9 @@ impl Screen<(), ()> for WelcomeScreen {
         widget.append(&header);
         widget.append(&welcome);
 
-        let this = Rc::new(Self {
-            handle,
-            widget,
-        });
+        let this = Rc::new(Self { handle, widget });
 
-        button.connect_clicked(clone!(@weak this => move |_| {
+        button.connect_clicked(clone!(@weak this =>  move |_| {
             let dialog = gtk::FileChooserDialog::new(
                 Some(&gettext("Select music library folder")),
                 Some(&this.handle.window),
@@ -59,10 +58,10 @@ impl Screen<(), ()> for WelcomeScreen {
 
             dialog.set_modal(true);
 
-            dialog.connect_response(clone!(@weak this => move |dialog, response| {
+            dialog.connect_response(clone!(@weak this =>  move |dialog, response| {
                 if let gtk::ResponseType::Accept = response {
-                    if let Some(file) = dialog.get_file() {
-                        if let Some(path) = file.get_path() {
+                    if let Some(file) = dialog.file() {
+                        if let Some(path) = file.path() {
                             spawn!(@clone this, async move {
                                 this.handle.backend.set_music_library_path(path).await.unwrap();
                             });

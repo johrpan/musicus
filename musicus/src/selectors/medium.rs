@@ -5,7 +5,7 @@ use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
 use libadwaita::prelude::*;
-use musicus_backend::db::{Person, Ensemble, Medium};
+use musicus_backend::db::{Ensemble, Medium, Person};
 use std::rc::Rc;
 
 /// Either a person or an ensemble to be shown in the list.
@@ -38,62 +38,61 @@ impl Screen<(), Medium> for MediumSelector {
         let selector = Selector::<PersonOrEnsemble>::new(Rc::clone(&handle.backend));
         selector.set_title(&gettext("Select performer"));
 
-        let this = Rc::new(Self {
-            handle,
-            selector,
-        });
+        let this = Rc::new(Self { handle, selector });
 
         // Connect signals and callbacks
 
-        this.selector.set_back_cb(clone!(@weak this => move || {
+        this.selector.set_back_cb(clone!(@weak this =>  move || {
             this.handle.pop(None);
         }));
 
-        this.selector.set_load_online(clone!(@weak this => move || {
-            async move {
-                let mut poes = Vec::new();
+        this.selector
+            .set_load_online(clone!(@weak this =>  @default-panic, move || {
+                async move {
+                    let mut poes = Vec::new();
 
-                let persons = this.handle.backend.cl().get_persons().await?;
-                let ensembles = this.handle.backend.cl().get_ensembles().await?;
+                    let persons = this.handle.backend.cl().get_persons().await?;
+                    let ensembles = this.handle.backend.cl().get_ensembles().await?;
 
-                for person in persons {
-                    poes.push(PersonOrEnsemble::Person(person));
+                    for person in persons {
+                        poes.push(PersonOrEnsemble::Person(person));
+                    }
+
+                    for ensemble in ensembles {
+                        poes.push(PersonOrEnsemble::Ensemble(ensemble));
+                    }
+
+                    Ok(poes)
                 }
+            }));
 
-                for ensemble in ensembles {
-                    poes.push(PersonOrEnsemble::Ensemble(ensemble));
+        this.selector
+            .set_load_local(clone!(@weak this =>  @default-panic, move || {
+                async move {
+                    let mut poes = Vec::new();
+
+                    let persons = this.handle.backend.db().get_persons().await.unwrap();
+                    let ensembles = this.handle.backend.db().get_ensembles().await.unwrap();
+
+                    for person in persons {
+                        poes.push(PersonOrEnsemble::Person(person));
+                    }
+
+                    for ensemble in ensembles {
+                        poes.push(PersonOrEnsemble::Ensemble(ensemble));
+                    }
+
+                    poes
                 }
+            }));
 
-                Ok(poes)
-            }
-        }));
-
-        this.selector.set_load_local(clone!(@weak this => move || {
-            async move {
-                let mut poes = Vec::new();
-
-                let persons = this.handle.backend.db().get_persons().await.unwrap();
-                let ensembles = this.handle.backend.db().get_ensembles().await.unwrap();
-
-                for person in persons {
-                    poes.push(PersonOrEnsemble::Person(person));
-                }
-
-                for ensemble in ensembles {
-                    poes.push(PersonOrEnsemble::Ensemble(ensemble));
-                }
-
-                poes
-            }
-        }));
-
-        this.selector.set_make_widget(clone!(@weak this => move |poe| {
+        this.selector.set_make_widget(clone!(@weak this =>  @default-panic, move |poe| {
             let row = libadwaita::ActionRow::new();
             row.set_activatable(true);
             row.set_title(Some(&poe.get_title()));
 
             let poe = poe.to_owned();
-            row.connect_activated(clone!(@weak this => move |_| {
+            row.connect_activated(clone!(@weak this =>  move |_| {
                 let poe = poe.clone();
                 spawn!(@clone this, async move {
                     if let Some(medium) = push!(this.handle, MediumSelectorMediumScreen, poe).await {
@@ -137,43 +136,45 @@ impl Screen<PersonOrEnsemble, Medium> for MediumSelectorMediumScreen {
             selector,
         });
 
-        this.selector.set_back_cb(clone!(@weak this => move || {
+        this.selector.set_back_cb(clone!(@weak this =>  move || {
             this.handle.pop(None);
         }));
 
         match this.poe.clone() {
             PersonOrEnsemble::Person(person) => {
-                // this.selector.set_load_online(clone!(@weak this => move || {
+                // this.selector.set_load_online(clone!(@weak this =>  move || {
                 //     async move { this.handle.backend.cl().get_mediums_for_person(&person.id).await }
                 // }));
 
-                this.selector.set_load_local(clone!(@weak this => move || {
+                this.selector.set_load_local(clone!(@weak this =>  @default-panic, move || {
                     let person = person.clone();
                     async move { this.handle.backend.db().get_mediums_for_person(&person.id).await.unwrap() }
                 }));
             }
             PersonOrEnsemble::Ensemble(ensemble) => {
-                this.selector.set_load_local(clone!(@weak this => move || {
+                this.selector.set_load_local(clone!(@weak this =>  @default-panic, move || {
                     let ensemble = ensemble.clone();
                     async move { this.handle.backend.db().get_mediums_for_ensemble(&ensemble.id).await.unwrap() }
                 }));
             }
         }
 
-        this.selector.set_make_widget(clone!(@weak this => move |medium| {
-            let row = libadwaita::ActionRow::new();
-            row.set_activatable(true);
-            row.set_title(Some(&medium.name));
+        this.selector
+            .set_make_widget(clone!(@weak this =>  @default-panic, move |medium| {
+                let row = libadwaita::ActionRow::new();
+                row.set_activatable(true);
+                row.set_title(Some(&medium.name));
 
-            let medium = medium.to_owned();
-            row.connect_activated(clone!(@weak this => move |_| {
-                this.handle.pop(Some(medium.clone()));
+                let medium = medium.to_owned();
+                row.connect_activated(clone!(@weak this =>  move |_| {
+                    this.handle.pop(Some(medium.clone()));
+                }));
+
+                row.upcast()
             }));
 
-            row.upcast()
-        }));
-
-        this.selector.set_filter(|search, medium| medium.name.to_lowercase().contains(search));
+        this.selector
+            .set_filter(|search, medium| medium.name.to_lowercase().contains(search));
 
         this
     }

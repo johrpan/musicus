@@ -30,9 +30,7 @@ fn main() {
     libadwaita::init();
     resources::init().expect("Failed to initialize resources!");
 
-    let app = gtk::Application::new(Some("de.johrpan.musicus"), gio::ApplicationFlags::empty())
-        .expect("Failed to initialize GTK application!");
-
+    let app = gtk::Application::new(Some("de.johrpan.musicus"), gio::ApplicationFlags::empty());
     let window: RefCell<Option<Rc<Window>>> = RefCell::new(None);
 
     app.connect_activate(clone!(@strong app => move |_| {
@@ -43,6 +41,5 @@ fn main() {
         window.as_ref().unwrap().present();
     }));
 
-    let args = std::env::args().collect::<Vec<String>>();
-    app.run(&args);
+    app.run();
 }

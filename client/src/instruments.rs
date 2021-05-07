@@ -14,7 +14,8 @@ impl Client {
     /// Post a new instrument to the server.
     pub async fn post_instrument(&self, data: &Instrument) -> Result<()> {
         info!("Post instrument {:?}", data);
-        self.post("instruments", serde_json::to_string(data)?).await?;
+        self.post("instruments", serde_json::to_string(data)?)
+            .await?;
         Ok(())
     }
 }

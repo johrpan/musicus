@@ -66,12 +66,12 @@ impl Screen<(Arc<ImportSession>, Option<Medium>), Medium> for MediumEditor {
 
         // Connect signals and callbacks
 
-        back_button.connect_clicked(clone!(@weak this => move |_| {
+        back_button.connect_clicked(clone!(@weak this =>  move |_| {
             this.handle.pop(None);
         }));
 
         this.done_button
-            .connect_clicked(clone!(@weak this => move |_| {
+            .connect_clicked(clone!(@weak this =>  move |_| {
                 this.widget.set_visible_child_name("loading");
                 spawn!(@clone this, async move {
                     match this.save().await {
@@ -85,9 +85,9 @@ impl Screen<(Arc<ImportSession>, Option<Medium>), Medium> for MediumEditor {
             }));
 
         this.name_entry
-            .connect_changed(clone!(@weak this => move |_| this.validate()));
+            .connect_changed(clone!(@weak this =>  move |_| this.validate()));
 
-        add_button.connect_clicked(clone!(@weak this => move |_| {
+        add_button.connect_clicked(clone!(@weak this =>  move |_| {
             spawn!(@clone this, async move {
                 if let Some(track_set) = push!(this.handle, TrackSetEditor, Arc::clone(&this.session)).await {
                     let length = {
@@ -102,12 +102,13 @@ impl Screen<(Arc<ImportSession>, Option<Medium>), Medium> for MediumEditor {
             });
         }));
 
-        this.publish_switch.connect_property_state_notify(clone!(@weak this => move |_| {
-            this.handle.backend.set_use_server(this.publish_switch.get_state());
-        }));
+        this.publish_switch
+            .connect_state_notify(clone!(@weak this =>  move |_| {
+                this.handle.backend.set_use_server(this.publish_switch.state());
+            }));
 
-        this.track_set_list
-            .set_make_widget_cb(clone!(@weak this => move |index| {
+        this.track_set_list.set_make_widget_cb(
+            clone!(@weak this =>  @default-panic, move |index| {
                 let track_set = &this.track_sets.borrow()[index];
 
                 let title = track_set.recording.work.get_title();
@@ -126,18 +127,19 @@ impl Screen<(Arc<ImportSession>, Option<Medium>), Medium> for MediumEditor {
                 row.add_suffix(&edit_button);
                 row.set_activatable_widget(Some(&edit_button));
 
-                edit_button.connect_clicked(clone!(@weak this => move |_| {
+                edit_button.connect_clicked(clone!(@weak this =>  move |_| {
                     // TODO: Implement editing.
                 }));
 
                 row.upcast()
-            }));
+            }),
+        );
 
-        try_again_button.connect_clicked(clone!(@weak this => move |_| {
+        try_again_button.connect_clicked(clone!(@weak this =>  move |_| {
             this.widget.set_visible_child_name("content");
         }));
 
-        cancel_button.connect_clicked(clone!(@weak this => move |_| {
+        cancel_button.connect_clicked(clone!(@weak this =>  move |_| {
             this.handle.pop(None);
         }));
 
@@ -182,7 +184,7 @@ impl MediumEditor {
     /// Validate inputs and enable/disable saving.
     fn validate(&self) {
         self.done_button.set_sensitive(
-            !self.name_entry.get_text().is_empty() && !self.track_sets.borrow().is_empty(),
+            !self.name_entry.text().is_empty() && !self.track_sets.borrow().is_empty(),
         );
     }
 
@@ -207,12 +209,12 @@ impl MediumEditor {
 
         let medium = Medium {
             id: generate_id(),
-            name: self.name_entry.get_text().to_string(),
+            name: self.name_entry.text().to_string(),
             discid: Some(self.session.source_id().to_owned()),
             tracks: tracks,
         };
 
-        let upload = self.publish_switch.get_active();
+        let upload = self.publish_switch.state();
         if upload {
             self.handle.backend.cl().post_medium(&medium).await?;
         }

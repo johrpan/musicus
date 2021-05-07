@@ -1,13 +1,13 @@
 use super::RecordingScreen;
 use crate::editors::WorkEditor;
-use crate::navigator::{NavigatorWindow, NavigationHandle, Screen};
+use crate::navigator::{NavigationHandle, NavigatorWindow, Screen};
 use crate::widgets;
 use crate::widgets::{List, Section, Widget};
 use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
 use libadwaita::prelude::*;
-use musicus_backend::db::{Work, Recording};
+use musicus_backend::db::{Recording, Work};
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -38,54 +38,62 @@ impl Screen<Work, ()> for WorkScreen {
             recordings: RefCell::new(Vec::new()),
         });
 
-        this.widget.set_back_cb(clone!(@weak this => move || {
+        this.widget.set_back_cb(clone!(@weak this =>  move || {
             this.handle.pop(None);
         }));
 
+        this.widget.add_action(
+            &gettext("Edit work"),
+            clone!(@weak this =>  move || {
+                spawn!(@clone this, async move {
+                    let window = NavigatorWindow::new(this.handle.backend.clone());
+                    replace!(window.navigator, WorkEditor, Some(this.work.clone())).await;
+                });
+            }),
+        );
 
-        this.widget.add_action(&gettext("Edit work"), clone!(@weak this => move || {
-            spawn!(@clone this, async move {
-                let window = NavigatorWindow::new(this.handle.backend.clone());
-                replace!(window.navigator, WorkEditor, Some(this.work.clone())).await;
-            });
-        }));
+        this.widget.add_action(
+            &gettext("Delete work"),
+            clone!(@weak this =>  move || {
+                spawn!(@clone this, async move {
+                    this.handle.backend.db().delete_work(&this.work.id).await.unwrap();
+                    this.handle.backend.library_changed();
+                });
+            }),
+        );
 
-        this.widget.add_action(&gettext("Delete work"), clone!(@weak this => move || {
-            spawn!(@clone this, async move {
-                this.handle.backend.db().delete_work(&this.work.id).await.unwrap();
-                this.handle.backend.library_changed();
-            });
-        }));
-
-        this.widget.set_search_cb(clone!(@weak this => move || {
+        this.widget.set_search_cb(clone!(@weak this =>  move || {
             this.recording_list.invalidate_filter();
         }));
 
-        this.recording_list.set_make_widget_cb(clone!(@weak this => move |index| {
-            let recording = &this.recordings.borrow()[index];
+        this.recording_list.set_make_widget_cb(
+            clone!(@weak this =>  @default-panic, move |index| {
+                let recording = &this.recordings.borrow()[index];
 
-            let row = libadwaita::ActionRow::new();
-            row.set_activatable(true);
-            row.set_title(Some(&recording.work.get_title()));
-            row.set_subtitle(Some(&recording.get_performers()));
+                let row = libadwaita::ActionRow::new();
+                row.set_activatable(true);
+                row.set_title(Some(&recording.work.get_title()));
+                row.set_subtitle(Some(&recording.get_performers()));
 
-            let recording = recording.to_owned();
-            row.connect_activated(clone!(@weak this => move |_| {
-                let recording = recording.clone();
-                spawn!(@clone this, async move {
-                    push!(this.handle, RecordingScreen, recording.clone()).await;
-                });
+                let recording = recording.to_owned();
+                row.connect_activated(clone!(@weak this =>  move |_| {
+                    let recording = recording.clone();
+                    spawn!(@clone this, async move {
+                        push!(this.handle, RecordingScreen, recording.clone()).await;
+                    });
+                }));
+
+                row.upcast()
+            }),
+        );
+
+        this.recording_list
+            .set_filter_cb(clone!(@weak this =>  @default-panic, move |index| {
+                let recording = &this.recordings.borrow()[index];
+                let search = this.widget.get_search();
+                let text = recording.work.get_title() + &recording.get_performers();
+                search.is_empty() || text.to_lowercase().contains(&search)
             }));
-
-            row.upcast()
-        }));
-
-        this.recording_list.set_filter_cb(clone!(@weak this => move |index| {
-            let recording = &this.recordings.borrow()[index];
-            let search = this.widget.get_search();
-            let text = recording.work.get_title() + &recording.get_performers();
-            search.is_empty() || text.to_lowercase().contains(&search)
-        }));
 
         // Load the content asynchronously.
 

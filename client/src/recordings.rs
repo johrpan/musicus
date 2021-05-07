@@ -14,7 +14,8 @@ impl Client {
     /// Post a new recording to the server.
     pub async fn post_recording(&self, data: &Recording) -> Result<()> {
         info!("Post recording {:?}", data);
-        self.post("recordings", serde_json::to_string(data)?).await?;
+        self.post("recordings", serde_json::to_string(data)?)
+            .await?;
         Ok(())
     }
 }

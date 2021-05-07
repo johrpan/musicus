@@ -2,8 +2,8 @@ use crate::error::{Error, Result};
 use crate::session::{ImportSession, ImportTrack, State};
 use gstreamer::ClockTime;
 use gstreamer_pbutils::Discoverer;
-use log::{warn, info};
-use sha2::{Sha256, Digest};
+use log::{info, warn};
+use sha2::{Digest, Sha256};
 use std::fs::DirEntry;
 use std::path::PathBuf;
 use tokio::sync::watch;
@@ -17,26 +17,32 @@ pub(super) fn new(path: PathBuf) -> Result<ImportSession> {
     let mut hasher = Sha256::new();
     let discoverer = Discoverer::new(ClockTime::from_seconds(1))?;
 
-    let mut entries = std::fs::read_dir(path)?.collect::<std::result::Result<Vec<DirEntry>, std::io::Error>>()?;
+    let mut entries =
+        std::fs::read_dir(path)?.collect::<std::result::Result<Vec<DirEntry>, std::io::Error>>()?;
     entries.sort_by(|entry1, entry2| entry1.file_name().cmp(&entry2.file_name()));
 
     for entry in entries {
         if entry.file_type()?.is_file() {
             let path = entry.path();
 
-            let uri = glib::filename_to_uri(&path, None)
-                .or(Err(Error::u(format!("Failed to create URI from path: {:?}", path))))?;
+            let uri = glib::filename_to_uri(&path, None).or(Err(Error::u(format!(
+                "Failed to create URI from path: {:?}",
+                path
+            ))))?;
 
             let info = discoverer.discover_uri(&uri)?;
 
             if !info.get_audio_streams().is_empty() {
-                let duration = info.get_duration().mseconds()
+                let duration = info
+                    .get_duration()
+                    .mseconds()
                     .ok_or(Error::u(format!("Failed to get duration for {}.", uri)))?;
 
                 let file_name = entry.file_name();
-                let name = file_name.into_string()
-                    .or(Err(Error::u(format!(
-                        "Failed to convert OsString to String: {:?}", entry.file_name()))))?;
+                let name = file_name.into_string().or(Err(Error::u(format!(
+                    "Failed to convert OsString to String: {:?}",
+                    entry.file_name()
+                ))))?;
 
                 hasher.update(duration.to_le_bytes());
 
@@ -50,7 +56,10 @@ pub(super) fn new(path: PathBuf) -> Result<ImportSession> {
                 tracks.push(track);
                 number += 1;
             } else {
-                warn!("File {} skipped, because it doesn't contain any audio streams.", uri);
+                warn!(
+                    "File {} skipped, because it doesn't contain any audio streams.",
+                    uri
+                );
             }
         }
     }

@@ -51,13 +51,13 @@ impl Screen<(), LoginData> for RegisterDialog {
 
         // Connect signals and callbacks
 
-        cancel_button.connect_clicked(clone!(@weak this => move |_| {
+        cancel_button.connect_clicked(clone!(@weak this =>  move |_| {
             this.handle.pop(None);
         }));
 
-        register_button.connect_clicked(clone!(@weak this => move |_| {
-            let password = this.password_entry.get_text().to_string();
-            let repeat = this.repeat_password_entry.get_text().to_string();
+        register_button.connect_clicked(clone!(@weak this =>  move |_| {
+            let password = this.password_entry.text().to_string();
+            let repeat = this.repeat_password_entry.text().to_string();
 
             if password != repeat {
                 // TODO: Show error and validate other input.
@@ -65,10 +65,10 @@ impl Screen<(), LoginData> for RegisterDialog {
                 this.widget.set_visible_child_name("loading");
 
                 spawn!(@clone this, async move {
-                    let username = this.username_entry.get_text().to_string();
-                    let email = this.email_entry.get_text().to_string();
+                    let username = this.username_entry.text().to_string();
+                    let email = this.email_entry.text().to_string();
                     let captcha_id = this.captcha_id.borrow().clone().unwrap();
-                    let answer = this.captcha_entry.get_text().to_string();
+                    let answer = this.captcha_entry.text().to_string();
 
                     let email = if email.len() == 0 {
                         None

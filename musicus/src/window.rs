@@ -1,5 +1,5 @@
-use crate::screens::{MainScreen, WelcomeScreen};
 use crate::navigator::Navigator;
+use crate::screens::{MainScreen, WelcomeScreen};
 use gtk::prelude::*;
 use musicus_backend::{Backend, BackendState};
 use std::rc::Rc;
@@ -41,9 +41,8 @@ impl Window {
         loading_screen.append(&header);
         loading_screen.append(&spinner);
 
-
         let navigator = Navigator::new(Rc::clone(&backend), &window, &loading_screen);
-        libadwaita::ApplicationWindowExt::set_child(&window, Some(&navigator.widget));
+        window.set_child(Some(&navigator.widget));
 
         let this = Rc::new(Self {
             backend,

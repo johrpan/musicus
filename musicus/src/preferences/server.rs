@@ -40,7 +40,7 @@ impl ServerDialog {
         }));
 
         set_button.connect_clicked(clone!(@strong this => move |_| {
-            let url = this.url_entry.get_text().to_string();
+            let url = this.url_entry.text().to_string();
             this.backend.set_server_url(&url);
 
             if let Some(cb) = &*this.selected_cb.borrow() {

@@ -20,9 +20,15 @@ impl Backend {
 
     /// Set the path to the music library folder and start a database thread in the background.
     pub async fn set_music_library_path(&self, path: PathBuf) -> Result<()> {
-        if let Err(err) = self.settings.set_string("music-library-path", path.to_str().unwrap()) {
-            warn!("The music library path could not be saved using GSettings. It will most likely \
-                not be available at the next startup. Error message: {}", err);
+        if let Err(err) = self
+            .settings
+            .set_string("music-library-path", path.to_str().unwrap())
+        {
+            warn!(
+                "The music library path could not be saved using GSettings. It will most likely \
+                not be available at the next startup. Error message: {}",
+                err
+            );
         }
 
         self.set_music_library_path_priv(path).await

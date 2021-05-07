@@ -38,11 +38,11 @@ impl Screen<(), ()> for SourceSelector {
 
         // Connect signals and callbacks
 
-        back_button.connect_clicked(clone!(@weak this => move |_| {
+        back_button.connect_clicked(clone!(@weak this =>  move |_| {
             this.handle.pop(None);
         }));
 
-        folder_button.connect_clicked(clone!(@weak this => move |_| {
+        folder_button.connect_clicked(clone!(@weak this =>  move |_| {
             let dialog = gtk::FileChooserDialog::new(
                 Some(&gettext("Select folder")),
                 Some(&this.handle.window),
@@ -54,12 +54,12 @@ impl Screen<(), ()> for SourceSelector {
 
             dialog.set_modal(true);
 
-            dialog.connect_response(clone!(@weak this => move |dialog, response| {
+            dialog.connect_response(clone!(@weak this =>  move |dialog, response| {
                 dialog.hide();
 
                 if let gtk::ResponseType::Accept = response {
-                    if let Some(file) = dialog.get_file() {
-                        if let Some(path) = file.get_path() {
+                    if let Some(file) = dialog.file() {
+                        if let Some(path) = file.path() {
                             this.widget.set_visible_child_name("loading");
 
                             spawn!(@clone this, async move {
@@ -82,7 +82,7 @@ impl Screen<(), ()> for SourceSelector {
             dialog.show();
         }));
 
-        disc_button.connect_clicked(clone!(@weak this => move |_| {
+        disc_button.connect_clicked(clone!(@weak this =>  move |_| {
             this.widget.set_visible_child_name("loading");
 
             spawn!(@clone this, async move {
@@ -99,7 +99,7 @@ impl Screen<(), ()> for SourceSelector {
             });
         }));
 
-        try_again_button.connect_clicked(clone!(@weak this => move |_| {
+        try_again_button.connect_clicked(clone!(@weak this =>  move |_| {
             this.widget.set_visible_child_name("content");
         }));
 

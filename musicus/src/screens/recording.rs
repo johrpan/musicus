@@ -1,5 +1,5 @@
 use crate::editors::RecordingEditor;
-use crate::navigator::{NavigatorWindow, NavigationHandle, Screen};
+use crate::navigator::{NavigationHandle, NavigatorWindow, Screen};
 use crate::widgets;
 use crate::widgets::{List, Section, Widget};
 use gettextrs::gettext;
@@ -39,49 +39,59 @@ impl Screen<Recording, ()> for RecordingScreen {
             tracks: RefCell::new(Vec::new()),
         });
 
-        section.add_action("media-playback-start-symbolic", clone!(@weak this => move || {
-            for track in &*this.tracks.borrow() {
-                this.handle.backend.pl().add_item(track.clone()).unwrap();
-            }
-        }));
+        section.add_action(
+            "media-playback-start-symbolic",
+            clone!(@weak this =>  move || {
+                for track in &*this.tracks.borrow() {
+                    this.handle.backend.pl().add_item(track.clone()).unwrap();
+                }
+            }),
+        );
 
-        this.widget.set_back_cb(clone!(@weak this => move || {
+        this.widget.set_back_cb(clone!(@weak this =>  move || {
             this.handle.pop(None);
         }));
 
-        this.widget.add_action(&gettext("Edit recording"), clone!(@weak this => move || {
-            spawn!(@clone this, async move {
-                let window = NavigatorWindow::new(this.handle.backend.clone());
-                replace!(window.navigator, RecordingEditor, Some(this.recording.clone())).await;
-            });
-        }));
+        this.widget.add_action(
+            &gettext("Edit recording"),
+            clone!(@weak this =>  move || {
+                spawn!(@clone this, async move {
+                    let window = NavigatorWindow::new(this.handle.backend.clone());
+                    replace!(window.navigator, RecordingEditor, Some(this.recording.clone())).await;
+                });
+            }),
+        );
 
-        this.widget.add_action(&gettext("Delete recording"), clone!(@weak this => move || {
-            spawn!(@clone this, async move {
-                this.handle.backend.db().delete_recording(&this.recording.id).await.unwrap();
-                this.handle.backend.library_changed();
-            });
-        }));
+        this.widget.add_action(
+            &gettext("Delete recording"),
+            clone!(@weak this =>  move || {
+                spawn!(@clone this, async move {
+                    this.handle.backend.db().delete_recording(&this.recording.id).await.unwrap();
+                    this.handle.backend.library_changed();
+                });
+            }),
+        );
 
-        this.list.set_make_widget_cb(clone!(@weak this => move |index| {
-            let track = &this.tracks.borrow()[index];
+        this.list
+            .set_make_widget_cb(clone!(@weak this =>  @default-panic, move |index| {
+                let track = &this.tracks.borrow()[index];
 
-            let mut title_parts = Vec::<String>::new();
-            for part in &track.work_parts {
-                title_parts.push(this.recording.work.parts[*part].title.clone());
-            }
+                let mut title_parts = Vec::<String>::new();
+                for part in &track.work_parts {
+                    title_parts.push(this.recording.work.parts[*part].title.clone());
+                }
 
-            let title = if title_parts.is_empty() {
-                gettext("Unknown")
-            } else {
-                title_parts.join(", ")
-            };
+                let title = if title_parts.is_empty() {
+                    gettext("Unknown")
+                } else {
+                    title_parts.join(", ")
+                };
 
-            let row = libadwaita::ActionRow::new();
-            row.set_title(Some(&title));
+                let row = libadwaita::ActionRow::new();
+                row.set_title(Some(&title));
 
-            row.upcast()
-        }));
+                row.upcast()
+            }));
 
         // Load the content asynchronously.
 

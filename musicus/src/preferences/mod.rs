@@ -3,8 +3,8 @@ use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
-use musicus_backend::Backend;
 use libadwaita::prelude::*;
+use musicus_backend::Backend;
 use std::rc::Rc;
 
 mod login;
@@ -64,8 +64,8 @@ impl Preferences {
 
             dialog.connect_response(clone!(@strong this => move |dialog, response| {
                 if let gtk::ResponseType::Accept = response {
-                    if let Some(file) = dialog.get_file() {
-                        if let Some(path) = file.get_path() {
+                    if let Some(file) = dialog.file() {
+                        if let Some(path) = file.path() {
                             this.music_library_path_row.set_subtitle(Some(path.to_str().unwrap()));
 
                             spawn!(@clone this, async move {

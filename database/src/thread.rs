@@ -1,8 +1,8 @@
 use super::*;
 use log::debug;
-use tokio::sync::oneshot::{self, Sender};
 use std::sync::mpsc;
 use std::thread;
+use tokio::sync::oneshot::{self, Sender};
 
 /// An action the database thread can perform.
 #[derive(Debug)]
@@ -359,28 +359,32 @@ impl DbThread {
     /// Get all mediums with the specified source ID.
     pub async fn get_mediums_by_source_id(&self, id: &str) -> Result<Vec<Medium>> {
         let (sender, receiver) = oneshot::channel();
-        self.action_sender.send(GetMediumsBySourceId(id.to_owned(), sender))?;
+        self.action_sender
+            .send(GetMediumsBySourceId(id.to_owned(), sender))?;
         receiver.await?
     }
 
     /// Get all mediums on which a person performs.
     pub async fn get_mediums_for_person(&self, id: &str) -> Result<Vec<Medium>> {
         let (sender, receiver) = oneshot::channel();
-        self.action_sender.send(GetMediumsForPerson(id.to_owned(), sender))?;
+        self.action_sender
+            .send(GetMediumsForPerson(id.to_owned(), sender))?;
         receiver.await?
     }
 
     /// Get all mediums on which an ensemble performs.
     pub async fn get_mediums_for_ensemble(&self, id: &str) -> Result<Vec<Medium>> {
         let (sender, receiver) = oneshot::channel();
-        self.action_sender.send(GetMediumsForEnsemble(id.to_owned(), sender))?;
+        self.action_sender
+            .send(GetMediumsForEnsemble(id.to_owned(), sender))?;
         receiver.await?
     }
 
     /// Get all tracks for a recording.
     pub async fn get_tracks(&self, recording_id: &str) -> Result<Vec<Track>> {
         let (sender, receiver) = oneshot::channel();
-        self.action_sender.send(GetTracks(recording_id.to_owned(), sender))?;
+        self.action_sender
+            .send(GetTracks(recording_id.to_owned(), sender))?;
         receiver.await?
     }
 

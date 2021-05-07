@@ -78,7 +78,7 @@ impl Screen<Option<Ensemble>, Ensemble> for EnsembleEditor {
         this.name
             .entry
             .connect_changed(clone!(@weak this => move |_| this.validate()));
-        
+
         this.validate();
 
         this

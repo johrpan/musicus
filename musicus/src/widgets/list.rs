@@ -40,14 +40,15 @@ impl List {
             move_cb: RefCell::new(None),
         });
 
-        this.filter.set_filter_func(clone!(@strong this => move |index| {
-            if let Some(cb) = &*this.filter_cb.borrow() {
-                let index = index.downcast_ref::<ItemIndex>().unwrap().get() as usize;
-                cb(index)
-            } else {
-                true
-            }
-        }));
+        this.filter
+            .set_filter_func(clone!(@strong this => move |index| {
+                if let Some(cb) = &*this.filter_cb.borrow() {
+                    let index = index.downcast_ref::<ItemIndex>().unwrap().get() as usize;
+                    cb(index)
+                } else {
+                    true
+                }
+            }));
 
         this.widget.bind_model(Some(&filter_model), clone!(@strong this => move |index| {
             let index = index.downcast_ref::<ItemIndex>().unwrap().get() as usize;
@@ -64,13 +65,13 @@ impl List {
                     }));
 
                     let drag_value = (index as u32).to_value();
-                    drag_source.set_content(Some(&gdk::ContentProvider::new_for_value(&drag_value)));
+                    drag_source.set_content(Some(&gdk::ContentProvider::for_value(&drag_value)));
 
                     let drop_target = gtk::DropTarget::new(glib::Type::U32, gdk::DragAction::COPY);
 
                     drop_target.connect_drop(clone!(@strong this => move |_, value, _, _| {
                         if let Some(cb) = &*this.move_cb.borrow() {
-                            let old_index: u32 = value.get_some().unwrap();
+                            let old_index: u32 = value.get().unwrap();
                             cb(old_index as usize, index);
                             true
                         } else {

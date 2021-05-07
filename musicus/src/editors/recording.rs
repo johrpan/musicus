@@ -1,7 +1,7 @@
 use super::performance::PerformanceEditor;
+use crate::navigator::{NavigationHandle, Screen};
 use crate::selectors::WorkSelector;
 use crate::widgets::{List, Widget};
-use crate::navigator::{NavigationHandle, Screen};
 use anyhow::Result;
 use gettextrs::gettext;
 use glib::clone;
@@ -74,26 +74,27 @@ impl Screen<Option<Recording>, Recording> for RecordingEditor {
 
         // Connect signals and callbacks
 
-        back_button.connect_clicked(clone!(@weak this => move |_| {
+        back_button.connect_clicked(clone!(@weak this =>  move |_| {
             this.handle.pop(None);
         }));
 
-        this.save_button.connect_clicked(clone!(@weak this => move |_| {
-            spawn!(@clone this, async move {
-                this.widget.set_visible_child_name("loading");
-                match this.save().await {
-                    Ok(recording) => {
-                        this.handle.pop(Some(recording));
+        this.save_button
+            .connect_clicked(clone!(@weak this =>  move |_| {
+                spawn!(@clone this, async move {
+                    this.widget.set_visible_child_name("loading");
+                    match this.save().await {
+                        Ok(recording) => {
+                            this.handle.pop(Some(recording));
+                        }
+                        Err(_) => {
+                            this.info_bar.set_revealed(true);
+                            this.widget.set_visible_child_name("content");
+                        }
                     }
-                    Err(_) => {
-                        this.info_bar.set_revealed(true);
-                        this.widget.set_visible_child_name("content");
-                    }
-                }
-            });
-        }));
+                });
+            }));
 
-        work_button.connect_clicked(clone!(@weak this => move |_| {
+        work_button.connect_clicked(clone!(@weak this =>  move |_| {
             spawn!(@clone this, async move {
                 if let Some(work) = push!(this.handle, WorkSelector).await {
                     this.work_selected(&work);
@@ -102,13 +103,13 @@ impl Screen<Option<Recording>, Recording> for RecordingEditor {
             });
         }));
 
-        this.performance_list.set_make_widget_cb(clone!(@weak this => move |index| {
+        this.performance_list.set_make_widget_cb(clone!(@weak this => @default-panic, move |index| {
             let performance = &this.performances.borrow()[index];
 
             let delete_button = gtk::Button::from_icon_name(Some("user-trash-symbolic"));
             delete_button.set_valign(gtk::Align::Center);
 
-            delete_button.connect_clicked(clone!(@weak this => move |_| {
+            delete_button.connect_clicked(clone!(@weak this =>  move |_| {
                 let length = {
                     let mut performances = this.performances.borrow_mut();
                     performances.remove(index);
@@ -121,7 +122,7 @@ impl Screen<Option<Recording>, Recording> for RecordingEditor {
             let edit_button = gtk::Button::from_icon_name(Some("document-edit-symbolic"));
             edit_button.set_valign(gtk::Align::Center);
 
-            edit_button.connect_clicked(clone!(@weak this => move |_| {
+            edit_button.connect_clicked(clone!(@weak this =>  move |_| {
                 spawn!(@clone this, async move {
                     let performance = &this.performances.borrow()[index];
                     if let Some(performance) = push!(this.handle, PerformanceEditor, Some(performance.to_owned())).await {
@@ -190,16 +191,17 @@ impl RecordingEditor {
                 .borrow()
                 .clone()
                 .expect("Tried to create recording without work!"),
-            comment: self.comment_entry.get_text().to_string(),
+            comment: self.comment_entry.text().to_string(),
             performances: self.performances.borrow().clone(),
         };
 
-        let upload = self.upload_switch.get_active();
+        let upload = self.upload_switch.state();
         if upload {
             self.handle.backend.cl().post_recording(&recording).await?;
         }
 
-        self.handle.backend
+        self.handle
+            .backend
             .db()
             .update_recording(recording.clone().into())
             .await

@@ -117,12 +117,12 @@ impl Screen<Option<Work>, Work> for WorkEditor {
 
         // Connect signals and callbacks
 
-        back_button.connect_clicked(clone!(@weak this => move |_| {
+        back_button.connect_clicked(clone!(@weak this =>  move |_| {
             this.handle.pop(None);
         }));
 
         this.save_button
-            .connect_clicked(clone!(@weak this => move |_| {
+            .connect_clicked(clone!(@weak this =>  move |_| {
                 spawn!(@clone this, async move {
                     this.widget.set_visible_child_name("loading");
                     match this.save().await {
@@ -137,7 +137,7 @@ impl Screen<Option<Work>, Work> for WorkEditor {
                 });
             }));
 
-        composer_button.connect_clicked(clone!(@weak this => move |_| {
+        composer_button.connect_clicked(clone!(@weak this =>  move |_| {
             spawn!(@clone this, async move {
                 if let Some(person) = push!(this.handle, PersonSelector).await {
                     this.show_composer(&person);
@@ -147,10 +147,10 @@ impl Screen<Option<Work>, Work> for WorkEditor {
         }));
 
         this.title_entry
-            .connect_changed(clone!(@weak this => move |_| this.validate()));
+            .connect_changed(clone!(@weak this =>  move |_| this.validate()));
 
-        this.instrument_list
-            .set_make_widget_cb(clone!(@weak this => move |index| {
+        this.instrument_list.set_make_widget_cb(
+            clone!(@weak this =>  @default-panic, move |index| {
                 let instrument = &this.instruments.borrow()[index];
 
                 let delete_button = gtk::Button::from_icon_name(Some("user-trash-symbolic"));
@@ -171,9 +171,10 @@ impl Screen<Option<Work>, Work> for WorkEditor {
                 row.add_suffix(&delete_button);
 
                 row.upcast()
-            }));
+            }),
+        );
 
-        add_instrument_button.connect_clicked(clone!(@weak this => move |_| {
+        add_instrument_button.connect_clicked(clone!(@weak this =>  move |_| {
             spawn!(@clone this, async move {
                 if let Some(instrument) = push!(this.handle, InstrumentSelector).await {
                     let length = {
@@ -187,13 +188,13 @@ impl Screen<Option<Work>, Work> for WorkEditor {
             });
         }));
 
-        this.part_list.set_make_widget_cb(clone!(@weak this => move |index| {
+        this.part_list.set_make_widget_cb(clone!(@weak this => @default-panic,  move |index| {
             let pos = &this.structure.borrow()[index];
 
             let delete_button = gtk::Button::from_icon_name(Some("user-trash-symbolic"));
             delete_button.set_valign(gtk::Align::Center);
 
-            delete_button.connect_clicked(clone!(@weak this => move |_| {
+            delete_button.connect_clicked(clone!(@weak this =>  move |_| {
                 let length = {
                     let mut structure = this.structure.borrow_mut();
                     structure.remove(index);
@@ -206,7 +207,7 @@ impl Screen<Option<Work>, Work> for WorkEditor {
             let edit_button = gtk::Button::from_icon_name(Some("document-edit-symbolic"));
             edit_button.set_valign(gtk::Align::Center);
 
-            edit_button.connect_clicked(clone!(@weak this => move |_| {
+            edit_button.connect_clicked(clone!(@weak this =>  move |_| {
                 spawn!(@clone this, async move {
                     match this.structure.borrow()[index].clone() {
                         PartOrSection::Part(part) => {
@@ -251,7 +252,7 @@ impl Screen<Option<Work>, Work> for WorkEditor {
         }));
 
         this.part_list
-            .set_move_cb(clone!(@weak this => move |old_index, new_index| {
+            .set_move_cb(clone!(@weak this =>  move |old_index, new_index| {
                 let length = {
                     let mut structure = this.structure.borrow_mut();
                     structure.swap(old_index, new_index);
@@ -261,7 +262,7 @@ impl Screen<Option<Work>, Work> for WorkEditor {
                 this.part_list.update(length);
             }));
 
-        add_part_button.connect_clicked(clone!(@weak this => move |_| {
+        add_part_button.connect_clicked(clone!(@weak this =>  move |_| {
             spawn!(@clone this, async move {
                 if let Some(part) = push!(this.handle, WorkPartEditor, None).await {
                     let length = {
@@ -312,9 +313,8 @@ impl WorkEditor {
 
     /// Validate inputs and enable/disable saving.
     fn validate(&self) {
-        self.save_button.set_sensitive(
-            !self.title_entry.get_text().is_empty() && self.composer.borrow().is_some(),
-        );
+        self.save_button
+            .set_sensitive(!self.title_entry.text().is_empty() && self.composer.borrow().is_some());
     }
 
     /// Save the work and possibly upload it to the server.
@@ -337,7 +337,7 @@ impl WorkEditor {
 
         let work = Work {
             id: self.id.clone(),
-            title: self.title_entry.get_text().to_string(),
+            title: self.title_entry.text().to_string(),
             composer: self
                 .composer
                 .borrow()
@@ -348,7 +348,7 @@ impl WorkEditor {
             sections: sections,
         };
 
-        let upload = self.upload_switch.get_active();
+        let upload = self.upload_switch.state();
         if upload {
             self.handle.backend.cl().post_work(&work).await?;
         }

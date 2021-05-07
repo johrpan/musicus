@@ -74,12 +74,12 @@ impl Screen<Arc<ImportSession>, TrackSetData> for TrackSetEditor {
 
         // Connect signals and callbacks
 
-        back_button.connect_clicked(clone!(@weak this => move |_| {
+        back_button.connect_clicked(clone!(@weak this =>  move |_| {
             this.handle.pop(None);
         }));
 
         this.save_button
-            .connect_clicked(clone!(@weak this => move |_| {
+            .connect_clicked(clone!(@weak this =>  move |_| {
                 let data = TrackSetData {
                     recording: this.recording.borrow().clone().unwrap(),
                     tracks: this.tracks.borrow().clone(),
@@ -88,7 +88,7 @@ impl Screen<Arc<ImportSession>, TrackSetData> for TrackSetEditor {
                 this.handle.pop(Some(data));
             }));
 
-        select_recording_button.connect_clicked(clone!(@weak this => move |_| {
+        select_recording_button.connect_clicked(clone!(@weak this =>  move |_| {
             spawn!(@clone this, async move {
                 if let Some(recording) = push!(this.handle, RecordingSelector).await {
                     this.recording.replace(Some(recording));
@@ -97,7 +97,7 @@ impl Screen<Arc<ImportSession>, TrackSetData> for TrackSetEditor {
             });
         }));
 
-        edit_tracks_button.connect_clicked(clone!(@weak this => move |_| {
+        edit_tracks_button.connect_clicked(clone!(@weak this =>  move |_| {
             spawn!(@clone this, async move {
                 if let Some(selection) = push!(this.handle, TrackSelector, Arc::clone(&this.session)).await {
                     let mut tracks = Vec::new();
@@ -119,7 +119,7 @@ impl Screen<Arc<ImportSession>, TrackSetData> for TrackSetEditor {
             });
         }));
 
-        this.track_list.set_make_widget_cb(clone!(@weak this => move |index| {
+        this.track_list.set_make_widget_cb(clone!(@weak this =>  @default-panic, move |index| {
             let track = &this.tracks.borrow()[index];
 
             let mut title_parts = Vec::<String>::new();
@@ -152,7 +152,7 @@ impl Screen<Arc<ImportSession>, TrackSetData> for TrackSetEditor {
             row.add_suffix(&edit_button);
             row.set_activatable_widget(Some(&edit_button));
 
-            edit_button.connect_clicked(clone!(@weak this => move |_| {
+            edit_button.connect_clicked(clone!(@weak this =>  move |_| {
                 let recording = this.recording.borrow().clone();
                 if let Some(recording) = recording {
                     spawn!(@clone this, async move {

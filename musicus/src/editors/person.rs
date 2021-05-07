@@ -63,7 +63,7 @@ impl Screen<Option<Person>, Person> for PersonEditor {
 
         // Connect signals and callbacks
 
-        this.editor.set_back_cb(clone!(@weak this => move || {
+        this.editor.set_back_cb(clone!(@weak this =>  move || {
             this.handle.pop(None);
         }));
 
@@ -84,11 +84,11 @@ impl Screen<Option<Person>, Person> for PersonEditor {
 
         this.first_name
             .entry
-            .connect_changed(clone!(@weak this => move |_| this.validate()));
+            .connect_changed(clone!(@weak this =>  move |_| this.validate()));
 
         this.last_name
             .entry
-            .connect_changed(clone!(@weak this => move |_| this.validate()));
+            .connect_changed(clone!(@weak this =>  move |_| this.validate()));
 
         this.validate();
 

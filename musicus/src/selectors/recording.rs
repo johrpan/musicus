@@ -1,12 +1,12 @@
 use super::selector::Selector;
-use crate::editors::{PersonEditor, WorkEditor, RecordingEditor};
+use crate::editors::{PersonEditor, RecordingEditor, WorkEditor};
 use crate::navigator::{NavigationHandle, Screen};
 use crate::widgets::Widget;
 use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
 use libadwaita::prelude::*;
-use musicus_backend::db::{Person, Work, Recording};
+use musicus_backend::db::{Person, Recording, Work};
 use std::rc::Rc;
 
 /// A screen for selecting a recording.
@@ -22,18 +22,15 @@ impl Screen<(), Recording> for RecordingSelector {
         let selector = Selector::<Person>::new(Rc::clone(&handle.backend));
         selector.set_title(&gettext("Select composer"));
 
-        let this = Rc::new(Self {
-            handle,
-            selector,
-        });
+        let this = Rc::new(Self { handle, selector });
 
         // Connect signals and callbacks
 
-        this.selector.set_back_cb(clone!(@weak this => move || {
+        this.selector.set_back_cb(clone!(@weak this =>  move || {
             this.handle.pop(None);
         }));
 
-        this.selector.set_add_cb(clone!(@weak this => move || {
+        this.selector.set_add_cb(clone!(@weak this =>  move || {
             spawn!(@clone this, async move {
                 if let Some(person) = push!(this.handle, PersonEditor, None).await {
                     // We can assume that there are no existing works of this composer and
@@ -54,21 +51,23 @@ impl Screen<(), Recording> for RecordingSelector {
             });
         }));
 
-        this.selector.set_load_online(clone!(@weak this => move || {
-            async move { Ok(this.handle.backend.cl().get_persons().await?) }
-        }));
+        this.selector
+            .set_load_online(clone!(@weak this => @default-panic,  move || {
+                async move { Ok(this.handle.backend.cl().get_persons().await?) }
+            }));
 
-        this.selector.set_load_local(clone!(@weak this => move || {
-            async move { this.handle.backend.db().get_persons().await.unwrap() }
-        }));
+        this.selector
+            .set_load_local(clone!(@weak this =>  @default-panic, move || {
+                async move { this.handle.backend.db().get_persons().await.unwrap() }
+            }));
 
-        this.selector.set_make_widget(clone!(@weak this => move |person| {
+        this.selector.set_make_widget(clone!(@weak this =>  @default-panic, move |person| {
             let row = libadwaita::ActionRow::new();
             row.set_activatable(true);
             row.set_title(Some(&person.name_lf()));
 
             let person = person.to_owned();
-            row.connect_activated(clone!(@weak this => move |_| {
+            row.connect_activated(clone!(@weak this =>  move |_| {
                 // Instead of returning the person from here, like the person selector does, we
                 // show a second selector for choosing the work.
 
@@ -119,11 +118,11 @@ impl Screen<Person, Work> for RecordingSelectorWorkScreen {
             selector,
         });
 
-        this.selector.set_back_cb(clone!(@weak this => move || {
+        this.selector.set_back_cb(clone!(@weak this =>  move || {
             this.handle.pop(None);
         }));
 
-        this.selector.set_add_cb(clone!(@weak this => move || {
+        this.selector.set_add_cb(clone!(@weak this =>  move || {
             spawn!(@clone this, async move {
                 let work = Work::new(this.person.clone());
                 if let Some(work) = push!(this.handle, WorkEditor, Some(work)).await {
@@ -132,28 +131,32 @@ impl Screen<Person, Work> for RecordingSelectorWorkScreen {
             });
         }));
 
-        this.selector.set_load_online(clone!(@weak this => move || {
-            async move { Ok(this.handle.backend.cl().get_works(&this.person.id).await?) }
-        }));
-
-        this.selector.set_load_local(clone!(@weak this => move || {
-            async move { this.handle.backend.db().get_works(&this.person.id).await.unwrap() }
-        }));
-
-        this.selector.set_make_widget(clone!(@weak this => move |work| {
-            let row = libadwaita::ActionRow::new();
-            row.set_activatable(true);
-            row.set_title(Some(&work.title));
-
-            let work = work.to_owned();
-            row.connect_activated(clone!(@weak this => move |_| {
-                this.handle.pop(Some(work.clone()));
+        this.selector
+            .set_load_online(clone!(@weak this =>  @default-panic, move || {
+                async move { Ok(this.handle.backend.cl().get_works(&this.person.id).await?) }
             }));
 
-            row.upcast()
-        }));
+        this.selector
+            .set_load_local(clone!(@weak this =>  @default-panic, move || {
+                async move { this.handle.backend.db().get_works(&this.person.id).await.unwrap() }
+            }));
 
-        this.selector.set_filter(|search, work| work.title.to_lowercase().contains(search));
+        this.selector
+            .set_make_widget(clone!(@weak this =>  @default-panic, move |work| {
+                let row = libadwaita::ActionRow::new();
+                row.set_activatable(true);
+                row.set_title(Some(&work.title));
+
+                let work = work.to_owned();
+                row.connect_activated(clone!(@weak this =>  move |_| {
+                    this.handle.pop(Some(work.clone()));
+                }));
+
+                row.upcast()
+            }));
+
+        this.selector
+            .set_filter(|search, work| work.title.to_lowercase().contains(search));
 
         this
     }
@@ -184,11 +187,11 @@ impl Screen<Work, Recording> for RecordingSelectorRecordingScreen {
             selector,
         });
 
-        this.selector.set_back_cb(clone!(@weak this => move || {
+        this.selector.set_back_cb(clone!(@weak this =>  move || {
             this.handle.pop(None);
         }));
 
-        this.selector.set_add_cb(clone!(@weak this => move || {
+        this.selector.set_add_cb(clone!(@weak this =>  move || {
             spawn!(@clone this, async move {
                 let recording = Recording::new(this.work.clone());
                 if let Some(recording) = push!(this.handle, RecordingEditor, Some(recording)).await {
@@ -197,29 +200,31 @@ impl Screen<Work, Recording> for RecordingSelectorRecordingScreen {
             });
         }));
 
-        this.selector.set_load_online(clone!(@weak this => move || {
+        this.selector.set_load_online(clone!(@weak this =>  @default-panic, move || {
             async move { Ok(this.handle.backend.cl().get_recordings_for_work(&this.work.id).await?) }
         }));
 
-        this.selector.set_load_local(clone!(@weak this => move || {
+        this.selector.set_load_local(clone!(@weak this =>  @default-panic, move || {
             async move { this.handle.backend.db().get_recordings_for_work(&this.work.id).await.unwrap() }
         }));
 
-        this.selector.set_make_widget(clone!(@weak this => move |recording| {
-            let row = libadwaita::ActionRow::new();
-            row.set_activatable(true);
-            row.set_title(Some(&recording.get_performers()));
+        this.selector
+            .set_make_widget(clone!(@weak this =>  @default-panic, move |recording| {
+                let row = libadwaita::ActionRow::new();
+                row.set_activatable(true);
+                row.set_title(Some(&recording.get_performers()));
 
-            let recording = recording.to_owned();
-            row.connect_activated(clone!(@weak this => move |_| {
-                this.handle.pop(Some(recording.clone()));
+                let recording = recording.to_owned();
+                row.connect_activated(clone!(@weak this =>  move |_| {
+                    this.handle.pop(Some(recording.clone()));
+                }));
+
+                row.upcast()
             }));
 
-            row.upcast()
-        }));
-
-        this.selector
-            .set_filter(|search, recording| recording.get_performers().to_lowercase().contains(search));
+        this.selector.set_filter(|search, recording| {
+            recording.get_performers().to_lowercase().contains(search)
+        });
 
         this
     }

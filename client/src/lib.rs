@@ -1,10 +1,10 @@
-use isahc::{AsyncBody, Request, Response};
 use isahc::http::StatusCode;
 use isahc::prelude::*;
+use isahc::{AsyncBody, Request, Response};
 use log::info;
 use serde::Serialize;
-use std::time::Duration;
 use std::cell::RefCell;
+use std::time::Duration;
 
 pub mod ensembles;
 pub use ensembles::*;
@@ -112,7 +112,7 @@ impl Client {
             .body(())?
             .send_async()
             .await?;
-        
+
         match response.status() {
             StatusCode::OK => Ok(response.text().await?),
             status_code => Err(Error::UnexpectedResponse(status_code)),
@@ -164,16 +164,21 @@ impl Client {
 
     /// Require the server URL to be set.
     fn server_url(&self) -> Result<String> {
-        self.get_server_url().ok_or(Error::Other("The server URL is not available!"))
+        self.get_server_url()
+            .ok_or(Error::Other("The server URL is not available!"))
     }
 
     /// Require the login data to be set.
     fn login_data(&self) -> Result<LoginData> {
-        self.get_login_data().ok_or(Error::Other("The login data is unset!"))
+        self.get_login_data()
+            .ok_or(Error::Other("The login data is unset!"))
     }
 
     /// Require a login token to be set.
     fn token(&self) -> Result<String> {
-        self.token.borrow().clone().ok_or(Error::Other("No login token found!"))
+        self.token
+            .borrow()
+            .clone()
+            .ok_or(Error::Other("No login token found!"))
     }
 }

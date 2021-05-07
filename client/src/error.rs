@@ -31,6 +31,4 @@ pub enum Error {
     Other(&'static str),
 }
 
-
 pub type Result<T> = std::result::Result<T, Error>;
-

@@ -1,7 +1,7 @@
 use crate::{Error, Result};
-use musicus_database::Track;
 use glib::clone;
 use gstreamer_player::prelude::*;
+use musicus_database::Track;
 use std::cell::{Cell, RefCell};
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -101,9 +101,11 @@ impl Player {
 
         #[cfg(target_os = "linux")]
         {
-            result.mpris.connect_play_pause(clone!(@weak result => move || {
-                result.play_pause();
-            }));
+            result
+                .mpris
+                .connect_play_pause(clone!(@weak result => move || {
+                    result.play_pause();
+                }));
 
             result.mpris.connect_play(clone!(@weak result => move || {
                 if !result.is_playing() {
@@ -117,9 +119,11 @@ impl Player {
                 }
             }));
 
-            result.mpris.connect_previous(clone!(@weak result => move || {
-                let _ = result.previous();
-            }));
+            result
+                .mpris
+                .connect_previous(clone!(@weak result => move || {
+                    let _ = result.previous();
+                }));
 
             result.mpris.connect_next(clone!(@weak result => move || {
                 let _ = result.next();
@@ -246,10 +250,9 @@ impl Player {
     }
 
     pub fn previous(&self) -> Result<()> {
-        let mut current_track = self
-            .current_track
-            .get()
-            .ok_or(Error::Other(String::from("Player tried to access non existant current track.")))?;
+        let mut current_track = self.current_track.get().ok_or(Error::Other(String::from(
+            "Player tried to access non existant current track.",
+        )))?;
 
         if current_track > 0 {
             current_track -= 1;
@@ -270,10 +273,9 @@ impl Player {
     }
 
     pub fn next(&self) -> Result<()> {
-        let mut current_track = self
-            .current_track
-            .get()
-            .ok_or(Error::Other(String::from("Player tried to access non existant current track.")))?;
+        let mut current_track = self.current_track.get().ok_or(Error::Other(String::from(
+            "Player tried to access non existant current track.",
+        )))?;
 
         let playlist = self.playlist.borrow();
 
@@ -289,11 +291,17 @@ impl Player {
     pub fn set_track(&self, current_track: usize) -> Result<()> {
         let track = &self.playlist.borrow()[current_track];
 
-        let path = self.music_library_path.join(track.path.clone())
-            .into_os_string().into_string().unwrap();
+        let path = self
+            .music_library_path
+            .join(track.path.clone())
+            .into_os_string()
+            .into_string()
+            .unwrap();
 
-        let uri = glib::filename_to_uri(&path, None)
-            .or(Err(Error::Other(format!("Failed to create URI from path: {}", path))))?;
+        let uri = glib::filename_to_uri(&path, None).or(Err(Error::Other(format!(
+            "Failed to create URI from path: {}",
+            path
+        ))))?;
 
         self.player.set_uri(&uri);
 

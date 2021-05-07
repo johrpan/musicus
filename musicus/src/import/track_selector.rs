@@ -46,23 +46,24 @@ impl Screen<Arc<ImportSession>, Vec<usize>> for TrackSelector {
 
         // Connect signals and callbacks
 
-        back_button.connect_clicked(clone!(@weak this => move |_| {
+        back_button.connect_clicked(clone!(@weak this =>  move |_| {
             this.handle.pop(None);
         }));
 
-        this.select_button.connect_clicked(clone!(@weak this => move |_| {
-            let selection = this.selection.borrow().clone();
-            this.handle.pop(Some(selection));
-        }));
+        this.select_button
+            .connect_clicked(clone!(@weak this =>  move |_| {
+                let selection = this.selection.borrow().clone();
+                this.handle.pop(Some(selection));
+            }));
 
         let tracks = this.session.tracks();
 
         for (index, track) in tracks.iter().enumerate() {
             let check = gtk::CheckButton::new();
 
-            check.connect_toggled(clone!(@weak this => move |check| {
+            check.connect_toggled(clone!(@weak this =>  move |check| {
                 let mut selection = this.selection.borrow_mut();
-                if check.get_active() {
+                if check.is_active() {
                     selection.push(index);
                 } else {
                     if let Some(pos) = selection.iter().position(|part| *part == index) {

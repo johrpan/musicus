@@ -14,7 +14,9 @@ pub use window::*;
 /// that optionally resolves to a specific return value.
 pub trait Screen<I, O>: Widget {
     /// Create a new screen and initialize it with the provided input value.
-    fn new(input: I, navigation_handle: NavigationHandle<O>) -> Rc<Self> where Self: Sized;
+    fn new(input: I, navigation_handle: NavigationHandle<O>) -> Rc<Self>
+    where
+        Self: Sized;
 }
 
 /// An accessor to navigation functionality for screens.
@@ -46,7 +48,9 @@ impl<O> NavigationHandle<O> {
     pub fn pop(&self, output: Option<O>) {
         self.unwrap_navigator().pop();
 
-        let sender = self.sender.take()
+        let sender = self
+            .sender
+            .take()
             .expect("Tried to send result from screen through a dropped sender.");
 
         if sender.send(output).is_err() {
@@ -112,11 +116,12 @@ impl Navigator {
             back_cb: RefCell::new(None),
         });
 
-        this.widget.connect_property_transition_running_notify(clone!(@strong this => move |_| {
-            if !this.widget.get_transition_running() {
-                this.clear_old_widgets();
-            }
-        }));
+        this.widget
+            .connect_transition_running_notify(clone!(@strong this => move |_| {
+                if !this.widget.is_transition_running() {
+                    this.clear_old_widgets();
+                }
+            }));
 
         this
     }
@@ -135,14 +140,13 @@ impl Navigator {
 
         let receiver = self.push::<I, O, S>(input);
 
-        if !self.widget.get_transition_running() {
+        if !self.widget.is_transition_running() {
             self.clear_old_widgets();
         }
 
         // We ignore the case, if a sender is dropped.
         receiver.await.unwrap_or(None)
     }
-
 
     /// Drop all screens and go back to the initial screen. The back callback
     /// will not be called.
@@ -153,7 +157,7 @@ impl Navigator {
             self.old_widgets.borrow_mut().push(screen.get_widget());
         }
 
-        if !self.widget.get_transition_running() {
+        if !self.widget.is_transition_running() {
             self.clear_old_widgets();
         }
     }
@@ -203,7 +207,7 @@ impl Navigator {
                 }
             }
 
-            if !self.widget.get_transition_running() {
+            if !self.widget.is_transition_running() {
                 self.clear_old_widgets();
             }
         }

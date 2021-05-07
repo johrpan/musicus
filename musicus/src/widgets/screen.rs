@@ -49,7 +49,7 @@ impl Screen {
         widget.insert_action_group("widget", Some(&actions));
 
         search_button.connect_toggled(clone!(@strong search_entry => move |search_button| {
-            if search_button.get_active() {
+            if search_button.is_active() {
                 search_entry.grab_focus();
             }
         }));
@@ -88,7 +88,8 @@ impl Screen {
         action.connect_activate(move |_, _| cb());
 
         self.actions.add_action(&action);
-        self.menu.append(Some(label), Some(&format!("widget.{}", name)));
+        self.menu
+            .append(Some(label), Some(&format!("widget.{}", name)));
     }
 
     /// Set the closure to be called when the search string has changed.
@@ -98,7 +99,7 @@ impl Screen {
 
     /// Get the current search string.
     pub fn get_search(&self) -> String {
-        self.search_entry.get_text().to_string().to_lowercase()
+        self.search_entry.text().to_string().to_lowercase()
     }
 
     /// Hide the loading page and switch to the content.

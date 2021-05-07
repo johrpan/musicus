@@ -68,19 +68,13 @@ macro_rules! replace {
 /// });
 #[macro_export]
 macro_rules! spawn {
-    ($future:expr) => {
-        {
-            let context = glib::MainContext::default();
-            context.spawn_local($future);
-
-        }
-    };
-    (@clone $data:ident, $future:expr) => {
-        {
-            let context = glib::MainContext::default();
-            let $data = Rc::clone(&$data);
-            context.spawn_local($future);
-
-        }
-    };
+    ($future:expr) => {{
+        let context = glib::MainContext::default();
+        context.spawn_local($future);
+    }};
+    (@clone $data:ident, $future:expr) => {{
+        let context = glib::MainContext::default();
+        let $data = Rc::clone(&$data);
+        context.spawn_local($future);
+    }};
 }

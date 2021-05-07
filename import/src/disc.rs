@@ -1,10 +1,10 @@
 use crate::error::{Error, Result};
 use crate::session::{ImportSession, ImportTrack, State};
 use gstreamer::prelude::*;
-use gstreamer::{ClockTime, ElementFactory, MessageType, MessageView, TocEntryType};
 use gstreamer::tags::{Duration, TrackNumber};
+use gstreamer::{ClockTime, ElementFactory, MessageType, MessageView, TocEntryType};
 use log::info;
-use sha2::{Sha256, Digest};
+use sha2::{Digest, Sha256};
 use std::path::PathBuf;
 use tokio::sync::watch;
 
@@ -28,23 +28,31 @@ pub(super) fn new() -> Result<ImportSession> {
     pipeline.add_many(&[&cdparanoiasrc, &queue, &audioconvert, &flacenc, &fakesink])?;
     gstreamer::Element::link_many(&[&cdparanoiasrc, &queue, &audioconvert, &flacenc, &fakesink])?;
 
-    let bus = pipeline.get_bus().ok_or(Error::u(String::from("Failed to get bus from pipeline.")))?;
+    let bus = pipeline
+        .get_bus()
+        .ok_or(Error::u(String::from("Failed to get bus from pipeline.")))?;
 
     // Run the pipeline into the paused state and wait for the resulting TOC message on the bus.
 
     pipeline.set_state(gstreamer::State::Paused)?;
 
-    let msg = bus.timed_pop_filtered(ClockTime::from_seconds(5),
-        &vec![MessageType::Toc, MessageType::Error]);
+    let msg = bus.timed_pop_filtered(
+        ClockTime::from_seconds(5),
+        &vec![MessageType::Toc, MessageType::Error],
+    );
 
     let toc = match msg {
         Some(msg) => match msg.view() {
             MessageView::Error(err) => Err(Error::os(err.get_error())),
             MessageView::Toc(toc) => Ok(toc.get_toc().0),
-            _ => Err(Error::u(format!("Unexpected message from GStreamer: {:?}", msg))),
+            _ => Err(Error::u(format!(
+                "Unexpected message from GStreamer: {:?}",
+                msg
+            ))),
         },
-        None => Err(Error::Timeout(
-            format!("Timeout while waiting for first message from GStreamer."))),
+        None => Err(Error::Timeout(format!(
+            "Timeout while waiting for first message from GStreamer."
+        ))),
     }?;
 
     pipeline.set_state(gstreamer::State::Ready)?;
@@ -66,22 +74,31 @@ pub(super) fn new() -> Result<ImportSession> {
 
     for entry in toc.get_entries() {
         if entry.get_entry_type() == TocEntryType::Track {
-            let duration = entry.get_tags()
+            let duration = entry
+                .get_tags()
                 .ok_or(Error::u(String::from("No tags in TOC entry.")))?
                 .get::<Duration>()
-                .ok_or(Error::u(String::from("No duration tag found in TOC entry.")))?
+                .ok_or(Error::u(String::from(
+                    "No duration tag found in TOC entry.",
+                )))?
                 .get()
-                .ok_or(Error::u(String::from("Failed to unwrap duration tag from TOC entry.")))?
+                .ok_or(Error::u(String::from(
+                    "Failed to unwrap duration tag from TOC entry.",
+                )))?
                 .mseconds()
                 .ok_or(Error::u(String::from("Failed to unwrap track duration.")))?;
 
-            let number = entry.get_tags()
+            let number = entry
+                .get_tags()
                 .ok_or(Error::u(String::from("No tags in TOC entry.")))?
                 .get::<TrackNumber>()
-                .ok_or(Error::u(String::from("No track number tag found in TOC entry.")))?
+                .ok_or(Error::u(String::from(
+                    "No track number tag found in TOC entry.",
+                )))?
                 .get()
-                .ok_or(Error::u(
-                    String::from("Failed to unwrap track number tag from TOC entry.")))?;
+                .ok_or(Error::u(String::from(
+                    "Failed to unwrap track number tag from TOC entry.",
+                )))?;
 
             hasher.update(duration.to_le_bytes());
 
@@ -129,11 +146,11 @@ pub(super) fn new() -> Result<ImportSession> {
                         info!("Finished ripping track {}.", track.number);
                         pipeline.set_state(gstreamer::State::Ready)?;
                         break;
-                    },
+                    }
                     MessageView::Error(err) => {
                         pipeline.set_state(gstreamer::State::Null)?;
                         Err(Error::os(err.get_error()))?;
-                    },
+                    }
                     _ => (),
                 }
             }
@@ -157,8 +174,9 @@ pub(super) fn new() -> Result<ImportSession> {
 
 /// Create a new temporary directory and return its path.
 fn create_tmp_dir() -> Result<PathBuf> {
-    let mut tmp_dir = glib::get_tmp_dir().ok_or(Error::u(
-        String::from("Failed to get temporary directory using glib::get_tmp_dir().")))?;
+    let mut tmp_dir = glib::tmp_dir().ok_or(Error::u(String::from(
+        "Failed to get temporary directory using glib::get_tmp_dir().",
+    )))?;
 
     let dir_name = format!("musicus-{}", rand::random::<u64>());
     tmp_dir.push(dir_name);
@@ -167,4 +185,3 @@ fn create_tmp_dir() -> Result<PathBuf> {
 
     Ok(tmp_dir)
 }
-

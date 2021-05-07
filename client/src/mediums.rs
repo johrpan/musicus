@@ -7,7 +7,9 @@ impl Client {
     /// recording.
     pub async fn get_mediums_for_recording(&self, recording_id: &str) -> Result<Vec<Medium>> {
         info!("Get mediums for recording {}", recording_id);
-        let body = self.get(&format!("recordings/{}/mediums", recording_id)).await?;
+        let body = self
+            .get(&format!("recordings/{}/mediums", recording_id))
+            .await?;
         let mediums: Vec<Medium> = serde_json::from_str(&body)?;
         Ok(mediums)
     }

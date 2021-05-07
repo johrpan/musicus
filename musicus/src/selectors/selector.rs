@@ -82,13 +82,14 @@ impl<T> Selector<T> {
             }
         }));
 
-        this.search_entry.connect_search_changed(clone!(@strong this => move |_| {
-            this.list.invalidate_filter();
-        }));
+        this.search_entry
+            .connect_search_changed(clone!(@strong this => move |_| {
+                this.list.invalidate_filter();
+            }));
 
         this.server_check_button
             .connect_toggled(clone!(@strong this => move |_| {
-                let active = this.server_check_button.get_active();
+                let active = this.server_check_button.is_active();
                 this.backend.set_use_server(active);
 
                 if active {
@@ -98,25 +99,27 @@ impl<T> Selector<T> {
                 }
             }));
 
-        this.list.set_make_widget_cb(clone!(@strong this => move |index| {
-            if let Some(cb) = &*this.make_widget.borrow() {
-                let item = &this.items.borrow()[index];
-                cb(item)
-            } else {
-                gtk::Label::new(None).upcast()
-            }
-        }));
-
-        this.list.set_filter_cb(clone!(@strong this => move |index| {
-            match &*this.filter.borrow() {
-                Some(filter) => {
+        this.list
+            .set_make_widget_cb(clone!(@strong this => move |index| {
+                if let Some(cb) = &*this.make_widget.borrow() {
                     let item = &this.items.borrow()[index];
-                    let search = this.search_entry.get_text().to_string().to_lowercase();
-                    search.is_empty() || filter(&search, item)
+                    cb(item)
+                } else {
+                    gtk::Label::new(None).upcast()
                 }
-                None => true,
-            }
-        }));
+            }));
+
+        this.list
+            .set_filter_cb(clone!(@strong this => move |index| {
+                match &*this.filter.borrow() {
+                    Some(filter) => {
+                        let item = &this.items.borrow()[index];
+                        let search = this.search_entry.text().to_string().to_lowercase();
+                        search.is_empty() || filter(&search, item)
+                    }
+                    None => true,
+                }
+            }));
 
         try_again_button.connect_clicked(clone!(@strong this => move |_| {
             this.clone().load_online();

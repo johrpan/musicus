@@ -39,10 +39,7 @@ impl Error {
 
     /// Create a new unexpected error without an explicit source.
     pub(super) fn u(msg: String) -> Self {
-        Self::Unexpected {
-            msg,
-            source: None,
-        }
+        Self::Unexpected { msg, source: None }
     }
 
     /// Create a new unexpected error with an explicit source.
@@ -85,4 +82,3 @@ impl From<std::io::Error> for Error {
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
-

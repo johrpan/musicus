@@ -7,9 +7,9 @@ use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
 use libadwaita::prelude::*;
-use musicus_backend::Error;
 use musicus_backend::db::Medium;
 use musicus_backend::import::ImportSession;
+use musicus_backend::Error;
 use std::rc::Rc;
 use std::sync::Arc;
 
@@ -31,7 +31,7 @@ impl ImportScreen {
 
         let this = self;
         spawn!(@clone this, async move {
-            let mediums: Result<Vec<Medium>, Error> = if this.server_check_button.get_active() {
+            let mediums: Result<Vec<Medium>, Error> = if this.server_check_button.is_active() {
                 this.handle.backend.cl().get_mediums_by_discid(this.session.source_id()).await.map_err(|err| err.into())
             } else {
                 this.handle.backend.db().get_mediums_by_source_id(this.session.source_id()).await.map_err(|err| err.into())
@@ -56,9 +56,9 @@ impl ImportScreen {
 
     /// Populate the list of matches
     fn show_matches(self: &Rc<Self>, mediums: Vec<Medium>) {
-        if let Some(mut child) = self.matching_list.get_first_child() {
+        if let Some(mut child) = self.matching_list.first_child() {
             loop {
-                let next_child = child.get_next_sibling();
+                let next_child = child.next_sibling();
                 self.matching_list.remove(&child);
 
                 match next_child {
@@ -77,7 +77,7 @@ impl ImportScreen {
                 .activatable(true)
                 .build();
 
-            row.connect_activated(clone!(@weak this => move |_| {
+            row.connect_activated(clone!(@weak this =>  move |_| {
                 let medium = medium.clone();
                 spawn!(@clone this, async move {
                     if let Some(()) = push!(this.handle, MediumPreview, (this.session.clone(), medium.clone())).await {
@@ -133,20 +133,21 @@ impl Screen<Arc<ImportSession>, ()> for ImportScreen {
 
         // Connect signals and callbacks
 
-        back_button.connect_clicked(clone!(@weak this => move |_| {
+        back_button.connect_clicked(clone!(@weak this =>  move |_| {
             this.handle.pop(None);
         }));
 
-        this.server_check_button.connect_toggled(clone!(@weak this => move |_| {
-            this.handle.backend.set_use_server(this.server_check_button.get_active());
+        this.server_check_button
+            .connect_toggled(clone!(@weak this =>  move |_| {
+                this.handle.backend.set_use_server(this.server_check_button.is_active());
+                this.load_matches();
+            }));
+
+        try_again_button.connect_clicked(clone!(@weak this =>  move |_| {
             this.load_matches();
         }));
 
-        try_again_button.connect_clicked(clone!(@weak this => move |_| {
-            this.load_matches();
-        }));
-
-        select_button.connect_clicked(clone!(@weak this => move |_| {
+        select_button.connect_clicked(clone!(@weak this =>  move |_| {
             spawn!(@clone this, async move {
                 if let Some(medium) = push!(this.handle, MediumSelector).await {
                     this.select_medium(medium);
@@ -154,7 +155,7 @@ impl Screen<Arc<ImportSession>, ()> for ImportScreen {
             });
         }));
 
-        add_button.connect_clicked(clone!(@weak this => move |_| {
+        add_button.connect_clicked(clone!(@weak this =>  move |_| {
             spawn!(@clone this, async move {
                 if let Some(medium) = push!(this.handle, MediumEditor, (Arc::clone(&this.session), None)).await {
                     this.select_medium(medium);

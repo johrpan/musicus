@@ -35,47 +35,56 @@ impl Screen<Medium, ()> for MediumScreen {
             list,
         });
 
-        this.widget.set_back_cb(clone!(@weak this => move || {
+        this.widget.set_back_cb(clone!(@weak this =>  move || {
             this.handle.pop(None);
         }));
 
+        this.widget.add_action(
+            &gettext("Edit medium"),
+            clone!(@weak this =>  move || {
+                // TODO: Show medium editor.
+            }),
+        );
 
-        this.widget.add_action(&gettext("Edit medium"), clone!(@weak this => move || {
-            // TODO: Show medium editor.
-        }));
+        this.widget.add_action(
+            &gettext("Delete medium"),
+            clone!(@weak this =>  move || {
+                // TODO: Delete medium and maybe also the tracks?
+            }),
+        );
 
-        this.widget.add_action(&gettext("Delete medium"), clone!(@weak this => move || {
-            // TODO: Delete medium and maybe also the tracks?
-        }));
+        section.add_action(
+            "media-playback-start-symbolic",
+            clone!(@weak this =>  move || {
+                for track in &this.medium.tracks {
+                    this.handle.backend.pl().add_item(track.clone()).unwrap();
+                }
+            }),
+        );
 
-        section.add_action("media-playback-start-symbolic", clone!(@weak this => move || {
-            for track in &this.medium.tracks {
-                this.handle.backend.pl().add_item(track.clone()).unwrap();
-            }
-        }));
+        this.list
+            .set_make_widget_cb(clone!(@weak this =>  @default-panic, move |index| {
+                let track = &this.medium.tracks[index];
 
-        this.list.set_make_widget_cb(clone!(@weak this => move |index| {
-            let track = &this.medium.tracks[index];
+                let mut parts = Vec::<String>::new();
+                for part in &track.work_parts {
+                    parts.push(track.recording.work.parts[*part].title.clone());
+                }
 
-            let mut parts = Vec::<String>::new();
-            for part in &track.work_parts {
-                parts.push(track.recording.work.parts[*part].title.clone());
-            }
+                let title = if parts.is_empty() {
+                    gettext("Unknown")
+                } else {
+                    parts.join(", ")
+                };
 
-            let title = if parts.is_empty() {
-                gettext("Unknown")
-            } else {
-                parts.join(", ")
-            };
+                let row = libadwaita::ActionRow::new();
+                row.set_selectable(false);
+                row.set_activatable(false);
+                row.set_title(Some(&title));
+                row.set_margin_start(12);
 
-            let row = libadwaita::ActionRow::new();
-            row.set_selectable(false);
-            row.set_activatable(false);
-            row.set_title(Some(&title));
-            row.set_margin_start(12);
-
-            row.upcast()
-        }));
+                row.upcast()
+            }));
 
         this.list.update(this.medium.tracks.len());
 

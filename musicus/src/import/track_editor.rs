@@ -17,7 +17,10 @@ pub struct TrackEditor {
 
 impl Screen<(Recording, Vec<usize>), Vec<usize>> for TrackEditor {
     /// Create a new track editor.
-    fn new((recording, selection): (Recording, Vec<usize>), handle: NavigationHandle<Vec<usize>>) -> Rc<Self> {
+    fn new(
+        (recording, selection): (Recording, Vec<usize>),
+        handle: NavigationHandle<Vec<usize>>,
+    ) -> Rc<Self> {
         // Create UI
 
         let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/track_editor.ui");
@@ -41,11 +44,11 @@ impl Screen<(Recording, Vec<usize>), Vec<usize>> for TrackEditor {
 
         // Connect signals and callbacks
 
-        back_button.connect_clicked(clone!(@weak this => move |_| {
+        back_button.connect_clicked(clone!(@weak this =>  move |_| {
             this.handle.pop(None);
         }));
 
-        select_button.connect_clicked(clone!(@weak this => move |_| {
+        select_button.connect_clicked(clone!(@weak this =>  move |_| {
             let selection = this.selection.borrow().clone();
             this.handle.pop(Some(selection));
         }));
@@ -54,9 +57,9 @@ impl Screen<(Recording, Vec<usize>), Vec<usize>> for TrackEditor {
             let check = gtk::CheckButton::new();
             check.set_active(this.selection.borrow().contains(&index));
 
-            check.connect_toggled(clone!(@weak this => move |check| {
+            check.connect_toggled(clone!(@weak this =>  move |check| {
                 let mut selection = this.selection.borrow_mut();
-                if check.get_active() {
+                if check.is_active() {
                     selection.push(index);
                 } else {
                     if let Some(pos) = selection.iter().position(|part| *part == index) {

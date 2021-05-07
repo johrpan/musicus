@@ -27,10 +27,7 @@ impl ButtonRow {
 
         widget.add_suffix(&button);
 
-        Self {
-            widget,
-            button,
-        }
+        Self { widget, button }
     }
 
     /// Set the subtitle of the row.

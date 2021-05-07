@@ -1,11 +1,11 @@
 use crate::navigator::{NavigationHandle, Screen};
 use crate::selectors::{EnsembleSelector, InstrumentSelector, PersonSelector};
-use crate::widgets::{Editor, Section, ButtonRow, Widget};
+use crate::widgets::{ButtonRow, Editor, Section, Widget};
 use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
 use libadwaita::prelude::*;
-use musicus_backend::db::{Performance, Person, Ensemble, Instrument};
+use musicus_backend::db::{Ensemble, Instrument, Performance, Person};
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -40,8 +40,9 @@ impl Screen<Option<Performance>, Performance> for PerformanceEditor {
         performer_list.append(&ensemble_row.get_widget());
 
         let performer_section = Section::new(&gettext("Performer"), &performer_list);
-        performer_section.set_subtitle(
-            &gettext("Select either a person or an ensemble as a performer."));
+        performer_section.set_subtitle(&gettext(
+            "Select either a person or an ensemble as a performer.",
+        ));
 
         let role_list = gtk::ListBoxBuilder::new()
             .selection_mode(gtk::SelectionMode::None)
@@ -59,8 +60,9 @@ impl Screen<Option<Performance>, Performance> for PerformanceEditor {
         role_list.append(&role_row.get_widget());
 
         let role_section = Section::new(&gettext("Role"), &role_list);
-        role_section.set_subtitle(
-            &gettext("Optionally, choose a role to specify what the performer does."));
+        role_section.set_subtitle(&gettext(
+            "Optionally, choose a role to specify what the performer does.",
+        ));
 
         editor.add_content(&performer_section);
         editor.add_content(&role_section);
@@ -102,7 +104,7 @@ impl Screen<Option<Performance>, Performance> for PerformanceEditor {
             });
         }));
 
-        this.ensemble_row.set_cb(clone!(@weak this => move || {
+        this.ensemble_row.set_cb(clone!(@weak this =>  move || {
             spawn!(@clone this, async move {
                 if let Some(ensemble) = push!(this.handle, EnsembleSelector).await {
                     this.show_person(None);
@@ -113,7 +115,7 @@ impl Screen<Option<Performance>, Performance> for PerformanceEditor {
             });
         }));
 
-        this.role_row.set_cb(clone!(@weak this => move || {
+        this.role_row.set_cb(clone!(@weak this =>  move || {
             spawn!(@clone this, async move {
                 if let Some(role) = push!(this.handle, InstrumentSelector).await {
                     this.show_role(Some(&role));
@@ -122,10 +124,11 @@ impl Screen<Option<Performance>, Performance> for PerformanceEditor {
             });
         }));
 
-        this.reset_role_button.connect_clicked(clone!(@weak this => move |_| {
-            this.show_role(None);
-            this.role.replace(None);
-        }));
+        this.reset_role_button
+            .connect_clicked(clone!(@weak this =>  move |_| {
+                this.show_role(None);
+                this.role.replace(None);
+            }));
 
         // Initialize
 

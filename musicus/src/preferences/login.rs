@@ -1,6 +1,6 @@
 use super::register::RegisterDialog;
-use crate::push;
 use crate::navigator::{NavigationHandle, Screen};
+use crate::push;
 use crate::widgets::Widget;
 use glib::clone;
 use gtk::prelude::*;
@@ -49,16 +49,16 @@ impl Screen<Option<LoginData>, Option<LoginData>> for LoginDialog {
 
         // Connect signals and callbacks
 
-        cancel_button.connect_clicked(clone!(@weak this => move |_| {
+        cancel_button.connect_clicked(clone!(@weak this =>  move |_| {
             this.handle.pop(None);
         }));
 
-        login_button.connect_clicked(clone!(@weak this => move |_| {
+        login_button.connect_clicked(clone!(@weak this =>  move |_| {
             this.widget.set_visible_child_name("loading");
 
             let data = LoginData {
-                username: this.username_entry.get_text().to_string(),
-                password: this.password_entry.get_text().to_string(),
+                username: this.username_entry.text().to_string(),
+                password: this.password_entry.text().to_string(),
             };
 
             spawn!(@clone this, async move {
@@ -72,7 +72,7 @@ impl Screen<Option<LoginData>, Option<LoginData>> for LoginDialog {
             });
         }));
 
-        register_button.connect_clicked(clone!(@weak this => move |_| {
+        register_button.connect_clicked(clone!(@weak this =>  move |_| {
             spawn!(@clone this, async move {
                 if let Some(data) = push!(this.handle, RegisterDialog).await {
                     this.handle.pop(Some(Some(data)));
@@ -80,7 +80,7 @@ impl Screen<Option<LoginData>, Option<LoginData>> for LoginDialog {
             });
         }));
 
-        logout_button.connect_clicked(clone!(@weak this => move |_| {
+        logout_button.connect_clicked(clone!(@weak this =>  move |_| {
             spawn!(@clone this, async move {
                 this.handle.backend.set_login_data(None).await;
                 this.handle.pop(Some(None));

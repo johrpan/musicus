@@ -1,7 +1,7 @@
 use crate::{Client, Result};
-use isahc::Request;
 use isahc::http::StatusCode;
 use isahc::prelude::*;
+use isahc::Request;
 use log::info;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;

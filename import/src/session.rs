@@ -1,8 +1,8 @@
-use crate::{disc, folder};
 use crate::error::Result;
+use crate::{disc, folder};
 use std::path::PathBuf;
-use std::thread;
 use std::sync::Arc;
+use std::thread;
 use tokio::sync::{oneshot, watch};
 
 /// The current state of the import process.

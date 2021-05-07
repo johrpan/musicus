@@ -26,10 +26,7 @@ impl EntryRow {
 
         widget.add_suffix(&entry);
 
-        Self {
-            widget,
-            entry,
-        }
+        Self { widget, entry }
     }
 
     /// Set the text of the entry.
@@ -39,6 +36,6 @@ impl EntryRow {
 
     /// Get the text that was entered by the user.
     pub fn get_text(&self) -> String {
-        self.entry.get_text().to_string()
+        self.entry.text().to_string()
     }
 }

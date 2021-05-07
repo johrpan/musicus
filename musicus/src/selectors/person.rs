@@ -23,18 +23,15 @@ impl Screen<(), Person> for PersonSelector {
         let selector = Selector::<Person>::new(Rc::clone(&handle.backend));
         selector.set_title(&gettext("Select person"));
 
-        let this = Rc::new(Self {
-            handle,
-            selector,
-        });
+        let this = Rc::new(Self { handle, selector });
 
         // Connect signals and callbacks
 
-        this.selector.set_back_cb(clone!(@weak this => move || {
+        this.selector.set_back_cb(clone!(@weak this =>  move || {
             this.handle.pop(None);
         }));
 
-        this.selector.set_add_cb(clone!(@weak this => move || {
+        this.selector.set_add_cb(clone!(@weak this =>  move || {
             spawn!(@clone this, async move {
                 if let Some(person) = push!(this.handle, PersonEditor, None).await {
                     this.handle.pop(Some(person));
@@ -42,28 +39,31 @@ impl Screen<(), Person> for PersonSelector {
             });
         }));
 
-        this.selector.set_load_online(clone!(@weak this => move || {
-            let clone = this.clone();
-            async move { Ok(clone.handle.backend.cl().get_persons().await?) }
-        }));
-
-        this.selector.set_load_local(clone!(@weak this => move || {
-            let clone = this.clone();
-            async move { clone.handle.backend.db().get_persons().await.unwrap() }
-        }));
-
-        this.selector.set_make_widget(clone!(@weak this => move |person| {
-            let row = libadwaita::ActionRow::new();
-            row.set_activatable(true);
-            row.set_title(Some(&person.name_lf()));
-
-            let person = person.to_owned();
-            row.connect_activated(clone!(@weak this => move |_| {
-                this.handle.pop(Some(person.clone()));
+        this.selector
+            .set_load_online(clone!(@weak this =>  @default-panic, move || {
+                let clone = this.clone();
+                async move { Ok(clone.handle.backend.cl().get_persons().await?) }
             }));
 
-            row.upcast()
-        }));
+        this.selector
+            .set_load_local(clone!(@weak this =>  @default-panic, move || {
+                let clone = this.clone();
+                async move { clone.handle.backend.db().get_persons().await.unwrap() }
+            }));
+
+        this.selector
+            .set_make_widget(clone!(@weak this =>  @default-panic, move |person| {
+                let row = libadwaita::ActionRow::new();
+                row.set_activatable(true);
+                row.set_title(Some(&person.name_lf()));
+
+                let person = person.to_owned();
+                row.connect_activated(clone!(@weak this =>  move |_| {
+                    this.handle.pop(Some(person.clone()));
+                }));
+
+                row.upcast()
+            }));
 
         this.selector
             .set_filter(|search, person| person.name_fl().to_lowercase().contains(search));

@@ -95,7 +95,7 @@ impl Screen<(), ()> for PlayerScreen {
 
         let player = &this.handle.backend.pl();
 
-        player.add_playlist_cb(clone!(@weak this => @default-return (), move |playlist| {
+        player.add_playlist_cb(clone!(@weak this => move |playlist| {
             if playlist.is_empty() {
                 this.handle.pop(None);
             }
@@ -104,7 +104,7 @@ impl Screen<(), ()> for PlayerScreen {
             this.show_playlist();
         }));
 
-        player.add_track_cb(clone!(@weak this, @weak player => @default-return (), move |current_track| {
+        player.add_track_cb(clone!(@weak this, @weak player => move |current_track| {
             this.previous_button.set_sensitive(this.handle.backend.pl().has_previous());
             this.next_button.set_sensitive(this.handle.backend.pl().has_next());
 
@@ -129,14 +129,14 @@ impl Screen<(), ()> for PlayerScreen {
             this.show_playlist();
         }));
 
-        player.add_duration_cb(clone!(@weak this => @default-return (), move |ms| {
+        player.add_duration_cb(clone!(@weak this => move |ms| {
             let min = ms / 60000;
             let sec = (ms % 60000) / 1000;
             this.duration_label.set_text(&format!("{}:{:02}", min, sec));
             this.position.set_upper(ms as f64);
         }));
 
-        player.add_playing_cb(clone!(@weak this => @default-return (), move |playing| {
+        player.add_playing_cb(clone!(@weak this => move |playing| {
             this.play_button.set_child(Some(if playing {
                 &this.pause_image
             } else {
@@ -144,7 +144,7 @@ impl Screen<(), ()> for PlayerScreen {
             }));
         }));
 
-        player.add_position_cb(clone!(@weak this => @default-return (), move |ms| {
+        player.add_position_cb(clone!(@weak this => move |ms| {
             if !this.seeking.get() {
                 let min = ms / 60000;
                 let sec = (ms % 60000) / 1000;
@@ -153,35 +153,38 @@ impl Screen<(), ()> for PlayerScreen {
             }
         }));
 
-        back_button.connect_clicked(clone!(@weak this => move |_| {
+        back_button.connect_clicked(clone!(@weak this =>  move |_| {
             this.handle.pop(None);
         }));
 
-        this.previous_button.connect_clicked(clone!(@weak this => move |_| {
-            this.handle.backend.pl().previous().unwrap();
-        }));
+        this.previous_button
+            .connect_clicked(clone!(@weak this =>  move |_| {
+                this.handle.backend.pl().previous().unwrap();
+            }));
 
-        this.play_button.connect_clicked(clone!(@weak this => move |_| {
-            this.handle.backend.pl().play_pause();
-        }));
+        this.play_button
+            .connect_clicked(clone!(@weak this =>  move |_| {
+                this.handle.backend.pl().play_pause();
+            }));
 
-        this.next_button.connect_clicked(clone!(@weak this => move |_| {
-            this.handle.backend.pl().next().unwrap();
-        }));
+        this.next_button
+            .connect_clicked(clone!(@weak this =>  move |_| {
+                this.handle.backend.pl().next().unwrap();
+            }));
 
-        stop_button.connect_clicked(clone!(@weak this => move |_| {
+        stop_button.connect_clicked(clone!(@weak this =>  move |_| {
             this.handle.backend.pl().clear();
         }));
 
-        event_controller.connect_event(clone!(@weak this => move |_, event| {
+        event_controller.connect_event(clone!(@weak this =>  @default-panic, move |_, event| {
             if let Some(event) = event.downcast_ref::<gdk::ButtonEvent>() {
-                if event.get_button() == gdk::BUTTON_PRIMARY {
-                    match event.get_event_type() {
+                if event.button() == gdk::BUTTON_PRIMARY {
+                    match event.event_type() {
                         gdk::EventType::ButtonPress => {
                             this.seeking.replace(true);
                         }
                         gdk::EventType::ButtonRelease => {
-                            this.handle.backend.pl().seek(this.position.get_value() as u64);
+                            this.handle.backend.pl().seek(this.position.value() as u64);
                             this.seeking.replace(false);
                         }
                         _ => (),
@@ -193,9 +196,9 @@ impl Screen<(), ()> for PlayerScreen {
             glib::signal::Inhibit(false)
         }));
 
-        position_scale.connect_value_changed(clone!(@weak this => move |_| {
+        position_scale.connect_value_changed(clone!(@weak this =>  move |_| {
             if this.seeking.get() {
-                let ms = this.position.get_value() as u64;
+                let ms = this.position.value() as u64;
                 let min = ms / 60000;
                 let sec = (ms % 60000) / 1000;
 
@@ -203,7 +206,7 @@ impl Screen<(), ()> for PlayerScreen {
             }
         }));
 
-        this.list.set_make_widget_cb(clone!(@weak this => move |index| {
+        this.list.set_make_widget_cb(clone!(@weak this =>  @default-panic, move |index| {
             let widget = match this.items.borrow()[index] {
                 ListItem::Track {index, first, playing} => {
                     let track = &this.playlist.borrow()[index];
@@ -236,7 +239,7 @@ impl Screen<(), ()> for PlayerScreen {
                         row.set_subtitle(Some(&subtitle));
                     }
 
-                    row.connect_activated(clone!(@weak this => move |_| {
+                    row.connect_activated(clone!(@weak this =>  move |_| {
                         this.handle.backend.pl().set_track(index).unwrap();
                     }));
 

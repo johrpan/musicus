@@ -1,7 +1,7 @@
 use super::{EnsembleScreen, PersonScreen, PlayerScreen};
 use crate::config;
 use crate::import::SourceSelector;
-use crate::navigator::{Navigator, NavigatorWindow, NavigationHandle, Screen};
+use crate::navigator::{NavigationHandle, Navigator, NavigatorWindow, Screen};
 use crate::preferences::Preferences;
 use crate::widgets::{List, PlayerBar, Widget};
 use gettextrs::gettext;
@@ -87,64 +87,67 @@ impl Screen<(), ()> for MainScreen {
             poes: RefCell::new(Vec::new()),
         });
 
-        preferences_action.connect_activate(clone!(@weak this => move |_, _| {
+        preferences_action.connect_activate(clone!(@weak this =>  move |_, _| {
             Preferences::new(Rc::clone(&this.handle.backend), &this.handle.window).show();
         }));
 
-        about_action.connect_activate(clone!(@weak this => move |_, _| {
+        about_action.connect_activate(clone!(@weak this =>  move |_, _| {
             this.show_about_dialog();
         }));
 
-        add_button.connect_clicked(clone!(@weak this => move |_| {
+        add_button.connect_clicked(clone!(@weak this =>  move |_| {
             spawn!(@clone this, async move {
                 let window = NavigatorWindow::new(Rc::clone(&this.handle.backend));
                 replace!(window.navigator, SourceSelector).await;
             });
         }));
 
-        this.search_entry.connect_search_changed(clone!(@weak this => move |_| {
-            this.poe_list.invalidate_filter();
-        }));
-
-        this.poe_list.set_make_widget_cb(clone!(@weak this => move |index| {
-            let poe = &this.poes.borrow()[index];
-
-            let row = libadwaita::ActionRow::new();
-            row.set_activatable(true);
-            row.set_title(Some(&poe.get_title()));
-
-            let poe = poe.to_owned();
-            row.connect_activated(clone!(@weak this => move |_| {
-                let poe = poe.clone();
-                spawn!(@clone this, async move {
-                    this.leaflet.set_visible_child(&this.navigator.widget);
-
-                    match poe {
-                        PersonOrEnsemble::Person(person) => {
-                            replace!(this.navigator, PersonScreen, person).await;
-                        }
-                        PersonOrEnsemble::Ensemble(ensemble) => {
-                            replace!(this.navigator, EnsembleScreen, ensemble).await;
-                        }
-                    }
-                });
+        this.search_entry
+            .connect_search_changed(clone!(@weak this =>  move |_| {
+                this.poe_list.invalidate_filter();
             }));
 
-            row.upcast()
-        }));
+        this.poe_list
+            .set_make_widget_cb(clone!(@weak this =>  @default-panic, move |index| {
+                let poe = &this.poes.borrow()[index];
 
-        this.poe_list.set_filter_cb(clone!(@weak this => move |index| {
-            let poe = &this.poes.borrow()[index];
-            let search = this.search_entry.get_text().to_string().to_lowercase();
-            let title = poe.get_title().to_lowercase();
-            search.is_empty() || title.contains(&search)
-        }));
+                let row = libadwaita::ActionRow::new();
+                row.set_activatable(true);
+                row.set_title(Some(&poe.get_title()));
 
-        this.navigator.set_back_cb(clone!(@weak this => move || {
+                let poe = poe.to_owned();
+                row.connect_activated(clone!(@weak this =>  move |_| {
+                    let poe = poe.clone();
+                    spawn!(@clone this, async move {
+                        this.leaflet.set_visible_child(&this.navigator.widget);
+
+                        match poe {
+                            PersonOrEnsemble::Person(person) => {
+                                replace!(this.navigator, PersonScreen, person).await;
+                            }
+                            PersonOrEnsemble::Ensemble(ensemble) => {
+                                replace!(this.navigator, EnsembleScreen, ensemble).await;
+                            }
+                        }
+                    });
+                }));
+
+                row.upcast()
+            }));
+
+        this.poe_list
+            .set_filter_cb(clone!(@weak this =>  @default-panic, move |index| {
+                let poe = &this.poes.borrow()[index];
+                let search = this.search_entry.text().to_string().to_lowercase();
+                let title = poe.get_title().to_lowercase();
+                search.is_empty() || title.contains(&search)
+            }));
+
+        this.navigator.set_back_cb(clone!(@weak this =>  move || {
             this.leaflet.set_visible_child_name("sidebar");
         }));
 
-        player_bar.set_playlist_cb(clone!(@weak this => move || {
+        player_bar.set_playlist_cb(clone!(@weak this =>  move || {
             spawn!(@clone this, async move {
                 push!(this.handle, PlayerScreen).await;
             });

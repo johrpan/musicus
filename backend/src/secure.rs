@@ -1,6 +1,6 @@
 use crate::{Backend, Error, Result};
-use musicus_client::LoginData;
 use futures_channel::oneshot;
+use musicus_client::LoginData;
 use secret_service::{Collection, EncryptionType, SecretService};
 use std::collections::HashMap;
 use std::thread;
@@ -35,14 +35,18 @@ impl Backend {
         let items = collection.get_all_items()?;
 
         let key = "musicus-login-data";
-        let item = items.iter().find(|item| item.get_label().unwrap_or_default() == key);
+        let item = items
+            .iter()
+            .find(|item| item.get_label().unwrap_or_default() == key);
 
         Ok(match item {
             Some(item) => {
                 let username = item
                     .get_attributes()?
                     .get("username")
-                    .ok_or(Error::Other("Missing username in SecretService attributes."))?
+                    .ok_or(Error::Other(
+                        "Missing username in SecretService attributes.",
+                    ))?
                     .to_owned();
 
                 let password = std::str::from_utf8(&item.get_secret()?)?.to_owned();
@@ -63,7 +67,13 @@ impl Backend {
 
         let mut attributes = HashMap::new();
         attributes.insert("username", data.username.as_str());
-        collection.create_item(key, attributes, data.password.as_bytes(), true, "text/plain")?;
+        collection.create_item(
+            key,
+            attributes,
+            data.password.as_bytes(),
+            true,
+            "text/plain",
+        )?;
 
         Ok(())
     }

@@ -45,15 +45,16 @@ impl UploadSection {
             switch,
         });
 
-        this.switch.connect_property_state_notify(clone!(@weak this => move |_| {
-            this.backend.set_use_server(this.switch.get_state());
-        }));
+        this.switch
+            .connect_state_notify(clone!(@weak this =>  move |_| {
+                this.backend.set_use_server(this.switch.state());
+            }));
 
         this
     }
 
     /// Return whether the user has enabled the upload switch.
     pub fn get_active(&self) -> bool {
-        self.switch.get_active()
+        self.switch.state()
     }
 }

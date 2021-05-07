@@ -60,11 +60,11 @@ impl Screen<(Arc<ImportSession>, Medium), ()> for MediumPreview {
 
         // Connect signals and callbacks
 
-        back_button.connect_clicked(clone!(@weak this => move |_| {
+        back_button.connect_clicked(clone!(@weak this =>  move |_| {
             this.handle.pop(None);
         }));
 
-        edit_button.connect_clicked(clone!(@weak this => move |_| {
+        edit_button.connect_clicked(clone!(@weak this =>  move |_| {
             spawn!(@clone this, async move {
                 let old_medium = this.medium.borrow().clone().unwrap();
                 if let Some(medium) = push!(this.handle, MediumEditor, (this.session.clone(), Some(old_medium))).await {
@@ -74,7 +74,7 @@ impl Screen<(Arc<ImportSession>, Medium), ()> for MediumPreview {
         }));
 
         this.import_button
-            .connect_clicked(clone!(@weak this => move |_| {
+            .connect_clicked(clone!(@weak this =>  move |_| {
                 this.widget.set_visible_child_name("loading");
 
                 spawn!(@clone this, async move {
@@ -88,7 +88,7 @@ impl Screen<(Arc<ImportSession>, Medium), ()> for MediumPreview {
                 });
             }));
 
-        try_again_button.connect_clicked(clone!(@weak this => move |_| {
+        try_again_button.connect_clicked(clone!(@weak this =>  move |_| {
             this.widget.set_visible_child_name("content");
         }));
 
@@ -116,11 +116,11 @@ impl MediumPreview {
     fn set_medium(&self, medium: Medium) {
         self.name_label.set_text(&medium.name);
 
-        if let Some(widget) = self.medium_box.get_first_child() {
+        if let Some(widget) = self.medium_box.first_child() {
             let mut child = widget;
 
             loop {
-                let next_child = child.get_next_sibling();
+                let next_child = child.next_sibling();
                 self.medium_box.remove(&child);
 
                 match next_child {
