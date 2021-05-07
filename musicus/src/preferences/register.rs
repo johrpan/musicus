@@ -70,7 +70,7 @@ impl Screen<(), LoginData> for RegisterDialog {
                     let captcha_id = this.captcha_id.borrow().clone().unwrap();
                     let answer = this.captcha_entry.text().to_string();
 
-                    let email = if email.len() == 0 {
+                    let email = if email.is_empty() {
                         None
                     } else {
                         Some(email)

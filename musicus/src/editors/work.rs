@@ -11,7 +11,6 @@ use gtk_macros::get_widget;
 use libadwaita::prelude::*;
 use musicus_backend::db::{generate_id, Instrument, Person, Work, WorkPart, WorkSection};
 use std::cell::RefCell;
-use std::convert::TryInto;
 use std::rc::Rc;
 
 /// Either a work part or a work section.
@@ -86,10 +85,7 @@ impl Screen<Option<Work>, Work> for WorkEditor {
                 }
 
                 for section in work.sections {
-                    structure.insert(
-                        section.before_index.try_into().unwrap(),
-                        PartOrSection::Section(section),
-                    );
+                    structure.insert(section.before_index, PartOrSection::Section(section));
                 }
 
                 (work.id, Some(work.composer), work.instruments, structure)
@@ -141,7 +137,7 @@ impl Screen<Option<Work>, Work> for WorkEditor {
             spawn!(@clone this, async move {
                 if let Some(person) = push!(this.handle, PersonSelector).await {
                     this.show_composer(&person);
-                    this.composer.replace(Some(person.to_owned()));
+                    this.composer.replace(Some(person));
                 }
             });
         }));
@@ -179,7 +175,7 @@ impl Screen<Option<Work>, Work> for WorkEditor {
                 if let Some(instrument) = push!(this.handle, InstrumentSelector).await {
                     let length = {
                         let mut instruments = this.instruments.borrow_mut();
-                        instruments.push(instrument.clone());
+                        instruments.push(instrument);
                         instruments.len()
                     };
 
@@ -344,8 +340,8 @@ impl WorkEditor {
                 .clone()
                 .expect("Tried to create work without composer!"),
             instruments: self.instruments.borrow().clone(),
-            parts: parts,
-            sections: sections,
+            parts,
+            sections,
         };
 
         let upload = self.upload_switch.state();
@@ -356,7 +352,7 @@ impl WorkEditor {
         self.handle
             .backend
             .db()
-            .update_work(work.clone().into())
+            .update_work(work.clone())
             .await
             .unwrap();
 

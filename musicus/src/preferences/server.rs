@@ -10,7 +10,7 @@ pub struct ServerDialog {
     backend: Rc<Backend>,
     window: libadwaita::Window,
     url_entry: gtk::Entry,
-    selected_cb: RefCell<Option<Box<dyn Fn(String) -> ()>>>,
+    selected_cb: RefCell<Option<Box<dyn Fn(String)>>>,
 }
 
 impl ServerDialog {
@@ -54,7 +54,7 @@ impl ServerDialog {
     }
 
     /// The closure to call when the server was set.
-    pub fn set_selected_cb<F: Fn(String) -> () + 'static>(&self, cb: F) {
+    pub fn set_selected_cb<F: Fn(String) + 'static>(&self, cb: F) {
         self.selected_cb.replace(Some(Box::new(cb)));
     }
 

@@ -41,13 +41,13 @@ impl Screen<(), Person> for PersonSelector {
 
         this.selector
             .set_load_online(clone!(@weak this =>  @default-panic, move || {
-                let clone = this.clone();
+                let clone = this;
                 async move { Ok(clone.handle.backend.cl().get_persons().await?) }
             }));
 
         this.selector
             .set_load_local(clone!(@weak this =>  @default-panic, move || {
-                let clone = this.clone();
+                let clone = this;
                 async move { clone.handle.backend.db().get_persons().await.unwrap() }
             }));
 

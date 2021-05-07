@@ -40,7 +40,7 @@ impl UploadSection {
         let section = Section::new(&gettext("Upload"), &list);
 
         let this = Rc::new(Self {
-            widget: section.widget.clone(),
+            widget: section.widget,
             backend,
             switch,
         });

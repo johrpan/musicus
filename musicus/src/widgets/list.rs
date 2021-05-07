@@ -18,7 +18,7 @@ pub struct List {
 impl List {
     /// Create a new list. The list will be empty initially.
     pub fn new() -> Rc<Self> {
-        let model = IndexedListModel::new();
+        let model = IndexedListModel::default();
         let filter = gtk::CustomFilter::new(|_| true);
         let filter_model = gtk::FilterListModel::new(Some(&model), Some(&filter));
 

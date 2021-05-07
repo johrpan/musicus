@@ -210,7 +210,7 @@ impl MediumPreview {
     /// Copy the tracks to the music library and add the medium to the database.
     async fn import(&self) -> Result<()> {
         let medium = self.medium.borrow();
-        let medium = medium.as_ref().ok_or(anyhow!("No medium set!"))?;
+        let medium = medium.as_ref().ok_or_else(|| anyhow!("No medium set!"))?;
 
         // Create a new directory in the music library path for the imported medium.
 

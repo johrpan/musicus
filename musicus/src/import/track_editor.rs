@@ -61,10 +61,8 @@ impl Screen<(Recording, Vec<usize>), Vec<usize>> for TrackEditor {
                 let mut selection = this.selection.borrow_mut();
                 if check.is_active() {
                     selection.push(index);
-                } else {
-                    if let Some(pos) = selection.iter().position(|part| *part == index) {
-                        selection.remove(pos);
-                    }
+                } else if let Some(pos) = selection.iter().position(|part| *part == index) {
+                    selection.remove(pos);
                 }
             }));
 

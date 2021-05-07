@@ -5,16 +5,11 @@ use std::cell::Cell;
 
 glib::wrapper! {
     /// A thin list model managing only indices to an external data source.
-    pub struct IndexedListModel(ObjectSubclass<indexed_list_model::IndexedListModel>)
+    pub struct IndexedListModel(ObjectSubclass<indexed_list_model_imp::IndexedListModel>)
         @implements gio::ListModel;
 }
 
 impl IndexedListModel {
-    /// Create a new indexed list model, which will be empty initially.
-    pub fn new() -> Self {
-        glib::Object::new(&[]).unwrap()
-    }
-
     /// Set the length of the list model.
     pub fn set_length(&self, length: u32) {
         let old_length = self.property("length").unwrap().get::<u32>().unwrap();
@@ -23,7 +18,13 @@ impl IndexedListModel {
     }
 }
 
-mod indexed_list_model {
+impl Default for IndexedListModel {
+    fn default() -> Self {
+        glib::Object::new(&[]).unwrap()
+    }
+}
+
+mod indexed_list_model_imp {
     use super::*;
 
     #[derive(Debug, Default)]
@@ -97,7 +98,7 @@ mod indexed_list_model {
 
 glib::wrapper! {
     /// A simple GObject holding just one integer.
-    pub struct ItemIndex(ObjectSubclass<item_index::ItemIndex>);
+    pub struct ItemIndex(ObjectSubclass<item_index_imp::ItemIndex>);
 }
 
 impl ItemIndex {
@@ -112,7 +113,7 @@ impl ItemIndex {
     }
 }
 
-mod item_index {
+mod item_index_imp {
     use super::*;
 
     #[derive(Debug, Default)]

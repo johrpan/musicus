@@ -97,7 +97,7 @@ impl Screen<Option<Performance>, Performance> for PerformanceEditor {
             spawn!(@clone this, async move {
                 if let Some(person) = push!(this.handle, PersonSelector).await {
                     this.show_person(Some(&person));
-                    this.person.replace(Some(person.clone()));
+                    this.person.replace(Some(person));
                     this.show_ensemble(None);
                     this.ensemble.replace(None);
                 }

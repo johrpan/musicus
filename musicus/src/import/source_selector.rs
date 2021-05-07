@@ -6,7 +6,6 @@ use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
 use musicus_backend::import::ImportSession;
-use std::path::PathBuf;
 use std::rc::Rc;
 
 /// A dialog for starting to import music.
@@ -63,7 +62,7 @@ impl Screen<(), ()> for SourceSelector {
                             this.widget.set_visible_child_name("loading");
 
                             spawn!(@clone this, async move {
-                                match ImportSession::folder(PathBuf::from(path)).await {
+                                match ImportSession::folder(path).await {
                                     Ok(session) => {
                                         let result = push!(this.handle, ImportScreen, session).await;
                                         this.handle.pop(result);

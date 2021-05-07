@@ -17,7 +17,7 @@ pub struct PlayerBar {
     play_image: gtk::Image,
     pause_image: gtk::Image,
     player: Rc<RefCell<Option<Rc<Player>>>>,
-    playlist_cb: Rc<RefCell<Option<Box<dyn Fn() -> ()>>>>,
+    playlist_cb: Rc<RefCell<Option<Box<dyn Fn()>>>>,
 }
 
 impl PlayerBar {
@@ -37,7 +37,7 @@ impl PlayerBar {
         get_widget!(builder, gtk::Image, pause_image);
 
         let player = Rc::new(RefCell::new(None::<Rc<Player>>));
-        let playlist_cb = Rc::new(RefCell::new(None::<Box<dyn Fn() -> ()>>));
+        let playlist_cb = Rc::new(RefCell::new(None::<Box<dyn Fn()>>));
 
         previous_button.connect_clicked(clone!(@strong player => move |_| {
             if let Some(player) = &*player.borrow() {
@@ -74,8 +74,8 @@ impl PlayerBar {
             duration_label,
             play_image,
             pause_image,
-            player: player,
-            playlist_cb: playlist_cb,
+            player,
+            playlist_cb,
         }
     }
 
@@ -164,7 +164,7 @@ impl PlayerBar {
         }
     }
 
-    pub fn set_playlist_cb<F: Fn() -> () + 'static>(&self, cb: F) {
+    pub fn set_playlist_cb<F: Fn() + 'static>(&self, cb: F) {
         self.playlist_cb.replace(Some(Box::new(cb)));
     }
 }

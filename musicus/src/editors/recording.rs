@@ -203,7 +203,7 @@ impl RecordingEditor {
         self.handle
             .backend
             .db()
-            .update_recording(recording.clone().into())
+            .update_recording(recording.clone())
             .await
             .unwrap();
 

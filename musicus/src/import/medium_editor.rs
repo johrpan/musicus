@@ -211,7 +211,7 @@ impl MediumEditor {
             id: generate_id(),
             name: self.name_entry.text().to_string(),
             discid: Some(self.session.source_id().to_owned()),
-            tracks: tracks,
+            tracks,
         };
 
         let upload = self.publish_switch.state();

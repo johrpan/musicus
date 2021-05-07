@@ -20,8 +20,8 @@ pub struct Selector<T: 'static> {
     stack: gtk::Stack,
     list: Rc<List>,
     items: RefCell<Vec<T>>,
-    back_cb: RefCell<Option<Box<dyn Fn() -> ()>>>,
-    add_cb: RefCell<Option<Box<dyn Fn() -> ()>>>,
+    back_cb: RefCell<Option<Box<dyn Fn()>>>,
+    add_cb: RefCell<Option<Box<dyn Fn()>>>,
     make_widget: RefCell<Option<Box<dyn Fn(&T) -> gtk::Widget>>>,
     load_online: RefCell<Option<Box<dyn Fn() -> Box<dyn Future<Output = Result<Vec<T>>>>>>>,
     load_local: RefCell<Option<Box<dyn Fn() -> Box<dyn Future<Output = Vec<T>>>>>>,
@@ -147,12 +147,12 @@ impl<T> Selector<T> {
     }
 
     /// Set the closure to be called when the user wants to go back.
-    pub fn set_back_cb<F: Fn() -> () + 'static>(&self, cb: F) {
+    pub fn set_back_cb<F: Fn() + 'static>(&self, cb: F) {
         self.back_cb.replace(Some(Box::new(cb)));
     }
 
     /// Set the closure to be called when the user wants to add an item.
-    pub fn set_add_cb<F: Fn() -> () + 'static>(&self, cb: F) {
+    pub fn set_add_cb<F: Fn() + 'static>(&self, cb: F) {
         self.add_cb.replace(Some(Box::new(cb)));
     }
 
