@@ -17,7 +17,7 @@ impl NavigatorWindow {
         window.set_default_size(600, 424);
         let placeholder = gtk::Label::new(None);
         let navigator = Navigator::new(backend, &window, &placeholder);
-        window.set_child(Some(&navigator.widget));
+        adw::prelude::WindowExt::set_child(&window, Some(&navigator.widget));
 
         let this = Rc::new(Self { navigator, window });
 

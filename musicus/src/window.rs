@@ -42,7 +42,7 @@ impl Window {
         loading_screen.append(&spinner);
 
         let navigator = Navigator::new(Rc::clone(&backend), &window, &loading_screen);
-        window.set_child(Some(&navigator.widget));
+        adw::prelude::ApplicationWindowExt::set_child(&window, Some(&navigator.widget));
 
         let this = Rc::new(Self {
             backend,
