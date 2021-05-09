@@ -1,10 +1,10 @@
 use crate::navigator::{NavigationHandle, Screen};
 use crate::selectors::{EnsembleSelector, InstrumentSelector, PersonSelector};
 use crate::widgets::{ButtonRow, Editor, Section, Widget};
+use adw::prelude::*;
 use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
-use libadwaita::prelude::*;
 use musicus_backend::db::{Ensemble, Instrument, Performance, Person};
 use std::cell::RefCell;
 use std::rc::Rc;

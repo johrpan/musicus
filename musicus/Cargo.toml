@@ -32,7 +32,7 @@ features = ["v2_64"]
 git = "https://github.com/gtk-rs/gtk4-rs"
 package = "gtk4"
 
-[dependencies.libadwaita]
+[dependencies.adw]
 git = "https://gitlab.gnome.org/World/Rust/libadwaita-rs.git"
 package = "libadwaita"
 

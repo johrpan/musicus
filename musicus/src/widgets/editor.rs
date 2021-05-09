@@ -12,7 +12,7 @@ pub struct Editor {
     back_button: gtk::Button,
 
     /// The title widget within the header bar.
-    window_title: libadwaita::WindowTitle,
+    window_title: adw::WindowTitle,
 
     /// The button to save the edited item.
     save_button: gtk::Button,
@@ -21,7 +21,7 @@ pub struct Editor {
     content_box: gtk::Box,
 
     /// The status page for the error screen.
-    status_page: libadwaita::StatusPage,
+    status_page: adw::StatusPage,
 }
 
 impl Editor {
@@ -31,10 +31,10 @@ impl Editor {
 
         get_widget!(builder, gtk::Stack, widget);
         get_widget!(builder, gtk::Button, back_button);
-        get_widget!(builder, libadwaita::WindowTitle, window_title);
+        get_widget!(builder, adw::WindowTitle, window_title);
         get_widget!(builder, gtk::Button, save_button);
         get_widget!(builder, gtk::Box, content_box);
-        get_widget!(builder, libadwaita::StatusPage, status_page);
+        get_widget!(builder, adw::StatusPage, status_page);
         get_widget!(builder, gtk::Button, try_again_button);
 
         try_again_button.connect_clicked(clone!(@strong widget => move |_| {

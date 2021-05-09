@@ -1,10 +1,10 @@
 use super::selector::Selector;
 use crate::navigator::{NavigationHandle, Screen};
 use crate::widgets::Widget;
+use adw::prelude::*;
 use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
-use libadwaita::prelude::*;
 use musicus_backend::db::{Ensemble, Medium, Person};
 use std::rc::Rc;
 
@@ -87,7 +87,7 @@ impl Screen<(), Medium> for MediumSelector {
             }));
 
         this.selector.set_make_widget(clone!(@weak this =>  @default-panic, move |poe| {
-            let row = libadwaita::ActionRow::new();
+            let row = adw::ActionRow::new();
             row.set_activatable(true);
             row.set_title(Some(&poe.get_title()));
 
@@ -161,7 +161,7 @@ impl Screen<PersonOrEnsemble, Medium> for MediumSelectorMediumScreen {
 
         this.selector
             .set_make_widget(clone!(@weak this =>  @default-panic, move |medium| {
-                let row = libadwaita::ActionRow::new();
+                let row = adw::ActionRow::new();
                 row.set_activatable(true);
                 row.set_title(Some(&medium.name));
 

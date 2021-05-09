@@ -1,12 +1,12 @@
 use super::track_set_editor::{TrackData, TrackSetData, TrackSetEditor};
 use crate::navigator::{NavigationHandle, Screen};
 use crate::widgets::{List, Widget};
+use adw::prelude::*;
 use anyhow::Result;
 use glib::clone;
 use glib::prelude::*;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
-use libadwaita::prelude::*;
 use musicus_backend::db::{generate_id, Medium, Track};
 use musicus_backend::import::ImportSession;
 use std::cell::RefCell;
@@ -21,7 +21,7 @@ pub struct MediumEditor {
     done_button: gtk::Button,
     name_entry: gtk::Entry,
     publish_switch: gtk::Switch,
-    status_page: libadwaita::StatusPage,
+    status_page: adw::StatusPage,
     track_set_list: Rc<List>,
     track_sets: RefCell<Vec<TrackSetData>>,
 }
@@ -43,7 +43,7 @@ impl Screen<(Arc<ImportSession>, Option<Medium>), Medium> for MediumEditor {
         get_widget!(builder, gtk::Switch, publish_switch);
         get_widget!(builder, gtk::Button, add_button);
         get_widget!(builder, gtk::Frame, frame);
-        get_widget!(builder, libadwaita::StatusPage, status_page);
+        get_widget!(builder, adw::StatusPage, status_page);
         get_widget!(builder, gtk::Button, try_again_button);
         get_widget!(builder, gtk::Button, cancel_button);
 
@@ -120,7 +120,7 @@ impl Screen<(Arc<ImportSession>, Option<Medium>), Medium> for MediumEditor {
                 edit_button.set_valign(gtk::Align::Center);
                 edit_button.set_child(Some(&edit_image));
 
-                let row = libadwaita::ActionRow::new();
+                let row = adw::ActionRow::new();
                 row.set_activatable(true);
                 row.set_title(Some(&title));
                 row.set_subtitle(Some(&subtitle));

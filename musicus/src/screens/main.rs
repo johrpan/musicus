@@ -4,11 +4,11 @@ use crate::import::SourceSelector;
 use crate::navigator::{NavigationHandle, Navigator, NavigatorWindow, Screen};
 use crate::preferences::Preferences;
 use crate::widgets::{List, PlayerBar, Widget};
+use adw::prelude::*;
 use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
-use libadwaita::prelude::*;
 use musicus_backend::db::{Ensemble, Person};
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -35,7 +35,7 @@ impl PersonOrEnsemble {
 pub struct MainScreen {
     handle: NavigationHandle<()>,
     widget: gtk::Box,
-    leaflet: libadwaita::Leaflet,
+    leaflet: adw::Leaflet,
     search_entry: gtk::SearchEntry,
     stack: gtk::Stack,
     poe_list: Rc<List>,
@@ -49,7 +49,7 @@ impl Screen<(), ()> for MainScreen {
         let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/main_screen.ui");
 
         get_widget!(builder, gtk::Box, widget);
-        get_widget!(builder, libadwaita::Leaflet, leaflet);
+        get_widget!(builder, adw::Leaflet, leaflet);
         get_widget!(builder, gtk::Button, add_button);
         get_widget!(builder, gtk::SearchEntry, search_entry);
         get_widget!(builder, gtk::Stack, stack);
@@ -111,7 +111,7 @@ impl Screen<(), ()> for MainScreen {
             .set_make_widget_cb(clone!(@weak this =>  @default-panic, move |index| {
                 let poe = &this.poes.borrow()[index];
 
-                let row = libadwaita::ActionRow::new();
+                let row = adw::ActionRow::new();
                 row.set_activatable(true);
                 row.set_title(Some(&poe.get_title()));
 

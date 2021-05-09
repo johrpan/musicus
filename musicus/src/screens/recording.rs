@@ -2,10 +2,10 @@ use crate::editors::RecordingEditor;
 use crate::navigator::{NavigationHandle, NavigatorWindow, Screen};
 use crate::widgets;
 use crate::widgets::{List, Section, Widget};
+use adw::prelude::*;
 use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
-use libadwaita::prelude::*;
 use musicus_backend::db::{Recording, Track};
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -87,7 +87,7 @@ impl Screen<Recording, ()> for RecordingScreen {
                     title_parts.join(", ")
                 };
 
-                let row = libadwaita::ActionRow::new();
+                let row = adw::ActionRow::new();
                 row.set_title(Some(&title));
 
                 row.upcast()

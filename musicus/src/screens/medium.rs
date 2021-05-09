@@ -1,10 +1,10 @@
 use crate::navigator::{NavigationHandle, Screen};
 use crate::widgets;
 use crate::widgets::{List, Section, Widget};
+use adw::prelude::*;
 use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
-use libadwaita::prelude::*;
 use musicus_backend::db::Medium;
 use std::rc::Rc;
 
@@ -77,7 +77,7 @@ impl Screen<Medium, ()> for MediumScreen {
                     parts.join(", ")
                 };
 
-                let row = libadwaita::ActionRow::new();
+                let row = adw::ActionRow::new();
                 row.set_selectable(false);
                 row.set_activatable(false);
                 row.set_title(Some(&title));

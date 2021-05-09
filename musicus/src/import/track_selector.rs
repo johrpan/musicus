@@ -1,9 +1,9 @@
 use crate::navigator::{NavigationHandle, Screen};
 use crate::widgets::Widget;
+use adw::prelude::*;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
-use libadwaita::prelude::*;
 use musicus_backend::import::ImportSession;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -76,7 +76,7 @@ impl Screen<Arc<ImportSession>, Vec<usize>> for TrackSelector {
                 }
             }));
 
-            let row = libadwaita::ActionRow::new();
+            let row = adw::ActionRow::new();
             row.add_prefix(&check);
             row.set_activatable_widget(Some(&check));
             row.set_activatable(true);

@@ -7,7 +7,7 @@ use std::rc::Rc;
 /// The main window of this application. This will also handle initializing and managing the
 /// backend.
 pub struct Window {
-    window: libadwaita::ApplicationWindow,
+    window: adw::ApplicationWindow,
     backend: Rc<Backend>,
     navigator: Rc<Navigator>,
 }
@@ -16,7 +16,7 @@ impl Window {
     pub fn new(app: &gtk::Application) -> Rc<Self> {
         let backend = Rc::new(Backend::new());
 
-        let window = libadwaita::ApplicationWindow::new(app);
+        let window = adw::ApplicationWindow::new(app);
         window.set_title(Some("Musicus"));
         window.set_default_size(1000, 707);
 
@@ -24,8 +24,8 @@ impl Window {
             .orientation(gtk::Orientation::Vertical)
             .build();
 
-        let header = libadwaita::HeaderBarBuilder::new()
-            .title_widget(&libadwaita::WindowTitle::new(Some("Musicus"), None))
+        let header = adw::HeaderBarBuilder::new()
+            .title_widget(&adw::WindowTitle::new(Some("Musicus"), None))
             .build();
 
         let spinner = gtk::SpinnerBuilder::new()

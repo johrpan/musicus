@@ -1,10 +1,10 @@
 use crate::navigator::{NavigationHandle, Screen};
 use crate::widgets::{List, Widget};
+use adw::prelude::*;
 use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
-use libadwaita::prelude::*;
 use musicus_backend::db::Track;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
@@ -224,7 +224,7 @@ impl Screen<(), ()> for PlayerScreen {
                         parts.join(", ")
                     };
 
-                    let row = libadwaita::ActionRow::new();
+                    let row = adw::ActionRow::new();
                     row.set_selectable(false);
                     row.set_activatable(true);
                     row.set_title(Some(&title));

@@ -1,10 +1,10 @@
+use adw::prelude::*;
 use gtk::prelude::*;
-use libadwaita::prelude::*;
 
 /// A list box row with an entry.
 pub struct EntryRow {
     /// The actual GTK widget.
-    pub widget: libadwaita::ActionRow,
+    pub widget: adw::ActionRow,
 
     /// The managed entry.
     pub entry: gtk::Entry,
@@ -18,7 +18,7 @@ impl EntryRow {
             .valign(gtk::Align::Center)
             .build();
 
-        let widget = libadwaita::ActionRowBuilder::new()
+        let widget = adw::ActionRowBuilder::new()
             .activatable(true)
             .activatable_widget(&entry)
             .title(title)

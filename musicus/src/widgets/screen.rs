@@ -13,7 +13,7 @@ pub struct Screen {
     back_button: gtk::Button,
 
     /// The title widget within the header bar.
-    window_title: libadwaita::WindowTitle,
+    window_title: adw::WindowTitle,
 
     /// The action menu.
     menu: gio::Menu,
@@ -38,7 +38,7 @@ impl Screen {
 
         get_widget!(builder, gtk::Box, widget);
         get_widget!(builder, gtk::Button, back_button);
-        get_widget!(builder, libadwaita::WindowTitle, window_title);
+        get_widget!(builder, adw::WindowTitle, window_title);
         get_widget!(builder, gio::Menu, menu);
         get_widget!(builder, gtk::ToggleButton, search_button);
         get_widget!(builder, gtk::SearchEntry, search_entry);

@@ -3,10 +3,10 @@ use crate::editors::WorkEditor;
 use crate::navigator::{NavigationHandle, NavigatorWindow, Screen};
 use crate::widgets;
 use crate::widgets::{List, Section, Widget};
+use adw::prelude::*;
 use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
-use libadwaita::prelude::*;
 use musicus_backend::db::{Recording, Work};
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -70,7 +70,7 @@ impl Screen<Work, ()> for WorkScreen {
             clone!(@weak this =>  @default-panic, move |index| {
                 let recording = &this.recordings.borrow()[index];
 
-                let row = libadwaita::ActionRow::new();
+                let row = adw::ActionRow::new();
                 row.set_activatable(true);
                 row.set_title(Some(&recording.work.get_title()));
                 row.set_subtitle(Some(&recording.get_performers()));

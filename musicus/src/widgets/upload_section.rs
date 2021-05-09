@@ -1,7 +1,7 @@
 use super::Section;
+use adw::prelude::*;
 use gettextrs::gettext;
 use glib::clone;
-use libadwaita::prelude::*;
 use musicus_backend::Backend;
 use std::rc::Rc;
 
@@ -28,7 +28,7 @@ impl UploadSection {
             .valign(gtk::Align::Center)
             .build();
 
-        let row = libadwaita::ActionRowBuilder::new()
+        let row = adw::ActionRowBuilder::new()
             .title("Upload changes to the server")
             .activatable(true)
             .activatable_widget(&switch)

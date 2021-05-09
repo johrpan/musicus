@@ -12,7 +12,7 @@ use std::rc::Rc;
 pub struct SourceSelector {
     handle: NavigationHandle<()>,
     widget: gtk::Stack,
-    status_page: libadwaita::StatusPage,
+    status_page: adw::StatusPage,
 }
 
 impl Screen<(), ()> for SourceSelector {
@@ -26,7 +26,7 @@ impl Screen<(), ()> for SourceSelector {
         get_widget!(builder, gtk::Button, back_button);
         get_widget!(builder, gtk::Button, folder_button);
         get_widget!(builder, gtk::Button, disc_button);
-        get_widget!(builder, libadwaita::StatusPage, status_page);
+        get_widget!(builder, adw::StatusPage, status_page);
         get_widget!(builder, gtk::Button, try_again_button);
 
         let this = Rc::new(Self {

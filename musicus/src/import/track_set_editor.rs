@@ -3,11 +3,11 @@ use super::track_selector::TrackSelector;
 use crate::navigator::{NavigationHandle, Screen};
 use crate::selectors::RecordingSelector;
 use crate::widgets::{List, Widget};
+use adw::prelude::*;
 use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
-use libadwaita::prelude::*;
 use musicus_backend::db::Recording;
 use musicus_backend::import::ImportSession;
 use std::cell::RefCell;
@@ -37,7 +37,7 @@ pub struct TrackSetEditor {
     session: Arc<ImportSession>,
     widget: gtk::Box,
     save_button: gtk::Button,
-    recording_row: libadwaita::ActionRow,
+    recording_row: adw::ActionRow,
     track_list: Rc<List>,
     recording: RefCell<Option<Recording>>,
     tracks: RefCell<Vec<TrackData>>,
@@ -53,7 +53,7 @@ impl Screen<Arc<ImportSession>, TrackSetData> for TrackSetEditor {
         get_widget!(builder, gtk::Box, widget);
         get_widget!(builder, gtk::Button, back_button);
         get_widget!(builder, gtk::Button, save_button);
-        get_widget!(builder, libadwaita::ActionRow, recording_row);
+        get_widget!(builder, adw::ActionRow, recording_row);
         get_widget!(builder, gtk::Button, select_recording_button);
         get_widget!(builder, gtk::Button, edit_tracks_button);
         get_widget!(builder, gtk::Frame, tracks_frame);
@@ -145,7 +145,7 @@ impl Screen<Arc<ImportSession>, TrackSetData> for TrackSetEditor {
             edit_button.set_valign(gtk::Align::Center);
             edit_button.set_child(Some(&edit_image));
 
-            let row = libadwaita::ActionRow::new();
+            let row = adw::ActionRow::new();
             row.set_activatable(true);
             row.set_title(Some(&title));
             row.set_subtitle(Some(track_name));

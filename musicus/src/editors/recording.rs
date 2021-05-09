@@ -2,12 +2,12 @@ use super::performance::PerformanceEditor;
 use crate::navigator::{NavigationHandle, Screen};
 use crate::selectors::WorkSelector;
 use crate::widgets::{List, Widget};
+use adw::prelude::*;
 use anyhow::Result;
 use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
-use libadwaita::prelude::*;
 use musicus_backend::db::{generate_id, Performance, Recording, Work};
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -18,7 +18,7 @@ pub struct RecordingEditor {
     widget: gtk::Stack,
     save_button: gtk::Button,
     info_bar: gtk::InfoBar,
-    work_row: libadwaita::ActionRow,
+    work_row: adw::ActionRow,
     comment_entry: gtk::Entry,
     upload_switch: gtk::Switch,
     performance_list: Rc<List>,
@@ -38,7 +38,7 @@ impl Screen<Option<Recording>, Recording> for RecordingEditor {
         get_widget!(builder, gtk::Button, back_button);
         get_widget!(builder, gtk::Button, save_button);
         get_widget!(builder, gtk::InfoBar, info_bar);
-        get_widget!(builder, libadwaita::ActionRow, work_row);
+        get_widget!(builder, adw::ActionRow, work_row);
         get_widget!(builder, gtk::Button, work_button);
         get_widget!(builder, gtk::Entry, comment_entry);
         get_widget!(builder, gtk::Switch, upload_switch);
@@ -137,7 +137,7 @@ impl Screen<Option<Recording>, Recording> for RecordingEditor {
                 });
             }));
 
-            let row = libadwaita::ActionRow::new();
+            let row = adw::ActionRow::new();
             row.set_activatable(true);
             row.set_title(Some(&performance.get_title()));
             row.add_suffix(&delete_button);

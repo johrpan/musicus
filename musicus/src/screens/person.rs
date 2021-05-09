@@ -3,10 +3,10 @@ use crate::editors::PersonEditor;
 use crate::navigator::{NavigationHandle, NavigatorWindow, Screen};
 use crate::widgets;
 use crate::widgets::{List, Section, Widget};
+use adw::prelude::*;
 use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
-use libadwaita::prelude::*;
 use musicus_backend::db::{Medium, Person, Recording, Work};
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -81,7 +81,7 @@ impl Screen<Person, ()> for PersonScreen {
             .set_make_widget_cb(clone!(@weak this =>  @default-panic, move |index| {
                 let work = &this.works.borrow()[index];
 
-                let row = libadwaita::ActionRow::new();
+                let row = adw::ActionRow::new();
                 row.set_activatable(true);
                 row.set_title(Some(&work.title));
 
@@ -108,7 +108,7 @@ impl Screen<Person, ()> for PersonScreen {
             clone!(@weak this =>  @default-panic, move |index| {
                 let recording = &this.recordings.borrow()[index];
 
-                let row = libadwaita::ActionRow::new();
+                let row = adw::ActionRow::new();
                 row.set_activatable(true);
                 row.set_title(Some(&recording.work.get_title()));
                 row.set_subtitle(Some(&recording.get_performers()));
@@ -137,7 +137,7 @@ impl Screen<Person, ()> for PersonScreen {
             .set_make_widget_cb(clone!(@weak this => @default-panic,  move |index| {
                 let medium = &this.mediums.borrow()[index];
 
-                let row = libadwaita::ActionRow::new();
+                let row = adw::ActionRow::new();
                 row.set_activatable(true);
                 row.set_title(Some(&medium.name));
 

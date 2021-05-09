@@ -1,11 +1,11 @@
 use super::Widget;
+use adw::prelude::*;
 use gtk::prelude::*;
-use libadwaita::prelude::*;
 
 /// A list box row with a single button.
 pub struct ButtonRow {
     /// The actual GTK widget.
-    pub widget: libadwaita::ActionRow,
+    pub widget: adw::ActionRow,
 
     /// The managed button.
     button: gtk::Button,
@@ -19,7 +19,7 @@ impl ButtonRow {
             .label(label)
             .build();
 
-        let widget = libadwaita::ActionRowBuilder::new()
+        let widget = adw::ActionRowBuilder::new()
             .activatable(true)
             .activatable_widget(&button)
             .title(title)

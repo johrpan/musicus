@@ -23,7 +23,7 @@ pub struct MediumPreview {
     done_stack: gtk::Stack,
     name_label: gtk::Label,
     medium_box: gtk::Box,
-    status_page: libadwaita::StatusPage,
+    status_page: adw::StatusPage,
 }
 
 impl Screen<(Arc<ImportSession>, Medium), ()> for MediumPreview {
@@ -43,7 +43,7 @@ impl Screen<(Arc<ImportSession>, Medium), ()> for MediumPreview {
         get_widget!(builder, gtk::Stack, done_stack);
         get_widget!(builder, gtk::Box, medium_box);
         get_widget!(builder, gtk::Label, name_label);
-        get_widget!(builder, libadwaita::StatusPage, status_page);
+        get_widget!(builder, adw::StatusPage, status_page);
         get_widget!(builder, gtk::Button, try_again_button);
 
         let this = Rc::new(Self {
@@ -143,7 +143,7 @@ impl MediumPreview {
                     .selection_mode(gtk::SelectionMode::None)
                     .build();
 
-                let header = libadwaita::ActionRowBuilder::new()
+                let header = adw::ActionRowBuilder::new()
                     .activatable(false)
                     .title(&track.recording.work.get_title())
                     .subtitle(&track.recording.get_performers())
@@ -173,7 +173,7 @@ impl MediumPreview {
                     parts.join(", ")
                 };
 
-                let row = libadwaita::ActionRowBuilder::new()
+                let row = adw::ActionRowBuilder::new()
                     .activatable(false)
                     .title(&title)
                     .subtitle(&import_tracks[track.source_index].name)

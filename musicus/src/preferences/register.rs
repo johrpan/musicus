@@ -1,9 +1,9 @@
 use crate::navigator::{NavigationHandle, Screen};
 use crate::widgets::Widget;
+use adw::prelude::*;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
-use libadwaita::prelude::*;
 use musicus_backend::client::{LoginData, UserRegistration};
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -16,7 +16,7 @@ pub struct RegisterDialog {
     email_entry: gtk::Entry,
     password_entry: gtk::Entry,
     repeat_password_entry: gtk::Entry,
-    captcha_row: libadwaita::ActionRow,
+    captcha_row: adw::ActionRow,
     captcha_entry: gtk::Entry,
     captcha_id: RefCell<Option<String>>,
 }
@@ -34,7 +34,7 @@ impl Screen<(), LoginData> for RegisterDialog {
         get_widget!(builder, gtk::Entry, email_entry);
         get_widget!(builder, gtk::Entry, password_entry);
         get_widget!(builder, gtk::Entry, repeat_password_entry);
-        get_widget!(builder, libadwaita::ActionRow, captcha_row);
+        get_widget!(builder, adw::ActionRow, captcha_row);
         get_widget!(builder, gtk::Entry, captcha_entry);
 
         let this = Rc::new(Self {

@@ -3,10 +3,10 @@ use super::medium_preview::MediumPreview;
 use crate::navigator::{NavigationHandle, Screen};
 use crate::selectors::MediumSelector;
 use crate::widgets::Widget;
+use adw::prelude::*;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
-use libadwaita::prelude::*;
 use musicus_backend::db::Medium;
 use musicus_backend::import::ImportSession;
 use musicus_backend::Error;
@@ -20,7 +20,7 @@ pub struct ImportScreen {
     widget: gtk::Box,
     server_check_button: gtk::CheckButton,
     matching_stack: gtk::Stack,
-    error_row: libadwaita::ActionRow,
+    error_row: adw::ActionRow,
     matching_list: gtk::ListBox,
 }
 
@@ -71,7 +71,7 @@ impl ImportScreen {
         let this = self;
 
         for medium in mediums {
-            let row = libadwaita::ActionRowBuilder::new()
+            let row = adw::ActionRowBuilder::new()
                 .title(&medium.name)
                 .subtitle(&format!("{} Tracks", medium.tracks.len()))
                 .activatable(true)
@@ -113,7 +113,7 @@ impl Screen<Arc<ImportSession>, ()> for ImportScreen {
         get_widget!(builder, gtk::Button, back_button);
         get_widget!(builder, gtk::Stack, matching_stack);
         get_widget!(builder, gtk::Button, try_again_button);
-        get_widget!(builder, libadwaita::ActionRow, error_row);
+        get_widget!(builder, adw::ActionRow, error_row);
         get_widget!(builder, gtk::CheckButton, server_check_button);
         get_widget!(builder, gtk::ListBox, matching_list);
         get_widget!(builder, gtk::Button, select_button);

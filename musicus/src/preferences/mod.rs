@@ -1,9 +1,9 @@
 use crate::navigator::NavigatorWindow;
+use adw::prelude::*;
 use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
-use libadwaita::prelude::*;
 use musicus_backend::Backend;
 use std::rc::Rc;
 
@@ -18,10 +18,10 @@ mod register;
 /// A dialog for configuring the app.
 pub struct Preferences {
     backend: Rc<Backend>,
-    window: libadwaita::Window,
-    music_library_path_row: libadwaita::ActionRow,
-    url_row: libadwaita::ActionRow,
-    login_row: libadwaita::ActionRow,
+    window: adw::Window,
+    music_library_path_row: adw::ActionRow,
+    url_row: adw::ActionRow,
+    login_row: adw::ActionRow,
 }
 
 impl Preferences {
@@ -30,12 +30,12 @@ impl Preferences {
         // Create UI
         let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/preferences.ui");
 
-        get_widget!(builder, libadwaita::Window, window);
-        get_widget!(builder, libadwaita::ActionRow, music_library_path_row);
+        get_widget!(builder, adw::Window, window);
+        get_widget!(builder, adw::ActionRow, music_library_path_row);
         get_widget!(builder, gtk::Button, select_music_library_path_button);
-        get_widget!(builder, libadwaita::ActionRow, url_row);
+        get_widget!(builder, adw::ActionRow, url_row);
         get_widget!(builder, gtk::Button, url_button);
-        get_widget!(builder, libadwaita::ActionRow, login_row);
+        get_widget!(builder, adw::ActionRow, login_row);
         get_widget!(builder, gtk::Button, login_button);
 
         window.set_transient_for(Some(parent));

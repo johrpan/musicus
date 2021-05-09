@@ -19,8 +19,8 @@ impl Screen<(), ()> for WelcomeScreen {
             .orientation(gtk::Orientation::Vertical)
             .build();
 
-        let header = libadwaita::HeaderBarBuilder::new()
-            .title_widget(&libadwaita::WindowTitle::new(Some("Musicus"), None))
+        let header = adw::HeaderBarBuilder::new()
+            .title_widget(&adw::WindowTitle::new(Some("Musicus"), None))
             .build();
 
         let button = gtk::ButtonBuilder::new()
@@ -28,7 +28,7 @@ impl Screen<(), ()> for WelcomeScreen {
             .label(&gettext("Select folder"))
             .build();
 
-        let welcome = libadwaita::StatusPageBuilder::new()
+        let welcome = adw::StatusPageBuilder::new()
             .icon_name("folder-music-symbolic")
             .title(&gettext("Welcome to Musicus!"))
             .description(&gettext(
