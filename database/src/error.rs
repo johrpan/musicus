@@ -21,6 +21,9 @@ pub enum Error {
 
     #[error(transparent)]
     ReceiveError(#[from] tokio::sync::oneshot::error::RecvError),
+
+    #[error("{0}")]
+    Other(&'static str),
 }
 
 /// Return type for database methods.

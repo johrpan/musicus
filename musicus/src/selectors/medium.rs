@@ -5,25 +5,8 @@ use adw::prelude::*;
 use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
-use musicus_backend::db::{Ensemble, Medium, Person};
+use musicus_backend::db::{Medium, PersonOrEnsemble};
 use std::rc::Rc;
-
-/// Either a person or an ensemble to be shown in the list.
-#[derive(Clone, Debug)]
-pub enum PersonOrEnsemble {
-    Person(Person),
-    Ensemble(Ensemble),
-}
-
-impl PersonOrEnsemble {
-    /// Get a short textual representation of the item.
-    pub fn get_title(&self) -> String {
-        match self {
-            PersonOrEnsemble::Person(person) => person.name_lf(),
-            PersonOrEnsemble::Ensemble(ensemble) => ensemble.name.clone(),
-        }
-    }
-}
 
 /// A screen for selecting a medium.
 pub struct MediumSelector {

@@ -5,7 +5,8 @@ use adw::prelude::*;
 use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
-use musicus_backend::db::{Ensemble, Instrument, Performance, Person};
+use log::error;
+use musicus_backend::db::{Ensemble, Instrument, Performance, Person, PersonOrEnsemble};
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -85,8 +86,14 @@ impl Screen<Option<Performance>, Performance> for PerformanceEditor {
 
         this.editor.set_save_cb(clone!(@weak this => move || {
             let performance = Performance {
-                person: this.person.borrow().clone(),
-                ensemble: this.ensemble.borrow().clone(),
+                performer: if let Some(person) = this.person.borrow().clone() {
+                    PersonOrEnsemble::Person(person)
+                } else if let Some(ensemble) = this.ensemble.borrow().clone() {
+                    PersonOrEnsemble::Ensemble(ensemble)
+                } else {
+                    error!("Tried to save performance without performer");
+                    return;
+                },
                 role: this.role.borrow().clone(),
             };
 
@@ -133,13 +140,16 @@ impl Screen<Option<Performance>, Performance> for PerformanceEditor {
         // Initialize
 
         if let Some(performance) = performance {
-            if let Some(person) = performance.person {
-                this.show_person(Some(&person));
-                this.person.replace(Some(person));
-            } else if let Some(ensemble) = performance.ensemble {
-                this.show_ensemble(Some(&ensemble));
-                this.ensemble.replace(Some(ensemble));
-            }
+            match performance.performer {
+                PersonOrEnsemble::Person(person) => {
+                    this.show_person(Some(&person));
+                    this.person.replace(Some(person));
+                }
+                PersonOrEnsemble::Ensemble(ensemble) => {
+                    this.show_ensemble(Some(&ensemble));
+                    this.ensemble.replace(Some(ensemble));
+                }
+            };
 
             if let Some(role) = performance.role {
                 this.show_role(Some(&role));

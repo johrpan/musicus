@@ -5,84 +5,6 @@ use diesel::prelude::*;
 use log::info;
 use serde::{Deserialize, Serialize};
 
-/// Database table data for a recording.
-#[derive(Insertable, Queryable, Debug, Clone)]
-#[table_name = "recordings"]
-struct RecordingRow {
-    pub id: String,
-    pub work: String,
-    pub comment: String,
-}
-
-impl From<Recording> for RecordingRow {
-    fn from(recording: Recording) -> Self {
-        RecordingRow {
-            id: recording.id,
-            work: recording.work.id,
-            comment: recording.comment,
-        }
-    }
-}
-
-/// Database table data for a performance.
-#[derive(Insertable, Queryable, Debug, Clone)]
-#[table_name = "performances"]
-struct PerformanceRow {
-    pub id: i64,
-    pub recording: String,
-    pub person: Option<String>,
-    pub ensemble: Option<String>,
-    pub role: Option<String>,
-}
-
-/// How a person or ensemble was involved in a recording.
-// TODO: Replace person/ensemble with an enum.
-#[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct Performance {
-    pub person: Option<Person>,
-    pub ensemble: Option<Ensemble>,
-    pub role: Option<Instrument>,
-}
-
-impl Performance {
-    /// Get a string representation of the performance.
-    // TODO: Replace with impl Display.
-    pub fn get_title(&self) -> String {
-        let mut text = if self.is_person() {
-            self.unwrap_person().name_fl()
-        } else {
-            self.unwrap_ensemble().name
-        };
-
-        if self.has_role() {
-            text = text + " (" + &self.unwrap_role().name + ")";
-        }
-
-        text
-    }
-
-    pub fn is_person(&self) -> bool {
-        self.person.is_some()
-    }
-
-    pub fn unwrap_person(&self) -> Person {
-        self.person.clone().unwrap()
-    }
-
-    pub fn unwrap_ensemble(&self) -> Ensemble {
-        self.ensemble.clone().unwrap()
-    }
-
-    pub fn has_role(&self) -> bool {
-        self.role.clone().is_some()
-    }
-
-    pub fn unwrap_role(&self) -> Instrument {
-        self.role.clone().unwrap()
-    }
-}
-
 /// A specific recording of a work.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -117,6 +39,75 @@ impl Recording {
     }
 }
 
+/// How a person or ensemble was involved in a recording.
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct Performance {
+    pub performer: PersonOrEnsemble,
+    pub role: Option<Instrument>,
+}
+
+impl Performance {
+    /// Get a string representation of the performance.
+    // TODO: Replace with impl Display.
+    pub fn get_title(&self) -> String {
+        let performer_title = self.performer.get_title();
+
+        if let Some(role) = &self.role {
+            format!("{} ({})", performer_title, role.name)
+        } else {
+            performer_title
+        }
+    }
+}
+
+/// Either a person or an ensemble.
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub enum PersonOrEnsemble {
+    Person(Person),
+    Ensemble(Ensemble),
+}
+
+impl PersonOrEnsemble {
+    /// Get a short textual representation of the item.
+    pub fn get_title(&self) -> String {
+        match self {
+            PersonOrEnsemble::Person(person) => person.name_lf(),
+            PersonOrEnsemble::Ensemble(ensemble) => ensemble.name.clone(),
+        }
+    }
+}
+
+/// Database table data for a recording.
+#[derive(Insertable, Queryable, Debug, Clone)]
+#[table_name = "recordings"]
+struct RecordingRow {
+    pub id: String,
+    pub work: String,
+    pub comment: String,
+}
+
+impl From<Recording> for RecordingRow {
+    fn from(recording: Recording) -> Self {
+        RecordingRow {
+            id: recording.id,
+            work: recording.work.id,
+            comment: recording.comment,
+        }
+    }
+}
+
+/// Database table data for a performance.
+#[derive(Insertable, Queryable, Debug, Clone)]
+#[table_name = "performances"]
+struct PerformanceRow {
+    pub id: i64,
+    pub recording: String,
+    pub person: Option<String>,
+    pub ensemble: Option<String>,
+    pub role: Option<String>,
+}
+
 impl Database {
     /// Update an existing recording or insert a new one.
     // TODO: Think about whether to also insert the other items.
@@ -134,15 +125,16 @@ impl Database {
             }
 
             for performance in &recording.performances {
-                if let Some(person) = &performance.person {
-                    if self.get_person(&person.id)?.is_none() {
-                        self.update_person(person.clone())?;
+                match &performance.performer {
+                    PersonOrEnsemble::Person(person) => {
+                        if self.get_person(&person.id)?.is_none() {
+                            self.update_person(person.clone())?;
+                        }
                     }
-                }
-
-                if let Some(ensemble) = &performance.ensemble {
-                    if self.get_ensemble(&ensemble.id)?.is_none() {
-                        self.update_ensemble(ensemble.clone())?;
+                    PersonOrEnsemble::Ensemble(ensemble) => {
+                        if self.get_ensemble(&ensemble.id)?.is_none() {
+                            self.update_ensemble(ensemble.clone())?;
+                        }
                     }
                 }
 
@@ -161,11 +153,16 @@ impl Database {
                 .execute(&self.connection)?;
 
             for performance in recording.performances {
+                let (person, ensemble) = match performance.performer {
+                    PersonOrEnsemble::Person(person) => (Some(person.id), None),
+                    PersonOrEnsemble::Ensemble(ensemble) => (None, Some(ensemble.id)),
+                };
+
                 let row = PerformanceRow {
                     id: rand::random(),
                     recording: recording_id.to_string(),
-                    person: performance.person.map(|person| person.id),
-                    ensemble: performance.ensemble.map(|ensemble| ensemble.id),
+                    person,
+                    ensemble,
                     role: performance.role.map(|role| role.id),
                 };
 
@@ -217,19 +214,18 @@ impl Database {
 
         for row in performance_rows {
             performance_descriptions.push(Performance {
-                person: match row.person {
-                    Some(id) => Some(
+                performer: if let Some(id) = row.person {
+                    PersonOrEnsemble::Person(
                         self.get_person(&id)?
                             .ok_or(Error::MissingItem("person", id))?,
-                    ),
-                    None => None,
-                },
-                ensemble: match row.ensemble {
-                    Some(id) => Some(
+                    )
+                } else if let Some(id) = row.ensemble {
+                    PersonOrEnsemble::Ensemble(
                         self.get_ensemble(&id)?
                             .ok_or(Error::MissingItem("ensemble", id))?,
-                    ),
-                    None => None,
+                    )
+                } else {
+                    return Err(Error::Other("Performance without performer"));
                 },
                 role: match row.role {
                     Some(id) => Some(

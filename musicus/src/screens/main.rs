@@ -9,26 +9,9 @@ use gettextrs::gettext;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
-use musicus_backend::db::{Ensemble, Person};
+use musicus_backend::db::PersonOrEnsemble;
 use std::cell::RefCell;
 use std::rc::Rc;
-
-/// Either a person or an ensemble to be shown in the list.
-#[derive(Clone, Debug)]
-pub enum PersonOrEnsemble {
-    Person(Person),
-    Ensemble(Ensemble),
-}
-
-impl PersonOrEnsemble {
-    /// Get a short textual representation of the item.
-    pub fn get_title(&self) -> String {
-        match self {
-            PersonOrEnsemble::Person(person) => person.name_lf(),
-            PersonOrEnsemble::Ensemble(ensemble) => ensemble.name.clone(),
-        }
-    }
-}
 
 /// The main screen of the app, once it's set up and finished loading. The screen assumes that the
 /// music library and the player are available and initialized.
