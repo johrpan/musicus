@@ -205,7 +205,8 @@ impl Screen<Option<Work>, Work> for WorkEditor {
 
             edit_button.connect_clicked(clone!(@weak this =>  move |_| {
                 spawn!(@clone this, async move {
-                    match this.structure.borrow()[index].clone() {
+                    let part_or_section = this.structure.borrow()[index].clone();
+                    match part_or_section {
                         PartOrSection::Part(part) => {
                             if let Some(part) = push!(this.handle, WorkPartEditor, Some(part)).await {
                                 let length = {
