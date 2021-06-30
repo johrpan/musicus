@@ -102,10 +102,9 @@ impl Backend {
     pub async fn init(&self) -> Result<()> {
         self.init_library().await?;
 
-        if let Some(url) = self.settings.get_string("server-url") {
-            if !url.is_empty() {
-                self.client.set_server_url(&url);
-            }
+        let url = self.settings.string("server-url");
+        if !url.is_empty() {
+            self.client.set_server_url(&url);
         }
 
         #[cfg(all(feature = "dbus"))]

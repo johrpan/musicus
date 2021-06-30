@@ -31,7 +31,7 @@ impl Player {
     pub fn new(music_library_path: PathBuf) -> Rc<Self> {
         let dispatcher = gstreamer_player::PlayerGMainContextSignalDispatcher::new(None);
         let player = gstreamer_player::Player::new(None, Some(&dispatcher.upcast()));
-        let mut config = player.get_config();
+        let mut config = player.config();
         config.set_position_update_interval(250);
         player.set_config(config).unwrap();
         player.set_video_track_enabled(false);
@@ -88,14 +88,14 @@ impl Player {
         let clone = fragile::Fragile::new(result.clone());
         player.connect_position_updated(move |_, position| {
             for cb in &*clone.get().position_cbs.borrow() {
-                cb(position.mseconds().unwrap());
+                cb(position.unwrap().mseconds());
             }
         });
 
         let clone = fragile::Fragile::new(result.clone());
         player.connect_duration_changed(move |_, duration| {
             for cb in &*clone.get().duration_cbs.borrow() {
-                cb(duration.mseconds().unwrap());
+                cb(duration.unwrap().mseconds());
             }
         });
 
@@ -172,8 +172,8 @@ impl Player {
         self.current_track.get()
     }
 
-    pub fn get_duration(&self) -> gstreamer::ClockTime {
-        self.player.get_duration()
+    pub fn get_duration(&self) -> Option<gstreamer::ClockTime> {
+        self.player.duration()
     }
 
     pub fn is_playing(&self) -> bool {
@@ -250,9 +250,11 @@ impl Player {
     }
 
     pub fn previous(&self) -> Result<()> {
-        let mut current_track = self.current_track.get().ok_or(Error::Other(String::from(
-            "Player tried to access non existant current track.",
-        )))?;
+        let mut current_track = self.current_track.get().ok_or_else(|| {
+            Error::Other(String::from(
+                "Player tried to access non existant current track.",
+            ))
+        })?;
 
         if current_track > 0 {
             current_track -= 1;
@@ -273,9 +275,11 @@ impl Player {
     }
 
     pub fn next(&self) -> Result<()> {
-        let mut current_track = self.current_track.get().ok_or(Error::Other(String::from(
-            "Player tried to access non existant current track.",
-        )))?;
+        let mut current_track = self.current_track.get().ok_or_else(|| {
+            Error::Other(String::from(
+                "Player tried to access non existant current track.",
+            ))
+        })?;
 
         let playlist = self.playlist.borrow();
 
@@ -298,10 +302,8 @@ impl Player {
             .into_string()
             .unwrap();
 
-        let uri = glib::filename_to_uri(&path, None).or(Err(Error::Other(format!(
-            "Failed to create URI from path: {}",
-            path
-        ))))?;
+        let uri = glib::filename_to_uri(&path, None)
+            .map_err(|_| Error::Other(format!("Failed to create URI from path: {}", path)))?;
 
         self.player.set_uri(&uri);
 
@@ -351,7 +353,7 @@ impl Player {
         }
 
         for cb in &*self.duration_cbs.borrow() {
-            cb(self.player.get_duration().mseconds().unwrap());
+            cb(self.player.duration().unwrap().mseconds());
         }
 
         for cb in &*self.playing_cbs.borrow() {

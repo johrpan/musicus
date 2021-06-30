@@ -19,30 +19,30 @@ pub(super) fn new(path: PathBuf) -> Result<ImportSession> {
 
     let mut entries =
         std::fs::read_dir(path)?.collect::<std::result::Result<Vec<DirEntry>, std::io::Error>>()?;
-    entries.sort_by(|entry1, entry2| entry1.file_name().cmp(&entry2.file_name()));
+    entries.sort_by_key(|entry| entry.file_name());
 
     for entry in entries {
         if entry.file_type()?.is_file() {
             let path = entry.path();
 
-            let uri = glib::filename_to_uri(&path, None).or(Err(Error::u(format!(
-                "Failed to create URI from path: {:?}",
-                path
-            ))))?;
+            let uri = glib::filename_to_uri(&path, None)
+                .map_err(|_| Error::u(format!("Failed to create URI from path: {:?}", path)))?;
 
             let info = discoverer.discover_uri(&uri)?;
 
-            if !info.get_audio_streams().is_empty() {
+            if !info.audio_streams().is_empty() {
                 let duration = info
-                    .get_duration()
-                    .mseconds()
-                    .ok_or(Error::u(format!("Failed to get duration for {}.", uri)))?;
+                    .duration()
+                    .ok_or_else(|| Error::u(format!("Failed to get duration for {}.", uri)))?
+                    .mseconds();
 
                 let file_name = entry.file_name();
-                let name = file_name.into_string().or(Err(Error::u(format!(
-                    "Failed to convert OsString to String: {:?}",
-                    entry.file_name()
-                ))))?;
+                let name = file_name.into_string().map_err(|_| {
+                    Error::u(format!(
+                        "Failed to convert OsString to String: {:?}",
+                        entry.file_name()
+                    ))
+                })?;
 
                 hasher.update(duration.to_le_bytes());
 

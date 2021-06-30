@@ -8,11 +8,10 @@ use std::rc::Rc;
 impl Backend {
     /// Initialize the music library if it is set in the settings.
     pub(super) async fn init_library(&self) -> Result<()> {
-        if let Some(path) = self.settings.get_string("music-library-path") {
-            if !path.is_empty() {
-                self.set_music_library_path_priv(PathBuf::from(path.to_string()))
-                    .await?;
-            }
+        let path = self.settings.string("music-library-path");
+        if !path.is_empty() {
+            self.set_music_library_path_priv(PathBuf::from(path.to_string()))
+                .await?;
         }
 
         Ok(())
