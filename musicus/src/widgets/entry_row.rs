@@ -1,5 +1,4 @@
 use adw::prelude::*;
-use gtk::prelude::*;
 
 /// A list box row with an entry.
 pub struct EntryRow {

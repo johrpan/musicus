@@ -2,7 +2,6 @@ use crate::navigator::{NavigationHandle, Screen};
 use crate::widgets::Widget;
 use adw::prelude::*;
 use glib::clone;
-use gtk::prelude::*;
 use gtk_macros::get_widget;
 use musicus_backend::db::Recording;
 use std::cell::RefCell;
@@ -69,7 +68,7 @@ impl Screen<(Recording, Vec<usize>), Vec<usize>> for TrackEditor {
             let row = adw::ActionRow::new();
             row.add_prefix(&check);
             row.set_activatable_widget(Some(&check));
-            row.set_title(Some(&part.title));
+            row.set_title(&part.title);
 
             parts_list.append(&row);
         }

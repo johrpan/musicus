@@ -5,7 +5,6 @@ use crate::widgets::Widget;
 use adw::prelude::*;
 use gettextrs::gettext;
 use glib::clone;
-use gtk::prelude::*;
 use musicus_backend::db::{Person, Recording, Work};
 use std::rc::Rc;
 
@@ -64,7 +63,7 @@ impl Screen<(), Recording> for RecordingSelector {
         this.selector.set_make_widget(clone!(@weak this =>  @default-panic, move |person| {
             let row = adw::ActionRow::new();
             row.set_activatable(true);
-            row.set_title(Some(&person.name_lf()));
+            row.set_title(&person.name_lf());
 
             let person = person.to_owned();
             row.connect_activated(clone!(@weak this =>  move |_| {
@@ -145,7 +144,7 @@ impl Screen<Person, Work> for RecordingSelectorWorkScreen {
             .set_make_widget(clone!(@weak this =>  @default-panic, move |work| {
                 let row = adw::ActionRow::new();
                 row.set_activatable(true);
-                row.set_title(Some(&work.title));
+                row.set_title(&work.title);
 
                 let work = work.to_owned();
                 row.connect_activated(clone!(@weak this =>  move |_| {
@@ -212,7 +211,7 @@ impl Screen<Work, Recording> for RecordingSelectorRecordingScreen {
             .set_make_widget(clone!(@weak this =>  @default-panic, move |recording| {
                 let row = adw::ActionRow::new();
                 row.set_activatable(true);
-                row.set_title(Some(&recording.get_performers()));
+                row.set_title(&recording.get_performers());
 
                 let recording = recording.to_owned();
                 row.connect_activated(clone!(@weak this =>  move |_| {

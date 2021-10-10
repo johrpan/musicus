@@ -7,7 +7,6 @@ use adw::prelude::*;
 use anyhow::Result;
 use gettextrs::gettext;
 use glib::clone;
-use gtk::prelude::*;
 use gtk_macros::get_widget;
 use musicus_backend::db::{generate_id, Instrument, Person, Work, WorkPart, WorkSection};
 use std::cell::RefCell;
@@ -163,7 +162,7 @@ impl Screen<Option<Work>, Work> for WorkEditor {
                 }));
 
                 let row = adw::ActionRow::new();
-                row.set_title(Some(&instrument.name));
+                row.set_title(&instrument.name);
                 row.add_suffix(&delete_button);
 
                 row.upcast()
@@ -235,7 +234,7 @@ impl Screen<Option<Work>, Work> for WorkEditor {
 
             let row = adw::ActionRow::new();
             row.set_activatable(true);
-            row.set_title(Some(&pos.get_title()));
+            row.set_title(&pos.get_title());
             row.add_suffix(&delete_button);
             row.add_suffix(&edit_button);
             row.set_activatable_widget(Some(&edit_button));
@@ -303,8 +302,8 @@ impl Screen<Option<Work>, Work> for WorkEditor {
 impl WorkEditor {
     /// Update the UI according to person.
     fn show_composer(&self, person: &Person) {
-        self.composer_row.set_title(Some(&gettext("Composer")));
-        self.composer_row.set_subtitle(Some(&person.name_fl()));
+        self.composer_row.set_title(&gettext("Composer"));
+        self.composer_row.set_subtitle(&person.name_fl());
         self.validate();
     }
 

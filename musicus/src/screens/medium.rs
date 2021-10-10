@@ -4,7 +4,6 @@ use crate::widgets::{List, Section, Widget};
 use adw::prelude::*;
 use gettextrs::gettext;
 use glib::clone;
-use gtk::prelude::*;
 use musicus_backend::db::Medium;
 use std::rc::Rc;
 
@@ -80,7 +79,7 @@ impl Screen<Medium, ()> for MediumScreen {
                 let row = adw::ActionRow::new();
                 row.set_selectable(false);
                 row.set_activatable(false);
-                row.set_title(Some(&title));
+                row.set_title(&title);
                 row.set_margin_start(12);
 
                 row.upcast()

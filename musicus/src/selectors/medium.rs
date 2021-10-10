@@ -4,7 +4,6 @@ use crate::widgets::Widget;
 use adw::prelude::*;
 use gettextrs::gettext;
 use glib::clone;
-use gtk::prelude::*;
 use musicus_backend::db::{Medium, PersonOrEnsemble};
 use std::rc::Rc;
 
@@ -72,7 +71,7 @@ impl Screen<(), Medium> for MediumSelector {
         this.selector.set_make_widget(clone!(@weak this =>  @default-panic, move |poe| {
             let row = adw::ActionRow::new();
             row.set_activatable(true);
-            row.set_title(Some(&poe.get_title()));
+            row.set_title(&poe.get_title());
 
             let poe = poe.to_owned();
             row.connect_activated(clone!(@weak this =>  move |_| {
@@ -146,7 +145,7 @@ impl Screen<PersonOrEnsemble, Medium> for MediumSelectorMediumScreen {
             .set_make_widget(clone!(@weak this =>  @default-panic, move |medium| {
                 let row = adw::ActionRow::new();
                 row.set_activatable(true);
-                row.set_title(Some(&medium.name));
+                row.set_title(&medium.name);
 
                 let medium = medium.to_owned();
                 row.connect_activated(clone!(@weak this =>  move |_| {

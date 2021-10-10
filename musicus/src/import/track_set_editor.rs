@@ -6,7 +6,6 @@ use crate::widgets::{List, Widget};
 use adw::prelude::*;
 use gettextrs::gettext;
 use glib::clone;
-use gtk::prelude::*;
 use gtk_macros::get_widget;
 use musicus_backend::db::Recording;
 use musicus_backend::import::ImportSession;
@@ -147,8 +146,8 @@ impl Screen<Arc<ImportSession>, TrackSetData> for TrackSetEditor {
 
             let row = adw::ActionRow::new();
             row.set_activatable(true);
-            row.set_title(Some(&title));
-            row.set_subtitle(Some(track_name));
+            row.set_title(&title);
+            row.set_subtitle(track_name);
             row.add_suffix(&edit_button);
             row.set_activatable_widget(Some(&edit_button));
 
@@ -183,10 +182,8 @@ impl TrackSetEditor {
     /// Set everything up after selecting a recording.
     fn recording_selected(&self) {
         if let Some(recording) = &*self.recording.borrow() {
-            self.recording_row
-                .set_title(Some(&recording.work.get_title()));
-            self.recording_row
-                .set_subtitle(Some(&recording.get_performers()));
+            self.recording_row.set_title(&recording.work.get_title());
+            self.recording_row.set_subtitle(&recording.get_performers());
             self.save_button.set_sensitive(true);
         }
 

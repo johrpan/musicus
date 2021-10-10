@@ -5,7 +5,6 @@ use crate::widgets::Widget;
 use adw::prelude::*;
 use gettextrs::gettext;
 use glib::clone;
-use gtk::prelude::*;
 use musicus_backend::db::Instrument;
 use std::rc::Rc;
 
@@ -55,7 +54,7 @@ impl Screen<(), Instrument> for InstrumentSelector {
             .set_make_widget(clone!(@weak this =>  @default-panic, move |instrument| {
                 let row = adw::ActionRow::new();
                 row.set_activatable(true);
-                row.set_title(Some(&instrument.name));
+                row.set_title(&instrument.name);
 
                 let instrument = instrument.to_owned();
                 row.connect_activated(clone!(@weak this =>  move |_| {

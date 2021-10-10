@@ -4,8 +4,6 @@ use crate::widgets::{List, Widget};
 use adw::prelude::*;
 use anyhow::Result;
 use glib::clone;
-use glib::prelude::*;
-use gtk::prelude::*;
 use gtk_macros::get_widget;
 use musicus_backend::db::{generate_id, Medium, Track};
 use musicus_backend::import::ImportSession;
@@ -122,8 +120,8 @@ impl Screen<(Arc<ImportSession>, Option<Medium>), Medium> for MediumEditor {
 
                 let row = adw::ActionRow::new();
                 row.set_activatable(true);
-                row.set_title(Some(&title));
-                row.set_subtitle(Some(&subtitle));
+                row.set_title(&title);
+                row.set_subtitle(&subtitle);
                 row.add_suffix(&edit_button);
                 row.set_activatable_widget(Some(&edit_button));
 

@@ -7,7 +7,6 @@ use crate::widgets::{List, PlayerBar, Widget};
 use adw::prelude::*;
 use gettextrs::gettext;
 use glib::clone;
-use gtk::prelude::*;
 use gtk_macros::get_widget;
 use musicus_backend::db::PersonOrEnsemble;
 use std::cell::RefCell;
@@ -96,7 +95,7 @@ impl Screen<(), ()> for MainScreen {
 
                 let row = adw::ActionRow::new();
                 row.set_activatable(true);
-                row.set_title(Some(&poe.get_title()));
+                row.set_title(&poe.get_title());
 
                 let poe = poe.to_owned();
                 row.connect_activated(clone!(@weak this =>  move |_| {

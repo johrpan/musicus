@@ -6,7 +6,6 @@ use adw::prelude::*;
 use anyhow::Result;
 use gettextrs::gettext;
 use glib::clone;
-use gtk::prelude::*;
 use gtk_macros::get_widget;
 use musicus_backend::db::{generate_id, Performance, Recording, Work};
 use std::cell::RefCell;
@@ -139,7 +138,7 @@ impl Screen<Option<Recording>, Recording> for RecordingEditor {
 
             let row = adw::ActionRow::new();
             row.set_activatable(true);
-            row.set_title(Some(&performance.get_title()));
+            row.set_title(&performance.get_title());
             row.add_suffix(&delete_button);
             row.add_suffix(&edit_button);
             row.set_activatable_widget(Some(&edit_button));
@@ -177,8 +176,8 @@ impl Screen<Option<Recording>, Recording> for RecordingEditor {
 impl RecordingEditor {
     /// Update the UI according to work.
     fn work_selected(&self, work: &Work) {
-        self.work_row.set_title(Some(&gettext("Work")));
-        self.work_row.set_subtitle(Some(&work.get_title()));
+        self.work_row.set_title(&gettext("Work"));
+        self.work_row.set_subtitle(&work.get_title());
         self.save_button.set_sensitive(true);
     }
 

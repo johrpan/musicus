@@ -5,7 +5,6 @@ use crate::selectors::MediumSelector;
 use crate::widgets::Widget;
 use adw::prelude::*;
 use glib::clone;
-use gtk::prelude::*;
 use gtk_macros::get_widget;
 use musicus_backend::db::Medium;
 use musicus_backend::import::ImportSession;
@@ -47,7 +46,7 @@ impl ImportScreen {
                     }
                 }
                 Err(err) => {
-                    this.error_row.set_subtitle(Some(&err.to_string()));
+                    this.error_row.set_subtitle(&err.to_string());
                     this.matching_stack.set_visible_child_name("error");
                 }
             }

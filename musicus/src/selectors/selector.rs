@@ -137,12 +137,12 @@ impl<T> Selector<T> {
 
     /// Set the title to be shown in the header.
     pub fn set_title(&self, title: &str) {
-        self.title_label.set_label(&title);
+        self.title_label.set_label(title);
     }
 
     /// Set the subtitle to be shown in the header.
     pub fn set_subtitle(&self, subtitle: &str) {
-        self.subtitle_label.set_label(&subtitle);
+        self.subtitle_label.set_label(subtitle);
         self.subtitle_label.show();
     }
 

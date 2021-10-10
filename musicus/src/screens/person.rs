@@ -6,7 +6,6 @@ use crate::widgets::{List, Section, Widget};
 use adw::prelude::*;
 use gettextrs::gettext;
 use glib::clone;
-use gtk::prelude::*;
 use musicus_backend::db::{Medium, Person, Recording, Work};
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -83,7 +82,7 @@ impl Screen<Person, ()> for PersonScreen {
 
                 let row = adw::ActionRow::new();
                 row.set_activatable(true);
-                row.set_title(Some(&work.title));
+                row.set_title(&work.title);
 
                 let work = work.to_owned();
                 row.connect_activated(clone!(@weak this =>  move |_| {
@@ -110,8 +109,8 @@ impl Screen<Person, ()> for PersonScreen {
 
                 let row = adw::ActionRow::new();
                 row.set_activatable(true);
-                row.set_title(Some(&recording.work.get_title()));
-                row.set_subtitle(Some(&recording.get_performers()));
+                row.set_title(&recording.work.get_title());
+                row.set_subtitle(&recording.get_performers());
 
                 let recording = recording.to_owned();
                 row.connect_activated(clone!(@weak this =>  move |_| {
@@ -139,7 +138,7 @@ impl Screen<Person, ()> for PersonScreen {
 
                 let row = adw::ActionRow::new();
                 row.set_activatable(true);
-                row.set_title(Some(&medium.name));
+                row.set_title(&medium.name);
 
                 let medium = medium.to_owned();
                 row.connect_activated(clone!(@weak this =>  move |_| {

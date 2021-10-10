@@ -2,7 +2,6 @@ use crate::navigator::{NavigationHandle, Screen};
 use crate::widgets::Widget;
 use adw::prelude::*;
 use glib::clone;
-use gtk::prelude::*;
 use gtk_macros::get_widget;
 use musicus_backend::import::ImportSession;
 use std::cell::RefCell;
@@ -80,7 +79,7 @@ impl Screen<Arc<ImportSession>, Vec<usize>> for TrackSelector {
             row.add_prefix(&check);
             row.set_activatable_widget(Some(&check));
             row.set_activatable(true);
-            row.set_title(Some(&track.name));
+            row.set_title(&track.name);
 
             track_list.append(&row);
         }

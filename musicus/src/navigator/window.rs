@@ -1,6 +1,6 @@
 use super::Navigator;
+use adw::prelude::*;
 use glib::clone;
-use gtk::prelude::*;
 use musicus_backend::Backend;
 use std::rc::Rc;
 
@@ -17,7 +17,7 @@ impl NavigatorWindow {
         window.set_default_size(600, 424);
         let placeholder = gtk::Label::new(None);
         let navigator = Navigator::new(backend, &window, &placeholder);
-        adw::prelude::WindowExt::set_child(&window, Some(&navigator.widget));
+        window.set_content(Some(&navigator.widget));
 
         let this = Rc::new(Self { navigator, window });
 

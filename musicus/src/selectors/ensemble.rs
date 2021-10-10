@@ -5,7 +5,6 @@ use crate::widgets::Widget;
 use adw::prelude::*;
 use gettextrs::gettext;
 use glib::clone;
-use gtk::prelude::*;
 use musicus_backend::db::Ensemble;
 use std::rc::Rc;
 
@@ -55,7 +54,7 @@ impl Screen<(), Ensemble> for EnsembleSelector {
             .set_make_widget(clone!(@weak this => @default-panic,  move |ensemble| {
                 let row = adw::ActionRow::new();
                 row.set_activatable(true);
-                row.set_title(Some(&ensemble.name));
+                row.set_title(&ensemble.name);
 
                 let ensemble = ensemble.to_owned();
                 row.connect_activated(clone!(@weak this =>  move |_| {

@@ -25,7 +25,7 @@ impl Window {
             .build();
 
         let header = adw::HeaderBarBuilder::new()
-            .title_widget(&adw::WindowTitle::new(Some("Musicus"), None))
+            .title_widget(&adw::WindowTitle::new("Musicus", ""))
             .build();
 
         let spinner = gtk::SpinnerBuilder::new()
@@ -42,7 +42,7 @@ impl Window {
         loading_screen.append(&spinner);
 
         let navigator = Navigator::new(Rc::clone(&backend), &window, &loading_screen);
-        adw::prelude::ApplicationWindowExt::set_child(&window, Some(&navigator.widget));
+        adw::traits::ApplicationWindowExt::set_content(&window, Some(&navigator.widget));
 
         let this = Rc::new(Self {
             backend,

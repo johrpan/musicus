@@ -5,7 +5,6 @@ use crate::widgets::{List, Section, Widget};
 use adw::prelude::*;
 use gettextrs::gettext;
 use glib::clone;
-use gtk::prelude::*;
 use musicus_backend::db::{Recording, Track};
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -88,7 +87,7 @@ impl Screen<Recording, ()> for RecordingScreen {
                 };
 
                 let row = adw::ActionRow::new();
-                row.set_title(Some(&title));
+                row.set_title(&title);
 
                 row.upcast()
             }));

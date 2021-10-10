@@ -58,7 +58,7 @@ impl Editor {
 
     /// Show a title in the header bar.
     pub fn set_title(&self, title: &str) {
-        self.window_title.set_title(Some(title));
+        self.window_title.set_title(title);
     }
 
     /// Set whether the user should be able to click the save button.
@@ -78,7 +78,7 @@ impl Editor {
     /// Show an error page. The page contains a button to get back to the
     /// actual editor.
     pub fn error(&self, title: &str, description: &str) {
-        self.status_page.set_title(Some(title));
+        self.status_page.set_title(title);
         self.status_page.set_description(Some(description));
         self.widget.set_visible_child_name("error");
     }

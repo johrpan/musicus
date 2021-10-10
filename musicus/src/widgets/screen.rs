@@ -73,12 +73,12 @@ impl Screen {
 
     /// Show a title in the header bar.
     pub fn set_title(&self, title: &str) {
-        self.window_title.set_title(Some(title));
+        self.window_title.set_title(title);
     }
 
     /// Show a subtitle in the header bar.
     pub fn set_subtitle(&self, subtitle: &str) {
-        self.window_title.set_subtitle(Some(subtitle));
+        self.window_title.set_subtitle(subtitle);
     }
 
     /// Add a new item to the action menu and register a callback for it.

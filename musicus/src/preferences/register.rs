@@ -2,7 +2,6 @@ use crate::navigator::{NavigationHandle, Screen};
 use crate::widgets::Widget;
 use adw::prelude::*;
 use glib::clone;
-use gtk::prelude::*;
 use gtk_macros::get_widget;
 use musicus_backend::client::{LoginData, UserRegistration};
 use std::cell::RefCell;
@@ -103,7 +102,7 @@ impl Screen<(), LoginData> for RegisterDialog {
 
         spawn!(@clone this, async move {
             let captcha = this.handle.backend.cl().get_captcha().await.unwrap();
-            this.captcha_row.set_title(Some(&captcha.question));
+            this.captcha_row.set_title(&captcha.question);
             this.captcha_id.replace(Some(captcha.id));
             this.widget.set_visible_child_name("content");
         });

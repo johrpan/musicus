@@ -1,6 +1,5 @@
 use super::Widget;
 use adw::prelude::*;
-use gtk::prelude::*;
 
 /// A list box row with a single button.
 pub struct ButtonRow {
@@ -31,7 +30,7 @@ impl ButtonRow {
     }
 
     /// Set the subtitle of the row.
-    pub fn set_subtitle(&self, subtitle: Option<&str>) {
+    pub fn set_subtitle(&self, subtitle: &str) {
         self.widget.set_subtitle(subtitle);
     }
 

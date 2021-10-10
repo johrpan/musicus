@@ -4,7 +4,6 @@ use crate::widgets::{ButtonRow, Editor, Section, Widget};
 use adw::prelude::*;
 use gettextrs::gettext;
 use glib::clone;
-use gtk::prelude::*;
 use log::error;
 use musicus_backend::db::{Ensemble, Instrument, Performance, Person, PersonOrEnsemble};
 use std::cell::RefCell;
@@ -165,30 +164,30 @@ impl PerformanceEditor {
     /// Update the UI according to person.
     fn show_person(&self, person: Option<&Person>) {
         if let Some(person) = person {
-            self.person_row.set_subtitle(Some(&person.name_fl()));
+            self.person_row.set_subtitle(&person.name_fl());
             self.editor.set_may_save(true);
         } else {
-            self.person_row.set_subtitle(None);
+            self.person_row.set_subtitle("");
         }
     }
 
     /// Update the UI according to ensemble.
     fn show_ensemble(&self, ensemble: Option<&Ensemble>) {
         if let Some(ensemble) = ensemble {
-            self.ensemble_row.set_subtitle(Some(&ensemble.name));
+            self.ensemble_row.set_subtitle(&ensemble.name);
             self.editor.set_may_save(true);
         } else {
-            self.ensemble_row.set_subtitle(None);
+            self.ensemble_row.set_subtitle("");
         }
     }
 
     /// Update the UI according to role.
     fn show_role(&self, role: Option<&Instrument>) {
         if let Some(role) = role {
-            self.role_row.set_subtitle(Some(&role.name));
+            self.role_row.set_subtitle(&role.name);
             self.reset_role_button.show();
         } else {
-            self.role_row.set_subtitle(None);
+            self.role_row.set_subtitle("");
             self.reset_role_button.hide();
         }
     }

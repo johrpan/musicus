@@ -20,7 +20,7 @@ impl Screen<(), ()> for WelcomeScreen {
             .build();
 
         let header = adw::HeaderBarBuilder::new()
-            .title_widget(&adw::WindowTitle::new(Some("Musicus"), None))
+            .title_widget(&adw::WindowTitle::new("Musicus", ""))
             .build();
 
         let button = gtk::ButtonBuilder::new()
