@@ -16,6 +16,7 @@ pub struct Player {
     playlist: RefCell<Vec<Track>>,
     current_track: Cell<Option<usize>>,
     playing: Cell<bool>,
+    duration: Cell<u64>,
     playlist_cbs: RefCell<Vec<Box<dyn Fn(Vec<Track>)>>>,
     track_cbs: RefCell<Vec<Box<dyn Fn(usize)>>>,
     duration_cbs: RefCell<Vec<Box<dyn Fn(u64)>>>,
@@ -42,6 +43,7 @@ impl Player {
             playlist: RefCell::new(Vec::new()),
             current_track: Cell::new(None),
             playing: Cell::new(false),
+            duration: Cell::new(0),
             playlist_cbs: RefCell::new(Vec::new()),
             track_cbs: RefCell::new(Vec::new()),
             duration_cbs: RefCell::new(Vec::new()),
@@ -95,7 +97,9 @@ impl Player {
         let clone = fragile::Fragile::new(result.clone());
         player.connect_duration_changed(move |_, duration| {
             for cb in &*clone.get().duration_cbs.borrow() {
-                cb(duration.unwrap().mseconds());
+                let duration = duration.unwrap().mseconds();
+                clone.get().duration.set(duration);
+                cb(duration);
             }
         });
 
@@ -353,7 +357,7 @@ impl Player {
         }
 
         for cb in &*self.duration_cbs.borrow() {
-            cb(self.player.duration().unwrap().mseconds());
+            cb(self.duration.get());
         }
 
         for cb in &*self.playing_cbs.borrow() {
