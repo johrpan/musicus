@@ -175,25 +175,27 @@ impl Screen<(), ()> for PlayerScreen {
             this.handle.backend.pl().clear();
         }));
 
-        event_controller.connect_event(clone!(@weak this =>  @default-panic, move |_, event| {
-            if let Some(event) = event.downcast_ref::<gdk::ButtonEvent>() {
-                if event.button() == gdk::BUTTON_PRIMARY {
-                    match event.event_type() {
-                        gdk::EventType::ButtonPress => {
-                            this.seeking.replace(true);
+        event_controller.connect_event(
+            clone!(@weak this => @default-return glib::signal::Inhibit(false), move |_, event| {
+                if let Some(event) = event.downcast_ref::<gdk::ButtonEvent>() {
+                    if event.button() == gdk::BUTTON_PRIMARY {
+                        match event.event_type() {
+                            gdk::EventType::ButtonPress => {
+                                this.seeking.replace(true);
+                            }
+                            gdk::EventType::ButtonRelease => {
+                                this.handle.backend.pl().seek(this.position.value() as u64);
+                                this.seeking.replace(false);
+                            }
+                            _ => (),
                         }
-                        gdk::EventType::ButtonRelease => {
-                            this.handle.backend.pl().seek(this.position.value() as u64);
-                            this.seeking.replace(false);
-                        }
-                        _ => (),
                     }
+
                 }
 
-            }
-
-            glib::signal::Inhibit(false)
-        }));
+                glib::signal::Inhibit(false)
+            }),
+        );
 
         position_scale.connect_value_changed(clone!(@weak this =>  move |_| {
             if this.seeking.get() {
