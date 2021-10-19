@@ -166,6 +166,9 @@ impl Screen<Arc<ImportSession>, ()> for ImportScreen {
 
         this.load_matches();
 
+        // Copy the tracks in the background, if neccessary.
+        this.session.copy();
+
         this
     }
 }

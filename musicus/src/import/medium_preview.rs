@@ -197,8 +197,7 @@ impl MediumPreview {
     /// Handle a state change of the import process.
     fn handle_state(&self, state: &State) {
         match state {
-            State::Waiting => todo!("This shouldn't happen."),
-            State::Copying => self.done_stack.set_visible_child_name("loading"),
+            State::Waiting | State::Copying => self.done_stack.set_visible_child_name("loading"),
             State::Ready => {
                 self.done_stack.set_visible_child_name("ready");
                 self.import_button.set_sensitive(true);
