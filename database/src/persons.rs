@@ -5,7 +5,7 @@ use log::info;
 use serde::{Deserialize, Serialize};
 
 /// A person that is a composer, an interpret or both.
-#[derive(Serialize, Deserialize, Insertable, Queryable, Debug, Clone)]
+#[derive(Serialize, Deserialize, Insertable, Queryable, PartialEq, Eq, Hash, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Person {
     pub id: String,

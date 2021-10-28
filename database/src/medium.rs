@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 /// Representation of someting like a physical audio disc or a folder with
 /// audio files (i.e. a collection of tracks for one or more recordings).
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Medium {
     /// An unique ID for the medium.
@@ -24,7 +24,7 @@ pub struct Medium {
 }
 
 /// A track on a medium.
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Track {
     /// The recording on this track.

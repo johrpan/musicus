@@ -54,14 +54,14 @@ struct WorkSectionRow {
     pub before_index: i64,
 }
 /// A concrete work part that can be recorded.
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct WorkPart {
     pub title: String,
 }
 
 /// A heading between work parts.
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct WorkSection {
     pub title: String,
@@ -69,7 +69,7 @@ pub struct WorkSection {
 }
 
 /// A specific work by a composer.
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Work {
     pub id: String,

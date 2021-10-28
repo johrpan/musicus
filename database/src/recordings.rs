@@ -6,7 +6,7 @@ use log::info;
 use serde::{Deserialize, Serialize};
 
 /// A specific recording of a work.
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Recording {
     pub id: String,
@@ -40,7 +40,7 @@ impl Recording {
 }
 
 /// How a person or ensemble was involved in a recording.
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Performance {
     pub performer: PersonOrEnsemble,
@@ -62,7 +62,7 @@ impl Performance {
 }
 
 /// Either a person or an ensemble.
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug)]
 pub enum PersonOrEnsemble {
     Person(Person),
     Ensemble(Ensemble),

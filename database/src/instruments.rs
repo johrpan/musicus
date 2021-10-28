@@ -5,7 +5,7 @@ use log::info;
 use serde::{Deserialize, Serialize};
 
 /// An instrument or any other possible role within a recording.
-#[derive(Serialize, Deserialize, Insertable, Queryable, Debug, Clone)]
+#[derive(Serialize, Deserialize, Insertable, Queryable, PartialEq, Eq, Hash, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Instrument {
     pub id: String,

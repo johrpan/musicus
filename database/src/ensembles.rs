@@ -5,7 +5,7 @@ use log::info;
 use serde::{Deserialize, Serialize};
 
 /// An ensemble that takes part in recordings.
-#[derive(Serialize, Deserialize, Insertable, Queryable, Debug, Clone)]
+#[derive(Serialize, Deserialize, Insertable, Queryable, PartialEq, Eq, Hash, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Ensemble {
     pub id: String,
