@@ -29,8 +29,8 @@ impl UploadSection {
             .build();
 
         let row = adw::ActionRowBuilder::new()
+            .focusable(false)
             .title("Upload changes to the server")
-            .activatable(true)
             .activatable_widget(&switch)
             .build();
 

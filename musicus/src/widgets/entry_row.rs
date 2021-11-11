@@ -18,7 +18,7 @@ impl EntryRow {
             .build();
 
         let widget = adw::ActionRowBuilder::new()
-            .activatable(true)
+            .focusable(false)
             .activatable_widget(&entry)
             .title(title)
             .build();

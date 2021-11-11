@@ -86,8 +86,9 @@ impl Screen<Recording, ()> for RecordingScreen {
                     title_parts.join(", ")
                 };
 
-                let row = adw::ActionRow::new();
-                row.set_title(&title);
+                let row = adw::ActionRowBuilder::new()
+                    .title(&title)
+                    .build();
 
                 row.upcast()
             }));

@@ -52,9 +52,10 @@ impl Screen<(), Instrument> for InstrumentSelector {
 
         this.selector
             .set_make_widget(clone!(@weak this =>  @default-panic, move |instrument| {
-                let row = adw::ActionRow::new();
-                row.set_activatable(true);
-                row.set_title(&instrument.name);
+                let row = adw::ActionRowBuilder::new()
+                    .activatable(true)
+                    .title(&instrument.name)
+                    .build();
 
                 let instrument = instrument.to_owned();
                 row.connect_activated(clone!(@weak this =>  move |_| {

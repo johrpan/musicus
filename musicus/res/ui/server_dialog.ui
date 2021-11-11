@@ -40,7 +40,7 @@
             <property name="selection-mode">none</property>
             <child>
               <object class="AdwActionRow">
-                <property name="activatable">True</property>
+                <property name="focusable">False</property>
                 <property name="title" translatable="yes">URL</property>
                 <property name="activatable-widget">url_entry</property>
                 <child>

@@ -69,9 +69,10 @@ impl Screen<(), Medium> for MediumSelector {
             }));
 
         this.selector.set_make_widget(clone!(@weak this =>  @default-panic, move |poe| {
-            let row = adw::ActionRow::new();
-            row.set_activatable(true);
-            row.set_title(&poe.get_title());
+            let row = adw::ActionRowBuilder::new()
+                .activatable(true)
+                .title(&poe.get_title())
+                .build();
 
             let poe = poe.to_owned();
             row.connect_activated(clone!(@weak this =>  move |_| {
@@ -143,9 +144,10 @@ impl Screen<PersonOrEnsemble, Medium> for MediumSelectorMediumScreen {
 
         this.selector
             .set_make_widget(clone!(@weak this =>  @default-panic, move |medium| {
-                let row = adw::ActionRow::new();
-                row.set_activatable(true);
-                row.set_title(&medium.name);
+                let row = adw::ActionRowBuilder::new()
+                    .activatable(true)
+                    .title(&medium.name)
+                    .build();
 
                 let medium = medium.to_owned();
                 row.connect_activated(clone!(@weak this =>  move |_| {

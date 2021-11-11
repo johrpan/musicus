@@ -71,9 +71,9 @@ impl ImportScreen {
 
         for medium in mediums {
             let row = adw::ActionRowBuilder::new()
+                .activatable(true)
                 .title(&medium.name)
                 .subtitle(&format!("{} Tracks", medium.tracks.len()))
-                .activatable(true)
                 .build();
 
             row.connect_activated(clone!(@weak this =>  move |_| {

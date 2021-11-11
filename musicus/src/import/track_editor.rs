@@ -65,11 +65,13 @@ impl Screen<(Recording, Vec<usize>), Vec<usize>> for TrackEditor {
                 }
             }));
 
-            let row = adw::ActionRow::new();
-            row.add_prefix(&check);
-            row.set_activatable_widget(Some(&check));
-            row.set_title(&part.title);
+            let row = adw::ActionRowBuilder::new()
+                .focusable(false)
+                .title(&part.title)
+                .activatable_widget(&check)
+                .build();
 
+            row.add_prefix(&check);
             parts_list.append(&row);
         }
 

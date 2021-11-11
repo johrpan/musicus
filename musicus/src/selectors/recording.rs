@@ -61,9 +61,10 @@ impl Screen<(), Recording> for RecordingSelector {
             }));
 
         this.selector.set_make_widget(clone!(@weak this =>  @default-panic, move |person| {
-            let row = adw::ActionRow::new();
-            row.set_activatable(true);
-            row.set_title(&person.name_lf());
+            let row = adw::ActionRowBuilder::new()
+                .activatable(true)
+                .title(&person.name_lf())
+                .build();
 
             let person = person.to_owned();
             row.connect_activated(clone!(@weak this =>  move |_| {
@@ -142,9 +143,10 @@ impl Screen<Person, Work> for RecordingSelectorWorkScreen {
 
         this.selector
             .set_make_widget(clone!(@weak this =>  @default-panic, move |work| {
-                let row = adw::ActionRow::new();
-                row.set_activatable(true);
-                row.set_title(&work.title);
+                let row = adw::ActionRowBuilder::new()
+                    .activatable(true)
+                    .title(&work.title)
+                    .build();
 
                 let work = work.to_owned();
                 row.connect_activated(clone!(@weak this =>  move |_| {
@@ -209,9 +211,10 @@ impl Screen<Work, Recording> for RecordingSelectorRecordingScreen {
 
         this.selector
             .set_make_widget(clone!(@weak this =>  @default-panic, move |recording| {
-                let row = adw::ActionRow::new();
-                row.set_activatable(true);
-                row.set_title(&recording.get_performers());
+                let row = adw::ActionRowBuilder::new()
+                    .activatable(true)
+                    .title(&recording.get_performers())
+                    .build();
 
                 let recording = recording.to_owned();
                 row.connect_activated(clone!(@weak this =>  move |_| {

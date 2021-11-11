@@ -75,11 +75,13 @@ impl Screen<Arc<ImportSession>, Vec<usize>> for TrackSelector {
                 }
             }));
 
-            let row = adw::ActionRow::new();
+            let row = adw::ActionRowBuilder::new()
+                .focusable(false)
+                .title(&track.name)
+                .activatable_widget(&check)
+                .build();
+
             row.add_prefix(&check);
-            row.set_activatable_widget(Some(&check));
-            row.set_activatable(true);
-            row.set_title(&track.name);
 
             track_list.append(&row);
         }

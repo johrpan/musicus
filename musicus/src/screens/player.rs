@@ -225,10 +225,11 @@ impl Screen<(), ()> for PlayerScreen {
                         parts.join(", ")
                     };
 
-                    let row = adw::ActionRow::new();
-                    row.set_selectable(false);
-                    row.set_activatable(true);
-                    row.set_title(&title);
+                    let row = adw::ActionRowBuilder::new()
+                        .selectable(false)
+                        .activatable(true)
+                        .title(&title)
+                        .build();
 
                     if first {
                         let subtitle = if !parts.is_empty() {

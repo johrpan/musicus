@@ -71,7 +71,7 @@
                                 <property name="selection-mode">none</property>
                                 <child>
                                   <object class="AdwActionRow" id="name_row">
-                                    <property name="activatable">True</property>
+                                    <property name="focusable">False</property>
                                     <property name="title" translatable="yes">Name of the medium</property>
                                     <property name="activatable-widget">name_entry</property>
                                     <child>
@@ -84,7 +84,7 @@
                                 </child>
                                 <child>
                                   <object class="AdwActionRow">
-                                    <property name="activatable">True</property>
+                                    <property name="focusable">False</property>
                                     <property name="title" translatable="yes">Publish to the server</property>
                                     <property name="activatable-widget">publish_switch</property>
                                     <child>

@@ -52,9 +52,10 @@ impl Screen<(), Person> for PersonSelector {
 
         this.selector
             .set_make_widget(clone!(@weak this =>  @default-panic, move |person| {
-                let row = adw::ActionRow::new();
-                row.set_activatable(true);
-                row.set_title(&person.name_lf());
+                let row = adw::ActionRowBuilder::new()
+                    .activatable(true)
+                    .title(&person.name_lf())
+                    .build();
 
                 let person = person.to_owned();
                 row.connect_activated(clone!(@weak this =>  move |_| {

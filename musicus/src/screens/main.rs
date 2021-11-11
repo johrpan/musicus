@@ -93,9 +93,10 @@ impl Screen<(), ()> for MainScreen {
             .set_make_widget_cb(clone!(@weak this =>  @default-panic, move |index| {
                 let poe = &this.poes.borrow()[index];
 
-                let row = adw::ActionRow::new();
-                row.set_activatable(true);
-                row.set_title(&poe.get_title());
+                let row = adw::ActionRowBuilder::new()
+                    .activatable(true)
+                    .title(&poe.get_title())
+                    .build();
 
                 let poe = poe.to_owned();
                 row.connect_activated(clone!(@weak this =>  move |_| {

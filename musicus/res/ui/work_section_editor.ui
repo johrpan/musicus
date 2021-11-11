@@ -55,7 +55,7 @@
                     <property name="selection-mode">none</property>
                     <child>
                       <object class="AdwActionRow">
-                        <property name="activatable">True</property>
+                        <property name="focusable">False</property>
                         <property name="title" translatable="yes">Title</property>
                         <property name="activatable-widget">title_entry</property>
                         <child>

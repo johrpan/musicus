@@ -144,12 +144,14 @@ impl Screen<Arc<ImportSession>, TrackSetData> for TrackSetEditor {
             edit_button.set_valign(gtk::Align::Center);
             edit_button.set_child(Some(&edit_image));
 
-            let row = adw::ActionRow::new();
-            row.set_activatable(true);
-            row.set_title(&title);
-            row.set_subtitle(track_name);
+            let row = adw::ActionRowBuilder::new()
+                .focusable(false)
+                .title(&title)
+                .subtitle(track_name)
+                .activatable_widget(&edit_button)
+                .build();
+
             row.add_suffix(&edit_button);
-            row.set_activatable_widget(Some(&edit_button));
 
             edit_button.connect_clicked(clone!(@weak this =>  move |_| {
                 let recording = this.recording.borrow().clone();

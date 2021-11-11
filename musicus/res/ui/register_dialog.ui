@@ -102,7 +102,7 @@
                                 <property name="selection-mode">none</property>
                                 <child>
                                   <object class="AdwActionRow">
-                                    <property name="activatable">True</property>
+                                    <property name="focusable">False</property>
                                     <property name="title" translatable="yes">Username</property>
                                     <property name="activatable-widget">username_entry</property>
                                     <child>
@@ -115,7 +115,7 @@
                                 </child>
                                  <child>
                                   <object class="AdwActionRow">
-                                    <property name="activatable">True</property>
+                                    <property name="focusable">False</property>
                                     <property name="title" translatable="yes">E-mail (optional)</property>
                                     <property name="activatable-widget">email_entry</property>
                                     <child>
@@ -147,7 +147,7 @@
                                 <property name="selection-mode">none</property>
                                 <child>
                                   <object class="AdwActionRow">
-                                    <property name="activatable">True</property>
+                                    <property name="focusable">False</property>
                                     <property name="title" translatable="yes">Password</property>
                                     <property name="activatable-widget">password_entry</property>
                                     <child>
@@ -162,7 +162,7 @@
                                 </child>
                                 <child>
                                   <object class="AdwActionRow">
-                                    <property name="activatable">True</property>
+                                    <property name="focusable">False</property>
                                     <property name="title" translatable="yes">Repeat password</property>
                                     <property name="activatable-widget">repeat_password_entry</property>
                                     <child>
@@ -202,7 +202,7 @@
                                 </child>
                                 <child>
                                   <object class="AdwActionRow">
-                                    <property name="activatable">True</property>
+                                    <property name="focusable">False</property>
                                     <property name="title" translatable="yes">Your answer</property>
                                     <property name="activatable-widget">captcha_entry</property>
                                     <child>

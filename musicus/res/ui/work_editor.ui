@@ -75,7 +75,7 @@
                                 <property name="selection-mode">none</property>
                                 <child>
                                   <object class="AdwActionRow" id="composer_row">
-                                    <property name="activatable">True</property>
+                                    <property name="focusable">False</property>
                                     <property name="title" translatable="yes">Select a composer</property>
                                     <property name="activatable-widget">composer_button</property>
                                     <child>
@@ -88,7 +88,7 @@
                                 </child>
                                 <child>
                                   <object class="AdwActionRow">
-                                    <property name="activatable">True</property>
+                                    <property name="focusable">False</property>
                                     <property name="title" translatable="yes">Title</property>
                                     <property name="activatable-widget">title_entry</property>
                                     <child>
@@ -101,7 +101,7 @@
                                 </child>
                                 <child>
                                   <object class="AdwActionRow">
-                                    <property name="activatable">True</property>
+                                    <property name="focusable">False</property>
                                     <property name="title" translatable="yes">Publish to the server</property>
                                     <property name="activatable-widget">upload_switch</property>
                                     <child>

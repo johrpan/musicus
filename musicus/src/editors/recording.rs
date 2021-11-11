@@ -136,12 +136,14 @@ impl Screen<Option<Recording>, Recording> for RecordingEditor {
                 });
             }));
 
-            let row = adw::ActionRow::new();
-            row.set_activatable(true);
-            row.set_title(&performance.get_title());
+            let row = adw::ActionRowBuilder::new()
+                .focusable(false)
+                .activatable_widget(&edit_button)
+                .title(&performance.get_title())
+                .build();
+
             row.add_suffix(&delete_button);
             row.add_suffix(&edit_button);
-            row.set_activatable_widget(Some(&edit_button));
 
             row.upcast()
         }));

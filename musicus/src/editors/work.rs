@@ -161,8 +161,10 @@ impl Screen<Option<Work>, Work> for WorkEditor {
                     this.instrument_list.update(length);
                 }));
 
-                let row = adw::ActionRow::new();
-                row.set_title(&instrument.name);
+                let row = adw::ActionRowBuilder::new()
+                    .title(&instrument.name)
+                    .build();
+
                 row.add_suffix(&delete_button);
 
                 row.upcast()
@@ -232,12 +234,14 @@ impl Screen<Option<Work>, Work> for WorkEditor {
                 });
             }));
 
-            let row = adw::ActionRow::new();
-            row.set_activatable(true);
-            row.set_title(&pos.get_title());
+            let row = adw::ActionRowBuilder::new()
+                .focusable(false)
+                .title(&pos.get_title())
+                .activatable_widget(&edit_button)
+                .build();
+
             row.add_suffix(&delete_button);
             row.add_suffix(&edit_button);
-            row.set_activatable_widget(Some(&edit_button));
 
             if let PartOrSection::Part(_) = pos {
                 // TODO: Replace with better solution to differentiate parts and sections.

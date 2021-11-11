@@ -69,10 +69,11 @@ impl Screen<Work, ()> for WorkScreen {
             clone!(@weak this =>  @default-panic, move |index| {
                 let recording = &this.recordings.borrow()[index];
 
-                let row = adw::ActionRow::new();
-                row.set_activatable(true);
-                row.set_title(&recording.work.get_title());
-                row.set_subtitle(&recording.get_performers());
+                let row = adw::ActionRowBuilder::new()
+                    .activatable(true)
+                    .title(&recording.work.get_title())
+                    .subtitle(&recording.get_performers())
+                    .build();
 
                 let recording = recording.to_owned();
                 row.connect_activated(clone!(@weak this =>  move |_| {

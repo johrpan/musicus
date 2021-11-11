@@ -52,9 +52,10 @@ impl Screen<(), Ensemble> for EnsembleSelector {
 
         this.selector
             .set_make_widget(clone!(@weak this => @default-panic,  move |ensemble| {
-                let row = adw::ActionRow::new();
-                row.set_activatable(true);
-                row.set_title(&ensemble.name);
+                let row = adw::ActionRowBuilder::new()
+                    .activatable(true)
+                    .title(&ensemble.name)
+                    .build();
 
                 let ensemble = ensemble.to_owned();
                 row.connect_activated(clone!(@weak this =>  move |_| {

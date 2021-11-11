@@ -76,11 +76,11 @@ impl Screen<Medium, ()> for MediumScreen {
                     parts.join(", ")
                 };
 
-                let row = adw::ActionRow::new();
-                row.set_selectable(false);
-                row.set_activatable(false);
-                row.set_title(&title);
-                row.set_margin_start(12);
+                let row = adw::ActionRowBuilder::new()
+                    .margin_start(12)
+                    .selectable(false)
+                    .title(&title)
+                    .build();
 
                 row.upcast()
             }));

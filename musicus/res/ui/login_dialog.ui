@@ -69,7 +69,7 @@
                                 <property name="selection-mode">none</property>
                                 <child>
                                   <object class="AdwActionRow">
-                                    <property name="activatable">True</property>
+                                    <property name="focusable">False</property>
                                     <property name="title" translatable="yes">Username</property>
                                     <property name="activatable-widget">username_entry</property>
                                     <child>
@@ -82,7 +82,7 @@
                                 </child>
                                 <child>
                                   <object class="AdwActionRow">
-                                    <property name="activatable">True</property>
+                                    <property name="focusable">False</property>
                                     <property name="title" translatable="yes">Password</property>
                                     <property name="activatable-widget">password_entry</property>
                                     <child>
@@ -120,7 +120,7 @@
                                     <property name="selection-mode">none</property>
                                     <child>
                                       <object class="AdwActionRow">
-                                        <property name="activatable">True</property>
+                                        <property name="focusable">False</property>
                                         <property name="title" translatable="yes">Register a new account</property>
                                         <property name="activatable-widget">register_button</property>
                                         <child>
@@ -159,7 +159,7 @@
                                     <property name="selection-mode">none</property>
                                     <child>
                                       <object class="AdwActionRow">
-                                        <property name="activatable">True</property>
+                                        <property name="focusable">False</property>
                                         <property name="title" translatable="yes">Don't use an account</property>
                                         <property name="activatable-widget">logout_button</property>
                                         <child>

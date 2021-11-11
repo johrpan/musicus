@@ -68,6 +68,7 @@
                                 <property name="selection-mode">none</property>
                                 <child>
                                   <object class="AdwActionRow">
+                                    <property name="activatable">False</property>
                                     <property name="title" translatable="yes">Loading…</property>
                                     <child>
                                       <object class="GtkSpinner">
@@ -88,8 +89,8 @@
                                 <property name="selection-mode">none</property>
                                 <child>
                                   <object class="AdwActionRow" id="error_row">
+                                    <property name="focusable">False</property>
                                     <property name="title" translatable="yes">Error while searching for matching metadata</property>
-                                    <property name="activatable">True</property>
                                     <property name="activatable-widget">try_again_button</property>
                                     <child>
                                       <object class="GtkButton" id="try_again_button">
@@ -111,6 +112,7 @@
                                 <property name="selection-mode">none</property>
                                 <child>
                                   <object class="AdwActionRow">
+                                    <property name="activatable">False</property>
                                     <property name="title" translatable="yes">No matching metadata found</property>
                                   </object>
                                 </child>
@@ -150,8 +152,8 @@
                         <property name="selection-mode">none</property>
                         <child>
                           <object class="AdwActionRow">
+                            <property name="focusable">False</property>
                             <property name="title" translatable="yes">Select existing medium</property>
-                            <property name="activatable">True</property>
                             <property name="activatable-widget">select_button</property>
                             <child>
                               <object class="GtkButton" id="select_button">
@@ -163,8 +165,8 @@
                         </child>
                         <child>
                           <object class="AdwActionRow">
+                            <property name="focusable">False</property>
                             <property name="title" translatable="yes">Add a new medium</property>
-                            <property name="activatable">True</property>
                             <property name="activatable-widget">add_button</property>
                             <child>
                               <object class="GtkButton" id="add_button">

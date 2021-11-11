@@ -19,7 +19,7 @@ impl ButtonRow {
             .build();
 
         let widget = adw::ActionRowBuilder::new()
-            .activatable(true)
+            .focusable(false)
             .activatable_widget(&button)
             .title(title)
             .build();

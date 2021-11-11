@@ -75,7 +75,7 @@
                                 <property name="selection-mode">none</property>
                                 <child>
                                   <object class="AdwActionRow" id="work_row">
-                                    <property name="activatable">True</property>
+                                    <property name="focusable">False</property>
                                     <property name="title" translatable="yes">Select a work</property>
                                     <property name="activatable-widget">work_button</property>
                                     <child>
@@ -88,7 +88,7 @@
                                 </child>
                                 <child>
                                   <object class="AdwActionRow">
-                                    <property name="activatable">True</property>
+                                    <property name="focusable">False</property>
                                     <property name="title" translatable="yes">Comment</property>
                                     <property name="activatable-widget">comment_entry</property>
                                     <child>
@@ -101,7 +101,7 @@
                                 </child>
                                 <child>
                                   <object class="AdwActionRow">
-                                    <property name="activatable">True</property>
+                                    <property name="focusable">False</property>
                                     <property name="title" translatable="yes">Publish to the server</property>
                                     <property name="activatable-widget">upload_switch</property>
                                     <child>

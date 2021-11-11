@@ -51,7 +51,7 @@
                     <property name="selection-mode">none</property>
                     <child>
                       <object class="AdwActionRow" id="person_row">
-                        <property name="activatable">True</property>
+                        <property name="focusable">False</property>
                         <property name="title" translatable="yes">Select a person</property>
                         <property name="activatable-widget">person_button</property>
                         <child>
@@ -64,7 +64,7 @@
                     </child>
                     <child>
                       <object class="AdwActionRow" id="ensemble_row">
-                        <property name="activatable">True</property>
+                        <property name="focusable">False</property>
                         <property name="title" translatable="yes">Select an ensemble</property>
                         <property name="activatable-widget">ensemble_button</property>
                         <child>
@@ -77,7 +77,7 @@
                     </child>
                     <child>
                       <object class="AdwActionRow" id="role_row">
-                        <property name="activatable">True</property>
+                        <property name="focusable">False</property>
                         <property name="title" translatable="yes">Select a role</property>
                         <property name="activatable-widget">role_button</property>
                         <child>
