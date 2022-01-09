@@ -2,15 +2,6 @@
 
 This is a desktop app for Musicus.
 
-https://musicus.org
-
-# Current status
-
-Musicus is currently under heavy development. After reaching a state that is
-acceptable to the venturous public, an initial release will happen. You can
-track the progress to that first milestone
-[here](https://github.com/johrpan/musicus/milestone/1).
-
 ## Hacking
 
 ### Building

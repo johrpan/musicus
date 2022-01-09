@@ -187,11 +187,11 @@ impl MainScreen {
             .program_name(&gettext("Musicus"))
             .version(config::VERSION)
             .comments(&gettext("The classical music player and organizer."))
-            .website("https://github.com/johrpan/musicus")
+            .website("https://code.johrpan.de/johrpan/musicus")
             .website_label(&gettext("Further information and source code"))
             .copyright("© 2020 Elias Projahn")
             .license_type(gtk::License::Agpl30)
-            .authors(vec![String::from("Elias Projahn <johrpan@gmail.com>")])
+            .authors(vec![String::from("Elias Projahn <elias@johrpan.de>")])
             .build();
 
         dialog.show();
