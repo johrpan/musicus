@@ -9,5 +9,13 @@
 			<default>"https://wolfgang.johrpan.de"</default>
 			<summary>URL of the Wolfgang server to use</summary>
 		</key>
+		<key name="use-server" type="b">
+			<default>true</default>
+			<summary>Whether to use the Wolfgang server</summary>
+			<description>
+				This setting determines whether the Wolfgang server will be used for
+				finding new items as well as to upload new additions and edits.
+			</description>
+		</key>
 	</schema>
 </schemalist>

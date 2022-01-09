@@ -118,6 +118,8 @@ impl Backend {
             _ => (),
         }
 
+        self.use_server.set(self.settings.boolean("use-server"));
+
         if self.get_music_library_path().is_none() {
             self.set_state(BackendState::NoMusicLibrary);
         } else {
@@ -128,13 +130,24 @@ impl Backend {
     }
 
     /// Whether the server should be used by default.
+    ///
+    /// This will return `false` if no server URL is set up. Otherwise, the
+    /// value is based on the users "use-server" preference.
     pub fn use_server(&self) -> bool {
-        self.use_server.get()
+        self.client.get_server_url().is_some() && self.use_server.get()
     }
 
     /// Set whether the server should be used by default.
     pub fn set_use_server(&self, enabled: bool) {
         self.use_server.set(enabled);
+
+        if let Err(err) = self.settings.set_boolean("use-server", enabled) {
+            warn!(
+                "An error happened whilte trying to save the \"use-server\" setting to GSettings. \
+                Error message: {}",
+                err
+            )
+        }
     }
 
     /// Set the URL of the Musicus server to connect to.
