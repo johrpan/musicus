@@ -113,18 +113,15 @@ impl Screen<Option<Work>, Work> for WorkEditor {
 
         this.save_button
             .connect_clicked(clone!(@weak this =>  move |_| {
-                spawn!(@clone this, async move {
-                    this.widget.set_visible_child_name("loading");
-                    match this.save().await {
-                        Ok(work) => {
-                            this.handle.pop(Some(work));
-                        }
-                        Err(_) => {
-                            this.info_bar.set_revealed(true);
-                            this.widget.set_visible_child_name("content");
-                        }
+                match this.save() {
+                    Ok(work) => {
+                        this.handle.pop(Some(work));
                     }
-                });
+                    Err(_) => {
+                        this.info_bar.set_revealed(true);
+                        this.widget.set_visible_child_name("content");
+                    }
+                }
             }));
 
         composer_button.connect_clicked(clone!(@weak this =>  move |_| {
@@ -313,7 +310,7 @@ impl WorkEditor {
     }
 
     /// Save the work.
-    async fn save(self: &Rc<Self>) -> Result<Work> {
+    fn save(self: &Rc<Self>) -> Result<Work> {
         let mut section_count: usize = 0;
         let mut parts = Vec::new();
         let mut sections = Vec::new();
@@ -343,13 +340,7 @@ impl WorkEditor {
             sections,
         };
 
-        self.handle
-            .backend
-            .db()
-            .update_work(work.clone())
-            .await
-            .unwrap();
-
+        self.handle.backend.db().update_work(work.clone())?;
         self.handle.backend.library_changed();
 
         Ok(work)

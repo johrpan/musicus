@@ -28,26 +28,6 @@ impl Screen<(), Medium> for MediumSelector {
             this.handle.pop(None);
         }));
 
-        this.selector
-            .set_load_local(clone!(@weak this =>  @default-panic, move || {
-                async move {
-                    let mut poes = Vec::new();
-
-                    let persons = this.handle.backend.db().get_persons().await.unwrap();
-                    let ensembles = this.handle.backend.db().get_ensembles().await.unwrap();
-
-                    for person in persons {
-                        poes.push(PersonOrEnsemble::Person(person));
-                    }
-
-                    for ensemble in ensembles {
-                        poes.push(PersonOrEnsemble::Ensemble(ensemble));
-                    }
-
-                    poes
-                }
-            }));
-
         this.selector.set_make_widget(clone!(@weak this =>  @default-panic, move |poe| {
             let row = adw::ActionRowBuilder::new()
                 .activatable(true)
@@ -69,6 +49,23 @@ impl Screen<(), Medium> for MediumSelector {
 
         this.selector
             .set_filter(|search, poe| poe.get_title().to_lowercase().contains(search));
+
+        // Initialize items.
+
+        let mut poes = Vec::new();
+
+        let persons = this.handle.backend.db().get_persons().unwrap();
+        let ensembles = this.handle.backend.db().get_ensembles().unwrap();
+
+        for person in persons {
+            poes.push(PersonOrEnsemble::Person(person));
+        }
+
+        for ensemble in ensembles {
+            poes.push(PersonOrEnsemble::Ensemble(ensemble));
+        }
+
+        this.selector.set_items(poes);
 
         this
     }
@@ -103,25 +100,6 @@ impl Screen<PersonOrEnsemble, Medium> for MediumSelectorMediumScreen {
             this.handle.pop(None);
         }));
 
-        match this.poe.clone() {
-            PersonOrEnsemble::Person(person) => {
-                // this.selector.set_load_online(clone!(@weak this =>  move || {
-                //     async move { this.handle.backend.cl().get_mediums_for_person(&person.id).await }
-                // }));
-
-                this.selector.set_load_local(clone!(@weak this =>  @default-panic, move || {
-                    let person = person.clone();
-                    async move { this.handle.backend.db().get_mediums_for_person(&person.id).await.unwrap() }
-                }));
-            }
-            PersonOrEnsemble::Ensemble(ensemble) => {
-                this.selector.set_load_local(clone!(@weak this =>  @default-panic, move || {
-                    let ensemble = ensemble.clone();
-                    async move { this.handle.backend.db().get_mediums_for_ensemble(&ensemble.id).await.unwrap() }
-                }));
-            }
-        }
-
         this.selector
             .set_make_widget(clone!(@weak this =>  @default-panic, move |medium| {
                 let row = adw::ActionRowBuilder::new()
@@ -139,6 +117,28 @@ impl Screen<PersonOrEnsemble, Medium> for MediumSelectorMediumScreen {
 
         this.selector
             .set_filter(|search, medium| medium.name.to_lowercase().contains(search));
+
+        // Initialize items.
+        match this.poe.clone() {
+            PersonOrEnsemble::Person(person) => {
+                this.selector.set_items(
+                    this.handle
+                        .backend
+                        .db()
+                        .get_mediums_for_person(&person.id)
+                        .unwrap(),
+                );
+            }
+            PersonOrEnsemble::Ensemble(ensemble) => {
+                this.selector.set_items(
+                    this.handle
+                        .backend
+                        .db()
+                        .get_mediums_for_ensemble(&ensemble.id)
+                        .unwrap(),
+                );
+            }
+        }
 
         this
     }

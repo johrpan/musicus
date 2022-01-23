@@ -27,9 +27,6 @@ pub use persons::*;
 pub mod recordings;
 pub use recordings::*;
 
-pub mod thread;
-pub use thread::*;
-
 pub mod works;
 pub use works::*;
 

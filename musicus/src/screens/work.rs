@@ -55,7 +55,7 @@ impl Screen<Work, ()> for WorkScreen {
             &gettext("Delete work"),
             clone!(@weak this =>  move || {
                 spawn!(@clone this, async move {
-                    this.handle.backend.db().delete_work(&this.work.id).await.unwrap();
+                    this.handle.backend.db().delete_work(&this.work.id).unwrap();
                     this.handle.backend.library_changed();
                 });
             }),
@@ -95,27 +95,25 @@ impl Screen<Work, ()> for WorkScreen {
                 search.is_empty() || text.to_lowercase().contains(&search)
             }));
 
-        // Load the content asynchronously.
+        // Load the content.
 
-        spawn!(@clone this, async move {
-            let recordings = this.handle
-                .backend
-                .db()
-                .get_recordings_for_work(&this.work.id)
-                .await
-                .unwrap();
+        let recordings = this
+            .handle
+            .backend
+            .db()
+            .get_recordings_for_work(&this.work.id)
+            .unwrap();
 
-            if !recordings.is_empty() {
-                let length = recordings.len();
-                this.recordings.replace(recordings);
-                this.recording_list.update(length);
+        if !recordings.is_empty() {
+            let length = recordings.len();
+            this.recordings.replace(recordings);
+            this.recording_list.update(length);
 
-                let section = Section::new("Recordings", &this.recording_list.widget);
-                this.widget.add_content(&section.widget);
-            }
+            let section = Section::new("Recordings", &this.recording_list.widget);
+            this.widget.add_content(&section.widget);
+        }
 
-            this.widget.ready();
-        });
+        this.widget.ready();
 
         this
     }

@@ -63,18 +63,15 @@ impl Screen<Option<Person>, Person> for PersonEditor {
         }));
 
         this.editor.set_save_cb(clone!(@strong this => move || {
-            spawn!(@clone this, async move {
-                this.editor.loading();
-                match this.save().await {
-                    Ok(person) => {
-                        this.handle.pop(Some(person));
-                    }
-                    Err(err) => {
-                        let description = gettext!("Cause: {}", err);
-                        this.editor.error(&gettext("Failed to save person!"), &description);
-                    }
+            match this.save() {
+                Ok(person) => {
+                    this.handle.pop(Some(person));
                 }
-            });
+                Err(err) => {
+                    let description = gettext!("Cause: {}", err);
+                    this.editor.error(&gettext("Failed to save person!"), &description);
+                }
+            }
         }));
 
         this.first_name
@@ -100,7 +97,7 @@ impl PersonEditor {
     }
 
     /// Save the person.
-    async fn save(self: &Rc<Self>) -> Result<Person> {
+    fn save(self: &Rc<Self>) -> Result<Person> {
         let first_name = self.first_name.get_text();
         let last_name = self.last_name.get_text();
 
@@ -110,11 +107,7 @@ impl PersonEditor {
             last_name,
         };
 
-        self.handle
-            .backend
-            .db()
-            .update_person(person.clone())
-            .await?;
+        self.handle.backend.db().update_person(person.clone())?;
         self.handle.backend.library_changed();
 
         Ok(person)

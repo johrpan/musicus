@@ -70,11 +70,6 @@ impl Editor {
         self.save_button.connect_clicked(move |_| cb());
     }
 
-    /// Show a loading page.
-    pub fn loading(&self) {
-        self.widget.set_visible_child_name("loading");
-    }
-
     /// Show an error page. The page contains a button to get back to the
     /// actual editor.
     pub fn error(&self, title: &str, description: &str) {

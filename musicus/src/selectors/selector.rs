@@ -3,8 +3,6 @@ use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
 use std::cell::RefCell;
-use std::future::Future;
-use std::pin::Pin;
 use std::rc::Rc;
 
 /// A screen that presents a list of items from the library.
@@ -19,7 +17,6 @@ pub struct Selector<T: 'static> {
     back_cb: RefCell<Option<Box<dyn Fn()>>>,
     add_cb: RefCell<Option<Box<dyn Fn()>>>,
     make_widget: RefCell<Option<Box<dyn Fn(&T) -> gtk::Widget>>>,
-    load_local: RefCell<Option<Box<dyn Fn() -> Box<dyn Future<Output = Vec<T>>>>>>,
     filter: RefCell<Option<Box<dyn Fn(&str, &T) -> bool>>>,
 }
 
@@ -53,7 +50,6 @@ impl<T> Selector<T> {
             back_cb: RefCell::new(None),
             add_cb: RefCell::new(None),
             make_widget: RefCell::new(None),
-            load_local: RefCell::new(None),
             filter: RefCell::new(None),
         });
 
@@ -98,9 +94,6 @@ impl<T> Selector<T> {
                 }
             }));
 
-        // Initialize
-        this.clone().load_local();
-
         this
     }
 
@@ -125,16 +118,6 @@ impl<T> Selector<T> {
         self.add_cb.replace(Some(Box::new(cb)));
     }
 
-    /// Set the async closure to be called to get local items.
-    pub fn set_load_local<F, R>(&self, cb: F)
-    where
-        F: (Fn() -> R) + 'static,
-        R: Future<Output = Vec<T>> + 'static,
-    {
-        self.load_local
-            .replace(Some(Box::new(move || Box::new(cb()))));
-    }
-
     /// Set the closure to be called for creating a new list row.
     pub fn set_make_widget<F: Fn(&T) -> gtk::Widget + 'static>(&self, make_widget: F) {
         self.make_widget.replace(Some(Box::new(make_widget)));
@@ -146,20 +129,8 @@ impl<T> Selector<T> {
         self.filter.replace(Some(Box::new(filter)));
     }
 
-    fn load_local(self: Rc<Self>) {
-        let context = glib::MainContext::default();
-        let clone = self.clone();
-        context.spawn_local(async move {
-            if let Some(cb) = &*self.load_local.borrow() {
-                self.stack.set_visible_child_name("loading");
-
-                let items = Pin::from(cb()).await;
-                clone.show_items(items);
-            }
-        });
-    }
-
-    fn show_items(&self, items: Vec<T>) {
+    /// Set the list items the user may select from.
+    pub fn set_items(&self, items: Vec<T>) {
         let length = items.len();
         self.items.replace(items);
         self.list.update(length);

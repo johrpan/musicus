@@ -56,18 +56,15 @@ impl Screen<Option<Instrument>, Instrument> for InstrumentEditor {
         }));
 
         this.editor.set_save_cb(clone!(@weak this => move || {
-            spawn!(@clone this, async move {
-                this.editor.loading();
-                match this.save().await {
-                    Ok(instrument) => {
-                        this.handle.pop(Some(instrument));
-                    }
-                    Err(err) => {
-                        let description = gettext!("Cause: {}", err);
-                        this.editor.error(&gettext("Failed to save instrument!"), &description);
-                    }
+            match this.save() {
+                Ok(instrument) => {
+                    this.handle.pop(Some(instrument));
                 }
-            });
+                Err(err) => {
+                    let description = gettext!("Cause: {}", err);
+                    this.editor.error(&gettext("Failed to save instrument!"), &description);
+                }
+            }
         }));
 
         this.name
@@ -87,7 +84,7 @@ impl InstrumentEditor {
     }
 
     /// Save the instrument.
-    async fn save(&self) -> Result<Instrument> {
+    fn save(&self) -> Result<Instrument> {
         let name = self.name.get_text();
 
         let instrument = Instrument {
@@ -95,12 +92,7 @@ impl InstrumentEditor {
             name,
         };
 
-        self.handle
-            .backend
-            .db()
-            .update_instrument(instrument.clone())
-            .await?;
-
+        self.handle.backend.db().update_instrument(instrument.clone())?;
         self.handle.backend.library_changed();
 
         Ok(instrument)

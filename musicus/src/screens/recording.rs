@@ -65,7 +65,7 @@ impl Screen<Recording, ()> for RecordingScreen {
             &gettext("Delete recording"),
             clone!(@weak this =>  move || {
                 spawn!(@clone this, async move {
-                    this.handle.backend.db().delete_recording(&this.recording.id).await.unwrap();
+                    this.handle.backend.db().delete_recording(&this.recording.id).unwrap();
                     this.handle.backend.library_changed();
                 });
             }),
@@ -93,19 +93,17 @@ impl Screen<Recording, ()> for RecordingScreen {
                 row.upcast()
             }));
 
-        // Load the content asynchronously.
+        // Load the content.
 
-        spawn!(@clone this, async move {
-            let tracks = this.handle
-                .backend
-                .db()
-                .get_tracks(&this.recording.id)
-                .await
-                .unwrap();
+        let tracks = this
+            .handle
+            .backend
+            .db()
+            .get_tracks(&this.recording.id)
+            .unwrap();
 
-            this.show_tracks(tracks);
-            this.widget.ready();
-        });
+        this.show_tracks(tracks);
+        this.widget.ready();
 
         this
     }

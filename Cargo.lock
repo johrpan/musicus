@@ -1021,7 +1021,6 @@ dependencies = [
  "log",
  "rand",
  "thiserror",
- "tokio",
  "uuid",
 ]
 

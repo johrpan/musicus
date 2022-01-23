@@ -56,18 +56,15 @@ impl Screen<Option<Ensemble>, Ensemble> for EnsembleEditor {
         }));
 
         this.editor.set_save_cb(clone!(@weak this => move || {
-            spawn!(@clone this, async move {
-                this.editor.loading();
-                match this.save().await {
-                    Ok(ensemble) => {
-                        this.handle.pop(Some(ensemble));
-                    }
-                    Err(err) => {
-                        let description = gettext!("Cause: {}", err);
-                        this.editor.error(&gettext("Failed to save ensemble!"), &description);
-                    }
+            match this.save() {
+                Ok(ensemble) => {
+                    this.handle.pop(Some(ensemble));
                 }
-            });
+                Err(err) => {
+                    let description = gettext!("Cause: {}", err);
+                    this.editor.error(&gettext("Failed to save ensemble!"), &description);
+                }
+            }
         }));
 
         this.name
@@ -87,7 +84,7 @@ impl EnsembleEditor {
     }
 
     /// Save the ensemble.
-    async fn save(&self) -> Result<Ensemble> {
+    fn save(&self) -> Result<Ensemble> {
         let name = self.name.get_text();
 
         let ensemble = Ensemble {
@@ -95,12 +92,7 @@ impl EnsembleEditor {
             name,
         };
 
-        self.handle
-            .backend
-            .db()
-            .update_ensemble(ensemble.clone())
-            .await?;
-
+        self.handle.backend.db().update_ensemble(ensemble.clone())?;
         self.handle.backend.library_changed();
 
         Ok(ensemble)

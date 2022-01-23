@@ -1,4 +1,4 @@
-use musicus_database::DbThread;
+use musicus_database::Database;
 use std::cell::RefCell;
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -19,7 +19,7 @@ pub mod player;
 pub use player::*;
 
 /// General states the application can be in.
-#[derive(Debug, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub enum BackendState {
     /// The backend is not set up yet. This means that no backend methods except for setting the
     /// music library path should be called. The user interface should adapt and only present this
@@ -36,8 +36,8 @@ pub enum BackendState {
 
 /// A collection of all backend state and functionality.
 pub struct Backend {
-    /// The internal sender to publish the state via state_stream.
-    state_sender: Sender<BackendState>,
+    /// A closure that will be called whenever the backend state changes.
+    state_cb: RefCell<Option<Box<dyn Fn(BackendState)>>>,
 
     /// Access to GSettings.
     settings: gio::Settings,
@@ -50,7 +50,7 @@ pub struct Backend {
     library_updated_sender: Sender<()>,
 
     /// The database. This can be assumed to exist, when the state is set to BackendState::Ready.
-    database: RefCell<Option<Rc<DbThread>>>,
+    database: RefCell<Option<Rc<Database>>>,
 
     /// The player handling playlist and playback. This can be assumed to exist, when the state is
     /// set to BackendState::Ready.
@@ -64,40 +64,46 @@ impl Backend {
     pub fn new() -> Self {
         logger::register();
 
-        let (state_sender, _) = broadcast::channel(1024);
         let (library_updated_sender, _) = broadcast::channel(1024);
 
         Backend {
-            state_sender,
+            state_cb: RefCell::new(None),
             settings: gio::Settings::new("de.johrpan.musicus"),
             music_library_path: RefCell::new(None),
             library_updated_sender,
             database: RefCell::new(None),
-            player: RefCell::new(None)
+            player: RefCell::new(None),
         }
     }
 
-    /// Wait for the next state change. Initially, the state should be assumed to be
-    /// BackendState::Loading. Changes should be awaited before calling init().
-    pub async fn next_state(&self) -> Result<BackendState> {
-        Ok(self.state_sender.subscribe().recv().await?)
+    /// Set the closure to be called whenever the backend state changes.
+    pub fn set_state_cb<F: Fn(BackendState) + 'static>(&self, cb: F) {
+        self.state_cb.replace(Some(Box::new(cb)));
     }
 
-    /// Initialize the backend updating the state accordingly.
-    pub async fn init(&self) -> Result<()> {
-        self.init_library().await?;
+    /// Initialize the backend. A state callback should already have been registered using
+    /// [`set_state_cb()`] to react to the result.
+    pub fn init(&self) -> Result<()> {
+        self.init_library()?;
 
-        if self.get_music_library_path().is_none() {
-            self.set_state(BackendState::NoMusicLibrary);
-        } else {
-            self.set_state(BackendState::Ready);
-        }
+        match self.get_music_library_path() {
+            None => self.set_state(BackendState::NoMusicLibrary),
+            Some(_) => self.set_state(BackendState::Ready),
+        };
 
         Ok(())
     }
 
     /// Set the current state and notify the user interface.
     fn set_state(&self, state: BackendState) {
-        self.state_sender.send(state).unwrap();
+        if let Some(cb) = &*self.state_cb.borrow() {
+            cb(state);
+        }
+    }
+}
+
+impl Default for Backend {
+    fn default() -> Self {
+        Self::new()
     }
 }

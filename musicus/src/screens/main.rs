@@ -136,16 +136,15 @@ impl Screen<(), ()> for MainScreen {
             });
         }));
 
-        // Load the content asynchronously.
-
+        // Load the content whenever there is a new library update.
         spawn!(@clone this, async move {
             loop {
                 this.navigator.reset();
 
                 let mut poes = Vec::new();
 
-                let persons = this.handle.backend.db().get_persons().await.unwrap();
-                let ensembles = this.handle.backend.db().get_ensembles().await.unwrap();
+                let persons = this.handle.backend.db().get_persons().unwrap();
+                let ensembles = this.handle.backend.db().get_ensembles().unwrap();
 
                 for person in persons {
                     poes.push(PersonOrEnsemble::Person(person));

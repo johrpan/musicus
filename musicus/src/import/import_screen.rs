@@ -28,7 +28,7 @@ impl ImportScreen {
 
         let this = self;
         spawn!(@clone this, async move {
-            let mediums = this.handle.backend.db().get_mediums_by_source_id(this.session.source_id()).await;
+            let mediums = this.handle.backend.db().get_mediums_by_source_id(this.session.source_id());
 
             match mediums {
                 Ok(mediums) => {

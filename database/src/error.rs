@@ -16,12 +16,6 @@ pub enum Error {
     #[error("Failed to parse {0} from '{1}'")]
     ParsingError(&'static str, String),
 
-    #[error(transparent)]
-    SendError(#[from] std::sync::mpsc::SendError<super::thread::Action>),
-
-    #[error(transparent)]
-    ReceiveError(#[from] tokio::sync::oneshot::error::RecvError),
-
     #[error("{0}")]
     Other(&'static str),
 }

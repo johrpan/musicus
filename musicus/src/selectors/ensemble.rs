@@ -39,12 +39,6 @@ impl Screen<(), Ensemble> for EnsembleSelector {
         }));
 
         this.selector
-            .set_load_local(clone!(@weak this =>  @default-panic, move || {
-                let clone = this;
-                async move { clone.handle.backend.db().get_ensembles().await.unwrap() }
-            }));
-
-        this.selector
             .set_make_widget(clone!(@weak this => @default-panic,  move |ensemble| {
                 let row = adw::ActionRowBuilder::new()
                     .activatable(true)
@@ -61,6 +55,9 @@ impl Screen<(), Ensemble> for EnsembleSelector {
 
         this.selector
             .set_filter(|search, ensemble| ensemble.name.to_lowercase().contains(search));
+
+        this.selector
+            .set_items(this.handle.backend.db().get_ensembles().unwrap());
 
         this
     }

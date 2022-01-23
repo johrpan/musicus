@@ -39,12 +39,6 @@ impl Screen<(), Instrument> for InstrumentSelector {
         }));
 
         this.selector
-            .set_load_local(clone!(@weak this =>  @default-panic, move || {
-                let clone = this;
-                async move { clone.handle.backend.db().get_instruments().await.unwrap() }
-            }));
-
-        this.selector
             .set_make_widget(clone!(@weak this =>  @default-panic, move |instrument| {
                 let row = adw::ActionRowBuilder::new()
                     .activatable(true)
@@ -61,6 +55,9 @@ impl Screen<(), Instrument> for InstrumentSelector {
 
         this.selector
             .set_filter(|search, instrument| instrument.name.to_lowercase().contains(search));
+
+        this.selector
+            .set_items(this.handle.backend.db().get_instruments().unwrap());
 
         this
     }

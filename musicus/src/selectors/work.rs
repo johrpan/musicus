@@ -44,11 +44,6 @@ impl Screen<(), Work> for WorkSelector {
             });
         }));
 
-        this.selector
-            .set_load_local(clone!(@weak this =>  @default-panic, move || {
-                async move { this.handle.backend.db().get_persons().await.unwrap() }
-            }));
-
         this.selector.set_make_widget(clone!(@weak this =>  @default-panic, move |person| {
             let row = adw::ActionRowBuilder::new()
                 .activatable(true)
@@ -73,6 +68,9 @@ impl Screen<(), Work> for WorkSelector {
 
         this.selector
             .set_filter(|search, person| person.name_fl().to_lowercase().contains(search));
+
+        this.selector
+            .set_items(this.handle.backend.db().get_persons().unwrap());
 
         this
     }
@@ -117,11 +115,6 @@ impl Screen<Person, Work> for WorkSelectorWorkScreen {
         }));
 
         this.selector
-            .set_load_local(clone!(@weak this =>  @default-panic, move || {
-                async move { this.handle.backend.db().get_works(&this.person.id).await.unwrap() }
-            }));
-
-        this.selector
             .set_make_widget(clone!(@weak this =>  @default-panic, move |work| {
                 let row = adw::ActionRowBuilder::new()
                     .activatable(true)
@@ -138,6 +131,9 @@ impl Screen<Person, Work> for WorkSelectorWorkScreen {
 
         this.selector
             .set_filter(|search, work| work.title.to_lowercase().contains(search));
+
+        this.selector
+            .set_items(this.handle.backend.db().get_works(&this.person.id).unwrap());
 
         this
     }

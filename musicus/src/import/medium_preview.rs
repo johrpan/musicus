@@ -256,12 +256,7 @@ impl MediumPreview {
             tracks,
         };
 
-        self.handle
-            .backend
-            .db()
-            .update_medium(medium.clone())
-            .await?;
-
+        self.handle.backend.db().update_medium(medium)?;
         self.handle.backend.library_changed();
 
         Ok(())

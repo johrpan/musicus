@@ -74,18 +74,15 @@ impl Screen<Option<Recording>, Recording> for RecordingEditor {
 
         this.save_button
             .connect_clicked(clone!(@weak this =>  move |_| {
-                spawn!(@clone this, async move {
-                    this.widget.set_visible_child_name("loading");
-                    match this.save().await {
-                        Ok(recording) => {
-                            this.handle.pop(Some(recording));
-                        }
-                        Err(_) => {
-                            this.info_bar.set_revealed(true);
-                            this.widget.set_visible_child_name("content");
-                        }
+                match this.save() {
+                    Ok(recording) => {
+                        this.handle.pop(Some(recording));
                     }
-                });
+                    Err(_) => {
+                        this.info_bar.set_revealed(true);
+                        this.widget.set_visible_child_name("content");
+                    }
+                }
             }));
 
         work_button.connect_clicked(clone!(@weak this =>  move |_| {
@@ -179,7 +176,7 @@ impl RecordingEditor {
     }
 
     /// Save the recording.
-    async fn save(self: &Rc<Self>) -> Result<Recording> {
+    fn save(self: &Rc<Self>) -> Result<Recording> {
         let recording = Recording {
             id: self.id.clone(),
             work: self
@@ -191,13 +188,7 @@ impl RecordingEditor {
             performances: self.performances.borrow().clone(),
         };
 
-        self.handle
-            .backend
-            .db()
-            .update_recording(recording.clone())
-            .await
-            .unwrap();
-
+        self.handle.backend.db().update_recording(recording.clone())?;
         self.handle.backend.library_changed();
 
         Ok(recording)

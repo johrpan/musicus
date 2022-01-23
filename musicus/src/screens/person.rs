@@ -64,7 +64,7 @@ impl Screen<Person, ()> for PersonScreen {
             &gettext("Delete person"),
             clone!(@weak this =>  move || {
                 spawn!(@clone this, async move {
-                    this.handle.backend.db().delete_person(&this.person.id).await.unwrap();
+                    this.handle.backend.db().delete_person(&this.person.id).unwrap();
                     this.handle.backend.library_changed();
                 });
             }),
@@ -162,59 +162,52 @@ impl Screen<Person, ()> for PersonScreen {
                 search.is_empty() || name.contains(&search)
             }));
 
-        // Load the content asynchronously.
+        // Load the content.
 
-        spawn!(@clone this, async move {
-            let works = this.handle
-                .backend
-                .db()
-                .get_works(&this.person.id)
-                .await
-                .unwrap();
+        let works = this.handle.backend.db().get_works(&this.person.id).unwrap();
 
-            let recordings = this.handle
-                .backend
-                .db()
-                .get_recordings_for_person(&this.person.id)
-                .await
-                .unwrap();
+        let recordings = this
+            .handle
+            .backend
+            .db()
+            .get_recordings_for_person(&this.person.id)
+            .unwrap();
 
-            let mediums = this.handle
-                .backend
-                .db()
-                .get_mediums_for_person(&this.person.id)
-                .await
-                .unwrap();
+        let mediums = this
+            .handle
+            .backend
+            .db()
+            .get_mediums_for_person(&this.person.id)
+            .unwrap();
 
-            if !works.is_empty() {
-                let length = works.len();
-                this.works.replace(works);
-                this.work_list.update(length);
+        if !works.is_empty() {
+            let length = works.len();
+            this.works.replace(works);
+            this.work_list.update(length);
 
-                let section = Section::new("Works", &this.work_list.widget);
-                this.widget.add_content(&section.widget);
-            }
+            let section = Section::new("Works", &this.work_list.widget);
+            this.widget.add_content(&section.widget);
+        }
 
-            if !recordings.is_empty() {
-                let length = recordings.len();
-                this.recordings.replace(recordings);
-                this.recording_list.update(length);
+        if !recordings.is_empty() {
+            let length = recordings.len();
+            this.recordings.replace(recordings);
+            this.recording_list.update(length);
 
-                let section = Section::new("Recordings", &this.recording_list.widget);
-                this.widget.add_content(&section.widget);
-            }
+            let section = Section::new("Recordings", &this.recording_list.widget);
+            this.widget.add_content(&section.widget);
+        }
 
-            if !mediums.is_empty() {
-                let length = mediums.len();
-                this.mediums.replace(mediums);
-                this.medium_list.update(length);
+        if !mediums.is_empty() {
+            let length = mediums.len();
+            this.mediums.replace(mediums);
+            this.medium_list.update(length);
 
-                let section = Section::new("Mediums", &this.medium_list.widget);
-                this.widget.add_content(&section.widget);
-            }
+            let section = Section::new("Mediums", &this.medium_list.widget);
+            this.widget.add_content(&section.widget);
+        }
 
-            this.widget.ready();
-        });
+        this.widget.ready();
 
         this
     }

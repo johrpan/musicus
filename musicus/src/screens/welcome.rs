@@ -62,9 +62,7 @@ impl Screen<(), ()> for WelcomeScreen {
                 if let gtk::ResponseType::Accept = response {
                     if let Some(file) = dialog.file() {
                         if let Some(path) = file.path() {
-                            spawn!(@clone this, async move {
-                                this.handle.backend.set_music_library_path(path).await.unwrap();
-                            });
+                            this.handle.backend.set_music_library_path(path).unwrap();
                         }
                     }
                 }

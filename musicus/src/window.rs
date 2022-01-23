@@ -1,5 +1,6 @@
 use crate::navigator::Navigator;
 use crate::screens::{MainScreen, WelcomeScreen};
+use glib::clone;
 use gtk::prelude::*;
 use musicus_backend::{Backend, BackendState};
 use std::rc::Rc;
@@ -50,21 +51,17 @@ impl Window {
             navigator,
         });
 
-        spawn!(@clone this, async move {
-            while let Ok(state) = this.backend.next_state().await {
-                match state {
-                    BackendState::Loading => this.navigator.reset(),
-                    BackendState::NoMusicLibrary => this.show_welcome_screen(),
-                    BackendState::Ready => this.show_main_screen(),
-                }
+        // Listen for backend state changes.
+        this.backend.set_state_cb(clone!(@weak this => move |state| {
+            match state {
+                BackendState::Loading => this.navigator.reset(),
+                BackendState::NoMusicLibrary => this.show_welcome_screen(),
+                BackendState::Ready => this.show_main_screen(),
             }
-        });
+        }));
 
-        spawn!(@clone this, async move {
-            // This is not done in the async block above, because backend state changes may happen
-            // while this method is running.
-            this.backend.init().await.unwrap();
-        });
+        // Initialize the backend.
+        this.backend.init().unwrap();
 
         this
     }

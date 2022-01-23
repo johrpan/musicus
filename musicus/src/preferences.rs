@@ -48,11 +48,8 @@ impl Preferences {
                 if let gtk::ResponseType::Accept = response {
                     if let Some(file) = dialog.file() {
                         if let Some(path) = file.path() {
+                            this.backend.set_music_library_path(path.clone()).unwrap();
                             this.music_library_path_row.set_subtitle(path.to_str().unwrap());
-
-                            spawn!(@clone this, async move {
-                                this.backend.set_music_library_path(path).await.unwrap();
-                            });
                         }
                     }
                 }
