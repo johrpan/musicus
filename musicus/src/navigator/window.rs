@@ -29,10 +29,4 @@ impl NavigatorWindow {
 
         this
     }
-
-    /// Make the wrapped window transient. This will make the window modal.
-    pub fn set_transient_for<W: IsA<gtk::Window>>(&self, window: &W) {
-        self.window.set_modal(true);
-        self.window.set_transient_for(Some(window));
-    }
 }

@@ -36,7 +36,6 @@ pub struct WorkEditor {
     title_entry: gtk::Entry,
     info_bar: gtk::InfoBar,
     composer_row: adw::ActionRow,
-    upload_switch: gtk::Switch,
     instrument_list: Rc<List>,
     part_list: Rc<List>,
     id: String,
@@ -59,7 +58,6 @@ impl Screen<Option<Work>, Work> for WorkEditor {
         get_widget!(builder, gtk::Entry, title_entry);
         get_widget!(builder, gtk::Button, composer_button);
         get_widget!(builder, adw::ActionRow, composer_row);
-        get_widget!(builder, gtk::Switch, upload_switch);
         get_widget!(builder, gtk::Frame, instrument_frame);
         get_widget!(builder, gtk::Button, add_instrument_button);
         get_widget!(builder, gtk::Frame, structure_frame);
@@ -92,8 +90,6 @@ impl Screen<Option<Work>, Work> for WorkEditor {
             None => (generate_id(), None, Vec::new(), Vec::new()),
         };
 
-        upload_switch.set_active(handle.backend.use_server());
-
         let this = Rc::new(Self {
             handle,
             widget,
@@ -102,7 +98,6 @@ impl Screen<Option<Work>, Work> for WorkEditor {
             info_bar,
             title_entry,
             composer_row,
-            upload_switch,
             instrument_list,
             part_list,
             composer: RefCell::new(composer),
@@ -317,7 +312,7 @@ impl WorkEditor {
             .set_sensitive(!self.title_entry.text().is_empty() && self.composer.borrow().is_some());
     }
 
-    /// Save the work and possibly upload it to the server.
+    /// Save the work.
     async fn save(self: &Rc<Self>) -> Result<Work> {
         let mut section_count: usize = 0;
         let mut parts = Vec::new();
@@ -347,11 +342,6 @@ impl WorkEditor {
             parts,
             sections,
         };
-
-        let upload = self.upload_switch.state();
-        if upload {
-            self.handle.backend.cl().post_work(&work).await?;
-        }
 
         self.handle
             .backend

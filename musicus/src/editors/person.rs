@@ -1,5 +1,5 @@
 use crate::navigator::{NavigationHandle, Screen};
-use crate::widgets::{Editor, EntryRow, Section, UploadSection, Widget};
+use crate::widgets::{Editor, EntryRow, Section, Widget};
 use anyhow::Result;
 use gettextrs::gettext;
 use glib::clone;
@@ -17,7 +17,6 @@ pub struct PersonEditor {
     editor: Editor,
     first_name: EntryRow,
     last_name: EntryRow,
-    upload: Rc<UploadSection>,
 }
 
 impl Screen<Option<Person>, Person> for PersonEditor {
@@ -37,10 +36,7 @@ impl Screen<Option<Person>, Person> for PersonEditor {
         list.append(&last_name.widget);
 
         let section = Section::new(&gettext("General"), &list);
-        let upload = UploadSection::new(Rc::clone(&handle.backend));
-
         editor.add_content(&section.widget);
-        editor.add_content(&upload.widget);
 
         let id = match person {
             Some(person) => {
@@ -58,7 +54,6 @@ impl Screen<Option<Person>, Person> for PersonEditor {
             editor,
             first_name,
             last_name,
-            upload,
         });
 
         // Connect signals and callbacks
@@ -104,7 +99,7 @@ impl PersonEditor {
         );
     }
 
-    /// Save the person and possibly upload it to the server.
+    /// Save the person.
     async fn save(self: &Rc<Self>) -> Result<Person> {
         let first_name = self.first_name.get_text();
         let last_name = self.last_name.get_text();
@@ -114,10 +109,6 @@ impl PersonEditor {
             first_name,
             last_name,
         };
-
-        if self.upload.get_active() {
-            self.handle.backend.cl().post_person(&person).await?;
-        }
 
         self.handle
             .backend

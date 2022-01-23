@@ -1,15 +1,8 @@
-/// An error that can happened within the backend.
+/// An error that happened within the backend.
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error(transparent)]
-    ClientError(#[from] musicus_client::Error),
-
-    #[error(transparent)]
     DatabaseError(#[from] musicus_database::Error),
-
-    #[cfg(target_os = "linux")]
-    #[error("An error happened using the SecretService.")]
-    SecretServiceError(#[from] secret_service::Error),
 
     #[error("An error happened while decoding to UTF-8.")]
     Utf8Error(#[from] std::str::Utf8Error),

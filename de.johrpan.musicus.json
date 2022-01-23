@@ -1,37 +1,36 @@
 {
-    "app-id" : "de.johrpan.musicus",
-    "runtime" : "org.gnome.Platform",
-    "runtime-version" : "master",
-    "sdk" : "org.gnome.Sdk",
-    "sdk-extensions" : [
+    "app-id": "de.johrpan.musicus",
+    "runtime": "org.gnome.Platform",
+    "runtime-version": "master",
+    "sdk": "org.gnome.Sdk",
+    "sdk-extensions": [
         "org.freedesktop.Sdk.Extension.rust-stable"
     ],
-    "command" : "musicus",
-    "finish-args" : [
+    "command": "musicus",
+    "finish-args": [
         "--share=network",
         "--share=ipc",
         "--socket=x11",
         "--socket=wayland",
         "--socket=pulseaudio",
         "--filesystem=host",
-        "--talk-name=org.freedesktop.secrets",
-    	"--talk-name=org.mpris.MediaPlayer2.Player",
+        "--talk-name=org.mpris.MediaPlayer2.Player",
         "--own-name=org.mpris.MediaPlayer2.de.johrpan.musicus",
         "--device=all"
     ],
-    "build-options" : {
-        "append-path" : "/usr/lib/sdk/rust-stable/bin",
-        "build-args" : [
+    "build-options": {
+        "append-path": "/usr/lib/sdk/rust-stable/bin",
+        "build-args": [
             "--share=network"
         ],
-        "env" : {
-            "RUSTFLAGS" : "-L=/app/lib",
-            "CARGO_HOME" : "/run/build/musicus/cargo",
-            "RUST_BACKTRACE" : "1",
-            "RUST_LOG" : "musicus=debug"
+        "env": {
+            "RUSTFLAGS": "-L=/app/lib",
+            "CARGO_HOME": "/run/build/musicus/cargo",
+            "RUST_BACKTRACE": "1",
+            "RUST_LOG": "musicus=debug"
         }
     },
-    "cleanup" : [
+    "cleanup": [
         "/include",
         "/lib/pkgconfig",
         "/man",
@@ -42,8 +41,7 @@
         "*.la",
         "*.a"
     ],
-    "modules" : [
-        {
+    "modules": [{
             "name": "cdparanoia",
             "buildsystem": "simple",
             "build-commands": [
@@ -52,13 +50,11 @@
                 "make all slib",
                 "make install"
             ],
-            "sources": [
-                {
-                    "type": "archive",
-                    "url": "http://downloads.xiph.org/releases/cdparanoia/cdparanoia-III-10.2.src.tgz",
-                    "sha256": "005db45ef4ee017f5c32ec124f913a0546e77014266c6a1c50df902a55fe64df"
-                }
-            ]
+            "sources": [{
+                "type": "archive",
+                "url": "http://downloads.xiph.org/releases/cdparanoia/cdparanoia-III-10.2.src.tgz",
+                "sha256": "005db45ef4ee017f5c32ec124f913a0546e77014266c6a1c50df902a55fe64df"
+            }]
         },
         {
             "name": "gst-plugins-base",
@@ -68,26 +64,22 @@
                 "-Dauto_features=disabled",
                 "-Dcdparanoia=enabled"
             ],
-            "cleanup": [ "*.la", "/share/gtk-doc" ],
-            "sources": [
-                {
-                    "type": "git",
-                    "url": "https://gitlab.freedesktop.org/gstreamer/gst-plugins-base.git",
-                    "branch" : "1.16.2",
-                    "commit" : "9d3581b2e6f12f0b7e790d1ebb63b90cf5b1ef4e"
-                }
-            ]
+            "cleanup": ["*.la", "/share/gtk-doc"],
+            "sources": [{
+                "type": "git",
+                "url": "https://gitlab.freedesktop.org/gstreamer/gst-plugins-base.git",
+                "branch": "1.16.2",
+                "commit": "9d3581b2e6f12f0b7e790d1ebb63b90cf5b1ef4e"
+            }]
         },
         {
-            "name" : "musicus",
-            "builddir" : true,
-            "buildsystem" : "meson",
-            "sources" : [
-                {
-                    "type" : "git",
-                    "url" : "."
-                }
-            ]
+            "name": "musicus",
+            "builddir": true,
+            "buildsystem": "meson",
+            "sources": [{
+                "type": "git",
+                "url": "."
+            }]
         }
     ]
 }

@@ -45,12 +45,6 @@
                         </attributes>
                       </object>
                     </child>
-                    <child>
-                      <object class="GtkCheckButton" id="server_check_button">
-                        <property name="label" translatable="yes">Use the Musicus server</property>
-                        <property name="active">True</property>
-                      </object>
-                    </child>
                   </object>
                 </child>
                 <child>

@@ -17,7 +17,7 @@ impl Screen<(), Medium> for MediumSelector {
     fn new(_: (), handle: NavigationHandle<Medium>) -> Rc<Self> {
         // Create UI
 
-        let selector = Selector::<PersonOrEnsemble>::new(Rc::clone(&handle.backend));
+        let selector = Selector::<PersonOrEnsemble>::new();
         selector.set_title(&gettext("Select performer"));
 
         let this = Rc::new(Self { handle, selector });
@@ -27,26 +27,6 @@ impl Screen<(), Medium> for MediumSelector {
         this.selector.set_back_cb(clone!(@weak this =>  move || {
             this.handle.pop(None);
         }));
-
-        this.selector
-            .set_load_online(clone!(@weak this =>  @default-panic, move || {
-                async move {
-                    let mut poes = Vec::new();
-
-                    let persons = this.handle.backend.cl().get_persons().await?;
-                    let ensembles = this.handle.backend.cl().get_ensembles().await?;
-
-                    for person in persons {
-                        poes.push(PersonOrEnsemble::Person(person));
-                    }
-
-                    for ensemble in ensembles {
-                        poes.push(PersonOrEnsemble::Ensemble(ensemble));
-                    }
-
-                    Ok(poes)
-                }
-            }));
 
         this.selector
             .set_load_local(clone!(@weak this =>  @default-panic, move || {
@@ -109,7 +89,7 @@ struct MediumSelectorMediumScreen {
 
 impl Screen<PersonOrEnsemble, Medium> for MediumSelectorMediumScreen {
     fn new(poe: PersonOrEnsemble, handle: NavigationHandle<Medium>) -> Rc<Self> {
-        let selector = Selector::<Medium>::new(Rc::clone(&handle.backend));
+        let selector = Selector::<Medium>::new();
         selector.set_title(&gettext("Select medium"));
         selector.set_subtitle(&poe.get_title());
 

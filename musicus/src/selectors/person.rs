@@ -19,7 +19,7 @@ impl Screen<(), Person> for PersonSelector {
     fn new(_: (), handle: NavigationHandle<Person>) -> Rc<Self> {
         // Create UI
 
-        let selector = Selector::<Person>::new(Rc::clone(&handle.backend));
+        let selector = Selector::<Person>::new();
         selector.set_title(&gettext("Select person"));
 
         let this = Rc::new(Self { handle, selector });
@@ -37,12 +37,6 @@ impl Screen<(), Person> for PersonSelector {
                 }
             });
         }));
-
-        this.selector
-            .set_load_online(clone!(@weak this =>  @default-panic, move || {
-                let clone = this;
-                async move { Ok(clone.handle.backend.cl().get_persons().await?) }
-            }));
 
         this.selector
             .set_load_local(clone!(@weak this =>  @default-panic, move || {

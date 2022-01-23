@@ -10,7 +10,6 @@ glib = "0.14.0"
 gstreamer = "0.17.0"
 gstreamer-player = "0.17.0"
 log = { version = "0.4.14", features = ["std"] }
-musicus_client = { version = "0.1.0", path = "../client" }
 musicus_database = { version = "0.1.0", path = "../database" }
 musicus_import = { version = "0.1.0", path = "../import" }
 thiserror = "1.0.23"
@@ -18,4 +17,3 @@ tokio = { version = "1.4.0", features = ["sync"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 mpris-player = "0.6.0"
-secret-service = "2.0.1"

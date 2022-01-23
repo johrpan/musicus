@@ -19,7 +19,7 @@ impl Screen<(), Instrument> for InstrumentSelector {
     fn new(_: (), handle: NavigationHandle<Instrument>) -> Rc<Self> {
         // Create UI
 
-        let selector = Selector::<Instrument>::new(Rc::clone(&handle.backend));
+        let selector = Selector::<Instrument>::new();
         selector.set_title(&gettext("Select instrument"));
 
         let this = Rc::new(Self { handle, selector });
@@ -37,12 +37,6 @@ impl Screen<(), Instrument> for InstrumentSelector {
                 }
             });
         }));
-
-        this.selector
-            .set_load_online(clone!(@weak this =>  @default-panic, move || {
-                let clone = this;
-                async move { Ok(clone.handle.backend.cl().get_instruments().await?) }
-            }));
 
         this.selector
             .set_load_local(clone!(@weak this =>  @default-panic, move || {

@@ -1,13 +1,9 @@
-use gio::prelude::*;
-use log::warn;
-use musicus_client::{Client, LoginData};
 use musicus_database::DbThread;
-use std::cell::{Cell, RefCell};
+use std::cell::RefCell;
 use std::path::PathBuf;
 use std::rc::Rc;
 use tokio::sync::{broadcast, broadcast::Sender};
 
-pub use musicus_client as client;
 pub use musicus_database as db;
 pub use musicus_import as import;
 
@@ -21,9 +17,6 @@ mod logger;
 
 pub mod player;
 pub use player::*;
-
-#[cfg(all(feature = "dbus"))]
-mod secure;
 
 /// General states the application can be in.
 #[derive(Debug, Clone)]
@@ -49,9 +42,6 @@ pub struct Backend {
     /// Access to GSettings.
     settings: gio::Settings,
 
-    /// Whether the server should be used by default when searching for or changing items.
-    use_server: Cell<bool>,
-
     /// The current path to the music library, which is used by the player and the database. This
     /// is guaranteed to be Some, when the state is set to BackendState::Ready.
     music_library_path: RefCell<Option<PathBuf>>,
@@ -65,9 +55,6 @@ pub struct Backend {
     /// The player handling playlist and playback. This can be assumed to exist, when the state is
     /// set to BackendState::Ready.
     player: RefCell<Option<Rc<Player>>>,
-
-    /// A client for the Wolfgang server.
-    client: Client,
 }
 
 impl Backend {
@@ -83,12 +70,10 @@ impl Backend {
         Backend {
             state_sender,
             settings: gio::Settings::new("de.johrpan.musicus"),
-            use_server: Cell::new(true),
             music_library_path: RefCell::new(None),
             library_updated_sender,
             database: RefCell::new(None),
-            player: RefCell::new(None),
-            client: Client::new(),
+            player: RefCell::new(None)
         }
     }
 
@@ -102,24 +87,6 @@ impl Backend {
     pub async fn init(&self) -> Result<()> {
         self.init_library().await?;
 
-        let url = self.settings.string("server-url");
-        if !url.is_empty() {
-            self.client.set_server_url(&url);
-        }
-
-        #[cfg(all(feature = "dbus"))]
-        match Self::load_login_data().await {
-            Ok(Some(data)) => self.client.set_login_data(Some(data)),
-            Err(err) => warn!(
-                "The login data could not be loaded from SecretService. It will not \
-                be available. Error message: {}",
-                err
-            ),
-            _ => (),
-        }
-
-        self.use_server.set(self.settings.boolean("use-server"));
-
         if self.get_music_library_path().is_none() {
             self.set_state(BackendState::NoMusicLibrary);
         } else {
@@ -127,80 +94,6 @@ impl Backend {
         }
 
         Ok(())
-    }
-
-    /// Whether the server should be used by default.
-    ///
-    /// This will return `false` if no server URL is set up. Otherwise, the
-    /// value is based on the users "use-server" preference.
-    pub fn use_server(&self) -> bool {
-        self.client.get_server_url().is_some() && self.use_server.get()
-    }
-
-    /// Set whether the server should be used by default.
-    pub fn set_use_server(&self, enabled: bool) {
-        self.use_server.set(enabled);
-
-        if let Err(err) = self.settings.set_boolean("use-server", enabled) {
-            warn!(
-                "An error happened whilte trying to save the \"use-server\" setting to GSettings. \
-                Error message: {}",
-                err
-            )
-        }
-    }
-
-    /// Set the URL of the Musicus server to connect to.
-    pub fn set_server_url(&self, url: &str) {
-        if let Err(err) = self.settings.set_string("server-url", url) {
-            warn!(
-                "An error happened while trying to save the server URL to GSettings. Most \
-                likely it will not be available at the next startup. Error message: {}",
-                err
-            );
-        }
-
-        self.client.set_server_url(url);
-    }
-
-    /// Get the currently set server URL.
-    pub fn get_server_url(&self) -> Option<String> {
-        self.client.get_server_url()
-    }
-
-    /// Set the user credentials to use.
-    pub async fn set_login_data(&self, data: Option<LoginData>) {
-        #[cfg(all(feature = "dbus"))]
-        if let Some(data) = &data {
-            if let Err(err) = Self::store_login_data(data.clone()).await {
-                warn!(
-                    "An error happened while trying to store the login data using SecretService. \
-                    This means, that they will not be available at the next startup most likely. \
-                    Error message: {}",
-                    err
-                );
-            }
-        } else {
-            if let Err(err) = Self::delete_secrets().await {
-                warn!(
-                    "An error happened while trying to delete the login data from SecretService. \
-                    This may result in the login data being reloaded at the next startup. Error \
-                    message: {}",
-                    err
-                );
-            }
-        }
-
-        self.client.set_login_data(data);
-    }
-
-    pub fn cl(&self) -> &Client {
-        &self.client
-    }
-
-    /// Get the currently stored login credentials.
-    pub fn get_login_data(&self) -> Option<LoginData> {
-        self.client.get_login_data()
     }
 
     /// Set the current state and notify the user interface.

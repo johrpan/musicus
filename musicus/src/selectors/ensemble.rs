@@ -19,7 +19,7 @@ impl Screen<(), Ensemble> for EnsembleSelector {
     fn new(_: (), handle: NavigationHandle<Ensemble>) -> Rc<Self> {
         // Create UI
 
-        let selector = Selector::<Ensemble>::new(Rc::clone(&handle.backend));
+        let selector = Selector::<Ensemble>::new();
         selector.set_title(&gettext("Select ensemble"));
 
         let this = Rc::new(Self { handle, selector });
@@ -37,12 +37,6 @@ impl Screen<(), Ensemble> for EnsembleSelector {
                 }
             });
         }));
-
-        this.selector
-            .set_load_online(clone!(@weak this =>  @default-panic, move || {
-                let clone = this;
-                async move { Ok(clone.handle.backend.cl().get_ensembles().await?) }
-            }));
 
         this.selector
             .set_load_local(clone!(@weak this =>  @default-panic, move || {

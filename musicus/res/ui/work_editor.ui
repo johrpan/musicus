@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
-  <requires lib="gtk" version="4.0"/>
-  <requires lib="libadwaita" version="1.0"/>
+  <requires lib="gtk" version="4.0" />
+  <requires lib="libadwaita" version="1.0" />
   <object class="GtkStack" id="widget">
     <child>
       <object class="GtkStackPage">
@@ -17,13 +17,13 @@
                   <object class="GtkLabel">
                     <property name="label" translatable="yes">Work</property>
                     <style>
-                      <class name="title"/>
+                      <class name="title" />
                     </style>
                   </object>
                 </property>
                 <child>
                   <object class="GtkButton" id="back_button">
-                      <property name="icon-name">go-previous-symbolic</property>
+                    <property name="icon-name">go-previous-symbolic</property>
                   </object>
                 </child>
                 <child type="end">
@@ -31,7 +31,7 @@
                     <property name="sensitive">False</property>
                     <property name="icon-name">object-select-symbolic</property>
                     <style>
-                      <class name="suggested-action"/>
+                      <class name="suggested-action" />
                     </style>
                   </object>
                 </child>
@@ -64,7 +64,7 @@
                             <property name="margin-bottom">6</property>
                             <property name="label" translatable="yes">Overview</property>
                             <attributes>
-                              <attribute name="weight" value="bold"/>
+                              <attribute name="weight" value="bold" />
                             </attributes>
                           </object>
                         </child>
@@ -99,19 +99,6 @@
                                     </child>
                                   </object>
                                 </child>
-                                <child>
-                                  <object class="AdwActionRow">
-                                    <property name="focusable">False</property>
-                                    <property name="title" translatable="yes">Publish to the server</property>
-                                    <property name="activatable-widget">upload_switch</property>
-                                    <child>
-                                      <object class="GtkSwitch" id="upload_switch">
-                                        <property name="valign">center</property>
-                                        <property name="active">True</property>
-                                      </object>
-                                    </child>
-                                  </object>
-                                </child>
                               </object>
                             </child>
                           </object>
@@ -128,7 +115,7 @@
                                 <property name="hexpand">True</property>
                                 <property name="label" translatable="yes">Instruments</property>
                                 <attributes>
-                                  <attribute name="weight" value="bold"/>
+                                  <attribute name="weight" value="bold" />
                                 </attributes>
                               </object>
                             </child>
@@ -141,7 +128,7 @@
                           </object>
                         </child>
                         <child>
-                          <object class="GtkFrame" id="instrument_frame"/>
+                          <object class="GtkFrame" id="instrument_frame" />
                         </child>
                         <child>
                           <object class="GtkBox">
@@ -155,7 +142,7 @@
                                 <property name="hexpand">True</property>
                                 <property name="label" translatable="yes">Structure</property>
                                 <attributes>
-                                  <attribute name="weight" value="bold"/>
+                                  <attribute name="weight" value="bold" />
                                 </attributes>
                               </object>
                             </child>
@@ -174,7 +161,7 @@
                           </object>
                         </child>
                         <child>
-                          <object class="GtkFrame" id="structure_frame"/>
+                          <object class="GtkFrame" id="structure_frame" />
                         </child>
                       </object>
                     </child>
@@ -200,7 +187,7 @@
                   <object class="GtkLabel">
                     <property name="label" translatable="yes">Work</property>
                     <style>
-                      <class name="title"/>
+                      <class name="title" />
                     </style>
                   </object>
                 </property>

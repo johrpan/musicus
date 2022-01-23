@@ -3,7 +3,6 @@
     <gresource prefix="/de/johrpan/musicus">
         <file preprocess="xml-stripblanks">ui/editor.ui</file>
         <file preprocess="xml-stripblanks">ui/import_screen.ui</file>
-        <file preprocess="xml-stripblanks">ui/login_dialog.ui</file>
         <file preprocess="xml-stripblanks">ui/main_screen.ui</file>
         <file preprocess="xml-stripblanks">ui/medium_editor.ui</file>
         <file preprocess="xml-stripblanks">ui/medium_preview.ui</file>
@@ -16,7 +15,6 @@
         <file preprocess="xml-stripblanks">ui/screen.ui</file>
         <file preprocess="xml-stripblanks">ui/section.ui</file>
         <file preprocess="xml-stripblanks">ui/selector.ui</file>
-        <file preprocess="xml-stripblanks">ui/server_dialog.ui</file>
         <file preprocess="xml-stripblanks">ui/source_selector.ui</file>
         <file preprocess="xml-stripblanks">ui/track_editor.ui</file>
         <file preprocess="xml-stripblanks">ui/track_selector.ui</file>

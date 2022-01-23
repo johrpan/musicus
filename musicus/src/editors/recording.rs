@@ -19,7 +19,6 @@ pub struct RecordingEditor {
     info_bar: gtk::InfoBar,
     work_row: adw::ActionRow,
     comment_entry: gtk::Entry,
-    upload_switch: gtk::Switch,
     performance_list: Rc<List>,
     id: String,
     work: RefCell<Option<Work>>,
@@ -40,11 +39,8 @@ impl Screen<Option<Recording>, Recording> for RecordingEditor {
         get_widget!(builder, adw::ActionRow, work_row);
         get_widget!(builder, gtk::Button, work_button);
         get_widget!(builder, gtk::Entry, comment_entry);
-        get_widget!(builder, gtk::Switch, upload_switch);
         get_widget!(builder, gtk::Frame, performance_frame);
         get_widget!(builder, gtk::Button, add_performer_button);
-
-        upload_switch.set_active(handle.backend.use_server());
 
         let performance_list = List::new();
         performance_frame.set_child(Some(&performance_list.widget));
@@ -64,7 +60,6 @@ impl Screen<Option<Recording>, Recording> for RecordingEditor {
             info_bar,
             work_row,
             comment_entry,
-            upload_switch,
             performance_list,
             id,
             work: RefCell::new(work),
@@ -183,7 +178,7 @@ impl RecordingEditor {
         self.save_button.set_sensitive(true);
     }
 
-    /// Save the recording and possibly upload it to the server.
+    /// Save the recording.
     async fn save(self: &Rc<Self>) -> Result<Recording> {
         let recording = Recording {
             id: self.id.clone(),
@@ -195,11 +190,6 @@ impl RecordingEditor {
             comment: self.comment_entry.text().to_string(),
             performances: self.performances.borrow().clone(),
         };
-
-        let upload = self.upload_switch.state();
-        if upload {
-            self.handle.backend.cl().post_recording(&recording).await?;
-        }
 
         self.handle
             .backend

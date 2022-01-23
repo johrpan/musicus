@@ -8,7 +8,6 @@ use glib::clone;
 use gtk_macros::get_widget;
 use musicus_backend::db::Medium;
 use musicus_backend::import::ImportSession;
-use musicus_backend::Error;
 use std::rc::Rc;
 use std::sync::Arc;
 
@@ -17,24 +16,19 @@ pub struct ImportScreen {
     handle: NavigationHandle<()>,
     session: Arc<ImportSession>,
     widget: gtk::Box,
-    server_check_button: gtk::CheckButton,
     matching_stack: gtk::Stack,
     error_row: adw::ActionRow,
     matching_list: gtk::ListBox,
 }
 
 impl ImportScreen {
-    /// Find matching mediums on the server.
+    /// Find matching mediums in the library.
     fn load_matches(self: &Rc<Self>) {
         self.matching_stack.set_visible_child_name("loading");
 
         let this = self;
         spawn!(@clone this, async move {
-            let mediums: Result<Vec<Medium>, Error> = if this.server_check_button.is_active() {
-                this.handle.backend.cl().get_mediums_by_discid(this.session.source_id()).await.map_err(|err| err.into())
-            } else {
-                this.handle.backend.db().get_mediums_by_source_id(this.session.source_id()).await.map_err(|err| err.into())
-            };
+            let mediums = this.handle.backend.db().get_mediums_by_source_id(this.session.source_id()).await;
 
             match mediums {
                 Ok(mediums) => {
@@ -113,18 +107,14 @@ impl Screen<Arc<ImportSession>, ()> for ImportScreen {
         get_widget!(builder, gtk::Stack, matching_stack);
         get_widget!(builder, gtk::Button, try_again_button);
         get_widget!(builder, adw::ActionRow, error_row);
-        get_widget!(builder, gtk::CheckButton, server_check_button);
         get_widget!(builder, gtk::ListBox, matching_list);
         get_widget!(builder, gtk::Button, select_button);
         get_widget!(builder, gtk::Button, add_button);
-
-        server_check_button.set_active(handle.backend.use_server());
 
         let this = Rc::new(Self {
             handle,
             session,
             widget,
-            server_check_button,
             matching_stack,
             error_row,
             matching_list,
@@ -135,12 +125,6 @@ impl Screen<Arc<ImportSession>, ()> for ImportScreen {
         back_button.connect_clicked(clone!(@weak this =>  move |_| {
             this.handle.pop(None);
         }));
-
-        this.server_check_button
-            .connect_toggled(clone!(@weak this =>  move |_| {
-                this.handle.backend.set_use_server(this.server_check_button.is_active());
-                this.load_matches();
-            }));
 
         try_again_button.connect_clicked(clone!(@weak this =>  move |_| {
             this.load_matches();

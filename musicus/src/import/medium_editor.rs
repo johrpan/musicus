@@ -18,7 +18,6 @@ pub struct MediumEditor {
     widget: gtk::Stack,
     done_button: gtk::Button,
     name_entry: gtk::Entry,
-    publish_switch: gtk::Switch,
     status_page: adw::StatusPage,
     track_set_list: Rc<List>,
     track_sets: RefCell<Vec<TrackSetData>>,
@@ -38,14 +37,11 @@ impl Screen<(Arc<ImportSession>, Option<Medium>), Medium> for MediumEditor {
         get_widget!(builder, gtk::Button, back_button);
         get_widget!(builder, gtk::Button, done_button);
         get_widget!(builder, gtk::Entry, name_entry);
-        get_widget!(builder, gtk::Switch, publish_switch);
         get_widget!(builder, gtk::Button, add_button);
         get_widget!(builder, gtk::Frame, frame);
         get_widget!(builder, adw::StatusPage, status_page);
         get_widget!(builder, gtk::Button, try_again_button);
         get_widget!(builder, gtk::Button, cancel_button);
-
-        publish_switch.set_active(handle.backend.use_server());
 
         let list = List::new();
         frame.set_child(Some(&list.widget));
@@ -56,7 +52,6 @@ impl Screen<(Arc<ImportSession>, Option<Medium>), Medium> for MediumEditor {
             widget,
             done_button,
             name_entry,
-            publish_switch,
             status_page,
             track_set_list: list,
             track_sets: RefCell::new(Vec::new()),
@@ -99,11 +94,6 @@ impl Screen<(Arc<ImportSession>, Option<Medium>), Medium> for MediumEditor {
                 }
             });
         }));
-
-        this.publish_switch
-            .connect_state_notify(clone!(@weak this =>  move |_| {
-                this.handle.backend.set_use_server(this.publish_switch.state());
-            }));
 
         this.track_set_list.set_make_widget_cb(
             clone!(@weak this =>  @default-panic, move |index| {
@@ -188,7 +178,7 @@ impl MediumEditor {
         );
     }
 
-    /// Create the medium and, if necessary, upload it to the server.
+    /// Create the medium.
     async fn save(&self) -> Result<Medium> {
         // Convert the track set data to real track sets.
 
@@ -213,11 +203,6 @@ impl MediumEditor {
             discid: Some(self.session.source_id().to_owned()),
             tracks,
         };
-
-        let upload = self.publish_switch.state();
-        if upload {
-            self.handle.backend.cl().post_medium(&medium).await?;
-        }
 
         // The medium is not added to the database, because the track paths are not known until the
         // medium is actually imported into the music library. This step will be handled by the

@@ -21,9 +21,6 @@ pub use screen::*;
 pub mod section;
 pub use section::*;
 
-pub mod upload_section;
-pub use upload_section::*;
-
 mod indexed_list_model;
 
 /// Something that can be represented as a GTK widget.

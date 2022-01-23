@@ -2,36 +2,30 @@ use crate::widgets::List;
 use glib::clone;
 use gtk::prelude::*;
 use gtk_macros::get_widget;
-use musicus_backend::{Backend, Result};
 use std::cell::RefCell;
 use std::future::Future;
 use std::pin::Pin;
 use std::rc::Rc;
 
-/// A screen that presents a list of items. It allows to switch between the server and the local
-/// database and to search within the list.
+/// A screen that presents a list of items from the library.
 pub struct Selector<T: 'static> {
     pub widget: gtk::Box,
-    backend: Rc<Backend>,
     title_label: gtk::Label,
     subtitle_label: gtk::Label,
     search_entry: gtk::SearchEntry,
-    server_check_button: gtk::CheckButton,
     stack: gtk::Stack,
     list: Rc<List>,
     items: RefCell<Vec<T>>,
     back_cb: RefCell<Option<Box<dyn Fn()>>>,
     add_cb: RefCell<Option<Box<dyn Fn()>>>,
     make_widget: RefCell<Option<Box<dyn Fn(&T) -> gtk::Widget>>>,
-    load_online: RefCell<Option<Box<dyn Fn() -> Box<dyn Future<Output = Result<Vec<T>>>>>>>,
     load_local: RefCell<Option<Box<dyn Fn() -> Box<dyn Future<Output = Vec<T>>>>>>,
     filter: RefCell<Option<Box<dyn Fn(&str, &T) -> bool>>>,
 }
 
 impl<T> Selector<T> {
-    /// Create a new selector. `use_server` is used to decide whether to search
-    /// online initially.
-    pub fn new(backend: Rc<Backend>) -> Rc<Self> {
+    /// Create a new selector.
+    pub fn new() -> Rc<Self> {
         // Create UI
 
         let builder = gtk::Builder::from_resource("/de/johrpan/musicus/ui/selector.ui");
@@ -42,28 +36,23 @@ impl<T> Selector<T> {
         get_widget!(builder, gtk::Button, back_button);
         get_widget!(builder, gtk::Button, add_button);
         get_widget!(builder, gtk::SearchEntry, search_entry);
-        get_widget!(builder, gtk::CheckButton, server_check_button);
         get_widget!(builder, gtk::Stack, stack);
         get_widget!(builder, gtk::Frame, frame);
-        get_widget!(builder, gtk::Button, try_again_button);
 
         let list = List::new();
         frame.set_child(Some(&list.widget));
 
         let this = Rc::new(Self {
             widget,
-            backend,
             title_label,
             subtitle_label,
             search_entry,
-            server_check_button,
             stack,
             list,
             items: RefCell::new(Vec::new()),
             back_cb: RefCell::new(None),
             add_cb: RefCell::new(None),
             make_widget: RefCell::new(None),
-            load_online: RefCell::new(None),
             load_local: RefCell::new(None),
             filter: RefCell::new(None),
         });
@@ -85,18 +74,6 @@ impl<T> Selector<T> {
         this.search_entry
             .connect_search_changed(clone!(@strong this => move |_| {
                 this.list.invalidate_filter();
-            }));
-
-        this.server_check_button
-            .connect_toggled(clone!(@strong this => move |_| {
-                let active = this.server_check_button.is_active();
-                this.backend.set_use_server(active);
-
-                if active {
-                    this.clone().load_online();
-                } else {
-                    this.clone().load_local();
-                }
             }));
 
         this.list
@@ -121,16 +98,8 @@ impl<T> Selector<T> {
                 }
             }));
 
-        try_again_button.connect_clicked(clone!(@strong this => move |_| {
-            this.clone().load_online();
-        }));
-
         // Initialize
-        if this.backend.use_server() {
-            this.clone().load_online();
-        } else {
-            this.server_check_button.set_active(false);
-        }
+        this.clone().load_local();
 
         this
     }
@@ -156,17 +125,6 @@ impl<T> Selector<T> {
         self.add_cb.replace(Some(Box::new(cb)));
     }
 
-    /// Set the async closure to be called to fetch items from the server. If that results in an
-    /// error, an error screen is shown allowing to try again.
-    pub fn set_load_online<F, R>(&self, cb: F)
-    where
-        F: (Fn() -> R) + 'static,
-        R: Future<Output = Result<Vec<T>>> + 'static,
-    {
-        self.load_online
-            .replace(Some(Box::new(move || Box::new(cb()))));
-    }
-
     /// Set the async closure to be called to get local items.
     pub fn set_load_local<F, R>(&self, cb: F)
     where
@@ -186,26 +144,6 @@ impl<T> Selector<T> {
     /// search string will be converted to lowercase.
     pub fn set_filter<F: Fn(&str, &T) -> bool + 'static>(&self, filter: F) {
         self.filter.replace(Some(Box::new(filter)));
-    }
-
-    fn load_online(self: Rc<Self>) {
-        let context = glib::MainContext::default();
-        let clone = self.clone();
-        context.spawn_local(async move {
-            if let Some(cb) = &*self.load_online.borrow() {
-                self.stack.set_visible_child_name("loading");
-
-                match Pin::from(cb()).await {
-                    Ok(items) => {
-                        clone.show_items(items);
-                    }
-                    Err(_) => {
-                        clone.show_items(Vec::new());
-                        clone.stack.set_visible_child_name("error");
-                    }
-                }
-            }
-        });
     }
 
     fn load_local(self: Rc<Self>) {

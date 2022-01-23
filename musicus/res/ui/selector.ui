@@ -60,13 +60,6 @@
                     <property name="placeholder-text" translatable="yes">Search …</property>
                   </object>
                 </child>
-                <child>
-                  <object class="GtkCheckButton" id="server_check_button">
-                    <property name="label" translatable="yes">Use the Musicus server</property>
-                    <property name="halign">start</property>
-                    <property name="active">True</property>
-                  </object>
-                </child>
               </object>
             </child>
           </object>
@@ -112,57 +105,6 @@
                         <property name="margin-bottom">6</property>
                       </object>
                     </child>
-                  </object>
-                </child>
-              </object>
-            </property>
-          </object>
-        </child>
-        <child>
-          <object class="GtkStackPage">
-            <property name="name">error</property>
-            <property name="child">
-              <object class="GtkBox">
-                <property name="halign">center</property>
-                <property name="valign">center</property>
-                <property name="margin-start">18</property>
-                <property name="margin-end">18</property>
-                <property name="margin-top">18</property>
-                <property name="margin-bottom">18</property>
-                <property name="orientation">vertical</property>
-                <property name="spacing">18</property>
-                <child>
-                  <object class="GtkImage">
-                    <property name="opacity">0.5</property>
-                    <property name="pixel-size">80</property>
-                    <property name="icon-name">network-error-symbolic</property>
-                  </object>
-                </child>
-                <child>
-                  <object class="GtkLabel">
-                    <property name="opacity">0.5</property>
-                    <property name="label" translatable="yes">An error occured!</property>
-                    <attributes>
-                      <attribute name="size" value="16384"/>
-                    </attributes>
-                  </object>
-                </child>
-                <child>
-                  <object class="GtkLabel">
-                    <property name="opacity">0.5</property>
-                    <property name="label" translatable="yes">The server was not reachable or responded with an error. Please check your internet connection.</property>
-                    <property name="justify">center</property>
-                    <property name="wrap">True</property>
-                    <property name="max-width-chars">40</property>
-                  </object>
-                </child>
-                <child>
-                  <object class="GtkButton" id="try_again_button">
-                    <property name="label" translatable="yes">Try again</property>
-                    <property name="halign">center</property>
-                    <style>
-                      <class name="suggested-action"/>
-                    </style>
                   </object>
                 </child>
               </object>

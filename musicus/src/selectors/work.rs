@@ -18,7 +18,7 @@ impl Screen<(), Work> for WorkSelector {
     fn new(_: (), handle: NavigationHandle<Work>) -> Rc<Self> {
         // Create UI
 
-        let selector = Selector::<Person>::new(Rc::clone(&handle.backend));
+        let selector = Selector::<Person>::new();
         selector.set_title(&gettext("Select composer"));
 
         let this = Rc::new(Self { handle, selector });
@@ -43,11 +43,6 @@ impl Screen<(), Work> for WorkSelector {
                 }
             });
         }));
-
-        this.selector
-            .set_load_online(clone!(@weak this =>  @default-panic, move || {
-                async move { Ok(this.handle.backend.cl().get_persons().await?) }
-            }));
 
         this.selector
             .set_load_local(clone!(@weak this =>  @default-panic, move || {
@@ -98,7 +93,7 @@ struct WorkSelectorWorkScreen {
 
 impl Screen<Person, Work> for WorkSelectorWorkScreen {
     fn new(person: Person, handle: NavigationHandle<Work>) -> Rc<Self> {
-        let selector = Selector::<Work>::new(Rc::clone(&handle.backend));
+        let selector = Selector::<Work>::new();
         selector.set_title(&gettext("Select work"));
         selector.set_subtitle(&person.name_fl());
 
@@ -120,11 +115,6 @@ impl Screen<Person, Work> for WorkSelectorWorkScreen {
                 }
             });
         }));
-
-        this.selector
-            .set_load_online(clone!(@weak this =>  @default-panic, move || {
-                async move { Ok(this.handle.backend.cl().get_works(&this.person.id).await?) }
-            }));
 
         this.selector
             .set_load_local(clone!(@weak this =>  @default-panic, move || {

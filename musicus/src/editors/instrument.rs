@@ -1,5 +1,5 @@
 use crate::navigator::{NavigationHandle, Screen};
-use crate::widgets::{Editor, EntryRow, Section, UploadSection, Widget};
+use crate::widgets::{Editor, EntryRow, Section, Widget};
 use anyhow::Result;
 use gettextrs::gettext;
 use glib::clone;
@@ -16,7 +16,6 @@ pub struct InstrumentEditor {
 
     editor: Editor,
     name: EntryRow,
-    upload: Rc<UploadSection>,
 }
 
 impl Screen<Option<Instrument>, Instrument> for InstrumentEditor {
@@ -33,10 +32,7 @@ impl Screen<Option<Instrument>, Instrument> for InstrumentEditor {
         list.append(&name.widget);
 
         let section = Section::new(&gettext("General"), &list);
-        let upload = UploadSection::new(Rc::clone(&handle.backend));
-
         editor.add_content(&section.widget);
-        editor.add_content(&upload.widget);
 
         let id = match instrument {
             Some(instrument) => {
@@ -51,7 +47,6 @@ impl Screen<Option<Instrument>, Instrument> for InstrumentEditor {
             id,
             editor,
             name,
-            upload,
         });
 
         // Connect signals and callbacks
@@ -91,7 +86,7 @@ impl InstrumentEditor {
         self.editor.set_may_save(!self.name.get_text().is_empty());
     }
 
-    /// Save the instrument and possibly upload it to the server.
+    /// Save the instrument.
     async fn save(&self) -> Result<Instrument> {
         let name = self.name.get_text();
 
@@ -100,19 +95,12 @@ impl InstrumentEditor {
             name,
         };
 
-        if self.upload.get_active() {
-            self.handle
-                .backend
-                .cl()
-                .post_instrument(&instrument)
-                .await?;
-        }
-
         self.handle
             .backend
             .db()
             .update_instrument(instrument.clone())
             .await?;
+
         self.handle.backend.library_changed();
 
         Ok(instrument)

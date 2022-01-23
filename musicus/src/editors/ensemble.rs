@@ -1,5 +1,5 @@
 use crate::navigator::{NavigationHandle, Screen};
-use crate::widgets::{Editor, EntryRow, Section, UploadSection, Widget};
+use crate::widgets::{Editor, EntryRow, Section, Widget};
 use anyhow::Result;
 use gettextrs::gettext;
 use glib::clone;
@@ -16,7 +16,6 @@ pub struct EnsembleEditor {
 
     editor: Editor,
     name: EntryRow,
-    upload: Rc<UploadSection>,
 }
 
 impl Screen<Option<Ensemble>, Ensemble> for EnsembleEditor {
@@ -33,10 +32,7 @@ impl Screen<Option<Ensemble>, Ensemble> for EnsembleEditor {
         list.append(&name.widget);
 
         let section = Section::new(&gettext("General"), &list);
-        let upload = UploadSection::new(Rc::clone(&handle.backend));
-
         editor.add_content(&section.widget);
-        editor.add_content(&upload.widget);
 
         let id = match ensemble {
             Some(ensemble) => {
@@ -51,7 +47,6 @@ impl Screen<Option<Ensemble>, Ensemble> for EnsembleEditor {
             id,
             editor,
             name,
-            upload,
         });
 
         // Connect signals and callbacks
@@ -91,7 +86,7 @@ impl EnsembleEditor {
         self.editor.set_may_save(!self.name.get_text().is_empty());
     }
 
-    /// Save the ensemble and possibly upload it to the server.
+    /// Save the ensemble.
     async fn save(&self) -> Result<Ensemble> {
         let name = self.name.get_text();
 
@@ -100,15 +95,12 @@ impl EnsembleEditor {
             name,
         };
 
-        if self.upload.get_active() {
-            self.handle.backend.cl().post_ensemble(&ensemble).await?;
-        }
-
         self.handle
             .backend
             .db()
             .update_ensemble(ensemble.clone())
             .await?;
+
         self.handle.backend.library_changed();
 
         Ok(ensemble)
