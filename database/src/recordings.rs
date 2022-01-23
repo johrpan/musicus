@@ -3,11 +3,9 @@ use super::schema::{ensembles, performances, persons, recordings};
 use super::{Database, Ensemble, Error, Instrument, Person, Result, Work};
 use diesel::prelude::*;
 use log::info;
-use serde::{Deserialize, Serialize};
 
 /// A specific recording of a work.
-#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Debug, Clone)]
-#[serde(rename_all = "camelCase")]
+#[derive(PartialEq, Eq, Hash, Debug, Clone)]
 pub struct Recording {
     pub id: String,
     pub work: Work,
@@ -40,8 +38,7 @@ impl Recording {
 }
 
 /// How a person or ensemble was involved in a recording.
-#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Debug, Clone)]
-#[serde(rename_all = "camelCase")]
+#[derive(PartialEq, Eq, Hash, Debug, Clone)]
 pub struct Performance {
     pub performer: PersonOrEnsemble,
     pub role: Option<Instrument>,
@@ -62,7 +59,7 @@ impl Performance {
 }
 
 /// Either a person or an ensemble.
-#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug)]
+#[derive(PartialEq, Eq, Hash, Clone, Debug)]
 pub enum PersonOrEnsemble {
     Person(Person),
     Ensemble(Ensemble),

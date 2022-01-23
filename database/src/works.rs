@@ -4,7 +4,6 @@ use super::{Database, Error, Instrument, Person, Result};
 use diesel::prelude::*;
 use diesel::{Insertable, Queryable};
 use log::info;
-use serde::{Deserialize, Serialize};
 
 /// Table row data for a work.
 #[derive(Insertable, Queryable, Debug, Clone)]
@@ -54,23 +53,20 @@ struct WorkSectionRow {
     pub before_index: i64,
 }
 /// A concrete work part that can be recorded.
-#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Debug, Clone)]
-#[serde(rename_all = "camelCase")]
+#[derive(PartialEq, Eq, Hash, Debug, Clone)]
 pub struct WorkPart {
     pub title: String,
 }
 
 /// A heading between work parts.
-#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Debug, Clone)]
-#[serde(rename_all = "camelCase")]
+#[derive(PartialEq, Eq, Hash, Debug, Clone)]
 pub struct WorkSection {
     pub title: String,
     pub before_index: usize,
 }
 
 /// A specific work by a composer.
-#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Debug, Clone)]
-#[serde(rename_all = "camelCase")]
+#[derive(PartialEq, Eq, Hash, Debug, Clone)]
 pub struct Work {
     pub id: String,
     pub title: String,

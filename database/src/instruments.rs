@@ -2,11 +2,9 @@ use super::schema::instruments;
 use super::{Database, Result};
 use diesel::prelude::*;
 use log::info;
-use serde::{Deserialize, Serialize};
 
 /// An instrument or any other possible role within a recording.
-#[derive(Serialize, Deserialize, Insertable, Queryable, PartialEq, Eq, Hash, Debug, Clone)]
-#[serde(rename_all = "camelCase")]
+#[derive(Insertable, Queryable, PartialEq, Eq, Hash, Debug, Clone)]
 pub struct Instrument {
     pub id: String,
     pub name: String,

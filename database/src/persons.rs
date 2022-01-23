@@ -2,11 +2,9 @@ use super::schema::persons;
 use super::{Database, Result};
 use diesel::prelude::*;
 use log::info;
-use serde::{Deserialize, Serialize};
 
 /// A person that is a composer, an interpret or both.
-#[derive(Serialize, Deserialize, Insertable, Queryable, PartialEq, Eq, Hash, Debug, Clone)]
-#[serde(rename_all = "camelCase")]
+#[derive(Insertable, Queryable, PartialEq, Eq, Hash, Debug, Clone)]
 pub struct Person {
     pub id: String,
     pub first_name: String,

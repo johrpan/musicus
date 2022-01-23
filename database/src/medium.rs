@@ -3,12 +3,10 @@ use super::schema::{ensembles, mediums, performances, persons, recordings, track
 use super::{Database, Error, Recording, Result};
 use diesel::prelude::*;
 use log::info;
-use serde::{Deserialize, Serialize};
 
 /// Representation of someting like a physical audio disc or a folder with
 /// audio files (i.e. a collection of tracks for one or more recordings).
-#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Debug, Clone)]
-#[serde(rename_all = "camelCase")]
+#[derive(PartialEq, Eq, Hash, Debug, Clone)]
 pub struct Medium {
     /// An unique ID for the medium.
     pub id: String,
@@ -24,8 +22,7 @@ pub struct Medium {
 }
 
 /// A track on a medium.
-#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Debug, Clone)]
-#[serde(rename_all = "camelCase")]
+#[derive(PartialEq, Eq, Hash, Debug, Clone)]
 pub struct Track {
     /// The recording on this track.
     pub recording: Recording,
@@ -38,9 +35,7 @@ pub struct Track {
     /// the metadata with the audio data from the source when importing.
     pub source_index: usize,
 
-    /// The path to the audio file containing this track. This will not be
-    /// included when communicating with the server.
-    #[serde(skip)]
+    /// The path to the audio file containing this track.
     pub path: String,
 }
 
