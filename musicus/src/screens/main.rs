@@ -32,6 +32,8 @@ impl Screen<(), ()> for MainScreen {
 
         get_widget!(builder, gtk::Box, widget);
         get_widget!(builder, adw::Leaflet, leaflet);
+        get_widget!(builder, gtk::Revealer, play_button_revealer);
+        get_widget!(builder, gtk::Button, play_button);
         get_widget!(builder, gtk::Button, add_button);
         get_widget!(builder, gtk::SearchEntry, search_entry);
         get_widget!(builder, gtk::Stack, stack);
@@ -125,6 +127,14 @@ impl Screen<(), ()> for MainScreen {
                 let title = poe.get_title().to_lowercase();
                 search.is_empty() || title.contains(&search)
             }));
+
+        this.handle.backend.pl().add_playlist_cb(clone!(@weak play_button_revealer => move |new_playlist| {
+                play_button_revealer.set_reveal_child(new_playlist.is_empty());
+        }));
+
+        play_button.connect_clicked(clone!(@weak this => move |_| {
+            this.handle.backend.pl().play_pause().unwrap();
+        }));
 
         this.navigator.set_back_cb(clone!(@weak this =>  move || {
             this.leaflet.set_visible_child_name("sidebar");

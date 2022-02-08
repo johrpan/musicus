@@ -7,7 +7,7 @@
     <child>
       <object class="AdwHeaderBar">
         <property name="title-widget">
-          <object class="GtkLabel"/>
+          <object class="GtkLabel" />
         </property>
       </object>
     </child>
@@ -17,6 +17,18 @@
         <property name="title" translatable="yes">Welcome to Musicus!</property>
         <property name="description" translatable="yes">Get startet by selecting something from the sidebar or adding new things to your library using the button in the top left corner.</property>
         <property name="vexpand">true</property>
+        <child>
+          <object class="GtkRevealer" id="play_button_revealer">
+            <property name="reveal-child">true</property>
+            <property name="transition-type">crossfade</property>
+            <child>
+              <object class="GtkButton" id="play_button">
+                <property name="halign">center</property>
+                <property name="label" translatable="yes">Play something</property>
+              </object>
+            </child>
+          </object>
+        </child>
       </object>
     </child>
   </object>
@@ -40,7 +52,7 @@
                       <object class="GtkLabel">
                         <property name="label">Musicus</property>
                         <style>
-                          <class name="title"/>
+                          <class name="title" />
                         </style>
                       </object>
                     </property>
@@ -104,7 +116,7 @@
                         <property name="child">
                           <object class="GtkScrolledWindow" id="scroll">
                             <child>
-                              <placeholder/>
+                              <placeholder />
                             </child>
                           </object>
                         </property>

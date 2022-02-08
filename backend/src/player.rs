@@ -110,18 +110,18 @@ impl Player {
             result
                 .mpris
                 .connect_play_pause(clone!(@weak result => move || {
-                    result.play_pause();
+                    result.play_pause().unwrap();
                 }));
 
             result.mpris.connect_play(clone!(@weak result => move || {
                 if !result.is_playing() {
-                    result.play_pause();
+                    result.play_pause().unwrap();
                 }
             }));
 
             result.mpris.connect_pause(clone!(@weak result => move || {
                 if result.is_playing() {
-                    result.play_pause();
+                    result.play_pause().unwrap();
                 }
             }));
 
@@ -223,7 +223,7 @@ impl Player {
         Ok(())
     }
 
-    pub fn play_pause(&self) {
+    pub fn play_pause(&self) -> Result<()> {
         if self.is_playing() {
             self.player.pause();
             self.playing.set(false);
@@ -235,6 +235,10 @@ impl Player {
             #[cfg(target_os = "linux")]
             self.mpris.set_playback_status(PlaybackStatus::Paused);
         } else {
+            if self.current_track.get().is_none() {
+                self.next()?;
+            }
+
             self.player.play();
             self.playing.set(true);
 
@@ -245,6 +249,8 @@ impl Player {
             #[cfg(target_os = "linux")]
             self.mpris.set_playback_status(PlaybackStatus::Playing);
         }
+
+        Ok(())
     }
 
     pub fn seek(&self, ms: u64) {
@@ -287,23 +293,30 @@ impl Player {
     }
 
     pub fn next(&self) -> Result<()> {
-        let mut current_track = self.current_track.get().ok_or_else(|| {
-            Error::Other(String::from(
-                "Player tried to access non existant current track.",
-            ))
-        })?;
+        let current_track = self.current_track.get();
+        let cb = self.generate_next_track_cb.borrow();
 
-        if current_track + 1 < self.playlist.borrow().len() {
-            current_track += 1;
-        } else if let Some(cb) = &*self.generate_next_track_cb.borrow() {
+        if let Some(current_track) = current_track {
+            if current_track + 1 >= self.playlist.borrow().len() {
+                if let Some(cb) = &*cb {
+                    let new_track = cb();
+                    self.add_item(new_track)?;
+                } else {
+                    return Err(Error::Other(String::from("No existing next track.")));
+                }
+            }
+
+            self.set_track(current_track + 1)?;
+
+            Ok(())
+        } else if let Some(cb) = &*cb {
             let new_track = cb();
             self.add_item(new_track)?;
-            current_track += 1;
-        } else {
-            return Err(Error::Other(String::from("No existing next track.")));
-        }
 
-        self.set_track(current_track)
+            Ok(())
+        } else {
+            Err(Error::Other(String::from("No existing next track.")))
+        }
     }
 
     pub fn set_track(&self, current_track: usize) -> Result<()> {

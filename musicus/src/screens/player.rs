@@ -163,7 +163,7 @@ impl Screen<(), ()> for PlayerScreen {
 
         this.play_button
             .connect_clicked(clone!(@weak this =>  move |_| {
-                this.handle.backend.pl().play_pause();
+                this.handle.backend.pl().play_pause().unwrap();
             }));
 
         this.next_button

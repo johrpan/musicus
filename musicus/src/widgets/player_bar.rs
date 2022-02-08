@@ -47,7 +47,7 @@ impl PlayerBar {
 
         play_button.connect_clicked(clone!(@strong player => move |_| {
             if let Some(player) = &*player.borrow() {
-                player.play_pause();
+                player.play_pause().unwrap();
             }
         }));
 
