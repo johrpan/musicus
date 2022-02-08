@@ -49,7 +49,7 @@ struct MediumRow {
 }
 
 /// Table data for a [`Track`].
-#[derive(Insertable, Queryable, Debug, Clone)]
+#[derive(Insertable, Queryable, QueryableByName, Debug, Clone)]
 #[table_name = "tracks"]
 struct TrackRow {
     pub id: String,
@@ -222,6 +222,17 @@ impl Database {
         }
 
         Ok(tracks)
+    }
+
+    /// Get a random track from the database.
+    pub fn random_track(&self) -> Result<Track> {
+        let row = diesel::sql_query("SELECT * FROM tracks ORDER BY RANDOM() LIMIT 1")
+            .load::<TrackRow>(&self.connection)?
+            .into_iter()
+            .next()
+            .ok_or(Error::Other("Failed to generate random track"))?;
+
+        self.get_track_from_row(row)
     }
 
     /// Retrieve all available information on a medium from related tables.

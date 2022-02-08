@@ -17,6 +17,7 @@ pub struct Player {
     current_track: Cell<Option<usize>>,
     playing: Cell<bool>,
     duration: Cell<u64>,
+    generate_next_track_cb: RefCell<Option<Box<dyn Fn() -> Track>>>,
     playlist_cbs: RefCell<Vec<Box<dyn Fn(Vec<Track>)>>>,
     track_cbs: RefCell<Vec<Box<dyn Fn(usize)>>>,
     duration_cbs: RefCell<Vec<Box<dyn Fn(u64)>>>,
@@ -44,6 +45,7 @@ impl Player {
             current_track: Cell::new(None),
             playing: Cell::new(false),
             duration: Cell::new(0),
+            generate_next_track_cb: RefCell::new(None),
             playlist_cbs: RefCell::new(Vec::new()),
             track_cbs: RefCell::new(Vec::new()),
             duration_cbs: RefCell::new(Vec::new()),
@@ -142,6 +144,10 @@ impl Player {
         }
 
         result
+    }
+
+    pub fn set_generate_next_track_cb<F: Fn() -> Track + 'static>(&self, cb: F) {
+        self.generate_next_track_cb.replace(Some(Box::new(cb)));
     }
 
     pub fn add_playlist_cb<F: Fn(Vec<Track>) + 'static>(&self, cb: F) {
@@ -270,7 +276,9 @@ impl Player {
     }
 
     pub fn has_next(&self) -> bool {
-        if let Some(current_track) = self.current_track.get() {
+        if self.generate_next_track_cb.borrow().is_some() {
+            true
+        } else if let Some(current_track) = self.current_track.get() {
             let playlist = self.playlist.borrow();
             current_track + 1 < playlist.len()
         } else {
@@ -285,9 +293,11 @@ impl Player {
             ))
         })?;
 
-        let playlist = self.playlist.borrow();
-
-        if current_track + 1 < playlist.len() {
+        if current_track + 1 < self.playlist.borrow().len() {
+            current_track += 1;
+        } else if let Some(cb) = &*self.generate_next_track_cb.borrow() {
+            let new_track = cb();
+            self.add_item(new_track)?;
             current_track += 1;
         } else {
             return Err(Error::Other(String::from("No existing next track.")));

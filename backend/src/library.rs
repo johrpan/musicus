@@ -1,5 +1,6 @@
 use crate::{Backend, BackendState, Player, Result};
 use gio::prelude::*;
+use glib::clone;
 use log::warn;
 use musicus_database::Database;
 use std::path::PathBuf;
@@ -41,10 +42,16 @@ impl Backend {
         let mut db_path = path.clone();
         db_path.push("musicus.db");
 
-        let database = Database::new(db_path.to_str().unwrap())?;
-        self.database.replace(Some(Rc::new(database)));
+        let database = Rc::new(Database::new(db_path.to_str().unwrap())?);
+        self.database.replace(Some(Rc::clone(&database)));
 
         let player = Player::new(path);
+
+        // Keep adding random tracks in case the playlist ends.
+        player.set_generate_next_track_cb(clone!(@weak database => @default-panic, move || {
+            database.random_track().unwrap()
+        }));
+
         self.player.replace(Some(player));
 
         self.set_state(BackendState::Ready);
