@@ -1,7 +1,6 @@
 use crate::navigator::{NavigationHandle, Screen};
-use crate::widgets::{List, Widget};
+use crate::widgets::{List, TrackRow, Widget};
 use adw::prelude::*;
-use gettextrs::gettext;
 use glib::clone;
 use gtk_macros::get_widget;
 use musicus_backend::db::Track;
@@ -9,6 +8,7 @@ use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
 /// Elements for visually representing the playlist.
+#[derive(Clone)]
 enum ListItem {
     /// A playable track.
     Track {
@@ -207,63 +207,35 @@ impl Screen<(), ()> for PlayerScreen {
             }
         }));
 
-        this.list.set_make_widget_cb(clone!(@weak this =>  @default-panic, move |index| {
-            let widget = match this.items.borrow()[index] {
-                ListItem::Track {index, first, playing} => {
-                    let track = &this.playlist.borrow()[index];
-
-                    let mut parts = Vec::<String>::new();
-                    for part in &track.work_parts {
-                        parts.push(track.recording.work.parts[*part].title.clone());
+        this.list
+            .set_make_widget_cb(clone!(@weak this => @default-panic, move |index| {
+                let widget = match this.items.borrow()[index] {
+                    ListItem::Track {index, first, playing} => {
+                        let track = &this.playlist.borrow()[index];
+                        TrackRow::new(track, first, playing).get_widget()
                     }
-
-                    let title = if first {
-                        track.recording.work.get_title()
-                    } else if parts.is_empty() {
-                        gettext("Unknown")
-                    } else {
-                        parts.join(", ")
-                    };
-
-                    let row = adw::ActionRowBuilder::new()
-                        .selectable(false)
-                        .activatable(true)
-                        .title(&title)
-                        .build();
-
-                    if first {
-                        let subtitle = if !parts.is_empty() {
-                            format!("{}\n{}", track.recording.get_performers(), parts.join(", "))
-                        } else {
-                            track.recording.get_performers()
-                        };
-
-                        row.set_subtitle(&subtitle);
+                    ListItem::Separator => {
+                        gtk::ListBoxRowBuilder::new()
+                            .selectable(false)
+                            .activatable(false)
+                            .child(&gtk::Separator::new(gtk::Orientation::Horizontal))
+                            .build()
+                            .upcast()
                     }
+                };
 
-                    row.connect_activated(clone!(@weak this =>  move |_| {
-                        this.handle.backend.pl().set_track(index).unwrap();
-                    }));
+                widget
+            }));
 
-                    let icon = if playing {
-                        Some("media-playback-start-symbolic")
-                    } else {
-                        None
-                    };
-
-                    let image = gtk::Image::from_icon_name(icon);
-                    row.add_prefix(&image);
-
-                    row.upcast()
-                }
-                ListItem::Separator => {
-                    let separator = gtk::Separator::new(gtk::Orientation::Horizontal);
-                    separator.upcast()
-                }
-            };
-
-            widget
-        }));
+        this.list
+            .widget
+            .connect_row_activated(clone!(@weak this => move |_, row| {
+                let list_index = row.index();
+                let list_item = this.items.borrow()[list_index as usize].clone();
+                if let ListItem::Track {index, ..} = list_item {
+                    this.handle.backend.pl().set_track(index).unwrap();
+                };
+            }));
 
         player.send_data();
 

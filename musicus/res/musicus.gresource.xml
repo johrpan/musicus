@@ -17,6 +17,7 @@
         <file preprocess="xml-stripblanks">ui/selector.ui</file>
         <file preprocess="xml-stripblanks">ui/source_selector.ui</file>
         <file preprocess="xml-stripblanks">ui/track_editor.ui</file>
+        <file preprocess="xml-stripblanks">ui/track_row.ui</file>
         <file preprocess="xml-stripblanks">ui/track_selector.ui</file>
         <file preprocess="xml-stripblanks">ui/track_set_editor.ui</file>
         <file preprocess="xml-stripblanks">ui/work_editor.ui</file>
