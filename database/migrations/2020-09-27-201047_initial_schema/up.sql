@@ -28,13 +28,6 @@ CREATE TABLE "work_parts" (
     "title" TEXT NOT NULL
 );
 
-CREATE TABLE "work_sections" (
-    "id" BIGINT NOT NULL PRIMARY KEY,
-    "work" TEXT NOT NULL REFERENCES "works"("id") ON DELETE CASCADE,
-    "title" TEXT NOT NULL,
-    "before_index" BIGINT NOT NULL
-);
-
 CREATE TABLE "ensembles" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "name" TEXT NOT NULL

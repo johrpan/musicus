@@ -21,6 +21,5 @@
         <file preprocess="xml-stripblanks">ui/track_set_editor.ui</file>
         <file preprocess="xml-stripblanks">ui/work_editor.ui</file>
         <file preprocess="xml-stripblanks">ui/work_part_editor.ui</file>
-        <file preprocess="xml-stripblanks">ui/work_section_editor.ui</file>
     </gresource>
 </gresources>

@@ -1,5 +1,4 @@
 use super::work_part::WorkPartEditor;
-use super::work_section::WorkSectionEditor;
 use crate::navigator::{NavigationHandle, Screen};
 use crate::selectors::{InstrumentSelector, PersonSelector};
 use crate::widgets::{List, Widget};
@@ -8,25 +7,9 @@ use anyhow::Result;
 use gettextrs::gettext;
 use glib::clone;
 use gtk_macros::get_widget;
-use musicus_backend::db::{generate_id, Instrument, Person, Work, WorkPart, WorkSection};
+use musicus_backend::db::{generate_id, Instrument, Person, Work, WorkPart};
 use std::cell::RefCell;
 use std::rc::Rc;
-
-/// Either a work part or a work section.
-#[derive(Clone)]
-enum PartOrSection {
-    Part(WorkPart),
-    Section(WorkSection),
-}
-
-impl PartOrSection {
-    pub fn get_title(&self) -> String {
-        match self {
-            PartOrSection::Part(part) => part.title.clone(),
-            PartOrSection::Section(section) => section.title.clone(),
-        }
-    }
-}
 
 /// A widget for editing and creating works.
 pub struct WorkEditor {
@@ -41,7 +24,7 @@ pub struct WorkEditor {
     id: String,
     composer: RefCell<Option<Person>>,
     instruments: RefCell<Vec<Instrument>>,
-    structure: RefCell<Vec<PartOrSection>>,
+    parts: RefCell<Vec<WorkPart>>,
 }
 
 impl Screen<Option<Work>, Work> for WorkEditor {
@@ -62,7 +45,6 @@ impl Screen<Option<Work>, Work> for WorkEditor {
         get_widget!(builder, gtk::Button, add_instrument_button);
         get_widget!(builder, gtk::Frame, structure_frame);
         get_widget!(builder, gtk::Button, add_part_button);
-        get_widget!(builder, gtk::Button, add_section_button);
 
         let instrument_list = List::new();
         instrument_frame.set_child(Some(&instrument_list.widget));
@@ -74,18 +56,7 @@ impl Screen<Option<Work>, Work> for WorkEditor {
         let (id, composer, instruments, structure) = match work {
             Some(work) => {
                 title_entry.set_text(&work.title);
-
-                let mut structure = Vec::new();
-
-                for part in work.parts {
-                    structure.push(PartOrSection::Part(part));
-                }
-
-                for section in work.sections {
-                    structure.insert(section.before_index, PartOrSection::Section(section));
-                }
-
-                (work.id, Some(work.composer), work.instruments, structure)
+                (work.id, Some(work.composer), work.instruments, work.parts)
             }
             None => (generate_id(), None, Vec::new(), Vec::new()),
         };
@@ -102,7 +73,7 @@ impl Screen<Option<Work>, Work> for WorkEditor {
             part_list,
             composer: RefCell::new(composer),
             instruments: RefCell::new(instruments),
-            structure: RefCell::new(structure),
+            parts: RefCell::new(structure),
         });
 
         // Connect signals and callbacks
@@ -178,14 +149,14 @@ impl Screen<Option<Work>, Work> for WorkEditor {
         }));
 
         this.part_list.set_make_widget_cb(clone!(@weak this => @default-panic,  move |index| {
-            let pos = &this.structure.borrow()[index];
+            let part = &this.parts.borrow()[index];
 
             let delete_button = gtk::Button::from_icon_name(Some("user-trash-symbolic"));
             delete_button.set_valign(gtk::Align::Center);
 
             delete_button.connect_clicked(clone!(@weak this =>  move |_| {
                 let length = {
-                    let mut structure = this.structure.borrow_mut();
+                    let mut structure = this.parts.borrow_mut();
                     structure.remove(index);
                     structure.len()
                 };
@@ -198,47 +169,27 @@ impl Screen<Option<Work>, Work> for WorkEditor {
 
             edit_button.connect_clicked(clone!(@weak this =>  move |_| {
                 spawn!(@clone this, async move {
-                    let part_or_section = this.structure.borrow()[index].clone();
-                    match part_or_section {
-                        PartOrSection::Part(part) => {
-                            if let Some(part) = push!(this.handle, WorkPartEditor, Some(part)).await {
-                                let length = {
-                                    let mut structure = this.structure.borrow_mut();
-                                    structure[index] = PartOrSection::Part(part);
-                                    structure.len()
-                                };
+                    let part = this.parts.borrow()[index].clone();
+                    if let Some(part) = push!(this.handle, WorkPartEditor, Some(part)).await {
+                        let length = {
+                            let mut structure = this.parts.borrow_mut();
+                            structure[index] = part;
+                            structure.len()
+                        };
 
-                                this.part_list.update(length);
-                            }
-                        }
-                        PartOrSection::Section(section) => {
-                            if let Some(section) = push!(this.handle, WorkSectionEditor, Some(section)).await {
-                                let length = {
-                                    let mut structure = this.structure.borrow_mut();
-                                    structure[index] = PartOrSection::Section(section);
-                                    structure.len()
-                                };
-
-                                this.part_list.update(length);
-                            }
-                        }
+                        this.part_list.update(length);
                     }
                 });
             }));
 
             let row = adw::ActionRowBuilder::new()
                 .focusable(false)
-                .title(&pos.get_title())
+                .title(&part.title)
                 .activatable_widget(&edit_button)
                 .build();
 
             row.add_suffix(&delete_button);
             row.add_suffix(&edit_button);
-
-            if let PartOrSection::Part(_) = pos {
-                // TODO: Replace with better solution to differentiate parts and sections.
-                row.set_margin_start(12);
-            }
 
             row.upcast()
         }));
@@ -246,9 +197,9 @@ impl Screen<Option<Work>, Work> for WorkEditor {
         this.part_list
             .set_move_cb(clone!(@weak this =>  move |old_index, new_index| {
                 let length = {
-                    let mut structure = this.structure.borrow_mut();
-                    structure.swap(old_index, new_index);
-                    structure.len()
+                    let mut parts = this.parts.borrow_mut();
+                    parts.swap(old_index, new_index);
+                    parts.len()
                 };
 
                 this.part_list.update(length);
@@ -258,23 +209,9 @@ impl Screen<Option<Work>, Work> for WorkEditor {
             spawn!(@clone this, async move {
                 if let Some(part) = push!(this.handle, WorkPartEditor, None).await {
                     let length = {
-                        let mut structure = this.structure.borrow_mut();
-                        structure.push(PartOrSection::Part(part));
-                        structure.len()
-                    };
-
-                    this.part_list.update(length);
-                }
-            });
-        }));
-
-        add_section_button.connect_clicked(clone!(@strong this => move |_| {
-            spawn!(@clone this, async move {
-                if let Some(section) = push!(this.handle, WorkSectionEditor, None).await {
-                    let length = {
-                        let mut structure = this.structure.borrow_mut();
-                        structure.push(PartOrSection::Section(section));
-                        structure.len()
+                        let mut parts = this.parts.borrow_mut();
+                        parts.push(part);
+                        parts.len()
                     };
 
                     this.part_list.update(length);
@@ -289,7 +226,7 @@ impl Screen<Option<Work>, Work> for WorkEditor {
         }
 
         this.instrument_list.update(this.instruments.borrow().len());
-        this.part_list.update(this.structure.borrow().len());
+        this.part_list.update(this.parts.borrow().len());
 
         this
     }
@@ -311,22 +248,6 @@ impl WorkEditor {
 
     /// Save the work.
     fn save(self: &Rc<Self>) -> Result<Work> {
-        let mut section_count: usize = 0;
-        let mut parts = Vec::new();
-        let mut sections = Vec::new();
-
-        for (index, pos) in self.structure.borrow().iter().enumerate() {
-            match pos {
-                PartOrSection::Part(part) => parts.push(part.clone()),
-                PartOrSection::Section(section) => {
-                    let mut section = section.clone();
-                    section.before_index = index - section_count;
-                    sections.push(section);
-                    section_count += 1;
-                }
-            }
-        }
-
         let work = Work {
             id: self.id.clone(),
             title: self.title_entry.text().to_string(),
@@ -336,8 +257,7 @@ impl WorkEditor {
                 .clone()
                 .expect("Tried to create work without composer!"),
             instruments: self.instruments.borrow().clone(),
-            parts,
-            sections,
+            parts: self.parts.borrow().clone(),
         };
 
         self.handle.backend.db().update_work(work.clone())?;

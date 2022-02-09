@@ -1,5 +1,5 @@
 use super::generate_id;
-use super::schema::{instrumentations, work_parts, work_sections, works};
+use super::schema::{instrumentations, work_parts, works};
 use super::{Database, Error, Instrument, Person, Result};
 use diesel::prelude::*;
 use diesel::{Insertable, Queryable};
@@ -43,26 +43,10 @@ struct WorkPartRow {
     pub title: String,
 }
 
-/// Table row data for a work section.
-#[derive(Insertable, Queryable, Debug, Clone)]
-#[table_name = "work_sections"]
-struct WorkSectionRow {
-    pub id: i64,
-    pub work: String,
-    pub title: String,
-    pub before_index: i64,
-}
 /// A concrete work part that can be recorded.
 #[derive(PartialEq, Eq, Hash, Debug, Clone)]
 pub struct WorkPart {
     pub title: String,
-}
-
-/// A heading between work parts.
-#[derive(PartialEq, Eq, Hash, Debug, Clone)]
-pub struct WorkSection {
-    pub title: String,
-    pub before_index: usize,
 }
 
 /// A specific work by a composer.
@@ -73,7 +57,6 @@ pub struct Work {
     pub composer: Person,
     pub instruments: Vec<Instrument>,
     pub parts: Vec<WorkPart>,
-    pub sections: Vec<WorkSection>,
 }
 
 impl Work {
@@ -85,7 +68,6 @@ impl Work {
             composer,
             instruments: Vec::new(),
             parts: Vec::new(),
-            sections: Vec::new(),
         }
     }
 
@@ -129,7 +111,6 @@ impl Database {
             let Work {
                 instruments,
                 parts,
-                sections,
                 ..
             } = work;
 
@@ -154,19 +135,6 @@ impl Database {
                 };
 
                 diesel::insert_into(work_parts::table)
-                    .values(row)
-                    .execute(&self.connection)?;
-            }
-
-            for section in sections {
-                let row = WorkSectionRow {
-                    id: rand::random(),
-                    work: work_id.to_string(),
-                    title: section.title,
-                    before_index: section.before_index as i64,
-                };
-
-                diesel::insert_into(work_sections::table)
                     .values(row)
                     .execute(&self.connection)?;
             }
@@ -221,19 +189,6 @@ impl Database {
             });
         }
 
-        let mut sections: Vec<WorkSection> = Vec::new();
-
-        let section_rows = work_sections::table
-            .filter(work_sections::work.eq(&row.id))
-            .load::<WorkSectionRow>(&self.connection)?;
-
-        for section_row in section_rows {
-            sections.push(WorkSection {
-                title: section_row.title,
-                before_index: section_row.before_index as usize,
-            });
-        }
-
         let person_id = row.composer;
         let person = self
             .get_person(&person_id)?
@@ -245,7 +200,6 @@ impl Database {
             title: row.title,
             instruments,
             parts,
-            sections,
         })
     }
 

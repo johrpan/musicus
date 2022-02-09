@@ -76,15 +76,6 @@ table! {
 }
 
 table! {
-    work_sections (id) {
-        id -> BigInt,
-        work -> Text,
-        title -> Text,
-        before_index -> BigInt,
-    }
-}
-
-table! {
     works (id) {
         id -> Text,
         composer -> Text,
@@ -102,7 +93,6 @@ joinable!(recordings -> works (work));
 joinable!(tracks -> mediums (medium));
 joinable!(tracks -> recordings (recording));
 joinable!(work_parts -> works (work));
-joinable!(work_sections -> works (work));
 joinable!(works -> persons (composer));
 
 allow_tables_to_appear_in_same_query!(
@@ -115,6 +105,5 @@ allow_tables_to_appear_in_same_query!(
     recordings,
     tracks,
     work_parts,
-    work_sections,
     works,
 );

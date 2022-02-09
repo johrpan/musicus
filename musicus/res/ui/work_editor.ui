@@ -147,12 +147,6 @@
                               </object>
                             </child>
                             <child>
-                              <object class="GtkButton" id="add_section_button">
-                                <property name="has-frame">false</property>
-                                <property name="icon-name">folder-new-symbolic</property>
-                              </object>
-                            </child>
-                            <child>
                               <object class="GtkButton" id="add_part_button">
                                 <property name="has-frame">false</property>
                                 <property name="icon-name">list-add-symbolic</property>
