@@ -38,12 +38,12 @@
                     <property name="halign">center</property>
                     <child>
                       <object class="GtkButton" id="folder_button">
-                        <property name="label" translatable="true">Select folder</property>
+                        <property name="label" translatable="yes">Select folder</property>
                       </object>
                     </child>
                     <child>
                       <object class="GtkButton" id="disc_button">
-                        <property name="label" translatable="true">Copy audio CD</property>
+                        <property name="label" translatable="yes">Copy audio CD</property>
                       </object>
                     </child>
                   </object>
@@ -66,7 +66,7 @@
                 <property name="show-end-title-buttons">false</property>
                 <property name="title-widget">
                   <object class="AdwWindowTitle">
-                    <property name="title" translatable="true">Loading</property>
+                    <property name="title" translatable="yes">Loading</property>
                   </object>
                 </property>
               </object>

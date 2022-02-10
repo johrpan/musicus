@@ -1,253 +1,247 @@
-# SOME DESCRIPTIVE TITLE.
-# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
-# This file is distributed under the same license as the PACKAGE package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#  <>, YEAR-2022.
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: \n"
+"Project-Id-Version: unnamed project\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-11-08 20:12+0100\n"
-"PO-Revision-Date: 2020-11-08 20:13+0100\n"
+"POT-Creation-Date: 2022-02-10 12:32+0100\n"
+"PO-Revision-Date: 2022-02-10 12:34+0100\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "Language: de\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"X-Generator: Poedit 2.4.1\n"
+"X-Generator: Gtranslator 41.0\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: res/ui/ensemble_editor.ui:20 res/ui/performance_editor.ui:196
-#: res/ui/performance_editor.ui:227
-msgid "Ensemble"
-msgstr "Ensemble"
+#: ../res/ui/medium_preview.ui:19
+msgid "Preview"
+msgstr "Vorschau"
 
-#: res/ui/ensemble_editor.ui:23 res/ui/instrument_editor.ui:23
-#: res/ui/part_editor.ui:25 res/ui/performance_editor.ui:23
-#: res/ui/person_editor.ui:23 res/ui/recording_editor.ui:17
-#: res/ui/section_editor.ui:23 res/ui/track_editor.ui:24
-#: res/ui/tracks_editor.ui:39 res/ui/work_editor.ui:17
-msgid "Cancel"
-msgstr "Abbrechen"
+#: ../res/ui/medium_preview.ui:50
+msgid "Import"
+msgstr "Importieren"
 
-#: res/ui/ensemble_editor.ui:31 res/ui/instrument_editor.ui:31
-#: res/ui/part_editor.ui:33 res/ui/performance_editor.ui:31
-#: res/ui/person_editor.ui:31 res/ui/recording_editor.ui:25
-#: res/ui/section_editor.ui:31 res/ui/track_editor.ui:32
-#: res/ui/tracks_editor.ui:24 res/ui/work_editor.ui:25
-msgid "Save"
-msgstr "Speichern"
+#: ../res/ui/medium_preview.ui:117 ../res/ui/source_selector.ui:69
+msgid "Loading"
+msgstr "Lade…"
 
-#: res/ui/ensemble_editor.ui:64 res/ui/instrument_editor.ui:64
-msgid "Name"
-msgstr "Name"
+#: ../res/ui/medium_preview.ui:149 ../res/ui/source_selector.ui:101
+#: ../res/ui/medium_editor.ui:152 ../res/ui/medium_editor.ui:189
+#: ../res/ui/editor.ui:68
+msgid "Error"
+msgstr "Fehler"
 
-#: res/ui/ensemble_screen.ui:90 res/ui/work_screen.ui:90
-msgid "Search recordings …"
-msgstr "Aufnahmen durchsuchen …"
+#: ../res/ui/medium_preview.ui:161 ../res/ui/source_selector.ui:113
+#: ../res/ui/medium_editor.ui:164 ../res/ui/editor.ui:80
+msgid "Try again"
+msgstr "Nochmal versuchen"
 
-#: res/ui/ensemble_screen.ui:145 res/ui/person_screen.ui:196
-#: res/ui/work_screen.ui:145
-msgid "Recordings"
-msgstr "Aufnahmen"
-
-#: res/ui/ensemble_screen.ui:188 res/ui/work_screen.ui:188
-#: src/dialogs/recording/recording_selector_work_screen.rs:38
-#: src/screens/ensemble_screen.rs:53 src/screens/person_screen.rs:77
-#: src/screens/work_screen.rs:54
-msgid "No recordings found."
-msgstr "Keine Aufnahmen gefunden."
-
-#: res/ui/ensemble_selector.ui:22
-msgid "Select ensemble"
-msgstr "Ensemble auswählen"
-
-#: res/ui/ensemble_selector.ui:84
-msgid "No ensembles found."
-msgstr "Keine Ensembles gefunden."
-
-#: res/ui/instrument_editor.ui:20
-msgid "Instrument"
-msgstr "Instrument"
-
-#: res/ui/instrument_selector.ui:22
-msgid "Select instrument"
-msgstr "Instrument auswählen"
-
-#: res/ui/instrument_selector.ui:84
-msgid "No instruments found."
-msgstr "Keine Instrumente gefunden."
-
-#: res/ui/part_editor.ui:22
-msgid "Work part"
-msgstr "Werkabschnitt"
-
-#: res/ui/part_editor.ui:70 res/ui/work_editor.ui:84
-msgid "Composer"
-msgstr "Komponist"
-
-#: res/ui/part_editor.ui:93 res/ui/player_bar.ui:118
-#: res/ui/player_screen.ui:160 res/ui/section_editor.ui:64
-#: res/ui/work_editor.ui:106
-msgid "Title"
-msgstr "Titel"
-
-#: res/ui/part_editor.ui:116 res/ui/performance_editor.ui:87
-#: res/ui/performance_editor.ui:170 res/ui/performance_editor.ui:214
-#: res/ui/recording_editor.ui:81 res/ui/tracks_editor.ui:93
-#: res/ui/work_editor.ui:69 src/dialogs/recording/performance_editor.rs:150
-#: src/dialogs/recording/performance_editor.rs:160
-#: src/dialogs/recording/performance_editor.rs:170
-#: src/dialogs/work/part_editor.rs:166
-msgid "Select …"
-msgstr "Auswählen …"
-
-#: res/ui/part_editor.ui:159 res/ui/recording_editor.ui:119
-#: res/ui/work_editor.ui:119
-msgid "Overview"
-msgstr "Überblick"
-
-#: res/ui/part_editor.ui:247 res/ui/work_editor.ui:207
-msgid "Instruments"
-msgstr "Instrumente"
-
-#: res/ui/performance_editor.ui:20
+#: ../res/ui/performance_editor.ui:13
 msgid "Performance"
 msgstr "Auftritt"
 
-#: res/ui/performance_editor.ui:64
-msgid "Role"
-msgstr "Rolle"
-
-#: res/ui/performance_editor.ui:128
-msgid "Type"
-msgstr "Typ"
-
-#: res/ui/performance_editor.ui:151 res/ui/performance_editor.ui:183
-#: res/ui/person_editor.ui:20
-msgid "Person"
-msgstr "Person"
-
-#: res/ui/person_editor.ui:64
-msgid "First name"
-msgstr "Vorname"
-
-#: res/ui/person_editor.ui:87
-msgid "Last name"
-msgstr "Nachname"
-
-#: res/ui/person_list.ui:28
-msgid "Search persons …"
-msgstr "Personen durchsuchen …"
-
-#: res/ui/person_screen.ui:90
-msgid "Search works and recordings …"
-msgstr "Werke und Aufnahmen durchsuchen …"
-
-#: res/ui/person_screen.ui:151
-msgid "Works"
-msgstr "Werke"
-
-#: res/ui/person_screen.ui:246
-msgid "No works or recordings found."
-msgstr "Keine Werke oder Aufnahmen gefunden."
-
-#: res/ui/person_selector.ui:22
-msgid "Select person"
+#: ../res/ui/performance_editor.ui:55
+msgid "Select a person"
 msgstr "Person auswählen"
 
-#: res/ui/player_bar.ui:135 res/ui/player_screen.ui:177
-msgid "Subtitle"
-msgstr "Untertitel"
-
-#: res/ui/player_bar.ui:181 res/ui/player_bar.ui:205
-#: res/ui/player_screen.ui:229 res/ui/player_screen.ui:257
-msgid "0:00"
-msgstr "0:00"
-
-#: res/ui/player_bar.ui:193
-msgid "/"
-msgstr "/"
-
-#: res/ui/player_screen.ui:24
-msgid "Player"
-msgstr "Wiedergabe"
-
-#: res/ui/poe_list.ui:28
-msgid "Search persons and ensembles …"
-msgstr "Personen und Ensembles durchsuchen …"
-
-#: res/ui/preferences.ui:16
-msgid "General"
-msgstr "Allgemein"
-
-#: res/ui/preferences.ui:21
-msgid "Music library"
-msgstr "Musikbibliothek"
-
-#: res/ui/preferences.ui:27
-msgid "Music library folder"
-msgstr "Ordner der Musikbibliothek"
-
-#: res/ui/preferences.ui:29
-msgid "None selected"
-msgstr "Keiner ausgewählt"
-
-#: res/ui/preferences.ui:32
+#: ../res/ui/performance_editor.ui:59 ../res/ui/performance_editor.ui:72
+#: ../res/ui/performance_editor.ui:92 ../res/ui/track_set_editor.ui:69
+#: ../res/ui/import_screen.ui:154 ../res/ui/preferences.ui:23
+#: ../res/ui/recording_editor.ui:83 ../res/ui/work_editor.ui:83
+#: ../src/import/source_selector.rs:51 ../src/screens/welcome.rs:56
+#: ../src/preferences.rs:42
 msgid "Select"
 msgstr "Auswählen"
 
-#: res/ui/recording_editor.ui:14 res/ui/tracks_editor.ui:68
-msgid "Recording"
-msgstr "Aufnahme"
+#: ../res/ui/performance_editor.ui:68
+msgid "Select an ensemble"
+msgstr "Ensemble auswählen"
 
-#: res/ui/recording_editor.ui:63
-msgid "Comment"
-msgstr "Kommentar"
+#: ../res/ui/performance_editor.ui:81
+msgid "Select a role"
+msgstr "Rolle auswählen"
 
-#: res/ui/recording_editor.ui:106 res/ui/tracks_editor.ui:109
-#: res/ui/work_editor.ui:14
-msgid "Work"
-msgstr "Werk"
+#: ../res/ui/player_bar.ui:65 ../res/ui/player_screen.ui:97
+#: ../res/ui/work_part_editor.ui:59 ../res/ui/work_editor.ui:92
+msgid "Title"
+msgstr "Titel"
 
-#: res/ui/recording_editor.ui:226 res/ui/tracks_editor.ui:127
-msgid "Performers"
-msgstr "Interpreten"
+#: ../res/ui/player_bar.ui:75 ../res/ui/player_screen.ui:107
+msgid "Subtitle"
+msgstr "Untertitel"
 
-#: res/ui/recording_screen.ui:98 res/ui/tracks_editor.ui:21
-msgid "Tracks"
-msgstr "Tracks"
+#: ../res/ui/player_bar.ui:86 ../res/ui/player_bar.ui:96
+#: ../res/ui/player_screen.ui:131 ../res/ui/player_screen.ui:142
+msgid "0:00"
+msgstr "0:00"
 
-#: res/ui/recording_screen.ui:127
-msgid "Add to playlist"
-msgstr "Zur Wiedergabeliste hinzufügen"
+#: ../res/ui/player_bar.ui:91
+msgid "/"
+msgstr "/"
 
-#: res/ui/recording_selector.ui:27 res/ui/work_selector.ui:26
-msgid "Select a composer on the left."
-msgstr "Wählen Sie einen Komponisten aus."
+#: ../res/ui/player_screen.ui:19
+msgid "Player"
+msgstr "Wiedergabe"
 
-#: res/ui/recording_selector.ui:51
-msgid "Select a recording"
-msgstr "Aufnahme auswählen"
+#: ../res/ui/source_selector.ui:31 ../res/ui/track_set_editor.ui:13
+#: ../res/ui/import_screen.ui:13 ../res/ui/medium_editor.ui:19
+msgid "Import music"
+msgstr "Musik importieren"
 
-#: res/ui/section_editor.ui:20
-msgid "Work section"
-msgstr "Werkteil"
+#: ../res/ui/source_selector.ui:32
+msgid "Select the source which contains the new audio files below."
+msgstr "Wählen Sie die Quelle mit den Audiodateien unten aus."
 
-#: res/ui/track_editor.ui:21
+#: ../res/ui/source_selector.ui:41 ../src/import/source_selector.rs:46
+#: ../src/screens/welcome.rs:28
+msgid "Select folder"
+msgstr "Ordner auswählen"
+
+#: ../res/ui/source_selector.ui:46
+msgid "Copy audio CD"
+msgstr "Audio-CD kopieren"
+
+#: ../res/ui/track_editor.ui:13
 msgid "Track"
 msgstr "Track"
 
-#: res/ui/track_editor.ui:70
-msgid "Select a recording of a work with multiple parts."
-msgstr "Wählen Sie eine Aufnahme eines mehrteiligen Werks aus."
+#: ../res/ui/track_selector.ui:13
+msgid "Select tracks"
+msgstr "Tracks auswählen"
 
-#: res/ui/window.ui:51 res/ui/window.ui:141
+#: ../res/ui/track_set_editor.ui:51 ../res/ui/recording_editor.ui:18
+#: ../res/ui/recording_editor.ui:155
+msgid "Recording"
+msgstr "Aufnahme"
+
+#: ../res/ui/track_set_editor.ui:65
+msgid "Select a recording"
+msgstr "Aufnahme auswählen"
+
+#: ../res/ui/track_set_editor.ui:89 ../src/screens/recording.rs:30
+msgid "Tracks"
+msgstr "Tracks"
+
+#: ../res/ui/work_part_editor.ui:13
+msgid "Work part"
+msgstr "Werkabschnitt"
+
+#: ../res/ui/import_screen.ui:42
+msgid "Matching metadata"
+msgstr "Passende Metadaten"
+
+#: ../res/ui/import_screen.ui:66
+msgid "Loading…"
+msgstr "Lade…"
+
+#: ../res/ui/import_screen.ui:87
+msgid "Error while searching for matching metadata"
+msgstr "Fehler bei der Suche nach passenden Metadaten"
+
+#: ../res/ui/import_screen.ui:110
+msgid "No matching metadata found"
+msgstr "Keine passenden Metadaten gefunden"
+
+#: ../res/ui/import_screen.ui:136
+msgid "Manually add metadata"
+msgstr "Metadaten manuell hinzufügen"
+
+#: ../res/ui/import_screen.ui:150
+msgid "Select existing medium"
+msgstr "Existierendes Medium auswählen"
+
+#: ../res/ui/import_screen.ui:163
+msgid "Add a new medium"
+msgstr "Neues Medium hinzufügen"
+
+#: ../res/ui/import_screen.ui:167
+msgid "Add"
+msgstr "Hinzufügen"
+
+#: ../res/ui/medium_editor.ui:61
+msgid "Medium"
+msgstr "Medium"
+
+#: ../res/ui/medium_editor.ui:75
+msgid "Name of the medium"
+msgstr "Name des Mediums"
+
+#: ../res/ui/medium_editor.ui:99
+msgid "Recordings"
+msgstr "Aufnahmen"
+
+#: ../res/ui/medium_editor.ui:201 ../res/ui/editor.ui:22
+#: ../src/import/source_selector.rs:50 ../src/screens/welcome.rs:55
+#: ../src/preferences.rs:41
+msgid "Cancel"
+msgstr "Abbrechen"
+
+#: ../res/ui/preferences.ui:11 ../src/editors/ensemble.rs:34
+#: ../src/editors/instrument.rs:34 ../src/editors/person.rs:38
+msgid "General"
+msgstr "Allgemein"
+
+#: ../res/ui/preferences.ui:14
+msgid "Music library"
+msgstr "Musikbibliothek"
+
+#: ../res/ui/preferences.ui:18
+msgid "Music library folder"
+msgstr "Ordner der Musikbibliothek"
+
+#: ../res/ui/preferences.ui:20
+msgid "None selected"
+msgstr "Keiner ausgewählt"
+
+#: ../res/ui/recording_editor.ui:65 ../res/ui/work_editor.ui:65
+msgid "Overview"
+msgstr "Überblick"
+
+#: ../res/ui/recording_editor.ui:79
+msgid "Select a work"
+msgstr "Werk auswählen"
+
+#: ../res/ui/recording_editor.ui:92
+msgid "Comment"
+msgstr "Kommentar"
+
+#: ../res/ui/recording_editor.ui:116
+msgid "Performers"
+msgstr "Interpreten"
+
+#: ../res/ui/selector.ui:60
+msgid "Search …"
+msgstr "Suchen…"
+
+#: ../res/ui/work_editor.ui:18 ../res/ui/work_editor.ui:182
+#: ../src/editors/recording.rs:173
+msgid "Work"
+msgstr "Werk"
+
+#: ../res/ui/work_editor.ui:79
+msgid "Select a composer"
+msgstr "Komponisten auswählen"
+
+#: ../res/ui/work_editor.ui:116
+msgid "Instruments"
+msgstr "Instrumente"
+
+#: ../res/ui/work_editor.ui:143
+msgid "Structure"
+msgstr "Struktur"
+
+#: ../res/ui/editor.ui:27
+msgid "Save"
+msgstr "Speichern"
+
+#: ../res/ui/main_screen.ui:17 ../src/screens/welcome.rs:33
 msgid "Welcome to Musicus!"
 msgstr "Willkommen bei Musicus!"
 
-#: res/ui/window.ui:67
+#: ../res/ui/main_screen.ui:18
 msgid ""
 "Get startet by selecting something from the sidebar or adding new things to "
 "your library using the button in the top left corner."
@@ -255,133 +249,248 @@ msgstr ""
 "Legen Sie los, indem Sie etwas in der Seitenleiste auswählen oder fügen Sie "
 "mit dem Knopf oben links neue Aufnahmen zu Ihrer Musikbibliothek hinzu."
 
-#: res/ui/window.ui:104 res/ui/window.ui:252 src/dialogs/about.rs:10
-msgid "Musicus"
-msgstr "Musicus"
+#: ../res/ui/main_screen.ui:27
+msgid "Play something"
+msgstr "Musik abspielen"
 
-#: res/ui/window.ui:157
+#: ../res/ui/main_screen.ui:88
+msgid "Search persons and ensembles …"
+msgstr "Personen und Ensembles durchsuchen …"
+
+#: ../res/ui/main_screen.ui:150
+msgid "Preferences"
+msgstr "Einstellungen"
+
+#: ../res/ui/main_screen.ui:154
+msgid "About Musicus"
+msgstr "Über Musicus"
+
+#: ../src/editors/performance.rs:42
+msgid "Performer"
+msgstr "Interpret"
+
+#: ../src/editors/performance.rs:44
+msgid "Select either a person or an ensemble as a performer."
+msgstr "Wählen Sie entweder eine Person oder ein Ensemble als Interpreten aus."
+
+#: ../src/editors/performance.rs:62
+msgid "Role"
+msgstr "Rolle"
+
+#: ../src/editors/performance.rs:64
+msgid "Optionally, choose a role to specify what the performer does."
+msgstr ""
+"Wählen Sie optional eine Rolle aus, die angibt, was der Interpret macht."
+
+#: ../src/editors/ensemble.rs:31 ../src/editors/instrument.rs:31
+msgid "Name"
+msgstr "Name"
+
+#: ../src/editors/ensemble.rs:65
+msgid "Failed to save ensemble!"
+msgstr "Ensemble konnte nicht gespeichert werden!"
+
+#: ../src/editors/instrument.rs:65
+msgid "Failed to save instrument!"
+msgstr "Instrument konnte nicht gespeichert werden!"
+
+#: ../src/editors/person.rs:32
+msgid "First name"
+msgstr "Vorname"
+
+#: ../src/editors/person.rs:33
+msgid "Last name"
+msgstr "Nachname"
+
+#: ../src/editors/person.rs:72
+msgid "Failed to save person!"
+msgstr "Person konnte nicht gespeichert werden!"
+
+#: ../src/editors/work.rs:238
+msgid "Composer"
+msgstr "Komponist"
+
+#: ../src/import/track_set_editor.rs:133 ../src/import/medium_preview.rs:171
+#: ../src/screens/medium.rs:74 ../src/screens/recording.rs:84
+msgid "Unknown"
+msgstr "Unbekannt"
+
+#: ../src/screens/medium.rs:42
+msgid "Edit medium"
+msgstr "Medium bearbeiten"
+
+#: ../src/screens/medium.rs:49
+msgid "Delete medium"
+msgstr "Medium löschen"
+
+#: ../src/screens/ensemble.rs:49
+msgid "Edit ensemble"
+msgstr "Ensemble bearbeiten"
+
+#: ../src/screens/ensemble.rs:59
+msgid "Delete ensemble"
+msgstr "Ensemble löschen"
+
+#: ../src/screens/person.rs:54
+msgid "Edit person"
+msgstr "Person bearbeiten"
+
+#: ../src/screens/person.rs:64
+msgid "Delete person"
+msgstr "Person löschen"
+
+#: ../src/screens/recording.rs:55
+msgid "Edit recording"
+msgstr "Aufnahme bearbeiten"
+
+#: ../src/screens/recording.rs:65
+msgid "Delete recording"
+msgstr "Aufnahme löschen"
+
+#: ../src/screens/welcome.rs:35
 msgid ""
-"Get startet by selecting the folder containing your music files! Musicus "
-"will create a new database there or open one that already exists."
+"Get startet by selecting the folder containing your music                 "
+"files! Musicus will create a new database there or open one that already "
+"exists."
 msgstr ""
 "Wählen Sie als Erstes den Ordner aus, worin sich Ihre Musik befindet. "
 "Musicus wird dort eine neue Datenbank anlegen oder eine bereits existierende "
 "öffnen."
 
-#: res/ui/window.ui:170
-msgid "Select folder"
-msgstr "Ordner auswählen"
-
-#: res/ui/window.ui:331
-msgid "Preferences"
-msgstr "Einstellungen"
-
-#: res/ui/window.ui:335
-msgid "About Musicus"
-msgstr "Über Musicus"
-
-#: res/ui/work_editor.ui:373
-msgid "Structure"
-msgstr "Struktur"
-
-#: res/ui/work_selector.ui:51
-msgid "Select a work"
-msgstr "Werk auswählen"
-
-#: src/dialogs/about.rs:12
-msgid "The classical music player and organizer."
-msgstr "Das Programm zum Abspielen und Organisieren von Klassik."
-
-#: src/dialogs/about.rs:14
-msgid "Further information and source code"
-msgstr "Weitere Informationen und Quellcode"
-
-#: src/dialogs/preferences.rs:30 src/window.rs:70
+#: ../src/screens/welcome.rs:51 ../src/preferences.rs:37
 msgid "Select music library folder"
 msgstr "Ordner der Musikbibliothek auswählen"
 
-#: src/dialogs/recording/recording_editor.rs:54
-msgid "No performers added."
-msgstr "Keine Interpreten hinzugefügt."
-
-#: src/dialogs/recording/recording_selector_person_screen.rs:39
-#: src/dialogs/work/work_selector_person_screen.rs:36
-#: src/screens/person_screen.rs:57
-msgid "No works found."
-msgstr "Keine Werke gefunden."
-
-#: src/dialogs/tracks_editor.rs:60
-msgid "Add some tracks."
-msgstr "Fügen Sie Tracks hinzu."
-
-#: src/dialogs/tracks_editor.rs:118
-msgid "Select audio files"
-msgstr "Audiodateien auswählen"
-
-#: src/dialogs/tracks_editor.rs:236 src/screens/player_screen.rs:230
-#: src/screens/recording_screen.rs:79
-msgid "Unknown"
-msgstr "Unbekannt"
-
-#: src/dialogs/work/part_editor.rs:49 src/dialogs/work/work_editor.rs:69
-msgid "No instruments added."
-msgstr "Keine Instrumente hinzugefügt."
-
-#: src/dialogs/work/work_editor.rs:72
-msgid "No work parts added."
-msgstr "Keine Werkabschnitte hinzugefügt."
-
-#: src/screens/ensemble_screen.rs:35
-msgid "Edit ensemble"
-msgstr "Ensemble bearbeiten"
-
-#: src/screens/ensemble_screen.rs:41
-msgid "Delete ensemble"
-msgstr "Ensemble löschen"
-
-#: src/screens/person_screen.rs:39
-msgid "Edit person"
-msgstr "Person bearbeiten"
-
-#: src/screens/person_screen.rs:45
-msgid "Delete person"
-msgstr "Person löschen"
-
-#: src/screens/recording_screen.rs:36
-msgid "Edit recording"
-msgstr "Aufnahme bearbeiten"
-
-#: src/screens/recording_screen.rs:42
-msgid "Delete recording"
-msgstr "Aufnahme löschen"
-
-#: src/screens/recording_screen.rs:48
-msgid "Edit tracks"
-msgstr "Tracks bearbeiten"
-
-#: src/screens/recording_screen.rs:54
-msgid "Delete tracks"
-msgstr "Tracks löschen"
-
-#: src/screens/recording_screen.rs:69
-msgid "No tracks found."
-msgstr "Keine Tracks gefunden."
-
-#: src/screens/work_screen.rs:36
+#: ../src/screens/work.rs:45
 msgid "Edit work"
 msgstr "Werk bearbeiten"
 
-#: src/screens/work_screen.rs:42
+#: ../src/screens/work.rs:55
 msgid "Delete work"
 msgstr "Werk löschen"
 
-#: src/widgets/person_list.rs:26
-msgid "No persons found."
-msgstr "Keine Personen gefunden."
+#: ../src/screens/main.rs:196
+msgid "Musicus"
+msgstr "Musicus"
 
-#: src/widgets/poe_list.rs:41
-msgid "No persons or ensembles found."
-msgstr "Keine Personen oder Ensembles gefunden."
+#: ../src/screens/main.rs:198
+msgid "The classical music player and organizer."
+msgstr "Das Programm zum Abspielen und Organisieren von Klassik."
 
-#~ msgid "Search works …"
-#~ msgstr "Werke durchsuchen …"
+#: ../src/screens/main.rs:200
+msgid "Further information and source code"
+msgstr "Weitere Informationen und Quellcode"
+
+#: ../src/selectors/ensemble.rs:23
+msgid "Select ensemble"
+msgstr "Ensemble auswählen"
+
+#: ../src/selectors/instrument.rs:23
+msgid "Select instrument"
+msgstr "Instrument auswählen"
+
+#: ../src/selectors/medium.rs:21
+msgid "Select performer"
+msgstr "Interpreten auswählen"
+
+#: ../src/selectors/medium.rs:90
+msgid "Select medium"
+msgstr "Medium auswählen"
+
+#: ../src/selectors/person.rs:23
+msgid "Select person"
+msgstr "Person auswählen"
+
+#: ../src/selectors/recording.rs:22 ../src/selectors/work.rs:22
+msgid "Select composer"
+msgstr "Komponisten auswählen"
+
+#: ../src/selectors/recording.rs:105 ../src/selectors/work.rs:95
+msgid "Select work"
+msgstr "Werk auswählen"
+
+#: ../src/selectors/recording.rs:168
+msgid "Select recording"
+msgstr "Aufnahme auswählen"
+
+#, fuzzy
+#~ msgid "Personal data"
+#~ msgstr "Person"
+
+#~ msgid "Ensemble"
+#~ msgstr "Ensemble"
+
+#~ msgid "Search recordings …"
+#~ msgstr "Aufnahmen durchsuchen …"
+
+#~ msgid "No recordings found."
+#~ msgstr "Keine Aufnahmen gefunden."
+
+#~ msgid "No ensembles found."
+#~ msgstr "Keine Ensembles gefunden."
+
+#~ msgid "Instrument"
+#~ msgstr "Instrument"
+
+#~ msgid "No instruments found."
+#~ msgstr "Keine Instrumente gefunden."
+
+#~ msgid "Select …"
+#~ msgstr "Auswählen …"
+
+#~ msgid "Type"
+#~ msgstr "Typ"
+
+#~ msgid "Search persons …"
+#~ msgstr "Personen durchsuchen …"
+
+#~ msgid "Search works and recordings …"
+#~ msgstr "Werke und Aufnahmen durchsuchen …"
+
+#~ msgid "Works"
+#~ msgstr "Werke"
+
+#~ msgid "No works or recordings found."
+#~ msgstr "Keine Werke oder Aufnahmen gefunden."
+
+#~ msgid "Add to playlist"
+#~ msgstr "Zur Wiedergabeliste hinzufügen"
+
+#~ msgid "Select a composer on the left."
+#~ msgstr "Wählen Sie einen Komponisten aus."
+
+#~ msgid "Work section"
+#~ msgstr "Werkteil"
+
+#~ msgid "Select a recording of a work with multiple parts."
+#~ msgstr "Wählen Sie eine Aufnahme eines mehrteiligen Werks aus."
+
+#~ msgid "No performers added."
+#~ msgstr "Keine Interpreten hinzugefügt."
+
+#~ msgid "No works found."
+#~ msgstr "Keine Werke gefunden."
+
+#~ msgid "Add some tracks."
+#~ msgstr "Fügen Sie Tracks hinzu."
+
+#~ msgid "Select audio files"
+#~ msgstr "Audiodateien auswählen"
+
+#~ msgid "No instruments added."
+#~ msgstr "Keine Instrumente hinzugefügt."
+
+#~ msgid "No work parts added."
+#~ msgstr "Keine Werkabschnitte hinzugefügt."
+
+#~ msgid "Edit tracks"
+#~ msgstr "Tracks bearbeiten"
+
+#~ msgid "No tracks found."
+#~ msgstr "Keine Tracks gefunden."
+
+#~ msgid "No persons found."
+#~ msgstr "Keine Personen gefunden."
+
+#~ msgid "No persons or ensembles found."
+#~ msgstr "Keine Personen oder Ensembles gefunden."
