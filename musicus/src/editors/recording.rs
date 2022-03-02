@@ -115,8 +115,8 @@ impl Screen<Option<Recording>, Recording> for RecordingEditor {
 
             edit_button.connect_clicked(clone!(@weak this =>  move |_| {
                 spawn!(@clone this, async move {
-                    let performance = &this.performances.borrow()[index];
-                    if let Some(performance) = push!(this.handle, PerformanceEditor, Some(performance.to_owned())).await {
+                    let performance = this.performances.borrow()[index].clone();
+                    if let Some(performance) = push!(this.handle, PerformanceEditor, Some(performance)).await {
                         let length = {
                             let mut performances = this.performances.borrow_mut();
                             performances[index] = performance;
