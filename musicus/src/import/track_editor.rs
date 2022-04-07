@@ -27,13 +27,14 @@ impl Screen<(Recording, Vec<usize>), Vec<usize>> for TrackEditor {
         get_widget!(builder, gtk::Box, widget);
         get_widget!(builder, gtk::Button, back_button);
         get_widget!(builder, gtk::Button, select_button);
-        get_widget!(builder, gtk::Frame, parts_frame);
+        get_widget!(builder, adw::Clamp, clamp);
 
-        let parts_list = gtk::ListBox::new();
-        parts_list.set_selection_mode(gtk::SelectionMode::None);
-        parts_list.set_vexpand(false);
-        parts_list.show();
-        parts_frame.set_child(Some(&parts_list));
+        let parts_list = gtk::ListBoxBuilder::new()
+            .selection_mode(gtk::SelectionMode::None)
+            .css_classes(vec![String::from("boxed-list")])
+            .build();
+
+        clamp.set_child(Some(&parts_list));
 
         let this = Rc::new(Self {
             handle,

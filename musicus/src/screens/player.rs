@@ -7,23 +7,17 @@ use musicus_backend::db::Track;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
-/// Elements for visually representing the playlist.
+/// A playable track within the playlist.
 #[derive(Clone)]
-enum ListItem {
-    /// A playable track.
-    Track {
-        /// Index within the playlist.
-        index: usize,
+struct ListItem {
+    /// Index within the playlist.
+    index: usize,
 
-        /// Whether this is the first track of the recording.
-        first: bool,
+    /// Whether this is the first track of the recording.
+    first: bool,
 
-        /// Whether this is the currently played track.
-        playing: bool,
-    },
-
-    /// A separator shown between recordings.
-    Separator,
+    /// Whether this is the currently played track.
+    playing: bool,
 }
 
 pub struct PlayerScreen {
@@ -52,6 +46,7 @@ impl Screen<(), ()> for PlayerScreen {
 
         get_widget!(builder, gtk::Box, widget);
         get_widget!(builder, gtk::Button, back_button);
+        get_widget!(builder, gtk::Box, content);
         get_widget!(builder, gtk::Label, title_label);
         get_widget!(builder, gtk::Label, subtitle_label);
         get_widget!(builder, gtk::Button, previous_button);
@@ -64,10 +59,9 @@ impl Screen<(), ()> for PlayerScreen {
         get_widget!(builder, gtk::Label, duration_label);
         get_widget!(builder, gtk::Image, play_image);
         get_widget!(builder, gtk::Image, pause_image);
-        get_widget!(builder, gtk::Frame, frame);
 
         let list = List::new();
-        frame.set_child(Some(&list.widget));
+        content.append(&list.widget);
 
         let event_controller = gtk::EventControllerLegacy::new();
         position_scale.add_controller(&event_controller);
@@ -209,22 +203,9 @@ impl Screen<(), ()> for PlayerScreen {
 
         this.list
             .set_make_widget_cb(clone!(@weak this => @default-panic, move |index| {
-                let widget = match this.items.borrow()[index] {
-                    ListItem::Track {index, first, playing} => {
-                        let track = &this.playlist.borrow()[index];
-                        TrackRow::new(track, first, playing).get_widget()
-                    }
-                    ListItem::Separator => {
-                        gtk::ListBoxRowBuilder::new()
-                            .selectable(false)
-                            .activatable(false)
-                            .child(&gtk::Separator::new(gtk::Orientation::Horizontal))
-                            .build()
-                            .upcast()
-                    }
-                };
-
-                widget
+                let item = &this.items.borrow()[index];
+                let track = &this.playlist.borrow()[item.index];
+                TrackRow::new(track, item.first, item.playing).get_widget()
             }));
 
         this.list
@@ -232,9 +213,7 @@ impl Screen<(), ()> for PlayerScreen {
             .connect_row_activated(clone!(@weak this => move |_, row| {
                 let list_index = row.index();
                 let list_item = this.items.borrow()[list_index as usize].clone();
-                if let ListItem::Track {index, ..} = list_item {
-                    this.handle.backend.pl().set_track(index).unwrap();
-                };
+                this.handle.backend.pl().set_track(list_item.index).unwrap();
             }));
 
         player.send_data();
@@ -249,33 +228,22 @@ impl PlayerScreen {
         let playlist = self.playlist.borrow();
         let current_track = self.current_track.get();
 
-        let mut first = true;
         let mut items = Vec::new();
-
         let mut last_recording_id = "";
 
         for (index, track) in playlist.iter().enumerate() {
             let first_track = if track.recording.id != last_recording_id {
                 last_recording_id = &track.recording.id;
-
-                if !first {
-                    items.push(ListItem::Separator);
-                } else {
-                    first = false;
-                }
-
                 true
             } else {
                 false
             };
 
-            let item = ListItem::Track {
+            items.push(ListItem {
                 index,
                 first: first_track,
                 playing: index == current_track,
-            };
-
-            items.push(item);
+            });
         }
 
         let length = items.len();

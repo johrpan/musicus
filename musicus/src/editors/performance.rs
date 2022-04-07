@@ -31,6 +31,7 @@ impl Screen<Option<Performance>, Performance> for PerformanceEditor {
 
         let performer_list = gtk::ListBoxBuilder::new()
             .selection_mode(gtk::SelectionMode::None)
+            .css_classes(vec![String::from("boxed-list")])
             .build();
 
         let person_row = ButtonRow::new("Person", "Select");
@@ -46,6 +47,7 @@ impl Screen<Option<Performance>, Performance> for PerformanceEditor {
 
         let role_list = gtk::ListBoxBuilder::new()
             .selection_mode(gtk::SelectionMode::None)
+            .css_classes(vec![String::from("boxed-list")])
             .build();
 
         let reset_role_button = gtk::ButtonBuilder::new()

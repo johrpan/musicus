@@ -34,10 +34,10 @@ impl<T> Selector<T> {
         get_widget!(builder, gtk::Button, add_button);
         get_widget!(builder, gtk::SearchEntry, search_entry);
         get_widget!(builder, gtk::Stack, stack);
-        get_widget!(builder, gtk::Frame, frame);
+        get_widget!(builder, adw::Clamp, clamp);
 
         let list = List::new();
-        frame.set_child(Some(&list.widget));
+        clamp.set_child(Some(&list.widget));
 
         let this = Rc::new(Self {
             widget,

@@ -27,8 +27,10 @@ impl List {
         // let factory = gtk::SignalListItemFactory::new();
         // let widget = gtk::ListView::new(Some(&selection), Some(&factory));
 
-        let widget = gtk::ListBox::new();
-        widget.set_selection_mode(gtk::SelectionMode::None);
+        let widget = gtk::ListBoxBuilder::new()
+            .selection_mode(gtk::SelectionMode::None)
+            .css_classes(vec![String::from("boxed-list")])
+            .build();
 
         let this = Rc::new(Self {
             widget,

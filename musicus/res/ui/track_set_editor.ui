@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
-  <requires lib="gtk" version="4.0"/>
-  <requires lib="libadwaita" version="1.0"/>
+  <requires lib="gtk" version="4.0" />
+  <requires lib="libadwaita" version="1.0" />
   <object class="GtkBox" id="widget">
     <property name="orientation">vertical</property>
     <child>
@@ -12,7 +12,7 @@
           <object class="GtkLabel">
             <property name="label" translatable="yes">Import music</property>
             <style>
-              <class name="title"/>
+              <class name="title" />
             </style>
           </object>
         </property>
@@ -26,7 +26,7 @@
             <property name="icon-name">object-select-symbolic</property>
             <property name="sensitive">False</property>
             <style>
-              <class name="suggested-action"/>
+              <class name="suggested-action" />
             </style>
           </object>
         </child>
@@ -50,30 +50,29 @@
                     <property name="margin-bottom">6</property>
                     <property name="label" translatable="yes">Recording</property>
                     <attributes>
-                      <attribute name="weight" value="bold"/>
+                      <attribute name="weight" value="bold" />
                     </attributes>
                   </object>
                 </child>
                 <child>
-                  <object class="GtkFrame">
+                  <object class="GtkListBox">
+                    <property name="selection-mode">none</property>
                     <child>
-                      <object class="GtkListBox">
-                        <property name="selection-mode">none</property>
+                      <object class="AdwActionRow" id="recording_row">
+                        <property name="focusable">False</property>
+                        <property name="title" translatable="yes">Select a recording</property>
+                        <property name="activatable-widget">select_recording_button</property>
                         <child>
-                          <object class="AdwActionRow" id="recording_row">
-                            <property name="focusable">False</property>
-                            <property name="title" translatable="yes">Select a recording</property>
-                            <property name="activatable-widget">select_recording_button</property>
-                            <child>
-                              <object class="GtkButton" id="select_recording_button">
-                                <property name="label" translatable="yes">Select</property>
-                                <property name="valign">center</property>
-                              </object>
-                            </child>
+                          <object class="GtkButton" id="select_recording_button">
+                            <property name="label" translatable="yes">Select</property>
+                            <property name="valign">center</property>
                           </object>
                         </child>
                       </object>
                     </child>
+                    <style>
+                      <class name="boxed-list" />
+                    </style>
                   </object>
                 </child>
                 <child>
@@ -88,7 +87,7 @@
                         <property name="hexpand">True</property>
                         <property name="label" translatable="yes">Tracks</property>
                         <attributes>
-                          <attribute name="weight" value="bold"/>
+                          <attribute name="weight" value="bold" />
                         </attributes>
                       </object>
                     </child>
@@ -101,7 +100,7 @@
                   </object>
                 </child>
                 <child>
-                  <object class="GtkFrame" id="tracks_frame"/>
+                  <object class="GtkFrame" id="tracks_frame" />
                 </child>
               </object>
             </child>

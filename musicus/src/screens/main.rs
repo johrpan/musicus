@@ -48,7 +48,7 @@ impl Screen<(), ()> for MainScreen {
         widget.insert_action_group("widget", Some(&actions));
 
         let poe_list = List::new();
-        poe_list.widget.add_css_class("navigation-sidebar");
+        poe_list.widget.set_css_classes(&["navigation-sidebar"]);
         poe_list.enable_selection();
 
         let navigator = Navigator::new(Rc::clone(&handle.backend), &handle.window, &empty_screen);

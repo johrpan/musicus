@@ -27,6 +27,7 @@ impl Screen<Option<Person>, Person> for PersonEditor {
 
         let list = gtk::ListBoxBuilder::new()
             .selection_mode(gtk::SelectionMode::None)
+            .css_classes(vec![String::from("boxed-list")])
             .build();
 
         let first_name = EntryRow::new(&gettext("First name"));

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
-  <requires lib="gtk" version="4.0"/>
-  <requires lib="libadwaita" version="1.0"/>
+  <requires lib="gtk" version="4.0" />
+  <requires lib="libadwaita" version="1.0" />
   <object class="GtkBox" id="widget">
     <property name="orientation">vertical</property>
     <child>
@@ -41,89 +41,97 @@
                         <property name="halign">start</property>
                         <property name="label" translatable="yes">Matching metadata</property>
                         <attributes>
-                          <attribute name="weight" value="bold"/>
+                          <attribute name="weight" value="bold" />
                         </attributes>
                       </object>
                     </child>
                   </object>
                 </child>
                 <child>
-                  <object class="GtkFrame">
+                  <object class="GtkStack" id="matching_stack">
+                    <property name="transition-type">crossfade</property>
+                    <property name="vhomogeneous">false</property>
+                    <property name="interpolate-size">true</property>
                     <child>
-                      <object class="GtkStack" id="matching_stack">
-                        <property name="transition-type">crossfade</property>
-                        <property name="vhomogeneous">false</property>
-                        <property name="interpolate-size">true</property>
-                        <child>
-                          <object class="GtkStackPage">
-                            <property name="name">loading</property>
-                            <property name="child">
-                              <object class="GtkListBox">
-                                <property name="selection-mode">none</property>
+                      <object class="GtkStackPage">
+                        <property name="name">loading</property>
+                        <property name="child">
+                          <object class="GtkListBox">
+                            <property name="selection-mode">none</property>
+                            <child>
+                              <object class="AdwActionRow">
+                                <property name="activatable">False</property>
+                                <property name="title" translatable="yes">Loading…</property>
                                 <child>
-                                  <object class="AdwActionRow">
-                                    <property name="activatable">False</property>
-                                    <property name="title" translatable="yes">Loading…</property>
-                                    <child>
-                                      <object class="GtkSpinner">
-                                        <property name="spinning">True</property>
-                                      </object>
-                                    </child>
+                                  <object class="GtkSpinner">
+                                    <property name="spinning">True</property>
                                   </object>
                                 </child>
                               </object>
-                            </property>
+                            </child>
+                            <style>
+                              <class name="boxed-list" />
+                            </style>
                           </object>
-                        </child>
-                        <child>
-                          <object class="GtkStackPage">
-                            <property name="name">error</property>
-                            <property name="child">
-                              <object class="GtkListBox">
-                                <property name="selection-mode">none</property>
+                        </property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkStackPage">
+                        <property name="name">error</property>
+                        <property name="child">
+                          <object class="GtkListBox">
+                            <property name="selection-mode">none</property>
+                            <child>
+                              <object class="AdwActionRow" id="error_row">
+                                <property name="focusable">False</property>
+                                <property name="title" translatable="yes">Error while searching for matching metadata</property>
+                                <property name="activatable-widget">try_again_button</property>
                                 <child>
-                                  <object class="AdwActionRow" id="error_row">
-                                    <property name="focusable">False</property>
-                                    <property name="title" translatable="yes">Error while searching for matching metadata</property>
-                                    <property name="activatable-widget">try_again_button</property>
-                                    <child>
-                                      <object class="GtkButton" id="try_again_button">
-                                        <property name="icon-name">view-refresh-symbolic</property>
-                                        <property name="valign">center</property>
-                                      </object>
-                                    </child>
+                                  <object class="GtkButton" id="try_again_button">
+                                    <property name="icon-name">view-refresh-symbolic</property>
+                                    <property name="valign">center</property>
                                   </object>
                                 </child>
                               </object>
-                            </property>
+                            </child>
+                            <style>
+                              <class name="boxed-list" />
+                            </style>
                           </object>
-                        </child>
-                        <child>
-                          <object class="GtkStackPage">
-                            <property name="name">empty</property>
-                            <property name="child">
-                              <object class="GtkListBox">
-                                <property name="selection-mode">none</property>
-                                <child>
-                                  <object class="AdwActionRow">
-                                    <property name="activatable">False</property>
-                                    <property name="title" translatable="yes">No matching metadata found</property>
-                                  </object>
-                                </child>
+                        </property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkStackPage">
+                        <property name="name">empty</property>
+                        <property name="child">
+                          <object class="GtkListBox">
+                            <property name="selection-mode">none</property>
+                            <child>
+                              <object class="AdwActionRow">
+                                <property name="activatable">False</property>
+                                <property name="title" translatable="yes">No matching metadata found</property>
                               </object>
-                            </property>
+                            </child>
+                            <style>
+                              <class name="boxed-list" />
+                            </style>
                           </object>
-                        </child>
-                        <child>
-                          <object class="GtkStackPage">
-                            <property name="name">content</property>
-                            <property name="child">
-                              <object class="GtkListBox" id="matching_list">
-                                <property name="selection-mode">none</property>
-                              </object>
-                            </property>
+                        </property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkStackPage">
+                        <property name="name">content</property>
+                        <property name="child">
+                          <object class="GtkListBox" id="matching_list">
+                            <property name="selection-mode">none</property>
+                            <style>
+                              <class name="boxed-list" />
+                            </style>
                           </object>
-                        </child>
+                        </property>
                       </object>
                     </child>
                   </object>
@@ -135,43 +143,42 @@
                     <property name="margin-bottom">6</property>
                     <property name="label" translatable="yes">Manually add metadata</property>
                     <attributes>
-                      <attribute name="weight" value="bold"/>
+                      <attribute name="weight" value="bold" />
                     </attributes>
                   </object>
                 </child>
                 <child>
-                  <object class="GtkFrame">
+                  <object class="GtkListBox">
+                    <property name="selection-mode">none</property>
                     <child>
-                      <object class="GtkListBox">
-                        <property name="selection-mode">none</property>
+                      <object class="AdwActionRow">
+                        <property name="focusable">False</property>
+                        <property name="title" translatable="yes">Select existing medium</property>
+                        <property name="activatable-widget">select_button</property>
                         <child>
-                          <object class="AdwActionRow">
-                            <property name="focusable">False</property>
-                            <property name="title" translatable="yes">Select existing medium</property>
-                            <property name="activatable-widget">select_button</property>
-                            <child>
-                              <object class="GtkButton" id="select_button">
-                                <property name="label" translatable="yes">Select</property>
-                                <property name="valign">center</property>
-                              </object>
-                            </child>
-                          </object>
-                        </child>
-                        <child>
-                          <object class="AdwActionRow">
-                            <property name="focusable">False</property>
-                            <property name="title" translatable="yes">Add a new medium</property>
-                            <property name="activatable-widget">add_button</property>
-                            <child>
-                              <object class="GtkButton" id="add_button">
-                                <property name="label" translatable="yes">Add</property>
-                                <property name="valign">center</property>
-                              </object>
-                            </child>
+                          <object class="GtkButton" id="select_button">
+                            <property name="label" translatable="yes">Select</property>
+                            <property name="valign">center</property>
                           </object>
                         </child>
                       </object>
                     </child>
+                    <child>
+                      <object class="AdwActionRow">
+                        <property name="focusable">False</property>
+                        <property name="title" translatable="yes">Add a new medium</property>
+                        <property name="activatable-widget">add_button</property>
+                        <child>
+                          <object class="GtkButton" id="add_button">
+                            <property name="label" translatable="yes">Add</property>
+                            <property name="valign">center</property>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+                    <style>
+                      <class name="boxed-list" />
+                    </style>
                   </object>
                 </child>
               </object>

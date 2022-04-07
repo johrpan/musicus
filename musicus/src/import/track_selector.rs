@@ -27,13 +27,14 @@ impl Screen<Arc<ImportSession>, Vec<usize>> for TrackSelector {
         get_widget!(builder, gtk::Box, widget);
         get_widget!(builder, gtk::Button, back_button);
         get_widget!(builder, gtk::Button, select_button);
-        get_widget!(builder, gtk::Frame, tracks_frame);
+        get_widget!(builder, adw::Clamp, clamp);
 
-        let track_list = gtk::ListBox::new();
-        track_list.set_selection_mode(gtk::SelectionMode::None);
-        track_list.set_vexpand(false);
-        track_list.show();
-        tracks_frame.set_child(Some(&track_list));
+        let track_list = gtk::ListBoxBuilder::new()
+            .selection_mode(gtk::SelectionMode::None)
+            .css_classes(vec![String::from("boxed-list")])
+            .build();
+
+        clamp.set_child(Some(&track_list));
 
         let this = Rc::new(Self {
             handle,

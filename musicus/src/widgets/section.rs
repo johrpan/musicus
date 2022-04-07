@@ -24,10 +24,9 @@ impl Section {
         get_widget!(builder, gtk::Box, title_box);
         get_widget!(builder, gtk::Label, title_label);
         get_widget!(builder, gtk::Label, subtitle_label);
-        get_widget!(builder, gtk::Frame, frame);
 
         title_label.set_label(title);
-        frame.set_child(Some(&content.get_widget()));
+        widget.append(&content.get_widget());
 
         Self {
             widget,

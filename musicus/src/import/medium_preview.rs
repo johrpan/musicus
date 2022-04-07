@@ -141,6 +141,8 @@ impl MediumPreview {
 
                 let list = gtk::ListBoxBuilder::new()
                     .selection_mode(gtk::SelectionMode::None)
+                    .margin_bottom(12)
+                    .css_classes(vec![String::from("boxed-list")])
                     .build();
 
                 let header = adw::ActionRowBuilder::new()
@@ -152,10 +154,7 @@ impl MediumPreview {
                 list.append(&header);
 
                 if let Some(list) = &last_list {
-                    let frame = gtk::FrameBuilder::new().margin_bottom(12).build();
-
-                    frame.set_child(Some(list));
-                    self.medium_box.append(&frame);
+                    self.medium_box.append(list);
                 }
 
                 last_list = Some(list);

@@ -93,18 +93,13 @@
                 <property name="height-request">200</property>
                 <property name="vexpand">true</property>
                 <child>
-                  <object class="AdwClamp">
+                  <object class="AdwClamp" id="clamp">
                     <property name="maximum-size">500</property>
                     <property name="tightening-threshold">300</property>
-                    <child>
-                      <object class="GtkFrame" id="frame">
-                        <property name="valign">start</property>
-                        <property name="margin-start">6</property>
-                        <property name="margin-end">6</property>
-                        <property name="margin-top">12</property>
-                        <property name="margin-bottom">6</property>
-                      </object>
-                    </child>
+                    <property name="margin-start">6</property>
+                    <property name="margin-end">6</property>
+                    <property name="margin-top">12</property>
+                    <property name="margin-bottom">6</property>
                   </object>
                 </child>
               </object>

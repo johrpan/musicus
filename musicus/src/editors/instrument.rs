@@ -26,6 +26,7 @@ impl Screen<Option<Instrument>, Instrument> for InstrumentEditor {
 
         let list = gtk::ListBoxBuilder::new()
             .selection_mode(gtk::SelectionMode::None)
+            .css_classes(vec![String::from("boxed-list")])
             .build();
 
         let name = EntryRow::new(&gettext("Name"));

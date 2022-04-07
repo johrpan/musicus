@@ -44,7 +44,7 @@
             <property name="margin-bottom">12</property>
             <property name="maximum-size">800</property>
             <child>
-              <object class="GtkBox">
+              <object class="GtkBox" id="content">
                 <property name="orientation">vertical</property>
                 <property name="spacing">12</property>
                 <child>
@@ -142,10 +142,6 @@
                         <property name="label" translatable="yes">0:00</property>
                       </object>
                     </child>
-                  </object>
-                </child>
-                <child>
-                  <object class="GtkFrame" id="frame">
                   </object>
                 </child>
               </object>
