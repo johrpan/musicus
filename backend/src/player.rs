@@ -1,4 +1,4 @@
-use crate::{Error, Result};
+use crate::{Backend, Error, Result};
 use glib::clone;
 use gstreamer_player::prelude::*;
 use musicus_database::Track;
@@ -17,7 +17,7 @@ pub struct Player {
     current_track: Cell<Option<usize>>,
     playing: Cell<bool>,
     duration: Cell<u64>,
-    generate_next_track_cb: RefCell<Option<Box<dyn Fn() -> Track>>>,
+    track_generator: RefCell<Option<Box<dyn TrackGenerator>>>,
     playlist_cbs: RefCell<Vec<Box<dyn Fn(Vec<Track>)>>>,
     track_cbs: RefCell<Vec<Box<dyn Fn(usize)>>>,
     duration_cbs: RefCell<Vec<Box<dyn Fn(u64)>>>,
@@ -45,7 +45,7 @@ impl Player {
             current_track: Cell::new(None),
             playing: Cell::new(false),
             duration: Cell::new(0),
-            generate_next_track_cb: RefCell::new(None),
+            track_generator: RefCell::new(None),
             playlist_cbs: RefCell::new(Vec::new()),
             track_cbs: RefCell::new(Vec::new()),
             duration_cbs: RefCell::new(Vec::new()),
@@ -146,8 +146,11 @@ impl Player {
         result
     }
 
-    pub fn set_generate_next_track_cb<F: Fn() -> Track + 'static>(&self, cb: F) {
-        self.generate_next_track_cb.replace(Some(Box::new(cb)));
+    pub fn set_track_generator<G: TrackGenerator + 'static>(&self, generator: Option<G>) {
+        self.track_generator.replace(match generator {
+            Some(generator) => Some(Box::new(generator)),
+            None => None,
+        });
     }
 
     pub fn add_playlist_cb<F: Fn(Vec<Track>) + 'static>(&self, cb: F) {
@@ -190,12 +193,17 @@ impl Player {
         self.playing.get()
     }
 
-    pub fn add_item(&self, item: Track) -> Result<()> {
+    /// Add some items to the playlist.
+    pub fn add_items(&self, mut items: Vec<Track>) -> Result<()> {
+        if items.is_empty() {
+            return Ok(())
+        }
+
         let was_empty = {
             let mut playlist = self.playlist.borrow_mut();
             let was_empty = playlist.is_empty();
 
-            playlist.push(item);
+            playlist.append(&mut items);
 
             was_empty
         };
@@ -282,8 +290,8 @@ impl Player {
     }
 
     pub fn has_next(&self) -> bool {
-        if self.generate_next_track_cb.borrow().is_some() {
-            true
+        if let Some(generator) = &*self.track_generator.borrow() {
+            generator.has_next()
         } else if let Some(current_track) = self.current_track.get() {
             let playlist = self.playlist.borrow();
             current_track + 1 < playlist.len()
@@ -294,13 +302,19 @@ impl Player {
 
     pub fn next(&self) -> Result<()> {
         let current_track = self.current_track.get();
-        let cb = self.generate_next_track_cb.borrow();
+        let generator = self.track_generator.borrow();
 
         if let Some(current_track) = current_track {
             if current_track + 1 >= self.playlist.borrow().len() {
-                if let Some(cb) = &*cb {
-                    let new_track = cb();
-                    self.add_item(new_track)?;
+                if let Some(generator) = &*generator {
+                    let items = generator.next();
+                    if !items.is_empty() {
+                        self.add_items(items)?;
+                    } else {
+                        return Err(Error::Other(String::from(
+                            "Track generator failed to generate next track.",
+                        )));
+                    }
                 } else {
                     return Err(Error::Other(String::from("No existing next track.")));
                 }
@@ -309,9 +323,15 @@ impl Player {
             self.set_track(current_track + 1)?;
 
             Ok(())
-        } else if let Some(cb) = &*cb {
-            let new_track = cb();
-            self.add_item(new_track)?;
+        } else if let Some(generator) = &*generator {
+            let items = generator.next();
+            if !items.is_empty() {
+                self.add_items(items)?;
+            } else {
+                return Err(Error::Other(String::from(
+                    "Track generator failed to generate next track.",
+                )));
+            }
 
             Ok(())
         } else {
@@ -404,5 +424,60 @@ impl Player {
 
         #[cfg(target_os = "linux")]
         self.mpris.set_can_play(false);
+    }
+}
+
+/// Generator for new tracks to be appended to the playlist.
+pub trait TrackGenerator {
+    /// Whether the generator will provide a next track if asked.
+    fn has_next(&self) -> bool;
+
+    /// Provide the next track.
+    ///
+    /// This function should always return at least one track in a state where
+    /// `has_next()` returns `true`.
+    fn next(&self) -> Vec<Track>;
+}
+
+/// A track generator that generates one random track per call.
+pub struct RandomTrackGenerator {
+    backend: Rc<Backend>,
+}
+
+impl RandomTrackGenerator {
+    pub fn new(backend: Rc<Backend>) -> Self {
+        Self { backend }
+    }
+}
+
+impl TrackGenerator for RandomTrackGenerator {
+    fn has_next(&self) -> bool {
+        true
+    }
+
+    fn next(&self) -> Vec<Track> {
+        vec![self.backend.db().random_track().unwrap()]
+    }
+}
+
+/// A track generator that returns the tracks of one random recording per call.
+pub struct RandomRecordingGenerator {
+    backend: Rc<Backend>,
+}
+
+impl RandomRecordingGenerator {
+    pub fn new(backend: Rc<Backend>) -> Self {
+        Self { backend }
+    }
+}
+
+impl TrackGenerator for RandomRecordingGenerator {
+    fn has_next(&self) -> bool {
+        true
+    }
+
+    fn next(&self) -> Vec<Track> {
+        let recording = self.backend.db().random_recording().unwrap();
+        self.backend.db().get_tracks(&recording.id).unwrap()
     }
 }

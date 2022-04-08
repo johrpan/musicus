@@ -1,7 +1,11 @@
+use gio::traits::SettingsExt;
+use log::warn;
 use musicus_database::Database;
-use std::cell::RefCell;
-use std::path::PathBuf;
-use std::rc::Rc;
+use std::{
+    cell::{Cell, RefCell},
+    path::PathBuf,
+    rc::Rc,
+};
 use tokio::sync::{broadcast, broadcast::Sender};
 
 pub use musicus_database as db;
@@ -55,6 +59,12 @@ pub struct Backend {
     /// The player handling playlist and playback. This can be assumed to exist, when the state is
     /// set to BackendState::Ready.
     player: RefCell<Option<Rc<Player>>>,
+
+    /// Whether to keep playing random tracks after the playlist ends.
+    keep_playing: Cell<bool>,
+
+    /// Whether to choose full recordings for random playback.
+    play_full_recordings: Cell<bool>,
 }
 
 impl Backend {
@@ -73,6 +83,8 @@ impl Backend {
             library_updated_sender,
             database: RefCell::new(None),
             player: RefCell::new(None),
+            keep_playing: Cell::new(false),
+            play_full_recordings: Cell::new(true),
         }
     }
 
@@ -83,8 +95,12 @@ impl Backend {
 
     /// Initialize the backend. A state callback should already have been registered using
     /// [`set_state_cb()`] to react to the result.
-    pub fn init(&self) -> Result<()> {
-        self.init_library()?;
+    pub fn init(self: Rc<Self>) -> Result<()> {
+        self.keep_playing.set(self.settings.boolean("keep-playing"));
+        self.play_full_recordings
+            .set(self.settings.boolean("play-full-recordings"));
+
+        Rc::clone(&self).init_library()?;
 
         match self.get_music_library_path() {
             None => self.set_state(BackendState::NoMusicLibrary),
@@ -94,10 +110,66 @@ impl Backend {
         Ok(())
     }
 
+    /// Whether to keep playing random tracks after the playlist ends.
+    pub fn keep_playing(&self) -> bool {
+        self.keep_playing.get()
+    }
+
+    /// Set whether to keep playing random tracks after the playlist ends.
+    pub fn set_keep_playing(self: Rc<Self>, keep_playing: bool) {
+        if let Err(err) = self.settings.set_boolean("keep-playing", keep_playing) {
+            warn!(
+                "The preference \"keep-playing\" could not be saved using GSettings. It will most \
+                likely not be available at the next startup. Error message: {}",
+                err
+            );
+        }
+
+        self.keep_playing.set(keep_playing);
+        self.update_track_generator();
+    }
+
+    /// Whether to choose full recordings for random playback.
+    pub fn play_full_recordings(&self) -> bool {
+        self.play_full_recordings.get()
+    }
+
+    /// Set whether to choose full recordings for random playback.
+    pub fn set_play_full_recordings(self: Rc<Self>, play_full_recordings: bool) {
+        if let Err(err) = self
+            .settings
+            .set_boolean("play-full-recordings", play_full_recordings)
+        {
+            warn!(
+                "The preference \"play-full-recordings\" could not be saved using GSettings. It \
+                will most likely not be available at the next startup. Error message: {}",
+                err
+            );
+        }
+
+        self.play_full_recordings.set(play_full_recordings);
+        self.update_track_generator();
+    }
+
     /// Set the current state and notify the user interface.
     fn set_state(&self, state: BackendState) {
         if let Some(cb) = &*self.state_cb.borrow() {
             cb(state);
+        }
+    }
+
+    /// Apply the current track generation settings.
+    fn update_track_generator(self: Rc<Self>) {
+        if let Some(player) = self.get_player() {
+            if self.keep_playing() {
+                if self.play_full_recordings() {
+                    player.set_track_generator(Some(RandomRecordingGenerator::new(self)));
+                } else {
+                    player.set_track_generator(Some(RandomTrackGenerator::new(self)));
+                }
+            } else {
+                player.set_track_generator(None::<RandomRecordingGenerator>);
+            }
         }
     }
 }

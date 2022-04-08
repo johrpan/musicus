@@ -1,6 +1,5 @@
 use crate::{Backend, BackendState, Player, Result};
 use gio::prelude::*;
-use glib::clone;
 use log::warn;
 use musicus_database::Database;
 use std::path::PathBuf;
@@ -8,7 +7,7 @@ use std::rc::Rc;
 
 impl Backend {
     /// Initialize the music library if it is set in the settings.
-    pub(super) fn init_library(&self) -> Result<()> {
+    pub(super) fn init_library(self: Rc<Self>) -> Result<()> {
         let path = self.settings.string("music-library-path");
         if !path.is_empty() {
             self.set_music_library_path_priv(PathBuf::from(path.to_string()))?;
@@ -18,7 +17,7 @@ impl Backend {
     }
 
     /// Set the path to the music library folder and connect to the database.
-    pub fn set_music_library_path(&self, path: PathBuf) -> Result<()> {
+    pub fn set_music_library_path(self: Rc<Self>, path: PathBuf) -> Result<()> {
         if let Err(err) = self
             .settings
             .set_string("music-library-path", path.to_str().unwrap())
@@ -34,7 +33,7 @@ impl Backend {
     }
 
     /// Set the path to the music library folder and and connect to the database.
-    pub fn set_music_library_path_priv(&self, path: PathBuf) -> Result<()> {
+    pub fn set_music_library_path_priv(self: Rc<Self>, path: PathBuf) -> Result<()> {
         self.set_state(BackendState::Loading);
 
         self.music_library_path.replace(Some(path.clone()));
@@ -46,13 +45,9 @@ impl Backend {
         self.database.replace(Some(Rc::clone(&database)));
 
         let player = Player::new(path);
-
-        // Keep adding random tracks in case the playlist ends.
-        player.set_generate_next_track_cb(clone!(@weak database => @default-panic, move || {
-            database.random_track().unwrap()
-        }));
-
         self.player.replace(Some(player));
+
+        Rc::clone(&self).update_track_generator();
 
         self.set_state(BackendState::Ready);
 

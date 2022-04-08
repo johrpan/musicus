@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: unnamed project\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-02-10 12:32+0100\n"
+"POT-Creation-Date: 2022-04-08 19:52+0200\n"
 "PO-Revision-Date: 2022-02-10 12:34+0100\n"
 "Last-Translator: \n"
 "Language-Team: \n"
@@ -29,13 +29,13 @@ msgid "Loading"
 msgstr "Lade…"
 
 #: ../res/ui/medium_preview.ui:149 ../res/ui/source_selector.ui:101
-#: ../res/ui/medium_editor.ui:152 ../res/ui/medium_editor.ui:189
+#: ../res/ui/medium_editor.ui:151 ../res/ui/medium_editor.ui:188
 #: ../res/ui/editor.ui:68
 msgid "Error"
 msgstr "Fehler"
 
 #: ../res/ui/medium_preview.ui:161 ../res/ui/source_selector.ui:113
-#: ../res/ui/medium_editor.ui:164 ../res/ui/editor.ui:80
+#: ../res/ui/medium_editor.ui:163 ../res/ui/editor.ui:80
 msgid "Try again"
 msgstr "Nochmal versuchen"
 
@@ -43,29 +43,29 @@ msgstr "Nochmal versuchen"
 msgid "Performance"
 msgstr "Auftritt"
 
-#: ../res/ui/performance_editor.ui:55
+#: ../res/ui/performance_editor.ui:52
 msgid "Select a person"
 msgstr "Person auswählen"
 
-#: ../res/ui/performance_editor.ui:59 ../res/ui/performance_editor.ui:72
-#: ../res/ui/performance_editor.ui:92 ../res/ui/track_set_editor.ui:69
-#: ../res/ui/import_screen.ui:154 ../res/ui/preferences.ui:23
-#: ../res/ui/recording_editor.ui:83 ../res/ui/work_editor.ui:83
+#: ../res/ui/performance_editor.ui:56 ../res/ui/performance_editor.ui:69
+#: ../res/ui/performance_editor.ui:89 ../res/ui/track_set_editor.ui:67
+#: ../res/ui/import_screen.ui:160 ../res/ui/preferences.ui:23
+#: ../res/ui/recording_editor.ui:81 ../res/ui/work_editor.ui:81
 #: ../src/import/source_selector.rs:51 ../src/screens/welcome.rs:56
-#: ../src/preferences.rs:42
+#: ../src/preferences.rs:44
 msgid "Select"
 msgstr "Auswählen"
 
-#: ../res/ui/performance_editor.ui:68
+#: ../res/ui/performance_editor.ui:65
 msgid "Select an ensemble"
 msgstr "Ensemble auswählen"
 
-#: ../res/ui/performance_editor.ui:81
+#: ../res/ui/performance_editor.ui:78
 msgid "Select a role"
 msgstr "Rolle auswählen"
 
 #: ../res/ui/player_bar.ui:65 ../res/ui/player_screen.ui:97
-#: ../res/ui/work_part_editor.ui:59 ../res/ui/work_editor.ui:92
+#: ../res/ui/work_part_editor.ui:56 ../res/ui/work_editor.ui:90
 msgid "Title"
 msgstr "Titel"
 
@@ -113,15 +113,15 @@ msgid "Select tracks"
 msgstr "Tracks auswählen"
 
 #: ../res/ui/track_set_editor.ui:51 ../res/ui/recording_editor.ui:18
-#: ../res/ui/recording_editor.ui:155
+#: ../res/ui/recording_editor.ui:154
 msgid "Recording"
 msgstr "Aufnahme"
 
-#: ../res/ui/track_set_editor.ui:65
+#: ../res/ui/track_set_editor.ui:63
 msgid "Select a recording"
 msgstr "Aufnahme auswählen"
 
-#: ../res/ui/track_set_editor.ui:89 ../src/screens/recording.rs:30
+#: ../res/ui/track_set_editor.ui:88 ../src/screens/recording.rs:30
 msgid "Tracks"
 msgstr "Tracks"
 
@@ -133,31 +133,31 @@ msgstr "Werkabschnitt"
 msgid "Matching metadata"
 msgstr "Passende Metadaten"
 
-#: ../res/ui/import_screen.ui:66
+#: ../res/ui/import_screen.ui:64
 msgid "Loading…"
 msgstr "Lade…"
 
-#: ../res/ui/import_screen.ui:87
+#: ../res/ui/import_screen.ui:88
 msgid "Error while searching for matching metadata"
 msgstr "Fehler bei der Suche nach passenden Metadaten"
 
-#: ../res/ui/import_screen.ui:110
+#: ../res/ui/import_screen.ui:114
 msgid "No matching metadata found"
 msgstr "Keine passenden Metadaten gefunden"
 
-#: ../res/ui/import_screen.ui:136
+#: ../res/ui/import_screen.ui:144
 msgid "Manually add metadata"
 msgstr "Metadaten manuell hinzufügen"
 
-#: ../res/ui/import_screen.ui:150
+#: ../res/ui/import_screen.ui:156
 msgid "Select existing medium"
 msgstr "Existierendes Medium auswählen"
 
-#: ../res/ui/import_screen.ui:163
+#: ../res/ui/import_screen.ui:169
 msgid "Add a new medium"
 msgstr "Neues Medium hinzufügen"
 
-#: ../res/ui/import_screen.ui:167
+#: ../res/ui/import_screen.ui:173
 msgid "Add"
 msgstr "Hinzufügen"
 
@@ -165,22 +165,22 @@ msgstr "Hinzufügen"
 msgid "Medium"
 msgstr "Medium"
 
-#: ../res/ui/medium_editor.ui:75
+#: ../res/ui/medium_editor.ui:73
 msgid "Name of the medium"
 msgstr "Name des Mediums"
 
-#: ../res/ui/medium_editor.ui:99
+#: ../res/ui/medium_editor.ui:98
 msgid "Recordings"
 msgstr "Aufnahmen"
 
-#: ../res/ui/medium_editor.ui:201 ../res/ui/editor.ui:22
+#: ../res/ui/medium_editor.ui:200 ../res/ui/editor.ui:22
 #: ../src/import/source_selector.rs:50 ../src/screens/welcome.rs:55
-#: ../src/preferences.rs:41
+#: ../src/preferences.rs:43
 msgid "Cancel"
 msgstr "Abbrechen"
 
-#: ../res/ui/preferences.ui:11 ../src/editors/ensemble.rs:34
-#: ../src/editors/instrument.rs:34 ../src/editors/person.rs:38
+#: ../res/ui/preferences.ui:11 ../src/editors/ensemble.rs:35
+#: ../src/editors/instrument.rs:35 ../src/editors/person.rs:39
 msgid "General"
 msgstr "Allgemein"
 
@@ -196,19 +196,41 @@ msgstr "Ordner der Musikbibliothek"
 msgid "None selected"
 msgstr "Keiner ausgewählt"
 
+#: ../res/ui/preferences.ui:34
+msgid "Playlist"
+msgstr "Wiedergabeliste"
+
+#: ../res/ui/preferences.ui:38
+msgid "Keep playing"
+msgstr "Weiter abspielen"
+
+#: ../res/ui/preferences.ui:40
+msgid "Whether to keep playing random tracks after the playlist ends."
+msgstr "Nach dem Ende der Wiedergabeliste weiter im Zufallsmodus abspielen."
+
+#: ../res/ui/preferences.ui:51
+msgid "Choose full recordings"
+msgstr "Komplette Aufnahmen abspielen"
+
+#: ../res/ui/preferences.ui:53
+msgid ""
+"Whether to choose full recordings instead of single tracks for random "
+"playback."
+msgstr "Im Zufallsmodus vollständige Aufnahmen anstatt einzelner Tracks verwenden."
+
 #: ../res/ui/recording_editor.ui:65 ../res/ui/work_editor.ui:65
 msgid "Overview"
 msgstr "Überblick"
 
-#: ../res/ui/recording_editor.ui:79
+#: ../res/ui/recording_editor.ui:77
 msgid "Select a work"
 msgstr "Werk auswählen"
 
-#: ../res/ui/recording_editor.ui:92
+#: ../res/ui/recording_editor.ui:90
 msgid "Comment"
 msgstr "Kommentar"
 
-#: ../res/ui/recording_editor.ui:116
+#: ../res/ui/recording_editor.ui:115
 msgid "Performers"
 msgstr "Interpreten"
 
@@ -216,20 +238,20 @@ msgstr "Interpreten"
 msgid "Search …"
 msgstr "Suchen…"
 
-#: ../res/ui/work_editor.ui:18 ../res/ui/work_editor.ui:182
+#: ../res/ui/work_editor.ui:18 ../res/ui/work_editor.ui:181
 #: ../src/editors/recording.rs:173
 msgid "Work"
 msgstr "Werk"
 
-#: ../res/ui/work_editor.ui:79
+#: ../res/ui/work_editor.ui:77
 msgid "Select a composer"
 msgstr "Komponisten auswählen"
 
-#: ../res/ui/work_editor.ui:116
+#: ../res/ui/work_editor.ui:115
 msgid "Instruments"
 msgstr "Instrumente"
 
-#: ../res/ui/work_editor.ui:143
+#: ../res/ui/work_editor.ui:142
 msgid "Structure"
 msgstr "Struktur"
 
@@ -265,44 +287,44 @@ msgstr "Einstellungen"
 msgid "About Musicus"
 msgstr "Über Musicus"
 
-#: ../src/editors/performance.rs:42
+#: ../src/editors/performance.rs:43
 msgid "Performer"
 msgstr "Interpret"
 
-#: ../src/editors/performance.rs:44
+#: ../src/editors/performance.rs:45
 msgid "Select either a person or an ensemble as a performer."
 msgstr "Wählen Sie entweder eine Person oder ein Ensemble als Interpreten aus."
 
-#: ../src/editors/performance.rs:62
+#: ../src/editors/performance.rs:64
 msgid "Role"
 msgstr "Rolle"
 
-#: ../src/editors/performance.rs:64
+#: ../src/editors/performance.rs:66
 msgid "Optionally, choose a role to specify what the performer does."
 msgstr ""
 "Wählen Sie optional eine Rolle aus, die angibt, was der Interpret macht."
 
-#: ../src/editors/ensemble.rs:31 ../src/editors/instrument.rs:31
+#: ../src/editors/ensemble.rs:32 ../src/editors/instrument.rs:32
 msgid "Name"
 msgstr "Name"
 
-#: ../src/editors/ensemble.rs:65
+#: ../src/editors/ensemble.rs:66
 msgid "Failed to save ensemble!"
 msgstr "Ensemble konnte nicht gespeichert werden!"
 
-#: ../src/editors/instrument.rs:65
+#: ../src/editors/instrument.rs:66
 msgid "Failed to save instrument!"
 msgstr "Instrument konnte nicht gespeichert werden!"
 
-#: ../src/editors/person.rs:32
+#: ../src/editors/person.rs:33
 msgid "First name"
 msgstr "Vorname"
 
-#: ../src/editors/person.rs:33
+#: ../src/editors/person.rs:34
 msgid "Last name"
 msgstr "Nachname"
 
-#: ../src/editors/person.rs:72
+#: ../src/editors/person.rs:73
 msgid "Failed to save person!"
 msgstr "Person konnte nicht gespeichert werden!"
 
@@ -310,8 +332,8 @@ msgstr "Person konnte nicht gespeichert werden!"
 msgid "Composer"
 msgstr "Komponist"
 
-#: ../src/import/track_set_editor.rs:133 ../src/import/medium_preview.rs:171
-#: ../src/screens/medium.rs:74 ../src/screens/recording.rs:84
+#: ../src/import/track_set_editor.rs:133 ../src/import/medium_preview.rs:170
+#: ../src/screens/medium.rs:72 ../src/screens/recording.rs:82
 msgid "Unknown"
 msgstr "Unbekannt"
 
@@ -339,11 +361,11 @@ msgstr "Person bearbeiten"
 msgid "Delete person"
 msgstr "Person löschen"
 
-#: ../src/screens/recording.rs:55
+#: ../src/screens/recording.rs:53
 msgid "Edit recording"
 msgstr "Aufnahme bearbeiten"
 
-#: ../src/screens/recording.rs:65
+#: ../src/screens/recording.rs:63
 msgid "Delete recording"
 msgstr "Aufnahme löschen"
 
@@ -357,7 +379,7 @@ msgstr ""
 "Musicus wird dort eine neue Datenbank anlegen oder eine bereits existierende "
 "öffnen."
 
-#: ../src/screens/welcome.rs:51 ../src/preferences.rs:37
+#: ../src/screens/welcome.rs:51 ../src/preferences.rs:39
 msgid "Select music library folder"
 msgstr "Ordner der Musikbibliothek auswählen"
 
@@ -369,15 +391,15 @@ msgstr "Werk bearbeiten"
 msgid "Delete work"
 msgstr "Werk löschen"
 
-#: ../src/screens/main.rs:196
+#: ../src/screens/main.rs:200
 msgid "Musicus"
 msgstr "Musicus"
 
-#: ../src/screens/main.rs:198
+#: ../src/screens/main.rs:202
 msgid "The classical music player and organizer."
 msgstr "Das Programm zum Abspielen und Organisieren von Klassik."
 
-#: ../src/screens/main.rs:200
+#: ../src/screens/main.rs:204
 msgid "Further information and source code"
 msgstr "Weitere Informationen und Quellcode"
 
@@ -452,9 +474,6 @@ msgstr "Aufnahme auswählen"
 
 #~ msgid "No works or recordings found."
 #~ msgstr "Keine Werke oder Aufnahmen gefunden."
-
-#~ msgid "Add to playlist"
-#~ msgstr "Zur Wiedergabeliste hinzufügen"
 
 #~ msgid "Select a composer on the left."
 #~ msgstr "Wählen Sie einen Komponisten aus."

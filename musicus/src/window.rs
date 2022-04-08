@@ -61,7 +61,7 @@ impl Window {
         }));
 
         // Initialize the backend.
-        this.backend.init().unwrap();
+        Rc::clone(&this.backend).init().unwrap();
 
         this
     }

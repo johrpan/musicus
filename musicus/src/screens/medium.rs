@@ -55,9 +55,7 @@ impl Screen<Medium, ()> for MediumScreen {
         section.add_action(
             "media-playback-start-symbolic",
             clone!(@weak this =>  move || {
-                for track in &this.medium.tracks {
-                    this.handle.backend.pl().add_item(track.clone()).unwrap();
-                }
+                this.handle.backend.pl().add_items(this.medium.tracks.clone()).unwrap();
             }),
         );
 

@@ -128,12 +128,16 @@ impl Screen<(), ()> for MainScreen {
                 search.is_empty() || title.contains(&search)
             }));
 
-        this.handle.backend.pl().add_playlist_cb(clone!(@weak play_button_revealer => move |new_playlist| {
-                play_button_revealer.set_reveal_child(new_playlist.is_empty());
-        }));
+        this.handle.backend.pl().add_playlist_cb(
+            clone!(@weak play_button_revealer => move |new_playlist| {
+                    play_button_revealer.set_reveal_child(new_playlist.is_empty());
+            }),
+        );
 
         play_button.connect_clicked(clone!(@weak this => move |_| {
-            this.handle.backend.pl().play_pause().unwrap();
+            if let Ok(recording) = this.handle.backend.db().random_recording() {
+                this.handle.backend.pl().add_items(this.handle.backend.db().get_tracks(&recording.id).unwrap()).unwrap();
+            }
         }));
 
         this.navigator.set_back_cb(clone!(@weak this =>  move || {

@@ -21,6 +21,8 @@ impl Preferences {
         get_widget!(builder, adw::Window, window);
         get_widget!(builder, adw::ActionRow, music_library_path_row);
         get_widget!(builder, gtk::Button, select_music_library_path_button);
+        get_widget!(builder, gtk::Switch, keep_playing_switch);
+        get_widget!(builder, gtk::Switch, play_full_recordings_switch);
 
         window.set_transient_for(Some(parent));
 
@@ -48,7 +50,7 @@ impl Preferences {
                 if let gtk::ResponseType::Accept = response {
                     if let Some(file) = dialog.file() {
                         if let Some(path) = file.path() {
-                            this.backend.set_music_library_path(path.clone()).unwrap();
+                            Rc::clone(&this.backend).set_music_library_path(path.clone()).unwrap();
                             this.music_library_path_row.set_subtitle(path.to_str().unwrap());
                         }
                     }
@@ -60,12 +62,23 @@ impl Preferences {
             dialog.show();
         }));
 
+        keep_playing_switch.connect_active_notify(clone!(@weak this => move |switch| {
+            Rc::clone(&this.backend).set_keep_playing(switch.is_active());
+        }));
+
+        play_full_recordings_switch.connect_active_notify(clone!(@weak this => move |switch| {
+            Rc::clone(&this.backend).set_play_full_recordings(switch.is_active());
+        }));
+
         // Initialize
 
         if let Some(path) = this.backend.get_music_library_path() {
             this.music_library_path_row
                 .set_subtitle(path.to_str().unwrap());
         }
+
+        keep_playing_switch.set_active(this.backend.keep_playing());
+        play_full_recordings_switch.set_active(this.backend.play_full_recordings());
 
         this
     }

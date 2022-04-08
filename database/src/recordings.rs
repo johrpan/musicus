@@ -76,7 +76,7 @@ impl PersonOrEnsemble {
 }
 
 /// Database table data for a recording.
-#[derive(Insertable, Queryable, Debug, Clone)]
+#[derive(Insertable, Queryable, QueryableByName, Debug, Clone)]
 #[table_name = "recordings"]
 struct RecordingRow {
     pub id: String,
@@ -199,6 +199,17 @@ impl Database {
         };
 
         Ok(recording)
+    }
+
+    /// Get a random recording from the database.
+    pub fn random_recording(&self) -> Result<Recording> {
+        let row = diesel::sql_query("SELECT * FROM recordings ORDER BY RANDOM() LIMIT 1")
+            .load::<RecordingRow>(&self.connection)?
+            .into_iter()
+            .next()
+            .ok_or(Error::Other("Failed to find random recording."))?;
+
+        self.get_recording_data(row)
     }
 
     /// Retrieve all available information on a recording from related tables.
