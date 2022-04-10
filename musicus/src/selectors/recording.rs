@@ -5,6 +5,7 @@ use crate::widgets::Widget;
 use adw::prelude::*;
 use gettextrs::gettext;
 use glib::clone;
+use log::warn;
 use musicus_backend::db::{Person, Recording, Work};
 use std::rc::Rc;
 
@@ -196,6 +197,10 @@ impl Screen<Work, Recording> for RecordingSelectorRecordingScreen {
 
                 let recording = recording.to_owned();
                 row.connect_activated(clone!(@weak this =>  move |_| {
+                    if let Err(err) = this.handle.backend.db().update_recording(recording.clone()) {
+                        warn!("Failed to update access time. {err}");
+                    }
+
                     this.handle.pop(Some(recording.clone()));
                 }));
 

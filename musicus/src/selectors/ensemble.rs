@@ -5,6 +5,7 @@ use crate::widgets::Widget;
 use adw::prelude::*;
 use gettextrs::gettext;
 use glib::clone;
+use log::warn;
 use musicus_backend::db::Ensemble;
 use std::rc::Rc;
 
@@ -46,7 +47,12 @@ impl Screen<(), Ensemble> for EnsembleSelector {
                     .build();
 
                 let ensemble = ensemble.to_owned();
+
                 row.connect_activated(clone!(@weak this =>  move |_| {
+                    if let Err(err) = this.handle.backend.db().update_ensemble(ensemble.clone()) {
+                        warn!("Failed to update access time. {err}");
+                    }
+
                     this.handle.pop(Some(ensemble.clone()))
                 }));
 

@@ -5,6 +5,7 @@ use crate::widgets::Widget;
 use adw::prelude::*;
 use gettextrs::gettext;
 use glib::clone;
+use log::warn;
 use musicus_backend::db::Instrument;
 use std::rc::Rc;
 
@@ -46,7 +47,12 @@ impl Screen<(), Instrument> for InstrumentSelector {
                     .build();
 
                 let instrument = instrument.to_owned();
+
                 row.connect_activated(clone!(@weak this =>  move |_| {
+                    if let Err(err) = this.handle.backend.db().update_instrument(instrument.clone()) {
+                        warn!("Failed to update access time. {err}");
+                    }
+
                     this.handle.pop(Some(instrument.clone()))
                 }));
 
