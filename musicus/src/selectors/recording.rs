@@ -81,7 +81,7 @@ impl Screen<(), Recording> for RecordingSelector {
             .set_filter(|search, person| person.name_fl().to_lowercase().contains(search));
 
         this.selector
-            .set_items(this.handle.backend.db().get_persons().unwrap());
+            .set_items(this.handle.backend.db().get_recent_persons().unwrap());
 
         this
     }

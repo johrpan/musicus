@@ -63,7 +63,7 @@ impl Screen<(), Instrument> for InstrumentSelector {
             .set_filter(|search, instrument| instrument.name.to_lowercase().contains(search));
 
         this.selector
-            .set_items(this.handle.backend.db().get_instruments().unwrap());
+            .set_items(this.handle.backend.db().get_recent_instruments().unwrap());
 
         this
     }

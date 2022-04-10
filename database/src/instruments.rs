@@ -67,4 +67,13 @@ impl Database {
 
         Ok(instruments)
     }
+
+    /// Get recently used instruments.
+    pub fn get_recent_instruments(&self) -> Result<Vec<Instrument>> {
+        let instruments = instruments::table
+            .order(instruments::last_used.desc())
+            .load::<Instrument>(&self.connection)?;
+
+        Ok(instruments)
+    }
 }

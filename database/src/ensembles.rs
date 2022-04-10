@@ -64,4 +64,13 @@ impl Database {
         let ensembles = ensembles::table.load::<Ensemble>(&self.connection)?;
         Ok(ensembles)
     }
+
+    /// Get recently used ensembles.
+    pub fn get_recent_ensembles(&self) -> Result<Vec<Ensemble>> {
+        let ensembles = ensembles::table
+            .order(ensembles::last_used.desc())
+            .load::<Ensemble>(&self.connection)?;
+
+        Ok(ensembles)
+    }
 }

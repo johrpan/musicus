@@ -77,4 +77,13 @@ impl Database {
 
         Ok(persons)
     }
+
+    /// Get recently used persons.
+    pub fn get_recent_persons(&self) -> Result<Vec<Person>> {
+        let persons = persons::table
+            .order(persons::last_used.desc())
+            .load::<Person>(&self.connection)?;
+
+        Ok(persons)
+    }
 }

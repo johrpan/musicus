@@ -55,8 +55,8 @@ impl Screen<(), Medium> for MediumSelector {
 
         let mut poes = Vec::new();
 
-        let persons = this.handle.backend.db().get_persons().unwrap();
-        let ensembles = this.handle.backend.db().get_ensembles().unwrap();
+        let persons = this.handle.backend.db().get_recent_persons().unwrap();
+        let ensembles = this.handle.backend.db().get_recent_ensembles().unwrap();
 
         for person in persons {
             poes.push(PersonOrEnsemble::Person(person));

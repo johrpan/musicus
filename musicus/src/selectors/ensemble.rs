@@ -63,7 +63,7 @@ impl Screen<(), Ensemble> for EnsembleSelector {
             .set_filter(|search, ensemble| ensemble.name.to_lowercase().contains(search));
 
         this.selector
-            .set_items(this.handle.backend.db().get_ensembles().unwrap());
+            .set_items(this.handle.backend.db().get_recent_ensembles().unwrap());
 
         this
     }
