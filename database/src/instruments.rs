@@ -1,5 +1,6 @@
 use super::schema::instruments;
 use super::{Database, Result};
+use chrono::Utc;
 use diesel::prelude::*;
 use log::info;
 
@@ -8,13 +9,28 @@ use log::info;
 pub struct Instrument {
     pub id: String,
     pub name: String,
+    pub last_used: Option<i64>,
+    pub last_played: Option<i64>,
+}
+
+impl Instrument {
+    pub fn new(id: String, name: String) -> Self {
+        Self {
+            id,
+            name,
+            last_used: Some(Utc::now().timestamp()),
+            last_played: None,
+        }
+    }
 }
 
 impl Database {
     /// Update an existing instrument or insert a new one.
-    pub fn update_instrument(&self, instrument: Instrument) -> Result<()> {
+    pub fn update_instrument(&self, mut instrument: Instrument) -> Result<()> {
         info!("Updating instrument {:?}", instrument);
         self.defer_foreign_keys()?;
+
+        instrument.last_used = Some(Utc::now().timestamp());
 
         self.connection.transaction(|| {
             diesel::replace_into(instruments::table)

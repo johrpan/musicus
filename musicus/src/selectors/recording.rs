@@ -36,12 +36,12 @@ impl Screen<(), Recording> for RecordingSelector {
                     // immediately show the work editor. Going back from the work editor will
                     // correctly show the person selector again.
 
-                    let work = Work::new(person);
+                    let work = Work::from_composer(person);
                     if let Some(work) = push!(this.handle, WorkEditor, Some(work)).await {
                         // There will also be no existing recordings, so we show the recording
                         // editor next.
 
-                        let recording = Recording::new(work);
+                        let recording = Recording::from_work(work);
                         if let Some(recording) = push!(this.handle, RecordingEditor, Some(recording)).await {
                             this.handle.pop(Some(recording));
                         }
@@ -117,7 +117,7 @@ impl Screen<Person, Work> for RecordingSelectorWorkScreen {
 
         this.selector.set_add_cb(clone!(@weak this =>  move || {
             spawn!(@clone this, async move {
-                let work = Work::new(this.person.clone());
+                let work = Work::from_composer(this.person.clone());
                 if let Some(work) = push!(this.handle, WorkEditor, Some(work)).await {
                     this.handle.pop(Some(work));
                 }
@@ -180,7 +180,7 @@ impl Screen<Work, Recording> for RecordingSelectorRecordingScreen {
 
         this.selector.set_add_cb(clone!(@weak this =>  move || {
             spawn!(@clone this, async move {
-                let recording = Recording::new(this.work.clone());
+                let recording = Recording::from_work(this.work.clone());
                 if let Some(recording) = push!(this.handle, RecordingEditor, Some(recording)).await {
                     this.handle.pop(Some(recording));
                 }

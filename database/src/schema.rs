@@ -2,6 +2,8 @@ table! {
     ensembles (id) {
         id -> Text,
         name -> Text,
+        last_used -> Nullable<BigInt>,
+        last_played -> Nullable<BigInt>,
     }
 }
 
@@ -17,6 +19,8 @@ table! {
     instruments (id) {
         id -> Text,
         name -> Text,
+        last_used -> Nullable<BigInt>,
+        last_played -> Nullable<BigInt>,
     }
 }
 
@@ -25,6 +29,8 @@ table! {
         id -> Text,
         name -> Text,
         discid -> Nullable<Text>,
+        last_used -> Nullable<BigInt>,
+        last_played -> Nullable<BigInt>,
     }
 }
 
@@ -43,6 +49,8 @@ table! {
         id -> Text,
         first_name -> Text,
         last_name -> Text,
+        last_used -> Nullable<BigInt>,
+        last_played -> Nullable<BigInt>,
     }
 }
 
@@ -51,6 +59,8 @@ table! {
         id -> Text,
         work -> Text,
         comment -> Text,
+        last_used -> Nullable<BigInt>,
+        last_played -> Nullable<BigInt>,
     }
 }
 
@@ -63,6 +73,8 @@ table! {
         work_parts -> Text,
         source_index -> Integer,
         path -> Text,
+        last_used -> Nullable<BigInt>,
+        last_played -> Nullable<BigInt>,
     }
 }
 
@@ -80,6 +92,8 @@ table! {
         id -> Text,
         composer -> Text,
         title -> Text,
+        last_used -> Nullable<BigInt>,
+        last_played -> Nullable<BigInt>,
     }
 }
 

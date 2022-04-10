@@ -1,6 +1,7 @@
 use super::generate_id;
 use super::schema::{ensembles, mediums, performances, persons, recordings, tracks};
 use super::{Database, Error, Recording, Result};
+use chrono::{DateTime, TimeZone, Utc};
 use diesel::prelude::*;
 use log::info;
 
@@ -19,6 +20,22 @@ pub struct Medium {
 
     /// The tracks of the medium.
     pub tracks: Vec<Track>,
+
+    pub last_used: Option<DateTime<Utc>>,
+    pub last_played: Option<DateTime<Utc>>,
+}
+
+impl Medium {
+    pub fn new(id: String, name: String, discid: Option<String>, tracks: Vec<Track>) -> Self {
+        Self {
+            id,
+            name,
+            discid,
+            tracks,
+            last_used: Some(Utc::now()),
+            last_played: None,
+        }
+    }
 }
 
 /// A track on a medium.
@@ -37,6 +54,22 @@ pub struct Track {
 
     /// The path to the audio file containing this track.
     pub path: String,
+
+    pub last_used: Option<DateTime<Utc>>,
+    pub last_played: Option<DateTime<Utc>>,
+}
+
+impl Track {
+    pub fn new(recording: Recording, work_parts: Vec<usize>, source_index: usize, path: String) -> Self {
+        Self {
+            recording,
+            work_parts,
+            source_index,
+            path,
+            last_used: Some(Utc::now()),
+            last_played: None,
+        }
+    }
 }
 
 /// Table data for a [`Medium`].
@@ -46,6 +79,8 @@ struct MediumRow {
     pub id: String,
     pub name: String,
     pub discid: Option<String>,
+    pub last_used: Option<i64>,
+    pub last_played: Option<i64>,
 }
 
 /// Table data for a [`Track`].
@@ -59,6 +94,8 @@ struct TrackRow {
     pub work_parts: String,
     pub source_index: i32,
     pub path: String,
+    pub last_used: Option<i64>,
+    pub last_played: Option<i64>,
 }
 
 impl Database {
@@ -79,6 +116,8 @@ impl Database {
                 id: medium_id.to_owned(),
                 name: medium.name.clone(),
                 discid: medium.discid.clone(),
+                last_used: Some(Utc::now().timestamp()),
+                last_played: medium.last_played.map(|t| t.timestamp()),
             };
 
             diesel::insert_into(mediums::table)
@@ -109,6 +148,8 @@ impl Database {
                     work_parts,
                     source_index: track.source_index as i32,
                     path: track.path.clone(),
+                    last_used: Some(Utc::now().timestamp()),
+                    last_played: track.last_played.map(|t| t.timestamp()),
                 };
 
                 diesel::insert_into(tracks::table)
@@ -254,6 +295,8 @@ impl Database {
             name: row.name,
             discid: row.discid,
             tracks,
+            last_used: row.last_used.map(|t| Utc.timestamp(t, 0)),
+            last_played: row.last_played.map(|t| Utc.timestamp(t, 0)),
         };
 
         Ok(medium)
@@ -285,6 +328,8 @@ impl Database {
             work_parts: part_indices,
             source_index: row.source_index as usize,
             path: row.path,
+            last_used: row.last_used.map(|t| Utc.timestamp(t, 0)),
+            last_played: row.last_played.map(|t| Utc.timestamp(t, 0)),
         };
 
         Ok(track)

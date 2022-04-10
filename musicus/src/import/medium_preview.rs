@@ -248,12 +248,12 @@ impl MediumPreview {
 
         // Add the modified medium to the database.
 
-        let medium = Medium {
-            id: medium.id.clone(),
-            name: medium.name.clone(),
-            discid: medium.discid.clone(),
+        let medium = Medium::new(
+            medium.id.clone(),
+            medium.name.clone(),
+            medium.discid.clone(),
             tracks,
-        };
+        );
 
         self.handle.backend.db().update_medium(medium)?;
         self.handle.backend.library_changed();

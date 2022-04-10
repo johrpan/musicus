@@ -186,23 +186,23 @@ impl MediumEditor {
 
         for track_set_data in &*self.track_sets.borrow() {
             for track_data in &track_set_data.tracks {
-                let track = Track {
-                    recording: track_set_data.recording.clone(),
-                    work_parts: track_data.work_parts.clone(),
-                    source_index: track_data.track_source,
-                    path: String::new(),
-                };
+                let track = Track::new(
+                    track_set_data.recording.clone(),
+                    track_data.work_parts.clone(),
+                    track_data.track_source,
+                    String::new(),
+                );
 
                 tracks.push(track);
             }
         }
 
-        let medium = Medium {
-            id: generate_id(),
-            name: self.name_entry.text().to_string(),
-            discid: Some(self.session.source_id().to_owned()),
+        let medium = Medium::new(
+            generate_id(),
+            self.name_entry.text().to_string(),
+            Some(self.session.source_id().to_owned()),
             tracks,
-        };
+        );
 
         // The medium is not added to the database, because the track paths are not known until the
         // medium is actually imported into the music library. This step will be handled by the

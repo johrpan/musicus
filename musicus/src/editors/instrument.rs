@@ -88,12 +88,12 @@ impl InstrumentEditor {
     fn save(&self) -> Result<Instrument> {
         let name = self.name.get_text();
 
-        let instrument = Instrument {
-            id: self.id.clone(),
-            name,
-        };
+        let instrument = Instrument::new(self.id.clone(), name);
 
-        self.handle.backend.db().update_instrument(instrument.clone())?;
+        self.handle
+            .backend
+            .db()
+            .update_instrument(instrument.clone())?;
         self.handle.backend.library_changed();
 
         Ok(instrument)

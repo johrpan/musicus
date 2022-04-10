@@ -102,11 +102,7 @@ impl PersonEditor {
         let first_name = self.first_name.get_text();
         let last_name = self.last_name.get_text();
 
-        let person = Person {
-            id: self.id.clone(),
-            first_name,
-            last_name,
-        };
+        let person = Person::new(self.id.clone(), first_name, last_name);
 
         self.handle.backend.db().update_person(person.clone())?;
         self.handle.backend.library_changed();

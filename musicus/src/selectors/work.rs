@@ -36,7 +36,7 @@ impl Screen<(), Work> for WorkSelector {
                     // immediately show the work editor. Going back from the work editor will
                     // correctly show the person selector again.
 
-                    let work = Work::new(person);
+                    let work = Work::from_composer(person);
                     if let Some(work) = push!(this.handle, WorkEditor, Some(work)).await {
                         this.handle.pop(Some(work));
                     }
@@ -107,7 +107,7 @@ impl Screen<Person, Work> for WorkSelectorWorkScreen {
 
         this.selector.set_add_cb(clone!(@weak this =>  move || {
             spawn!(@clone this, async move {
-                let work = Work::new(this.person.clone());
+                let work = Work::from_composer(this.person.clone());
                 if let Some(work) = push!(this.handle, WorkEditor, Some(work)).await {
                     this.handle.pop(Some(work));
                 }

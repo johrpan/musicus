@@ -177,18 +177,20 @@ impl RecordingEditor {
 
     /// Save the recording.
     fn save(self: &Rc<Self>) -> Result<Recording> {
-        let recording = Recording {
-            id: self.id.clone(),
-            work: self
-                .work
+        let recording = Recording::new(
+            self.id.clone(),
+            self.work
                 .borrow()
                 .clone()
                 .expect("Tried to create recording without work!"),
-            comment: self.comment_entry.text().to_string(),
-            performances: self.performances.borrow().clone(),
-        };
+            self.comment_entry.text().to_string(),
+            self.performances.borrow().clone(),
+        );
 
-        self.handle.backend.db().update_recording(recording.clone())?;
+        self.handle
+            .backend
+            .db()
+            .update_recording(recording.clone())?;
         self.handle.backend.library_changed();
 
         Ok(recording)

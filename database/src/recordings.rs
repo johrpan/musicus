@@ -1,6 +1,7 @@
 use super::generate_id;
 use super::schema::{ensembles, performances, persons, recordings};
 use super::{Database, Ensemble, Error, Instrument, Person, Result, Work};
+use chrono::{DateTime, TimeZone, Utc};
 use diesel::prelude::*;
 use log::info;
 
@@ -11,16 +12,31 @@ pub struct Recording {
     pub work: Work,
     pub comment: String,
     pub performances: Vec<Performance>,
+    pub last_used: Option<DateTime<Utc>>,
+    pub last_played: Option<DateTime<Utc>>,
 }
 
 impl Recording {
+    pub fn new(id: String, work: Work, comment: String, performances: Vec<Performance>) -> Self {
+        Self {
+            id,
+            work,
+            comment,
+            performances,
+            last_used: Some(Utc::now()),
+            last_played: None,
+        }
+    }
+
     /// Initialize a new recording with a work.
-    pub fn new(work: Work) -> Self {
+    pub fn from_work(work: Work) -> Self {
         Self {
             id: generate_id(),
             work,
             comment: String::new(),
             performances: Vec::new(),
+            last_used: Some(Utc::now()),
+            last_played: None,
         }
     }
 
@@ -82,6 +98,8 @@ struct RecordingRow {
     pub id: String,
     pub work: String,
     pub comment: String,
+    pub last_used: Option<i64>,
+    pub last_played: Option<i64>,
 }
 
 impl From<Recording> for RecordingRow {
@@ -90,6 +108,8 @@ impl From<Recording> for RecordingRow {
             id: recording.id,
             work: recording.work.id,
             comment: recording.comment,
+            last_used: Some(Utc::now().timestamp()),
+            last_played: recording.last_played.map(|t| t.timestamp()),
         }
     }
 }
@@ -255,6 +275,8 @@ impl Database {
             work,
             comment: row.comment,
             performances: performance_descriptions,
+            last_used: row.last_used.map(|t| Utc.timestamp(t, 0)),
+            last_played: row.last_played.map(|t| Utc.timestamp(t, 0)),
         };
 
         Ok(recording_description)

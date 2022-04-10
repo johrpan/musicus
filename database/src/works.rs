@@ -1,6 +1,7 @@
 use super::generate_id;
 use super::schema::{instrumentations, work_parts, works};
 use super::{Database, Error, Instrument, Person, Result};
+use chrono::{DateTime, TimeZone, Utc};
 use diesel::prelude::*;
 use diesel::{Insertable, Queryable};
 use log::info;
@@ -12,6 +13,8 @@ struct WorkRow {
     pub id: String,
     pub composer: String,
     pub title: String,
+    pub last_used: Option<i64>,
+    pub last_played: Option<i64>,
 }
 
 impl From<Work> for WorkRow {
@@ -20,6 +23,8 @@ impl From<Work> for WorkRow {
             id: work.id,
             composer: work.composer.id,
             title: work.title,
+            last_used: Some(Utc::now().timestamp()),
+            last_played: work.last_played.map(|t| t.timestamp()),
         }
     }
 }
@@ -57,17 +62,33 @@ pub struct Work {
     pub composer: Person,
     pub instruments: Vec<Instrument>,
     pub parts: Vec<WorkPart>,
+    pub last_used: Option<DateTime<Utc>>,
+    pub last_played: Option<DateTime<Utc>>,
 }
 
 impl Work {
+    pub fn new(id: String, title: String, composer: Person, instruments: Vec<Instrument>, parts: Vec<WorkPart>) -> Self {
+        Self {
+            id,
+            title,
+            composer,
+            instruments,
+            parts,
+            last_used: Some(Utc::now()),
+            last_played: None,
+        }
+    }
+
     /// Initialize a new work with a composer.
-    pub fn new(composer: Person) -> Self {
+    pub fn from_composer(composer: Person) -> Self {
         Self {
             id: generate_id(),
             title: String::new(),
             composer,
             instruments: Vec::new(),
             parts: Vec::new(),
+            last_used: Some(Utc::now()),
+            last_played: None,
         }
     }
 
@@ -109,9 +130,7 @@ impl Database {
                 .execute(&self.connection)?;
 
             let Work {
-                instruments,
-                parts,
-                ..
+                instruments, parts, ..
             } = work;
 
             for instrument in instruments {
@@ -200,6 +219,8 @@ impl Database {
             title: row.title,
             instruments,
             parts,
+            last_used: row.last_used.map(|t| Utc.timestamp(t, 0)),
+            last_played: row.last_played.map(|t| Utc.timestamp(t, 0)),
         })
     }
 

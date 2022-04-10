@@ -148,51 +148,52 @@ impl Screen<Option<Work>, Work> for WorkEditor {
             });
         }));
 
-        this.part_list.set_make_widget_cb(clone!(@weak this => @default-panic,  move |index| {
-            let part = &this.parts.borrow()[index];
+        this.part_list
+            .set_make_widget_cb(clone!(@weak this => @default-panic,  move |index| {
+                let part = &this.parts.borrow()[index];
 
-            let delete_button = gtk::Button::from_icon_name(Some("user-trash-symbolic"));
-            delete_button.set_valign(gtk::Align::Center);
+                let delete_button = gtk::Button::from_icon_name(Some("user-trash-symbolic"));
+                delete_button.set_valign(gtk::Align::Center);
 
-            delete_button.connect_clicked(clone!(@weak this =>  move |_| {
-                let length = {
-                    let mut structure = this.parts.borrow_mut();
-                    structure.remove(index);
-                    structure.len()
-                };
+                delete_button.connect_clicked(clone!(@weak this =>  move |_| {
+                    let length = {
+                        let mut structure = this.parts.borrow_mut();
+                        structure.remove(index);
+                        structure.len()
+                    };
 
-                this.part_list.update(length);
+                    this.part_list.update(length);
+                }));
+
+                let edit_button = gtk::Button::from_icon_name(Some("document-edit-symbolic"));
+                edit_button.set_valign(gtk::Align::Center);
+
+                edit_button.connect_clicked(clone!(@weak this =>  move |_| {
+                    spawn!(@clone this, async move {
+                        let part = this.parts.borrow()[index].clone();
+                        if let Some(part) = push!(this.handle, WorkPartEditor, Some(part)).await {
+                            let length = {
+                                let mut structure = this.parts.borrow_mut();
+                                structure[index] = part;
+                                structure.len()
+                            };
+
+                            this.part_list.update(length);
+                        }
+                    });
+                }));
+
+                let row = adw::ActionRowBuilder::new()
+                    .focusable(false)
+                    .title(&part.title)
+                    .activatable_widget(&edit_button)
+                    .build();
+
+                row.add_suffix(&delete_button);
+                row.add_suffix(&edit_button);
+
+                row.upcast()
             }));
-
-            let edit_button = gtk::Button::from_icon_name(Some("document-edit-symbolic"));
-            edit_button.set_valign(gtk::Align::Center);
-
-            edit_button.connect_clicked(clone!(@weak this =>  move |_| {
-                spawn!(@clone this, async move {
-                    let part = this.parts.borrow()[index].clone();
-                    if let Some(part) = push!(this.handle, WorkPartEditor, Some(part)).await {
-                        let length = {
-                            let mut structure = this.parts.borrow_mut();
-                            structure[index] = part;
-                            structure.len()
-                        };
-
-                        this.part_list.update(length);
-                    }
-                });
-            }));
-
-            let row = adw::ActionRowBuilder::new()
-                .focusable(false)
-                .title(&part.title)
-                .activatable_widget(&edit_button)
-                .build();
-
-            row.add_suffix(&delete_button);
-            row.add_suffix(&edit_button);
-
-            row.upcast()
-        }));
 
         this.part_list
             .set_move_cb(clone!(@weak this =>  move |old_index, new_index| {
@@ -248,17 +249,16 @@ impl WorkEditor {
 
     /// Save the work.
     fn save(self: &Rc<Self>) -> Result<Work> {
-        let work = Work {
-            id: self.id.clone(),
-            title: self.title_entry.text().to_string(),
-            composer: self
-                .composer
+        let work = Work::new(
+            self.id.clone(),
+            self.title_entry.text().to_string(),
+            self.composer
                 .borrow()
                 .clone()
                 .expect("Tried to create work without composer!"),
-            instruments: self.instruments.borrow().clone(),
-            parts: self.parts.borrow().clone(),
-        };
+            self.instruments.borrow().clone(),
+            self.parts.borrow().clone(),
+        );
 
         self.handle.backend.db().update_work(work.clone())?;
         self.handle.backend.library_changed();

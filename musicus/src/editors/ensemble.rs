@@ -88,10 +88,7 @@ impl EnsembleEditor {
     fn save(&self) -> Result<Ensemble> {
         let name = self.name.get_text();
 
-        let ensemble = Ensemble {
-            id: self.id.clone(),
-            name,
-        };
+        let ensemble = Ensemble::new(self.id.clone(), name);
 
         self.handle.backend.db().update_ensemble(ensemble.clone())?;
         self.handle.backend.library_changed();
