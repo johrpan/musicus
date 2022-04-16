@@ -1,4 +1,5 @@
-use adw::prelude::*;
+use adw::{prelude::*, builders::ActionRowBuilder};
+use gtk::builders::EntryBuilder;
 
 /// A list box row with an entry.
 pub struct EntryRow {
@@ -12,12 +13,12 @@ pub struct EntryRow {
 impl EntryRow {
     /// Create a new entry row.
     pub fn new(title: &str) -> Self {
-        let entry = gtk::EntryBuilder::new()
+        let entry = EntryBuilder::new()
             .hexpand(true)
             .valign(gtk::Align::Center)
             .build();
 
-        let widget = adw::ActionRowBuilder::new()
+        let widget = ActionRowBuilder::new()
             .focusable(false)
             .activatable_widget(&entry)
             .title(title)

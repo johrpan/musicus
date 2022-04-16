@@ -1,5 +1,6 @@
 use super::Widget;
-use adw::prelude::*;
+use adw::{prelude::*, builders::ActionRowBuilder};
+use gtk::builders::ButtonBuilder;
 
 /// A list box row with a single button.
 pub struct ButtonRow {
@@ -13,12 +14,12 @@ pub struct ButtonRow {
 impl ButtonRow {
     /// Create a new button row.
     pub fn new(title: &str, label: &str) -> Self {
-        let button = gtk::ButtonBuilder::new()
+        let button = ButtonBuilder::new()
             .valign(gtk::Align::Center)
             .label(label)
             .build();
 
-        let widget = adw::ActionRowBuilder::new()
+        let widget = ActionRowBuilder::new()
             .focusable(false)
             .activatable_widget(&button)
             .title(title)

@@ -2,8 +2,7 @@ use crate::navigator::{NavigationHandle, Screen};
 use crate::widgets::{Editor, EntryRow, Section, Widget};
 use anyhow::Result;
 use gettextrs::gettext;
-use glib::clone;
-use gtk::prelude::*;
+use gtk::{builders::ListBoxBuilder, glib::clone, prelude::*};
 use musicus_backend::db::{generate_id, Ensemble};
 use std::rc::Rc;
 
@@ -24,7 +23,7 @@ impl Screen<Option<Ensemble>, Ensemble> for EnsembleEditor {
         let editor = Editor::new();
         editor.set_title("Ensemble");
 
-        let list = gtk::ListBoxBuilder::new()
+        let list = ListBoxBuilder::new()
             .selection_mode(gtk::SelectionMode::None)
             .css_classes(vec![String::from("boxed-list")])
             .build();

@@ -2,8 +2,7 @@ use crate::navigator::{NavigationHandle, Screen};
 use crate::widgets::{Editor, EntryRow, Section, Widget};
 use anyhow::Result;
 use gettextrs::gettext;
-use glib::clone;
-use gtk::prelude::*;
+use gtk::{glib::clone, prelude::*, builders::ListBoxBuilder};
 use musicus_backend::db::{generate_id, Instrument};
 use std::rc::Rc;
 
@@ -24,7 +23,7 @@ impl Screen<Option<Instrument>, Instrument> for InstrumentEditor {
         let editor = Editor::new();
         editor.set_title("Instrument/Role");
 
-        let list = gtk::ListBoxBuilder::new()
+        let list = ListBoxBuilder::new()
             .selection_mode(gtk::SelectionMode::None)
             .css_classes(vec![String::from("boxed-list")])
             .build();

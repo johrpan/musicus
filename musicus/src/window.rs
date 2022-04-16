@@ -1,7 +1,9 @@
 use crate::navigator::Navigator;
 use crate::screens::{MainScreen, WelcomeScreen};
+use adw::builders::HeaderBarBuilder;
+use adw::prelude::*;
 use glib::clone;
-use gtk::prelude::*;
+use gtk::builders::{BoxBuilder, SpinnerBuilder};
 use musicus_backend::{Backend, BackendState};
 use std::rc::Rc;
 
@@ -21,15 +23,15 @@ impl Window {
         window.set_title(Some("Musicus"));
         window.set_default_size(1000, 707);
 
-        let loading_screen = gtk::BoxBuilder::new()
+        let loading_screen = BoxBuilder::new()
             .orientation(gtk::Orientation::Vertical)
             .build();
 
-        let header = adw::HeaderBarBuilder::new()
+        let header = HeaderBarBuilder::new()
             .title_widget(&adw::WindowTitle::new("Musicus", ""))
             .build();
 
-        let spinner = gtk::SpinnerBuilder::new()
+        let spinner = SpinnerBuilder::new()
             .hexpand(true)
             .vexpand(true)
             .halign(gtk::Align::Center)
@@ -43,7 +45,7 @@ impl Window {
         loading_screen.append(&spinner);
 
         let navigator = Navigator::new(Rc::clone(&backend), &window, &loading_screen);
-        adw::traits::ApplicationWindowExt::set_content(&window, Some(&navigator.widget));
+        window.set_content(Some(&navigator.widget));
 
         let this = Rc::new(Self {
             backend,
@@ -52,13 +54,14 @@ impl Window {
         });
 
         // Listen for backend state changes.
-        this.backend.set_state_cb(clone!(@weak this => move |state| {
-            match state {
-                BackendState::Loading => this.navigator.reset(),
-                BackendState::NoMusicLibrary => this.show_welcome_screen(),
-                BackendState::Ready => this.show_main_screen(),
-            }
-        }));
+        this.backend
+            .set_state_cb(clone!(@weak this => move |state| {
+                match state {
+                    BackendState::Loading => this.navigator.reset(),
+                    BackendState::NoMusicLibrary => this.show_welcome_screen(),
+                    BackendState::Ready => this.show_main_screen(),
+                }
+            }));
 
         // Initialize the backend.
         Rc::clone(&this.backend).init().unwrap();

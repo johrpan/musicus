@@ -1,6 +1,7 @@
 use super::selector::Selector;
 use crate::navigator::{NavigationHandle, Screen};
 use crate::widgets::Widget;
+use adw::builders::ActionRowBuilder;
 use adw::prelude::*;
 use gettextrs::gettext;
 use glib::clone;
@@ -30,7 +31,7 @@ impl Screen<(), Medium> for MediumSelector {
         }));
 
         this.selector.set_make_widget(clone!(@weak this =>  @default-panic, move |poe| {
-            let row = adw::ActionRowBuilder::new()
+            let row = ActionRowBuilder::new()
                 .activatable(true)
                 .title(&poe.get_title())
                 .build();
@@ -103,7 +104,7 @@ impl Screen<PersonOrEnsemble, Medium> for MediumSelectorMediumScreen {
 
         this.selector
             .set_make_widget(clone!(@weak this =>  @default-panic, move |medium| {
-                let row = adw::ActionRowBuilder::new()
+                let row = ActionRowBuilder::new()
                     .activatable(true)
                     .title(&medium.name)
                     .build();

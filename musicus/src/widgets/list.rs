@@ -1,5 +1,6 @@
 use super::indexed_list_model::{IndexedListModel, ItemIndex};
 use glib::clone;
+use gtk::builders::ListBoxBuilder;
 use gtk::prelude::*;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
@@ -27,7 +28,7 @@ impl List {
         // let factory = gtk::SignalListItemFactory::new();
         // let widget = gtk::ListView::new(Some(&selection), Some(&factory));
 
-        let widget = gtk::ListBoxBuilder::new()
+        let widget = ListBoxBuilder::new()
             .selection_mode(gtk::SelectionMode::None)
             .css_classes(vec![String::from("boxed-list")])
             .build();

@@ -1,6 +1,7 @@
 use super::track_set_editor::{TrackData, TrackSetData, TrackSetEditor};
 use crate::navigator::{NavigationHandle, Screen};
 use crate::widgets::{List, Widget};
+use adw::builders::ActionRowBuilder;
 use adw::prelude::*;
 use anyhow::Result;
 use glib::clone;
@@ -102,13 +103,13 @@ impl Screen<(Arc<ImportSession>, Option<Medium>), Medium> for MediumEditor {
                 let title = track_set.recording.work.get_title();
                 let subtitle = track_set.recording.get_performers();
 
-                let edit_image = gtk::Image::from_icon_name(Some("document-edit-symbolic"));
+                let edit_image = gtk::Image::from_icon_name("document-edit-symbolic");
                 let edit_button = gtk::Button::new();
                 edit_button.set_has_frame(false);
                 edit_button.set_valign(gtk::Align::Center);
                 edit_button.set_child(Some(&edit_image));
 
-                let row = adw::ActionRowBuilder::new()
+                let row = ActionRowBuilder::new()
                     .focusable(false)
                     .title(&title)
                     .subtitle(&subtitle)

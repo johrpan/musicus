@@ -2,6 +2,7 @@ use super::work_part::WorkPartEditor;
 use crate::navigator::{NavigationHandle, Screen};
 use crate::selectors::{InstrumentSelector, PersonSelector};
 use crate::widgets::{List, Widget};
+use adw::builders::ActionRowBuilder;
 use adw::prelude::*;
 use anyhow::Result;
 use gettextrs::gettext;
@@ -111,7 +112,7 @@ impl Screen<Option<Work>, Work> for WorkEditor {
             clone!(@weak this =>  @default-panic, move |index| {
                 let instrument = &this.instruments.borrow()[index];
 
-                let delete_button = gtk::Button::from_icon_name(Some("user-trash-symbolic"));
+                let delete_button = gtk::Button::from_icon_name("user-trash-symbolic");
                 delete_button.set_valign(gtk::Align::Center);
 
                 delete_button.connect_clicked(clone!(@strong this => move |_| {
@@ -124,7 +125,7 @@ impl Screen<Option<Work>, Work> for WorkEditor {
                     this.instrument_list.update(length);
                 }));
 
-                let row = adw::ActionRowBuilder::new()
+                let row = ActionRowBuilder::new()
                     .title(&instrument.name)
                     .build();
 
@@ -152,7 +153,7 @@ impl Screen<Option<Work>, Work> for WorkEditor {
             .set_make_widget_cb(clone!(@weak this => @default-panic,  move |index| {
                 let part = &this.parts.borrow()[index];
 
-                let delete_button = gtk::Button::from_icon_name(Some("user-trash-symbolic"));
+                let delete_button = gtk::Button::from_icon_name("user-trash-symbolic");
                 delete_button.set_valign(gtk::Align::Center);
 
                 delete_button.connect_clicked(clone!(@weak this =>  move |_| {
@@ -165,7 +166,7 @@ impl Screen<Option<Work>, Work> for WorkEditor {
                     this.part_list.update(length);
                 }));
 
-                let edit_button = gtk::Button::from_icon_name(Some("document-edit-symbolic"));
+                let edit_button = gtk::Button::from_icon_name("document-edit-symbolic");
                 edit_button.set_valign(gtk::Align::Center);
 
                 edit_button.connect_clicked(clone!(@weak this =>  move |_| {
@@ -183,7 +184,7 @@ impl Screen<Option<Work>, Work> for WorkEditor {
                     });
                 }));
 
-                let row = adw::ActionRowBuilder::new()
+                let row = ActionRowBuilder::new()
                     .focusable(false)
                     .title(&part.title)
                     .activatable_widget(&edit_button)

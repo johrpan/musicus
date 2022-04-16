@@ -118,13 +118,13 @@ pub(super) fn new() -> Result<ImportSession> {
         for track in &tracks_clone {
             info!("Starting to rip track {}.", track.number);
 
-            cdparanoiasrc.set_property("track", &track.number)?;
+            cdparanoiasrc.set_property("track", &track.number);
 
             // The filesink needs to be reset to be able to change the file location.
             filesink.set_state(gstreamer::State::Null)?;
 
             let path = track.path.to_str().unwrap();
-            filesink.set_property("location", &path)?;
+            filesink.set_property("location", &path);
 
             // This will also affect the filesink as expected.
             pipeline.set_state(gstreamer::State::Playing)?;

@@ -1,7 +1,9 @@
 use crate::navigator::{NavigationHandle, Screen};
 use crate::widgets::Widget;
+use adw::builders::{HeaderBarBuilder, StatusPageBuilder};
 use gettextrs::gettext;
 use glib::clone;
+use gtk::builders::{BoxBuilder, ButtonBuilder};
 use gtk::prelude::*;
 use std::rc::Rc;
 
@@ -15,20 +17,20 @@ pub struct WelcomeScreen {
 
 impl Screen<(), ()> for WelcomeScreen {
     fn new(_: (), handle: NavigationHandle<()>) -> Rc<Self> {
-        let widget = gtk::BoxBuilder::new()
+        let widget = BoxBuilder::new()
             .orientation(gtk::Orientation::Vertical)
             .build();
 
-        let header = adw::HeaderBarBuilder::new()
+        let header = HeaderBarBuilder::new()
             .title_widget(&adw::WindowTitle::new("Musicus", ""))
             .build();
 
-        let button = gtk::ButtonBuilder::new()
+        let button = ButtonBuilder::new()
             .halign(gtk::Align::Center)
             .label(&gettext("Select folder"))
             .build();
 
-        let welcome = adw::StatusPageBuilder::new()
+        let welcome = StatusPageBuilder::new()
             .icon_name("folder-music-symbolic")
             .title(&gettext("Welcome to Musicus!"))
             .description(&gettext(

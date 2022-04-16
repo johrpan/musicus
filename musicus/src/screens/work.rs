@@ -3,6 +3,7 @@ use crate::editors::WorkEditor;
 use crate::navigator::{NavigationHandle, NavigatorWindow, Screen};
 use crate::widgets;
 use crate::widgets::{List, Section, Widget};
+use adw::builders::ActionRowBuilder;
 use adw::prelude::*;
 use gettextrs::gettext;
 use glib::clone;
@@ -69,7 +70,7 @@ impl Screen<Work, ()> for WorkScreen {
             clone!(@weak this =>  @default-panic, move |index| {
                 let recording = &this.recordings.borrow()[index];
 
-                let row = adw::ActionRowBuilder::new()
+                let row = ActionRowBuilder::new()
                     .activatable(true)
                     .title(&recording.work.get_title())
                     .subtitle(&recording.get_performers())

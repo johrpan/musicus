@@ -1,9 +1,11 @@
 use super::medium_editor::MediumEditor;
 use crate::navigator::{NavigationHandle, Screen};
 use crate::widgets::Widget;
+use adw::builders::ActionRowBuilder;
 use anyhow::{anyhow, Result};
 use gettextrs::gettext;
 use glib::clone;
+use gtk::builders::{ListBoxBuilder, FrameBuilder};
 use gtk::prelude::*;
 use gtk_macros::get_widget;
 use musicus_backend::db::Medium;
@@ -139,13 +141,13 @@ impl MediumPreview {
             if track.recording.id != last_recording_id {
                 last_recording_id = &track.recording.id;
 
-                let list = gtk::ListBoxBuilder::new()
+                let list = ListBoxBuilder::new()
                     .selection_mode(gtk::SelectionMode::None)
                     .margin_bottom(12)
                     .css_classes(vec![String::from("boxed-list")])
                     .build();
 
-                let header = adw::ActionRowBuilder::new()
+                let header = ActionRowBuilder::new()
                     .activatable(false)
                     .title(&track.recording.work.get_title())
                     .subtitle(&track.recording.get_performers())
@@ -172,7 +174,7 @@ impl MediumPreview {
                     parts.join(", ")
                 };
 
-                let row = adw::ActionRowBuilder::new()
+                let row = ActionRowBuilder::new()
                     .activatable(false)
                     .title(&title)
                     .subtitle(&import_tracks[track.source_index].name)
@@ -184,7 +186,7 @@ impl MediumPreview {
         }
 
         if let Some(list) = &last_list {
-            let frame = gtk::FrameBuilder::new().margin_bottom(12).build();
+            let frame = FrameBuilder::new().margin_bottom(12).build();
 
             frame.set_child(Some(list));
             self.medium_box.append(&frame);

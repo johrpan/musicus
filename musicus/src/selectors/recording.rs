@@ -2,6 +2,7 @@ use super::selector::Selector;
 use crate::editors::{PersonEditor, RecordingEditor, WorkEditor};
 use crate::navigator::{NavigationHandle, Screen};
 use crate::widgets::Widget;
+use adw::builders::ActionRowBuilder;
 use adw::prelude::*;
 use gettextrs::gettext;
 use glib::clone;
@@ -52,7 +53,7 @@ impl Screen<(), Recording> for RecordingSelector {
         }));
 
         this.selector.set_make_widget(clone!(@weak this =>  @default-panic, move |person| {
-            let row = adw::ActionRowBuilder::new()
+            let row = ActionRowBuilder::new()
                 .activatable(true)
                 .title(&person.name_lf())
                 .build();
@@ -127,7 +128,7 @@ impl Screen<Person, Work> for RecordingSelectorWorkScreen {
 
         this.selector
             .set_make_widget(clone!(@weak this =>  @default-panic, move |work| {
-                let row = adw::ActionRowBuilder::new()
+                let row = ActionRowBuilder::new()
                     .activatable(true)
                     .title(&work.title)
                     .build();
@@ -190,7 +191,7 @@ impl Screen<Work, Recording> for RecordingSelectorRecordingScreen {
 
         this.selector
             .set_make_widget(clone!(@weak this =>  @default-panic, move |recording| {
-                let row = adw::ActionRowBuilder::new()
+                let row = ActionRowBuilder::new()
                     .activatable(true)
                     .title(&recording.get_performers())
                     .build();

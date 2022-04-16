@@ -3,6 +3,7 @@ use crate::editors::PersonEditor;
 use crate::navigator::{NavigationHandle, NavigatorWindow, Screen};
 use crate::widgets;
 use crate::widgets::{List, Section, Widget};
+use adw::builders::ActionRowBuilder;
 use adw::prelude::*;
 use gettextrs::gettext;
 use glib::clone;
@@ -80,7 +81,7 @@ impl Screen<Person, ()> for PersonScreen {
             .set_make_widget_cb(clone!(@weak this =>  @default-panic, move |index| {
                 let work = &this.works.borrow()[index];
 
-                let row = adw::ActionRowBuilder::new()
+                let row = ActionRowBuilder::new()
                     .activatable(true)
                     .title(&work.title)
                     .build();
@@ -108,7 +109,7 @@ impl Screen<Person, ()> for PersonScreen {
             clone!(@weak this =>  @default-panic, move |index| {
                 let recording = &this.recordings.borrow()[index];
 
-                let row = adw::ActionRowBuilder::new()
+                let row = ActionRowBuilder::new()
                     .activatable(true)
                     .title(&recording.work.get_title())
                     .subtitle(&recording.get_performers())
@@ -138,7 +139,7 @@ impl Screen<Person, ()> for PersonScreen {
             .set_make_widget_cb(clone!(@weak this => @default-panic,  move |index| {
                 let medium = &this.mediums.borrow()[index];
 
-                let row = adw::ActionRowBuilder::new()
+                let row = ActionRowBuilder::new()
                     .activatable(true)
                     .title(&medium.name)
                     .build();

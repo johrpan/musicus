@@ -12,8 +12,8 @@ glib::wrapper! {
 impl IndexedListModel {
     /// Set the length of the list model.
     pub fn set_length(&self, length: u32) {
-        let old_length = self.property("length").unwrap().get::<u32>().unwrap();
-        self.set_property("length", &length).unwrap();
+        let old_length = self.property("length");
+        self.set_property("length", &length);
         self.items_changed(0, old_length, length);
     }
 }
@@ -43,7 +43,7 @@ mod indexed_list_model_imp {
     impl ObjectImpl for IndexedListModel {
         fn properties() -> &'static [glib::ParamSpec] {
             static PROPERTIES: Lazy<Vec<glib::ParamSpec>> = Lazy::new(|| {
-                vec![glib::ParamSpec::new_uint(
+                vec![glib::ParamSpecUInt::new(
                     "length",
                     "Length",
                     "Length",
@@ -109,7 +109,7 @@ impl ItemIndex {
 
     /// Get the value of the item index..
     pub fn get(&self) -> u32 {
-        self.property("value").unwrap().get::<u32>().unwrap()
+        self.property("value")
     }
 }
 
@@ -132,7 +132,7 @@ mod item_index_imp {
     impl ObjectImpl for ItemIndex {
         fn properties() -> &'static [glib::ParamSpec] {
             static PROPERTIES: Lazy<Vec<glib::ParamSpec>> = Lazy::new(|| {
-                vec![glib::ParamSpec::new_uint(
+                vec![glib::ParamSpecUInt::new(
                     "value",
                     "Value",
                     "Value",

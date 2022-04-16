@@ -3,6 +3,7 @@ use super::medium_preview::MediumPreview;
 use crate::navigator::{NavigationHandle, Screen};
 use crate::selectors::MediumSelector;
 use crate::widgets::Widget;
+use adw::builders::ActionRowBuilder;
 use adw::prelude::*;
 use glib::clone;
 use gtk_macros::get_widget;
@@ -64,7 +65,7 @@ impl ImportScreen {
         let this = self;
 
         for medium in mediums {
-            let row = adw::ActionRowBuilder::new()
+            let row = ActionRowBuilder::new()
                 .activatable(true)
                 .title(&medium.name)
                 .subtitle(&format!("{} Tracks", medium.tracks.len()))

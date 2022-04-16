@@ -2,6 +2,7 @@ use crate::widgets::Widget;
 use futures_channel::oneshot;
 use futures_channel::oneshot::{Receiver, Sender};
 use glib::clone;
+use gtk::builders::StackBuilder;
 use gtk::prelude::*;
 use musicus_backend::Backend;
 use std::cell::{Cell, RefCell};
@@ -96,7 +97,7 @@ impl Navigator {
         W: IsA<gtk::Window>,
         E: IsA<gtk::Widget>,
     {
-        let widget = gtk::StackBuilder::new()
+        let widget = StackBuilder::new()
             .hhomogeneous(false)
             .vhomogeneous(false)
             .interpolate_size(true)

@@ -2,6 +2,7 @@ use super::selector::Selector;
 use crate::editors::{PersonEditor, WorkEditor};
 use crate::navigator::{NavigationHandle, Screen};
 use crate::widgets::Widget;
+use adw::builders::ActionRowBuilder;
 use adw::prelude::*;
 use gettextrs::gettext;
 use glib::clone;
@@ -46,7 +47,7 @@ impl Screen<(), Work> for WorkSelector {
         }));
 
         this.selector.set_make_widget(clone!(@weak this =>  @default-panic, move |person| {
-            let row = adw::ActionRowBuilder::new()
+            let row = ActionRowBuilder::new()
                 .activatable(true)
                 .title(&person.name_lf())
                 .build();
@@ -117,7 +118,7 @@ impl Screen<Person, Work> for WorkSelectorWorkScreen {
 
         this.selector
             .set_make_widget(clone!(@weak this =>  @default-panic, move |work| {
-                let row = adw::ActionRowBuilder::new()
+                let row = ActionRowBuilder::new()
                     .activatable(true)
                     .title(&work.title)
                     .build();

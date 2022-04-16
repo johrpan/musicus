@@ -4,9 +4,11 @@ use crate::import::SourceSelector;
 use crate::navigator::{NavigationHandle, Navigator, NavigatorWindow, Screen};
 use crate::preferences::Preferences;
 use crate::widgets::{List, PlayerBar, Widget};
+use adw::builders::ActionRowBuilder;
 use adw::prelude::*;
 use gettextrs::gettext;
 use glib::clone;
+use gtk::builders::AboutDialogBuilder;
 use gtk_macros::get_widget;
 use musicus_backend::db::PersonOrEnsemble;
 use std::cell::RefCell;
@@ -95,7 +97,7 @@ impl Screen<(), ()> for MainScreen {
             .set_make_widget_cb(clone!(@weak this =>  @default-panic, move |index| {
                 let poe = &this.poes.borrow()[index];
 
-                let row = adw::ActionRowBuilder::new()
+                let row = ActionRowBuilder::new()
                     .activatable(true)
                     .title(&poe.get_title())
                     .build();
@@ -193,7 +195,7 @@ impl Widget for MainScreen {
 impl MainScreen {
     /// Show a dialog with information on this application.
     fn show_about_dialog(&self) {
-        let dialog = gtk::AboutDialogBuilder::new()
+        let dialog = AboutDialogBuilder::new()
             .transient_for(&self.handle.window)
             .modal(true)
             .logo_icon_name("de.johrpan.musicus")

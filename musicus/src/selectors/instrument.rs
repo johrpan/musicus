@@ -2,6 +2,7 @@ use super::selector::Selector;
 use crate::editors::InstrumentEditor;
 use crate::navigator::{NavigationHandle, Screen};
 use crate::widgets::Widget;
+use adw::builders::ActionRowBuilder;
 use adw::prelude::*;
 use gettextrs::gettext;
 use glib::clone;
@@ -41,7 +42,7 @@ impl Screen<(), Instrument> for InstrumentSelector {
 
         this.selector
             .set_make_widget(clone!(@weak this =>  @default-panic, move |instrument| {
-                let row = adw::ActionRowBuilder::new()
+                let row = ActionRowBuilder::new()
                     .activatable(true)
                     .title(&instrument.name)
                     .build();

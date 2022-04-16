@@ -2,6 +2,7 @@ use super::performance::PerformanceEditor;
 use crate::navigator::{NavigationHandle, Screen};
 use crate::selectors::WorkSelector;
 use crate::widgets::{List, Widget};
+use adw::builders::ActionRowBuilder;
 use adw::prelude::*;
 use anyhow::Result;
 use gettextrs::gettext;
@@ -97,7 +98,7 @@ impl Screen<Option<Recording>, Recording> for RecordingEditor {
         this.performance_list.set_make_widget_cb(clone!(@weak this => @default-panic, move |index| {
             let performance = &this.performances.borrow()[index];
 
-            let delete_button = gtk::Button::from_icon_name(Some("user-trash-symbolic"));
+            let delete_button = gtk::Button::from_icon_name("user-trash-symbolic");
             delete_button.set_valign(gtk::Align::Center);
 
             delete_button.connect_clicked(clone!(@weak this =>  move |_| {
@@ -110,7 +111,7 @@ impl Screen<Option<Recording>, Recording> for RecordingEditor {
                 this.performance_list.update(length);
             }));
 
-            let edit_button = gtk::Button::from_icon_name(Some("document-edit-symbolic"));
+            let edit_button = gtk::Button::from_icon_name("document-edit-symbolic");
             edit_button.set_valign(gtk::Align::Center);
 
             edit_button.connect_clicked(clone!(@weak this =>  move |_| {
@@ -128,7 +129,7 @@ impl Screen<Option<Recording>, Recording> for RecordingEditor {
                 });
             }));
 
-            let row = adw::ActionRowBuilder::new()
+            let row = ActionRowBuilder::new()
                 .focusable(false)
                 .activatable_widget(&edit_button)
                 .title(&performance.get_title())

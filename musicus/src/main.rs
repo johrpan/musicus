@@ -22,8 +22,8 @@ mod resources;
 
 fn main() {
     gettextrs::setlocale(gettextrs::LocaleCategory::LcAll, "");
-    gettextrs::bindtextdomain("musicus", config::LOCALEDIR);
-    gettextrs::textdomain("musicus");
+    gettextrs::bindtextdomain("musicus", config::LOCALEDIR).unwrap();
+    gettextrs::textdomain("musicus").unwrap();
 
     gstreamer::init().expect("Failed to initialize GStreamer!");
     gtk::init().expect("Failed to initialize GTK!");

@@ -352,7 +352,7 @@ impl Player {
         let uri = glib::filename_to_uri(&path, None)
             .map_err(|_| Error::Other(format!("Failed to create URI from path: {}", path)))?;
 
-        self.player.set_uri(&uri);
+        self.player.set_uri(Some(&uri));
 
         if self.is_playing() {
             self.player.play();

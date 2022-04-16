@@ -3,7 +3,7 @@ use crate::widgets::{Editor, EntryRow, Section, Widget};
 use anyhow::Result;
 use gettextrs::gettext;
 use glib::clone;
-use gtk::prelude::*;
+use gtk::{builders::ListBoxBuilder, prelude::*};
 use musicus_backend::db::{generate_id, Person};
 use std::rc::Rc;
 
@@ -25,7 +25,7 @@ impl Screen<Option<Person>, Person> for PersonEditor {
         let editor = Editor::new();
         editor.set_title("Person");
 
-        let list = gtk::ListBoxBuilder::new()
+        let list = ListBoxBuilder::new()
             .selection_mode(gtk::SelectionMode::None)
             .css_classes(vec![String::from("boxed-list")])
             .build();

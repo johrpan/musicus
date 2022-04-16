@@ -1,7 +1,9 @@
 use crate::navigator::{NavigationHandle, Screen};
 use crate::widgets::Widget;
+use adw::builders::ActionRowBuilder;
 use adw::prelude::*;
 use glib::clone;
+use gtk::builders::ListBoxBuilder;
 use gtk_macros::get_widget;
 use musicus_backend::db::Recording;
 use std::cell::RefCell;
@@ -29,7 +31,7 @@ impl Screen<(Recording, Vec<usize>), Vec<usize>> for TrackEditor {
         get_widget!(builder, gtk::Button, select_button);
         get_widget!(builder, adw::Clamp, clamp);
 
-        let parts_list = gtk::ListBoxBuilder::new()
+        let parts_list = ListBoxBuilder::new()
             .selection_mode(gtk::SelectionMode::None)
             .css_classes(vec![String::from("boxed-list")])
             .build();
@@ -66,7 +68,7 @@ impl Screen<(Recording, Vec<usize>), Vec<usize>> for TrackEditor {
                 }
             }));
 
-            let row = adw::ActionRowBuilder::new()
+            let row = ActionRowBuilder::new()
                 .focusable(false)
                 .title(&part.title)
                 .activatable_widget(&check)
