@@ -11,7 +11,7 @@ pub struct WorkPartEditor {
     handle: NavigationHandle<WorkPart>,
     widget: gtk::Box,
     save_button: gtk::Button,
-    title_entry: gtk::Entry,
+    title_row: adw::EntryRow,
 }
 
 impl Screen<Option<WorkPart>, WorkPart> for WorkPartEditor {
@@ -24,17 +24,17 @@ impl Screen<Option<WorkPart>, WorkPart> for WorkPartEditor {
         get_widget!(builder, gtk::Box, widget);
         get_widget!(builder, gtk::Button, back_button);
         get_widget!(builder, gtk::Button, save_button);
-        get_widget!(builder, gtk::Entry, title_entry);
+        get_widget!(builder, adw::EntryRow, title_row);
 
         if let Some(section) = section {
-            title_entry.set_text(&section.title);
+            title_row.set_text(&section.title);
         }
 
         let this = Rc::new(Self {
             handle,
             widget,
             save_button,
-            title_entry,
+            title_row,
         });
 
         // Connect signals and callbacks
@@ -46,13 +46,13 @@ impl Screen<Option<WorkPart>, WorkPart> for WorkPartEditor {
         this.save_button
             .connect_clicked(clone!(@weak this =>  move |_| {
                 let section = WorkPart {
-                    title: this.title_entry.text().to_string(),
+                    title: this.title_row.text().to_string(),
                 };
 
                 this.handle.pop(Some(section));
             }));
 
-        this.title_entry
+        this.title_row
             .connect_changed(clone!(@weak this =>  move |_| this.validate()));
 
         this.validate();
@@ -65,7 +65,7 @@ impl WorkPartEditor {
     /// Validate inputs and enable/disable saving.
     fn validate(&self) {
         self.save_button
-            .set_sensitive(!self.title_entry.text().is_empty());
+            .set_sensitive(!self.title_row.text().is_empty());
     }
 }
 

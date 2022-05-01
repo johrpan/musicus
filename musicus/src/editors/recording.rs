@@ -19,7 +19,7 @@ pub struct RecordingEditor {
     save_button: gtk::Button,
     info_bar: gtk::InfoBar,
     work_row: adw::ActionRow,
-    comment_entry: gtk::Entry,
+    comment_row: adw::EntryRow,
     performance_list: Rc<List>,
     id: String,
     work: RefCell<Option<Work>>,
@@ -39,7 +39,7 @@ impl Screen<Option<Recording>, Recording> for RecordingEditor {
         get_widget!(builder, gtk::InfoBar, info_bar);
         get_widget!(builder, adw::ActionRow, work_row);
         get_widget!(builder, gtk::Button, work_button);
-        get_widget!(builder, gtk::Entry, comment_entry);
+        get_widget!(builder, adw::EntryRow, comment_row);
         get_widget!(builder, gtk::Frame, performance_frame);
         get_widget!(builder, gtk::Button, add_performer_button);
 
@@ -48,7 +48,7 @@ impl Screen<Option<Recording>, Recording> for RecordingEditor {
 
         let (id, work, performances) = match recording {
             Some(recording) => {
-                comment_entry.set_text(&recording.comment);
+                comment_row.set_text(&recording.comment);
                 (recording.id, Some(recording.work), recording.performances)
             }
             None => (generate_id(), None, Vec::new()),
@@ -60,7 +60,7 @@ impl Screen<Option<Recording>, Recording> for RecordingEditor {
             save_button,
             info_bar,
             work_row,
-            comment_entry,
+            comment_row,
             performance_list,
             id,
             work: RefCell::new(work),
@@ -184,7 +184,7 @@ impl RecordingEditor {
                 .borrow()
                 .clone()
                 .expect("Tried to create recording without work!"),
-            self.comment_entry.text().to_string(),
+            self.comment_row.text().to_string(),
             self.performances.borrow().clone(),
         );
 

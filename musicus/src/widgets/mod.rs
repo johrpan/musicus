@@ -6,9 +6,6 @@ pub use button_row::*;
 pub mod editor;
 pub use editor::*;
 
-pub mod entry_row;
-pub use entry_row::*;
-
 pub mod list;
 pub use list::*;
 

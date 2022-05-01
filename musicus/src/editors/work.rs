@@ -17,7 +17,7 @@ pub struct WorkEditor {
     handle: NavigationHandle<Work>,
     widget: gtk::Stack,
     save_button: gtk::Button,
-    title_entry: gtk::Entry,
+    title_row: adw::EntryRow,
     info_bar: gtk::InfoBar,
     composer_row: adw::ActionRow,
     instrument_list: Rc<List>,
@@ -39,7 +39,7 @@ impl Screen<Option<Work>, Work> for WorkEditor {
         get_widget!(builder, gtk::Button, back_button);
         get_widget!(builder, gtk::Button, save_button);
         get_widget!(builder, gtk::InfoBar, info_bar);
-        get_widget!(builder, gtk::Entry, title_entry);
+        get_widget!(builder, adw::EntryRow, title_row);
         get_widget!(builder, gtk::Button, composer_button);
         get_widget!(builder, adw::ActionRow, composer_row);
         get_widget!(builder, gtk::Frame, instrument_frame);
@@ -56,7 +56,7 @@ impl Screen<Option<Work>, Work> for WorkEditor {
 
         let (id, composer, instruments, structure) = match work {
             Some(work) => {
-                title_entry.set_text(&work.title);
+                title_row.set_text(&work.title);
                 (work.id, Some(work.composer), work.instruments, work.parts)
             }
             None => (generate_id(), None, Vec::new(), Vec::new()),
@@ -68,7 +68,7 @@ impl Screen<Option<Work>, Work> for WorkEditor {
             save_button,
             id,
             info_bar,
-            title_entry,
+            title_row,
             composer_row,
             instrument_list,
             part_list,
@@ -105,7 +105,7 @@ impl Screen<Option<Work>, Work> for WorkEditor {
             });
         }));
 
-        this.title_entry
+        this.title_row
             .connect_changed(clone!(@weak this =>  move |_| this.validate()));
 
         this.instrument_list.set_make_widget_cb(
@@ -245,14 +245,14 @@ impl WorkEditor {
     /// Validate inputs and enable/disable saving.
     fn validate(&self) {
         self.save_button
-            .set_sensitive(!self.title_entry.text().is_empty() && self.composer.borrow().is_some());
+            .set_sensitive(!self.title_row.text().is_empty() && self.composer.borrow().is_some());
     }
 
     /// Save the work.
     fn save(self: &Rc<Self>) -> Result<Work> {
         let work = Work::new(
             self.id.clone(),
-            self.title_entry.text().to_string(),
+            self.title_row.text().to_string(),
             self.composer
                 .borrow()
                 .clone()

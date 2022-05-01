@@ -1,8 +1,8 @@
 use crate::navigator::{NavigationHandle, Screen};
-use crate::widgets::{Editor, EntryRow, Section, Widget};
+use crate::widgets::{Editor, Section, Widget};
 use anyhow::Result;
 use gettextrs::gettext;
-use gtk::{glib::clone, prelude::*, builders::ListBoxBuilder};
+use gtk::{builders::ListBoxBuilder, glib::clone, prelude::*};
 use musicus_backend::db::{generate_id, Instrument};
 use std::rc::Rc;
 
@@ -14,7 +14,7 @@ pub struct InstrumentEditor {
     id: String,
 
     editor: Editor,
-    name: EntryRow,
+    name: adw::EntryRow,
 }
 
 impl Screen<Option<Instrument>, Instrument> for InstrumentEditor {
@@ -28,8 +28,8 @@ impl Screen<Option<Instrument>, Instrument> for InstrumentEditor {
             .css_classes(vec![String::from("boxed-list")])
             .build();
 
-        let name = EntryRow::new(&gettext("Name"));
-        list.append(&name.widget);
+        let name = adw::EntryRow::builder().title(&gettext("Name")).build();
+        list.append(&name);
 
         let section = Section::new(&gettext("General"), &list);
         editor.add_content(&section.widget);
@@ -68,7 +68,6 @@ impl Screen<Option<Instrument>, Instrument> for InstrumentEditor {
         }));
 
         this.name
-            .entry
             .connect_changed(clone!(@weak this => move |_| this.validate()));
 
         this.validate();
@@ -80,14 +79,14 @@ impl Screen<Option<Instrument>, Instrument> for InstrumentEditor {
 impl InstrumentEditor {
     /// Validate inputs and enable/disable saving.
     fn validate(&self) {
-        self.editor.set_may_save(!self.name.get_text().is_empty());
+        self.editor.set_may_save(!self.name.text().is_empty());
     }
 
     /// Save the instrument.
     fn save(&self) -> Result<Instrument> {
-        let name = self.name.get_text();
+        let name = self.name.text();
 
-        let instrument = Instrument::new(self.id.clone(), name);
+        let instrument = Instrument::new(self.id.clone(), name.to_string());
 
         self.handle
             .backend

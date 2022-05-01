@@ -1,5 +1,5 @@
 use crate::navigator::{NavigationHandle, Screen};
-use crate::widgets::{Editor, EntryRow, Section, Widget};
+use crate::widgets::{Editor, Section, Widget};
 use anyhow::Result;
 use gettextrs::gettext;
 use gtk::{builders::ListBoxBuilder, glib::clone, prelude::*};
@@ -14,7 +14,7 @@ pub struct EnsembleEditor {
     id: String,
 
     editor: Editor,
-    name: EntryRow,
+    name: adw::EntryRow,
 }
 
 impl Screen<Option<Ensemble>, Ensemble> for EnsembleEditor {
@@ -28,8 +28,8 @@ impl Screen<Option<Ensemble>, Ensemble> for EnsembleEditor {
             .css_classes(vec![String::from("boxed-list")])
             .build();
 
-        let name = EntryRow::new(&gettext("Name"));
-        list.append(&name.widget);
+        let name = adw::EntryRow::builder().title(&gettext("Name")).build();
+        list.append(&name);
 
         let section = Section::new(&gettext("General"), &list);
         editor.add_content(&section.widget);
@@ -68,7 +68,6 @@ impl Screen<Option<Ensemble>, Ensemble> for EnsembleEditor {
         }));
 
         this.name
-            .entry
             .connect_changed(clone!(@weak this => move |_| this.validate()));
 
         this.validate();
@@ -80,14 +79,14 @@ impl Screen<Option<Ensemble>, Ensemble> for EnsembleEditor {
 impl EnsembleEditor {
     /// Validate inputs and enable/disable saving.
     fn validate(&self) {
-        self.editor.set_may_save(!self.name.get_text().is_empty());
+        self.editor.set_may_save(!self.name.text().is_empty());
     }
 
     /// Save the ensemble.
     fn save(&self) -> Result<Ensemble> {
-        let name = self.name.get_text();
+        let name = self.name.text();
 
-        let ensemble = Ensemble::new(self.id.clone(), name);
+        let ensemble = Ensemble::new(self.id.clone(), name.to_string());
 
         self.handle.backend.db().update_ensemble(ensemble.clone())?;
         self.handle.backend.library_changed();

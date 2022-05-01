@@ -1,5 +1,5 @@
 use crate::navigator::{NavigationHandle, Screen};
-use crate::widgets::{Editor, EntryRow, Section, Widget};
+use crate::widgets::{Editor, Section, Widget};
 use anyhow::Result;
 use gettextrs::gettext;
 use glib::clone;
@@ -15,8 +15,8 @@ pub struct PersonEditor {
     id: String,
 
     editor: Editor,
-    first_name: EntryRow,
-    last_name: EntryRow,
+    first_name: adw::EntryRow,
+    last_name: adw::EntryRow,
 }
 
 impl Screen<Option<Person>, Person> for PersonEditor {
@@ -30,11 +30,16 @@ impl Screen<Option<Person>, Person> for PersonEditor {
             .css_classes(vec![String::from("boxed-list")])
             .build();
 
-        let first_name = EntryRow::new(&gettext("First name"));
-        let last_name = EntryRow::new(&gettext("Last name"));
+        let first_name = adw::EntryRow::builder()
+            .title(&gettext("First name"))
+            .build();
 
-        list.append(&first_name.widget);
-        list.append(&last_name.widget);
+        let last_name = adw::EntryRow::builder()
+            .title(&gettext("Last name"))
+            .build();
+
+        list.append(&first_name);
+        list.append(&last_name);
 
         let section = Section::new(&gettext("General"), &list);
         editor.add_content(&section.widget);
@@ -76,11 +81,9 @@ impl Screen<Option<Person>, Person> for PersonEditor {
         }));
 
         this.first_name
-            .entry
             .connect_changed(clone!(@weak this =>  move |_| this.validate()));
 
         this.last_name
-            .entry
             .connect_changed(clone!(@weak this =>  move |_| this.validate()));
 
         this.validate();
@@ -92,17 +95,20 @@ impl Screen<Option<Person>, Person> for PersonEditor {
 impl PersonEditor {
     /// Validate inputs and enable/disable saving.
     fn validate(&self) {
-        self.editor.set_may_save(
-            !self.first_name.get_text().is_empty() && !self.last_name.get_text().is_empty(),
-        );
+        self.editor
+            .set_may_save(!self.first_name.text().is_empty() && !self.last_name.text().is_empty());
     }
 
     /// Save the person.
     fn save(self: &Rc<Self>) -> Result<Person> {
-        let first_name = self.first_name.get_text();
-        let last_name = self.last_name.get_text();
+        let first_name = self.first_name.text();
+        let last_name = self.last_name.text();
 
-        let person = Person::new(self.id.clone(), first_name, last_name);
+        let person = Person::new(
+            self.id.clone(),
+            first_name.to_string(),
+            last_name.to_string(),
+        );
 
         self.handle.backend.db().update_person(person.clone())?;
         self.handle.backend.library_changed();

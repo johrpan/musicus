@@ -18,7 +18,7 @@ pub struct MediumEditor {
     session: Arc<ImportSession>,
     widget: gtk::Stack,
     done_button: gtk::Button,
-    name_entry: gtk::Entry,
+    name_row: adw::EntryRow,
     status_page: adw::StatusPage,
     track_set_list: Rc<List>,
     track_sets: RefCell<Vec<TrackSetData>>,
@@ -37,7 +37,7 @@ impl Screen<(Arc<ImportSession>, Option<Medium>), Medium> for MediumEditor {
         get_widget!(builder, gtk::Stack, widget);
         get_widget!(builder, gtk::Button, back_button);
         get_widget!(builder, gtk::Button, done_button);
-        get_widget!(builder, gtk::Entry, name_entry);
+        get_widget!(builder, adw::EntryRow, name_row);
         get_widget!(builder, gtk::Button, add_button);
         get_widget!(builder, gtk::Frame, frame);
         get_widget!(builder, adw::StatusPage, status_page);
@@ -52,7 +52,7 @@ impl Screen<(Arc<ImportSession>, Option<Medium>), Medium> for MediumEditor {
             session,
             widget,
             done_button,
-            name_entry,
+            name_row,
             status_page,
             track_set_list: list,
             track_sets: RefCell::new(Vec::new()),
@@ -78,7 +78,7 @@ impl Screen<(Arc<ImportSession>, Option<Medium>), Medium> for MediumEditor {
                 });
             }));
 
-        this.name_entry
+        this.name_row
             .connect_changed(clone!(@weak this =>  move |_| this.validate()));
 
         add_button.connect_clicked(clone!(@weak this =>  move |_| {
@@ -137,7 +137,7 @@ impl Screen<(Arc<ImportSession>, Option<Medium>), Medium> for MediumEditor {
         // Initialize, if necessary.
 
         if let Some(medium) = medium {
-            this.name_entry.set_text(&medium.name);
+            this.name_row.set_text(&medium.name);
 
             let mut track_sets: Vec<TrackSetData> = Vec::new();
 
@@ -175,7 +175,7 @@ impl MediumEditor {
     /// Validate inputs and enable/disable saving.
     fn validate(&self) {
         self.done_button.set_sensitive(
-            !self.name_entry.text().is_empty() && !self.track_sets.borrow().is_empty(),
+            !self.name_row.text().is_empty() && !self.track_sets.borrow().is_empty(),
         );
     }
 
@@ -200,7 +200,7 @@ impl MediumEditor {
 
         let medium = Medium::new(
             generate_id(),
-            self.name_entry.text().to_string(),
+            self.name_row.text().to_string(),
             Some(self.session.source_id().to_owned()),
             tracks,
         );
