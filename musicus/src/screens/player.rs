@@ -2,6 +2,7 @@ use crate::navigator::{NavigationHandle, Screen};
 use crate::widgets::{List, TrackRow, Widget};
 use adw::prelude::*;
 use glib::clone;
+use gtk::gdk;
 use gtk_macros::get_widget;
 use musicus_backend::db::Track;
 use std::cell::{Cell, RefCell};

@@ -5,14 +5,13 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.57"
-adw = { package = "libadwaita", version = "0.1.1" }
+adw = { git = "https://gitlab.gnome.org/World/Rust/libadwaita-rs.git", package = "libadwaita", features = ["v1_2"] }
 futures-channel = "0.3.21"
-gdk = { package = "gdk4", version = "0.4.7" }
 gettext-rs = { version = "0.7.0", features = ["gettext-system"] }
-gio = "0.15.11"
-glib = "0.15.11"
+gio = {git = "https://github.com/gtk-rs/gtk-rs-core"}
+glib = {git = "https://github.com/gtk-rs/gtk-rs-core"}
 gstreamer = "0.18.8"
-gtk = { package = "gtk4", version = "0.4.7" }
+gtk = { git = "https://github.com/gtk-rs/gtk4-rs.git", package = "gtk4" }
 gtk-macros = "0.3.0"
 log = "0.4.16"
 musicus_backend = { version = "0.1.0", path = "../backend" }

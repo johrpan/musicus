@@ -1,7 +1,6 @@
 use super::indexed_list_model::{IndexedListModel, ItemIndex};
 use glib::clone;
-use gtk::builders::ListBoxBuilder;
-use gtk::prelude::*;
+use gtk::{builders::ListBoxBuilder, gdk, prelude::*};
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
