@@ -4,16 +4,16 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-fragile = "1.0.0"
-gio = "0.15.10"
-glib = "0.15.10"
-gstreamer = "0.18.7"
+fragile = "1.2.0"
+gio = "0.15.11"
+glib = "0.15.11"
+gstreamer = "0.18.8"
 gstreamer-player = "0.18.0"
-log = { version = "0.4.14", features = ["std"] }
+log = { version = "0.4.16", features = ["std"] }
 musicus_database = { version = "0.1.0", path = "../database" }
 musicus_import = { version = "0.1.0", path = "../import" }
-thiserror = "1.0.23"
-tokio = { version = "1.4.0", features = ["sync"] }
+thiserror = "1.0.31"
+tokio = { version = "1.18.0", features = ["sync"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 mpris-player = "0.6.1"
