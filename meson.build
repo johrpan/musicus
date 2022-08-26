@@ -15,8 +15,9 @@ dependency('sqlite3', version: '>= 3.20')
 
 i18n = import('i18n')
 
-subdir('crates/musicus/data')
-subdir('crates/musicus/po')
+subdir('data')
+subdir('po')
+
 subdir('crates/musicus/res')
 subdir('crates/musicus/src')
 

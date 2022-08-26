@@ -12,7 +12,6 @@ install_data(
   install_dir: join_paths(datadir, symbolic_dir),
 )
 
-
 desktop_file = i18n.merge_file(
   input: 'de.johrpan.musicus.desktop.in',
   output: 'de.johrpan.musicus.desktop',
