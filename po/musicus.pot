@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-04-08 19:52+0200\n"
+"POT-Creation-Date: 2022-08-26 14:49+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,415 +17,448 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: ../res/ui/medium_preview.ui:19
-msgid "Preview"
-msgstr ""
-
-#: ../res/ui/medium_preview.ui:50
-msgid "Import"
-msgstr ""
-
-#: ../res/ui/medium_preview.ui:117 ../res/ui/source_selector.ui:69
-msgid "Loading"
-msgstr ""
-
-#: ../res/ui/medium_preview.ui:149 ../res/ui/source_selector.ui:101
-#: ../res/ui/medium_editor.ui:151 ../res/ui/medium_editor.ui:188
-#: ../res/ui/editor.ui:68
-msgid "Error"
-msgstr ""
-
-#: ../res/ui/medium_preview.ui:161 ../res/ui/source_selector.ui:113
-#: ../res/ui/medium_editor.ui:163 ../res/ui/editor.ui:80
-msgid "Try again"
-msgstr ""
-
-#: ../res/ui/performance_editor.ui:13
-msgid "Performance"
-msgstr ""
-
-#: ../res/ui/performance_editor.ui:52
-msgid "Select a person"
-msgstr ""
-
-#: ../res/ui/performance_editor.ui:56 ../res/ui/performance_editor.ui:69
-#: ../res/ui/performance_editor.ui:89 ../res/ui/track_set_editor.ui:67
-#: ../res/ui/import_screen.ui:160 ../res/ui/preferences.ui:23
-#: ../res/ui/recording_editor.ui:81 ../res/ui/work_editor.ui:81
-#: ../src/import/source_selector.rs:51 ../src/screens/welcome.rs:56
-#: ../src/preferences.rs:44
-msgid "Select"
-msgstr ""
-
-#: ../res/ui/performance_editor.ui:65
-msgid "Select an ensemble"
-msgstr ""
-
-#: ../res/ui/performance_editor.ui:78
-msgid "Select a role"
-msgstr ""
-
-#: ../res/ui/player_bar.ui:65 ../res/ui/player_screen.ui:97
-#: ../res/ui/work_part_editor.ui:56 ../res/ui/work_editor.ui:90
-msgid "Title"
-msgstr ""
-
-#: ../res/ui/player_bar.ui:75 ../res/ui/player_screen.ui:107
-msgid "Subtitle"
-msgstr ""
-
-#: ../res/ui/player_bar.ui:86 ../res/ui/player_bar.ui:96
-#: ../res/ui/player_screen.ui:131 ../res/ui/player_screen.ui:142
-msgid "0:00"
-msgstr ""
-
-#: ../res/ui/player_bar.ui:91
-msgid "/"
-msgstr ""
-
-#: ../res/ui/player_screen.ui:19
-msgid "Player"
-msgstr ""
-
-#: ../res/ui/source_selector.ui:31 ../res/ui/track_set_editor.ui:13
-#: ../res/ui/import_screen.ui:13 ../res/ui/medium_editor.ui:19
-msgid "Import music"
-msgstr ""
-
-#: ../res/ui/source_selector.ui:32
-msgid "Select the source which contains the new audio files below."
-msgstr ""
-
-#: ../res/ui/source_selector.ui:41 ../src/import/source_selector.rs:46
-#: ../src/screens/welcome.rs:28
-msgid "Select folder"
-msgstr ""
-
-#: ../res/ui/source_selector.ui:46
-msgid "Copy audio CD"
-msgstr ""
-
-#: ../res/ui/track_editor.ui:13
-msgid "Track"
-msgstr ""
-
-#: ../res/ui/track_selector.ui:13
-msgid "Select tracks"
-msgstr ""
-
-#: ../res/ui/track_set_editor.ui:51 ../res/ui/recording_editor.ui:18
-#: ../res/ui/recording_editor.ui:154
-msgid "Recording"
-msgstr ""
-
-#: ../res/ui/track_set_editor.ui:63
-msgid "Select a recording"
-msgstr ""
-
-#: ../res/ui/track_set_editor.ui:88 ../src/screens/recording.rs:30
-msgid "Tracks"
-msgstr ""
-
-#: ../res/ui/work_part_editor.ui:13
-msgid "Work part"
-msgstr ""
-
-#: ../res/ui/import_screen.ui:42
-msgid "Matching metadata"
-msgstr ""
-
-#: ../res/ui/import_screen.ui:64
-msgid "Loading…"
-msgstr ""
-
-#: ../res/ui/import_screen.ui:88
-msgid "Error while searching for matching metadata"
-msgstr ""
-
-#: ../res/ui/import_screen.ui:114
-msgid "No matching metadata found"
-msgstr ""
-
-#: ../res/ui/import_screen.ui:144
-msgid "Manually add metadata"
-msgstr ""
-
-#: ../res/ui/import_screen.ui:156
-msgid "Select existing medium"
-msgstr ""
-
-#: ../res/ui/import_screen.ui:169
-msgid "Add a new medium"
-msgstr ""
-
-#: ../res/ui/import_screen.ui:173
-msgid "Add"
-msgstr ""
-
-#: ../res/ui/medium_editor.ui:61
-msgid "Medium"
-msgstr ""
-
-#: ../res/ui/medium_editor.ui:73
-msgid "Name of the medium"
-msgstr ""
-
-#: ../res/ui/medium_editor.ui:98
-msgid "Recordings"
-msgstr ""
-
-#: ../res/ui/medium_editor.ui:200 ../res/ui/editor.ui:22
-#: ../src/import/source_selector.rs:50 ../src/screens/welcome.rs:55
-#: ../src/preferences.rs:43
-msgid "Cancel"
-msgstr ""
-
-#: ../res/ui/preferences.ui:11 ../src/editors/ensemble.rs:35
-#: ../src/editors/instrument.rs:35 ../src/editors/person.rs:39
-msgid "General"
-msgstr ""
-
-#: ../res/ui/preferences.ui:14
-msgid "Music library"
-msgstr ""
-
-#: ../res/ui/preferences.ui:18
-msgid "Music library folder"
-msgstr ""
-
-#: ../res/ui/preferences.ui:20
-msgid "None selected"
-msgstr ""
-
-#: ../res/ui/preferences.ui:34
-msgid "Playlist"
-msgstr ""
-
-#: ../res/ui/preferences.ui:38
-msgid "Keep playing"
-msgstr ""
-
-#: ../res/ui/preferences.ui:40
-msgid "Whether to keep playing random tracks after the playlist ends."
-msgstr ""
-
-#: ../res/ui/preferences.ui:51
-msgid "Choose full recordings"
-msgstr ""
-
-#: ../res/ui/preferences.ui:53
-msgid ""
-"Whether to choose full recordings instead of single tracks for random "
-"playback."
-msgstr ""
-
-#: ../res/ui/recording_editor.ui:65 ../res/ui/work_editor.ui:65
-msgid "Overview"
-msgstr ""
-
-#: ../res/ui/recording_editor.ui:77
-msgid "Select a work"
-msgstr ""
-
-#: ../res/ui/recording_editor.ui:90
-msgid "Comment"
-msgstr ""
-
-#: ../res/ui/recording_editor.ui:115
-msgid "Performers"
-msgstr ""
-
-#: ../res/ui/selector.ui:60
-msgid "Search …"
-msgstr ""
-
-#: ../res/ui/work_editor.ui:18 ../res/ui/work_editor.ui:181
-#: ../src/editors/recording.rs:173
-msgid "Work"
-msgstr ""
-
-#: ../res/ui/work_editor.ui:77
-msgid "Select a composer"
-msgstr ""
-
-#: ../res/ui/work_editor.ui:115
-msgid "Instruments"
-msgstr ""
-
-#: ../res/ui/work_editor.ui:142
-msgid "Structure"
-msgstr ""
-
-#: ../res/ui/editor.ui:27
-msgid "Save"
-msgstr ""
-
-#: ../res/ui/main_screen.ui:17 ../src/screens/welcome.rs:33
-msgid "Welcome to Musicus!"
-msgstr ""
-
-#: ../res/ui/main_screen.ui:18
-msgid ""
-"Get startet by selecting something from the sidebar or adding new things to "
-"your library using the button in the top left corner."
-msgstr ""
-
-#: ../res/ui/main_screen.ui:27
-msgid "Play something"
-msgstr ""
-
-#: ../res/ui/main_screen.ui:88
-msgid "Search persons and ensembles …"
-msgstr ""
-
-#: ../res/ui/main_screen.ui:150
-msgid "Preferences"
-msgstr ""
-
-#: ../res/ui/main_screen.ui:154
-msgid "About Musicus"
-msgstr ""
-
-#: ../src/editors/performance.rs:43
-msgid "Performer"
-msgstr ""
-
-#: ../src/editors/performance.rs:45
-msgid "Select either a person or an ensemble as a performer."
-msgstr ""
-
-#: ../src/editors/performance.rs:64
-msgid "Role"
-msgstr ""
-
-#: ../src/editors/performance.rs:66
-msgid "Optionally, choose a role to specify what the performer does."
-msgstr ""
-
-#: ../src/editors/ensemble.rs:32 ../src/editors/instrument.rs:32
+#: ../crates/musicus/src/editors/ensemble.rs:31
+#: ../crates/musicus/src/editors/instrument.rs:31
 msgid "Name"
 msgstr ""
 
-#: ../src/editors/ensemble.rs:66
+#: ../crates/musicus/src/editors/ensemble.rs:34
+#: ../crates/musicus/src/editors/instrument.rs:34
+#: ../crates/musicus/src/editors/person.rs:44
+#: ../crates/musicus/res/ui/preferences.ui:11
+msgid "General"
+msgstr ""
+
+#: ../crates/musicus/src/editors/ensemble.rs:65
 msgid "Failed to save ensemble!"
 msgstr ""
 
-#: ../src/editors/instrument.rs:66
+#: ../crates/musicus/src/editors/instrument.rs:65
 msgid "Failed to save instrument!"
 msgstr ""
 
-#: ../src/editors/person.rs:33
+#: ../crates/musicus/src/editors/performance.rs:44
+msgid "Performer"
+msgstr ""
+
+#: ../crates/musicus/src/editors/performance.rs:46
+msgid "Select either a person or an ensemble as a performer."
+msgstr ""
+
+#: ../crates/musicus/src/editors/performance.rs:65
+msgid "Role"
+msgstr ""
+
+#: ../crates/musicus/src/editors/performance.rs:67
+msgid "Optionally, choose a role to specify what the performer does."
+msgstr ""
+
+#: ../crates/musicus/src/editors/person.rs:34
 msgid "First name"
 msgstr ""
 
-#: ../src/editors/person.rs:34
+#: ../crates/musicus/src/editors/person.rs:38
 msgid "Last name"
 msgstr ""
 
-#: ../src/editors/person.rs:73
+#: ../crates/musicus/src/editors/person.rs:78
 msgid "Failed to save person!"
 msgstr ""
 
-#: ../src/editors/work.rs:238
+#: ../crates/musicus/src/editors/recording.rs:174
+#: ../crates/musicus/res/ui/work_editor.ui:18
+#: ../crates/musicus/res/ui/work_editor.ui:173
+msgid "Work"
+msgstr ""
+
+#: ../crates/musicus/src/editors/work.rs:240
 msgid "Composer"
 msgstr ""
 
-#: ../src/import/track_set_editor.rs:133 ../src/import/medium_preview.rs:170
-#: ../src/screens/medium.rs:72 ../src/screens/recording.rs:82
+#: ../crates/musicus/src/import/medium_preview.rs:172
+#: ../crates/musicus/src/import/track_set_editor.rs:134
+#: ../crates/musicus/src/screens/medium.rs:73
+#: ../crates/musicus/src/screens/recording.rs:83
 msgid "Unknown"
 msgstr ""
 
-#: ../src/screens/medium.rs:42
-msgid "Edit medium"
+#: ../crates/musicus/src/import/source_selector.rs:46
+#: ../crates/musicus/src/screens/welcome.rs:30
+#: ../crates/musicus/res/ui/source_selector.ui:41
+msgid "Select folder"
 msgstr ""
 
-#: ../src/screens/medium.rs:49
-msgid "Delete medium"
+#: ../crates/musicus/src/import/source_selector.rs:50
+#: ../crates/musicus/src/preferences.rs:43
+#: ../crates/musicus/src/screens/welcome.rs:57
+#: ../crates/musicus/res/ui/editor.ui:22
+#: ../crates/musicus/res/ui/medium_editor.ui:192
+msgid "Cancel"
 msgstr ""
 
-#: ../src/screens/ensemble.rs:49
+#: ../crates/musicus/src/import/source_selector.rs:51
+#: ../crates/musicus/src/preferences.rs:44
+#: ../crates/musicus/src/screens/welcome.rs:58
+#: ../crates/musicus/res/ui/import_screen.ui:160
+#: ../crates/musicus/res/ui/performance_editor.ui:56
+#: ../crates/musicus/res/ui/performance_editor.ui:69
+#: ../crates/musicus/res/ui/performance_editor.ui:89
+#: ../crates/musicus/res/ui/preferences.ui:23
+#: ../crates/musicus/res/ui/recording_editor.ui:81
+#: ../crates/musicus/res/ui/track_set_editor.ui:67
+#: ../crates/musicus/res/ui/work_editor.ui:81
+msgid "Select"
+msgstr ""
+
+#: ../crates/musicus/src/preferences.rs:39
+#: ../crates/musicus/src/screens/welcome.rs:53
+msgid "Select music library folder"
+msgstr ""
+
+#: ../crates/musicus/src/screens/ensemble.rs:50
 msgid "Edit ensemble"
 msgstr ""
 
-#: ../src/screens/ensemble.rs:59
+#: ../crates/musicus/src/screens/ensemble.rs:60
 msgid "Delete ensemble"
 msgstr ""
 
-#: ../src/screens/person.rs:54
+#: ../crates/musicus/src/screens/main.rs:202
+msgid "Musicus"
+msgstr ""
+
+#: ../crates/musicus/src/screens/main.rs:204
+msgid "The classical music player and organizer."
+msgstr ""
+
+#: ../crates/musicus/src/screens/main.rs:206
+msgid "Further information and source code"
+msgstr ""
+
+#: ../crates/musicus/src/screens/medium.rs:43
+msgid "Edit medium"
+msgstr ""
+
+#: ../crates/musicus/src/screens/medium.rs:50
+msgid "Delete medium"
+msgstr ""
+
+#: ../crates/musicus/src/screens/person.rs:55
 msgid "Edit person"
 msgstr ""
 
-#: ../src/screens/person.rs:64
+#: ../crates/musicus/src/screens/person.rs:65
 msgid "Delete person"
 msgstr ""
 
-#: ../src/screens/recording.rs:53
+#: ../crates/musicus/src/screens/recording.rs:31
+#: ../crates/musicus/res/ui/track_set_editor.ui:88
+msgid "Tracks"
+msgstr ""
+
+#: ../crates/musicus/src/screens/recording.rs:54
 msgid "Edit recording"
 msgstr ""
 
-#: ../src/screens/recording.rs:63
+#: ../crates/musicus/src/screens/recording.rs:64
 msgid "Delete recording"
 msgstr ""
 
-#: ../src/screens/welcome.rs:35
+#: ../crates/musicus/src/screens/welcome.rs:35
+#: ../crates/musicus/res/ui/main_screen.ui:17
+msgid "Welcome to Musicus!"
+msgstr ""
+
+#: ../crates/musicus/src/screens/welcome.rs:37
 msgid ""
 "Get startet by selecting the folder containing your music                 "
 "files! Musicus will create a new database there or open one that already "
 "exists."
 msgstr ""
 
-#: ../src/screens/welcome.rs:51 ../src/preferences.rs:39
-msgid "Select music library folder"
-msgstr ""
-
-#: ../src/screens/work.rs:45
+#: ../crates/musicus/src/screens/work.rs:46
 msgid "Edit work"
 msgstr ""
 
-#: ../src/screens/work.rs:55
+#: ../crates/musicus/src/screens/work.rs:56
 msgid "Delete work"
 msgstr ""
 
-#: ../src/screens/main.rs:200
-msgid "Musicus"
-msgstr ""
-
-#: ../src/screens/main.rs:202
-msgid "The classical music player and organizer."
-msgstr ""
-
-#: ../src/screens/main.rs:204
-msgid "Further information and source code"
-msgstr ""
-
-#: ../src/selectors/ensemble.rs:23
+#: ../crates/musicus/src/selectors/ensemble.rs:25
 msgid "Select ensemble"
 msgstr ""
 
-#: ../src/selectors/instrument.rs:23
+#: ../crates/musicus/src/selectors/instrument.rs:25
 msgid "Select instrument"
 msgstr ""
 
-#: ../src/selectors/medium.rs:21
+#: ../crates/musicus/src/selectors/medium.rs:23
 msgid "Select performer"
 msgstr ""
 
-#: ../src/selectors/medium.rs:90
+#: ../crates/musicus/src/selectors/medium.rs:92
 msgid "Select medium"
 msgstr ""
 
-#: ../src/selectors/person.rs:23
+#: ../crates/musicus/src/selectors/person.rs:25
 msgid "Select person"
 msgstr ""
 
-#: ../src/selectors/recording.rs:22 ../src/selectors/work.rs:22
+#: ../crates/musicus/src/selectors/recording.rs:24
+#: ../crates/musicus/src/selectors/work.rs:24
 msgid "Select composer"
 msgstr ""
 
-#: ../src/selectors/recording.rs:105 ../src/selectors/work.rs:95
+#: ../crates/musicus/src/selectors/recording.rs:107
+#: ../crates/musicus/src/selectors/work.rs:97
 msgid "Select work"
 msgstr ""
 
-#: ../src/selectors/recording.rs:168
+#: ../crates/musicus/src/selectors/recording.rs:170
 msgid "Select recording"
+msgstr ""
+
+#: ../crates/musicus/res/ui/editor.ui:27
+msgid "Save"
+msgstr ""
+
+#: ../crates/musicus/res/ui/editor.ui:68
+#: ../crates/musicus/res/ui/medium_editor.ui:143
+#: ../crates/musicus/res/ui/medium_editor.ui:180
+#: ../crates/musicus/res/ui/medium_preview.ui:149
+#: ../crates/musicus/res/ui/source_selector.ui:101
+msgid "Error"
+msgstr ""
+
+#: ../crates/musicus/res/ui/editor.ui:80
+#: ../crates/musicus/res/ui/medium_editor.ui:155
+#: ../crates/musicus/res/ui/medium_preview.ui:161
+#: ../crates/musicus/res/ui/source_selector.ui:113
+msgid "Try again"
+msgstr ""
+
+#: ../crates/musicus/res/ui/import_screen.ui:13
+#: ../crates/musicus/res/ui/medium_editor.ui:19
+#: ../crates/musicus/res/ui/source_selector.ui:31
+#: ../crates/musicus/res/ui/track_set_editor.ui:13
+msgid "Import music"
+msgstr ""
+
+#: ../crates/musicus/res/ui/import_screen.ui:42
+msgid "Matching metadata"
+msgstr ""
+
+#: ../crates/musicus/res/ui/import_screen.ui:64
+msgid "Loading…"
+msgstr ""
+
+#: ../crates/musicus/res/ui/import_screen.ui:88
+msgid "Error while searching for matching metadata"
+msgstr ""
+
+#: ../crates/musicus/res/ui/import_screen.ui:114
+msgid "No matching metadata found"
+msgstr ""
+
+#: ../crates/musicus/res/ui/import_screen.ui:144
+msgid "Manually add metadata"
+msgstr ""
+
+#: ../crates/musicus/res/ui/import_screen.ui:156
+msgid "Select existing medium"
+msgstr ""
+
+#: ../crates/musicus/res/ui/import_screen.ui:169
+msgid "Add a new medium"
+msgstr ""
+
+#: ../crates/musicus/res/ui/import_screen.ui:173
+msgid "Add"
+msgstr ""
+
+#: ../crates/musicus/res/ui/main_screen.ui:18
+msgid ""
+"Get startet by selecting something from the sidebar or adding new things to "
+"your library using the button in the top left corner."
+msgstr ""
+
+#: ../crates/musicus/res/ui/main_screen.ui:27
+msgid "Play something"
+msgstr ""
+
+#: ../crates/musicus/res/ui/main_screen.ui:88
+msgid "Search persons and ensembles …"
+msgstr ""
+
+#: ../crates/musicus/res/ui/main_screen.ui:150
+msgid "Preferences"
+msgstr ""
+
+#: ../crates/musicus/res/ui/main_screen.ui:154
+msgid "About Musicus"
+msgstr ""
+
+#: ../crates/musicus/res/ui/medium_editor.ui:61
+msgid "Medium"
+msgstr ""
+
+#: ../crates/musicus/res/ui/medium_editor.ui:72
+msgid "Name of the medium"
+msgstr ""
+
+#: ../crates/musicus/res/ui/medium_editor.ui:90
+msgid "Recordings"
+msgstr ""
+
+#: ../crates/musicus/res/ui/medium_preview.ui:19
+msgid "Preview"
+msgstr ""
+
+#: ../crates/musicus/res/ui/medium_preview.ui:50
+msgid "Import"
+msgstr ""
+
+#: ../crates/musicus/res/ui/medium_preview.ui:117
+#: ../crates/musicus/res/ui/source_selector.ui:69
+msgid "Loading"
+msgstr ""
+
+#: ../crates/musicus/res/ui/performance_editor.ui:13
+msgid "Performance"
+msgstr ""
+
+#: ../crates/musicus/res/ui/performance_editor.ui:52
+msgid "Select a person"
+msgstr ""
+
+#: ../crates/musicus/res/ui/performance_editor.ui:65
+msgid "Select an ensemble"
+msgstr ""
+
+#: ../crates/musicus/res/ui/performance_editor.ui:78
+msgid "Select a role"
+msgstr ""
+
+#: ../crates/musicus/res/ui/player_bar.ui:65
+#: ../crates/musicus/res/ui/player_screen.ui:97
+#: ../crates/musicus/res/ui/work_editor.ui:89
+#: ../crates/musicus/res/ui/work_part_editor.ui:56
+msgid "Title"
+msgstr ""
+
+#: ../crates/musicus/res/ui/player_bar.ui:75
+#: ../crates/musicus/res/ui/player_screen.ui:107
+msgid "Subtitle"
+msgstr ""
+
+#: ../crates/musicus/res/ui/player_bar.ui:86
+#: ../crates/musicus/res/ui/player_bar.ui:96
+#: ../crates/musicus/res/ui/player_screen.ui:131
+#: ../crates/musicus/res/ui/player_screen.ui:142
+msgid "0:00"
+msgstr ""
+
+#: ../crates/musicus/res/ui/player_bar.ui:91
+msgid "/"
+msgstr ""
+
+#: ../crates/musicus/res/ui/player_screen.ui:19
+msgid "Player"
+msgstr ""
+
+#: ../crates/musicus/res/ui/preferences.ui:14
+msgid "Music library"
+msgstr ""
+
+#: ../crates/musicus/res/ui/preferences.ui:18
+msgid "Music library folder"
+msgstr ""
+
+#: ../crates/musicus/res/ui/preferences.ui:20
+msgid "None selected"
+msgstr ""
+
+#: ../crates/musicus/res/ui/preferences.ui:34
+msgid "Playlist"
+msgstr ""
+
+#: ../crates/musicus/res/ui/preferences.ui:38
+msgid "Keep playing"
+msgstr ""
+
+#: ../crates/musicus/res/ui/preferences.ui:40
+msgid "Whether to keep playing random tracks after the playlist ends."
+msgstr ""
+
+#: ../crates/musicus/res/ui/preferences.ui:51
+msgid "Choose full recordings"
+msgstr ""
+
+#: ../crates/musicus/res/ui/preferences.ui:53
+msgid ""
+"Whether to choose full recordings instead of single tracks for random "
+"playback."
+msgstr ""
+
+#: ../crates/musicus/res/ui/recording_editor.ui:18
+#: ../crates/musicus/res/ui/recording_editor.ui:146
+#: ../crates/musicus/res/ui/track_set_editor.ui:51
+msgid "Recording"
+msgstr ""
+
+#: ../crates/musicus/res/ui/recording_editor.ui:65
+#: ../crates/musicus/res/ui/work_editor.ui:65
+msgid "Overview"
+msgstr ""
+
+#: ../crates/musicus/res/ui/recording_editor.ui:77
+msgid "Select a work"
+msgstr ""
+
+#: ../crates/musicus/res/ui/recording_editor.ui:89
+msgid "Comment"
+msgstr ""
+
+#: ../crates/musicus/res/ui/recording_editor.ui:107
+msgid "Performers"
+msgstr ""
+
+#: ../crates/musicus/res/ui/selector.ui:60
+msgid "Search …"
+msgstr ""
+
+#: ../crates/musicus/res/ui/source_selector.ui:32
+msgid "Select the source which contains the new audio files below."
+msgstr ""
+
+#: ../crates/musicus/res/ui/source_selector.ui:46
+msgid "Copy audio CD"
+msgstr ""
+
+#: ../crates/musicus/res/ui/track_editor.ui:13
+msgid "Track"
+msgstr ""
+
+#: ../crates/musicus/res/ui/track_selector.ui:13
+msgid "Select tracks"
+msgstr ""
+
+#: ../crates/musicus/res/ui/track_set_editor.ui:63
+msgid "Select a recording"
+msgstr ""
+
+#: ../crates/musicus/res/ui/work_editor.ui:77
+msgid "Select a composer"
+msgstr ""
+
+#: ../crates/musicus/res/ui/work_editor.ui:107
+msgid "Instruments"
+msgstr ""
+
+#: ../crates/musicus/res/ui/work_editor.ui:134
+msgid "Structure"
+msgstr ""
+
+#: ../crates/musicus/res/ui/work_part_editor.ui:13
+msgid "Work part"
 msgstr ""
