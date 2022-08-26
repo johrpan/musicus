@@ -15,9 +15,9 @@ dependency('sqlite3', version: '>= 3.20')
 
 i18n = import('i18n')
 
-subdir('musicus/data')
-subdir('musicus/po')
-subdir('musicus/res')
-subdir('musicus/src')
+subdir('crates/musicus/data')
+subdir('crates/musicus/po')
+subdir('crates/musicus/res')
+subdir('crates/musicus/src')
 
 meson.add_install_script('build-aux/postinstall.py')
