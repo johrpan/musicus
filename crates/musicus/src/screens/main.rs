@@ -8,7 +8,6 @@ use adw::builders::ActionRowBuilder;
 use adw::prelude::*;
 use gettextrs::gettext;
 use glib::clone;
-use gtk::builders::AboutDialogBuilder;
 use gtk_macros::get_widget;
 use musicus_backend::db::PersonOrEnsemble;
 use std::cell::RefCell;
@@ -195,18 +194,18 @@ impl Widget for MainScreen {
 impl MainScreen {
     /// Show a dialog with information on this application.
     fn show_about_dialog(&self) {
-        let dialog = AboutDialogBuilder::new()
+        let dialog = adw::AboutWindow::builder()
             .transient_for(&self.handle.window)
             .modal(true)
-            .logo_icon_name("de.johrpan.musicus")
-            .program_name(&gettext("Musicus"))
+            .application_icon("de.johrpan.musicus")
+            .application_name(&gettext("Musicus"))
+            .developer_name("Elias Projahn")
             .version(config::VERSION)
             .comments(&gettext("The classical music player and organizer."))
             .website("https://code.johrpan.de/johrpan/musicus")
-            .website_label(&gettext("Further information and source code"))
-            .copyright("© 2020 Elias Projahn")
+            .developers(vec![String::from("Elias Projahn <elias@johrpan.de>")])
+            .copyright("© 2022 Elias Projahn")
             .license_type(gtk::License::Agpl30)
-            .authors(vec![String::from("Elias Projahn <elias@johrpan.de>")])
             .build();
 
         dialog.show();

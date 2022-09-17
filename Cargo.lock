@@ -897,8 +897,9 @@ checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 [[package]]
 name = "libadwaita"
 version = "0.2.0"
-source = "git+https://gitlab.gnome.org/World/Rust/libadwaita-rs.git#00488986662796deee21f0ca601be661b269b09c"
+source = "git+https://gitlab.gnome.org/World/Rust/libadwaita-rs.git#f77307028c4d874d9cb87e9489e389aad4151dbf"
 dependencies = [
+ "futures-channel",
  "gdk-pixbuf",
  "gdk4",
  "gio 0.16.0",
@@ -913,7 +914,7 @@ dependencies = [
 [[package]]
 name = "libadwaita-sys"
 version = "0.2.0"
-source = "git+https://gitlab.gnome.org/World/Rust/libadwaita-rs.git#00488986662796deee21f0ca601be661b269b09c"
+source = "git+https://gitlab.gnome.org/World/Rust/libadwaita-rs.git#f77307028c4d874d9cb87e9489e389aad4151dbf"
 dependencies = [
  "gdk4-sys",
  "gio-sys 0.16.0",

@@ -9,7 +9,7 @@ dependency('glib-2.0', version: '>= 2.56')
 dependency('gio-2.0', version: '>= 2.56')
 dependency('gstreamer-1.0', version: '>= 1.12')
 dependency('gtk4', version: '>= 4.0')
-dependency('libadwaita-1', version: '>= 1.0')
+dependency('libadwaita-1', version: '>= 1.2')
 dependency('pango', version: '>= 1.0')
 dependency('sqlite3', version: '>= 3.20')
 
