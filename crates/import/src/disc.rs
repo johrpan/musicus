@@ -18,11 +18,11 @@ pub(super) fn new() -> Result<ImportSession> {
     // Build the GStreamer pipeline. It will contain a fakesink initially to be able to run it
     // forward to the paused state without specifying a file name before knowing the tracks.
 
-    let cdparanoiasrc = ElementFactory::make("cdparanoiasrc", None)?;
-    let queue = ElementFactory::make("queue", None)?;
-    let audioconvert = ElementFactory::make("audioconvert", None)?;
-    let flacenc = ElementFactory::make("flacenc", None)?;
-    let fakesink = gstreamer::ElementFactory::make("fakesink", None)?;
+    let cdparanoiasrc = ElementFactory::make("cdparanoiasrc").build()?;
+    let queue = ElementFactory::make("queue").build()?;
+    let audioconvert = ElementFactory::make("audioconvert").build()?;
+    let flacenc = ElementFactory::make("flacenc").build()?;
+    let fakesink = gstreamer::ElementFactory::make("fakesink").build()?;
 
     let pipeline = gstreamer::Pipeline::new(None);
     pipeline.add_many(&[&cdparanoiasrc, &queue, &audioconvert, &flacenc, &fakesink])?;
@@ -64,7 +64,7 @@ pub(super) fn new() -> Result<ImportSession> {
     fakesink.set_state(gstreamer::State::Null)?;
     pipeline.remove(&fakesink)?;
 
-    let filesink = gstreamer::ElementFactory::make("filesink", None)?;
+    let filesink = gstreamer::ElementFactory::make("filesink").build()?;
     pipeline.add(&filesink)?;
     gstreamer::Element::link(&flacenc, &filesink)?;
 

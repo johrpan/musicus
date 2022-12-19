@@ -275,8 +275,8 @@ impl Database {
             work,
             comment: row.comment,
             performances: performance_descriptions,
-            last_used: row.last_used.map(|t| Utc.timestamp(t, 0)),
-            last_played: row.last_played.map(|t| Utc.timestamp(t, 0)),
+            last_used: row.last_used.map(|t| Utc.timestamp_opt(t, 0).unwrap()),
+            last_played: row.last_played.map(|t| Utc.timestamp_opt(t, 0).unwrap()),
         };
 
         Ok(recording_description)

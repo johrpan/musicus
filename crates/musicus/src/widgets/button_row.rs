@@ -1,5 +1,5 @@
 use super::Widget;
-use adw::{prelude::*, builders::ActionRowBuilder};
+use adw::{builders::ActionRowBuilder, prelude::*};
 use gtk::builders::ButtonBuilder;
 
 /// A list box row with a single button.

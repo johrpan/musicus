@@ -1,6 +1,5 @@
 use crate::{Backend, Error, Result};
 use glib::clone;
-use gstreamer_player::prelude::*;
 use musicus_database::Track;
 use std::cell::{Cell, RefCell};
 use std::path::PathBuf;
@@ -32,7 +31,10 @@ pub struct Player {
 impl Player {
     pub fn new(music_library_path: PathBuf) -> Rc<Self> {
         let dispatcher = gstreamer_player::PlayerGMainContextSignalDispatcher::new(None);
-        let player = gstreamer_player::Player::new(None, Some(&dispatcher.upcast()));
+        let player = gstreamer_player::Player::new(
+            gstreamer_player::PlayerVideoRenderer::NONE,
+            Some(&dispatcher),
+        );
         let mut config = player.config();
         config.set_position_update_interval(250);
         player.set_config(config).unwrap();
@@ -196,7 +198,7 @@ impl Player {
     /// Add some items to the playlist.
     pub fn add_items(&self, mut items: Vec<Track>) -> Result<()> {
         if items.is_empty() {
-            return Ok(())
+            return Ok(());
         }
 
         let was_empty = {

@@ -20,7 +20,7 @@ impl IndexedListModel {
 
 impl Default for IndexedListModel {
     fn default() -> Self {
-        glib::Object::new(&[]).unwrap()
+        glib::Object::new(&[])
     }
 }
 
@@ -57,13 +57,7 @@ mod indexed_list_model_imp {
             PROPERTIES.as_ref()
         }
 
-        fn set_property(
-            &self,
-            _: &Self::Type,
-            _: usize,
-            value: &glib::Value,
-            pspec: &glib::ParamSpec,
-        ) {
+        fn set_property(&self, _: usize, value: &glib::Value, pspec: &glib::ParamSpec) {
             match pspec.name() {
                 "length" => {
                     let length = value.get::<u32>().unwrap();
@@ -73,7 +67,7 @@ mod indexed_list_model_imp {
             }
         }
 
-        fn property(&self, _obj: &Self::Type, _id: usize, pspec: &glib::ParamSpec) -> glib::Value {
+        fn property(&self, _id: usize, pspec: &glib::ParamSpec) -> glib::Value {
             match pspec.name() {
                 "length" => self.length.get().to_value(),
                 _ => unimplemented!(),
@@ -82,15 +76,15 @@ mod indexed_list_model_imp {
     }
 
     impl ListModelImpl for IndexedListModel {
-        fn item_type(&self, _: &Self::Type) -> glib::Type {
+        fn item_type(&self) -> glib::Type {
             ItemIndex::static_type()
         }
 
-        fn n_items(&self, _: &Self::Type) -> u32 {
+        fn n_items(&self) -> u32 {
             self.length.get()
         }
 
-        fn item(&self, _: &Self::Type, position: u32) -> Option<glib::Object> {
+        fn item(&self, position: u32) -> Option<glib::Object> {
             Some(ItemIndex::new(position).upcast())
         }
     }
@@ -104,7 +98,7 @@ glib::wrapper! {
 impl ItemIndex {
     /// Create a new item index.
     pub fn new(value: u32) -> Self {
-        glib::Object::new(&[("value", &value)]).unwrap()
+        glib::Object::new(&[("value", &value)])
     }
 
     /// Get the value of the item index..
@@ -146,13 +140,7 @@ mod item_index_imp {
             PROPERTIES.as_ref()
         }
 
-        fn set_property(
-            &self,
-            _: &Self::Type,
-            _: usize,
-            value: &glib::Value,
-            pspec: &glib::ParamSpec,
-        ) {
+        fn set_property(&self, _: usize, value: &glib::Value, pspec: &glib::ParamSpec) {
             match pspec.name() {
                 "value" => {
                     let value = value.get::<u32>().unwrap();
@@ -162,7 +150,7 @@ mod item_index_imp {
             }
         }
 
-        fn property(&self, _obj: &Self::Type, _id: usize, pspec: &glib::ParamSpec) -> glib::Value {
+        fn property(&self, _id: usize, pspec: &glib::ParamSpec) -> glib::Value {
             match pspec.name() {
                 "value" => self.value.get().to_value(),
                 _ => unimplemented!(),

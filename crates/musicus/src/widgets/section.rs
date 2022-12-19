@@ -1,5 +1,5 @@
 use super::Widget;
-use gtk::{prelude::*, builders::ButtonBuilder};
+use gtk::{builders::ButtonBuilder, prelude::*};
 use gtk_macros::get_widget;
 
 /// A widget displaying a title, a framed child widget and, if needed, some

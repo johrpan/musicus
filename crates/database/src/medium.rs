@@ -60,7 +60,12 @@ pub struct Track {
 }
 
 impl Track {
-    pub fn new(recording: Recording, work_parts: Vec<usize>, source_index: usize, path: String) -> Self {
+    pub fn new(
+        recording: Recording,
+        work_parts: Vec<usize>,
+        source_index: usize,
+        path: String,
+    ) -> Self {
         Self {
             recording,
             work_parts,
@@ -295,8 +300,8 @@ impl Database {
             name: row.name,
             discid: row.discid,
             tracks,
-            last_used: row.last_used.map(|t| Utc.timestamp(t, 0)),
-            last_played: row.last_played.map(|t| Utc.timestamp(t, 0)),
+            last_used: row.last_used.map(|t| Utc.timestamp_opt(t, 0).unwrap()),
+            last_played: row.last_played.map(|t| Utc.timestamp_opt(t, 0).unwrap()),
         };
 
         Ok(medium)
@@ -328,8 +333,8 @@ impl Database {
             work_parts: part_indices,
             source_index: row.source_index as usize,
             path: row.path,
-            last_used: row.last_used.map(|t| Utc.timestamp(t, 0)),
-            last_played: row.last_played.map(|t| Utc.timestamp(t, 0)),
+            last_used: row.last_used.map(|t| Utc.timestamp_opt(t, 0).unwrap()),
+            last_played: row.last_played.map(|t| Utc.timestamp_opt(t, 0).unwrap()),
         };
 
         Ok(track)

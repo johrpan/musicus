@@ -5,7 +5,7 @@ use adw::builders::ActionRowBuilder;
 use anyhow::{anyhow, Result};
 use gettextrs::gettext;
 use glib::clone;
-use gtk::builders::{ListBoxBuilder, FrameBuilder};
+use gtk::builders::{FrameBuilder, ListBoxBuilder};
 use gtk::prelude::*;
 use gtk_macros::get_widget;
 use musicus_backend::db::Medium;

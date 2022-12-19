@@ -67,7 +67,13 @@ pub struct Work {
 }
 
 impl Work {
-    pub fn new(id: String, title: String, composer: Person, instruments: Vec<Instrument>, parts: Vec<WorkPart>) -> Self {
+    pub fn new(
+        id: String,
+        title: String,
+        composer: Person,
+        instruments: Vec<Instrument>,
+        parts: Vec<WorkPart>,
+    ) -> Self {
         Self {
             id,
             title,
@@ -219,8 +225,8 @@ impl Database {
             title: row.title,
             instruments,
             parts,
-            last_used: row.last_used.map(|t| Utc.timestamp(t, 0)),
-            last_played: row.last_played.map(|t| Utc.timestamp(t, 0)),
+            last_used: row.last_used.map(|t| Utc.timestamp_opt(t, 0).unwrap()),
+            last_played: row.last_played.map(|t| Utc.timestamp_opt(t, 0).unwrap()),
         })
     }
 

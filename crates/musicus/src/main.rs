@@ -26,8 +26,7 @@ fn main() {
     gettextrs::textdomain("musicus").unwrap();
 
     gstreamer::init().expect("Failed to initialize GStreamer!");
-    gtk::init().expect("Failed to initialize GTK!");
-    adw::init();
+    adw::init().expect("Failed to initialize libadwaita!");
     resources::init().expect("Failed to initialize resources!");
 
     let app = gtk::Application::new(Some("de.johrpan.musicus"), gio::ApplicationFlags::empty());
