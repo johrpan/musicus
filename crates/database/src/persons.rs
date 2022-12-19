@@ -44,10 +44,10 @@ impl Database {
 
         person.last_used = Some(Utc::now().timestamp());
 
-        self.connection.transaction(|| {
+        self.connection.lock().unwrap().transaction(|connection| {
             diesel::replace_into(persons::table)
                 .values(person)
-                .execute(&self.connection)
+                .execute(connection)
         })?;
 
         Ok(())
@@ -57,7 +57,7 @@ impl Database {
     pub fn get_person(&self, id: &str) -> Result<Option<Person>> {
         let person = persons::table
             .filter(persons::id.eq(id))
-            .load::<Person>(&self.connection)?
+            .load::<Person>(&mut *self.connection.lock().unwrap())?
             .into_iter()
             .next();
 
@@ -67,13 +67,14 @@ impl Database {
     /// Delete an existing person.
     pub fn delete_person(&self, id: &str) -> Result<()> {
         info!("Deleting person {}", id);
-        diesel::delete(persons::table.filter(persons::id.eq(id))).execute(&self.connection)?;
+        diesel::delete(persons::table.filter(persons::id.eq(id)))
+            .execute(&mut *self.connection.lock().unwrap())?;
         Ok(())
     }
 
     /// Get all existing persons.
     pub fn get_persons(&self) -> Result<Vec<Person>> {
-        let persons = persons::table.load::<Person>(&self.connection)?;
+        let persons = persons::table.load::<Person>(&mut *self.connection.lock().unwrap())?;
 
         Ok(persons)
     }
@@ -82,7 +83,7 @@ impl Database {
     pub fn get_recent_persons(&self) -> Result<Vec<Person>> {
         let persons = persons::table
             .order(persons::last_used.desc())
-            .load::<Person>(&self.connection)?;
+            .load::<Person>(&mut *self.connection.lock().unwrap())?;
 
         Ok(persons)
     }

@@ -5,7 +5,7 @@ pub enum Error {
     ConnectionError(#[from] diesel::result::ConnectionError),
 
     #[error(transparent)]
-    MigrationsError(#[from] diesel_migrations::RunMigrationsError),
+    Migrations(#[from] Box<dyn std::error::Error + Send + Sync>),
 
     #[error(transparent)]
     QueryError(#[from] diesel::result::Error),

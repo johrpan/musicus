@@ -1,4 +1,6 @@
-table! {
+// @generated automatically by Diesel CLI.
+
+diesel::table! {
     ensembles (id) {
         id -> Text,
         name -> Text,
@@ -7,7 +9,7 @@ table! {
     }
 }
 
-table! {
+diesel::table! {
     instrumentations (id) {
         id -> BigInt,
         work -> Text,
@@ -15,7 +17,7 @@ table! {
     }
 }
 
-table! {
+diesel::table! {
     instruments (id) {
         id -> Text,
         name -> Text,
@@ -24,7 +26,7 @@ table! {
     }
 }
 
-table! {
+diesel::table! {
     mediums (id) {
         id -> Text,
         name -> Text,
@@ -34,7 +36,7 @@ table! {
     }
 }
 
-table! {
+diesel::table! {
     performances (id) {
         id -> BigInt,
         recording -> Text,
@@ -44,7 +46,7 @@ table! {
     }
 }
 
-table! {
+diesel::table! {
     persons (id) {
         id -> Text,
         first_name -> Text,
@@ -54,7 +56,7 @@ table! {
     }
 }
 
-table! {
+diesel::table! {
     recordings (id) {
         id -> Text,
         work -> Text,
@@ -64,7 +66,7 @@ table! {
     }
 }
 
-table! {
+diesel::table! {
     tracks (id) {
         id -> Text,
         medium -> Text,
@@ -78,7 +80,7 @@ table! {
     }
 }
 
-table! {
+diesel::table! {
     work_parts (id) {
         id -> BigInt,
         work -> Text,
@@ -87,7 +89,7 @@ table! {
     }
 }
 
-table! {
+diesel::table! {
     works (id) {
         id -> Text,
         composer -> Text,
@@ -97,19 +99,19 @@ table! {
     }
 }
 
-joinable!(instrumentations -> instruments (instrument));
-joinable!(instrumentations -> works (work));
-joinable!(performances -> ensembles (ensemble));
-joinable!(performances -> instruments (role));
-joinable!(performances -> persons (person));
-joinable!(performances -> recordings (recording));
-joinable!(recordings -> works (work));
-joinable!(tracks -> mediums (medium));
-joinable!(tracks -> recordings (recording));
-joinable!(work_parts -> works (work));
-joinable!(works -> persons (composer));
+diesel::joinable!(instrumentations -> instruments (instrument));
+diesel::joinable!(instrumentations -> works (work));
+diesel::joinable!(performances -> ensembles (ensemble));
+diesel::joinable!(performances -> instruments (role));
+diesel::joinable!(performances -> persons (person));
+diesel::joinable!(performances -> recordings (recording));
+diesel::joinable!(recordings -> works (work));
+diesel::joinable!(tracks -> mediums (medium));
+diesel::joinable!(tracks -> recordings (recording));
+diesel::joinable!(work_parts -> works (work));
+diesel::joinable!(works -> persons (composer));
 
-allow_tables_to_appear_in_same_query!(
+diesel::allow_tables_to_appear_in_same_query!(
     ensembles,
     instrumentations,
     instruments,

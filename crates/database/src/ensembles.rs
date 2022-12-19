@@ -32,10 +32,10 @@ impl Database {
 
         ensemble.last_used = Some(Utc::now().timestamp());
 
-        self.connection.transaction(|| {
+        self.connection.lock().unwrap().transaction(|connection| {
             diesel::replace_into(ensembles::table)
                 .values(ensemble)
-                .execute(&self.connection)
+                .execute(connection)
         })?;
 
         Ok(())
@@ -45,7 +45,7 @@ impl Database {
     pub fn get_ensemble(&self, id: &str) -> Result<Option<Ensemble>> {
         let ensemble = ensembles::table
             .filter(ensembles::id.eq(id))
-            .load::<Ensemble>(&self.connection)?
+            .load::<Ensemble>(&mut *self.connection.lock().unwrap())?
             .into_iter()
             .next();
 
@@ -55,13 +55,14 @@ impl Database {
     /// Delete an existing ensemble.
     pub fn delete_ensemble(&self, id: &str) -> Result<()> {
         info!("Deleting ensemble {}", id);
-        diesel::delete(ensembles::table.filter(ensembles::id.eq(id))).execute(&self.connection)?;
+        diesel::delete(ensembles::table.filter(ensembles::id.eq(id)))
+            .execute(&mut *self.connection.lock().unwrap())?;
         Ok(())
     }
 
     /// Get all existing ensembles.
     pub fn get_ensembles(&self) -> Result<Vec<Ensemble>> {
-        let ensembles = ensembles::table.load::<Ensemble>(&self.connection)?;
+        let ensembles = ensembles::table.load::<Ensemble>(&mut *self.connection.lock().unwrap())?;
         Ok(ensembles)
     }
 
@@ -69,7 +70,7 @@ impl Database {
     pub fn get_recent_ensembles(&self) -> Result<Vec<Ensemble>> {
         let ensembles = ensembles::table
             .order(ensembles::last_used.desc())
-            .load::<Ensemble>(&self.connection)?;
+            .load::<Ensemble>(&mut *self.connection.lock().unwrap())?;
 
         Ok(ensembles)
     }

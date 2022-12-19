@@ -109,61 +109,64 @@ impl Database {
         info!("Updating medium {:?}", medium);
         self.defer_foreign_keys()?;
 
-        self.connection.transaction::<(), Error, _>(|| {
-            let medium_id = &medium.id;
+        self.connection
+            .lock()
+            .unwrap()
+            .transaction::<(), Error, _>(|connection| {
+                let medium_id = &medium.id;
 
-            // This will also delete the tracks.
-            self.delete_medium(medium_id)?;
+                // This will also delete the tracks.
+                self.delete_medium(medium_id)?;
 
-            // Add the new medium.
+                // Add the new medium.
 
-            let medium_row = MediumRow {
-                id: medium_id.to_owned(),
-                name: medium.name.clone(),
-                discid: medium.discid.clone(),
-                last_used: Some(Utc::now().timestamp()),
-                last_played: medium.last_played.map(|t| t.timestamp()),
-            };
-
-            diesel::insert_into(mediums::table)
-                .values(medium_row)
-                .execute(&self.connection)?;
-
-            for (index, track) in medium.tracks.iter().enumerate() {
-                // Add associated items from the server, if they don't already exist.
-
-                if self.get_recording(&track.recording.id)?.is_none() {
-                    self.update_recording(track.recording.clone())?;
-                }
-
-                // Add the actual track data.
-
-                let work_parts = track
-                    .work_parts
-                    .iter()
-                    .map(|part_index| part_index.to_string())
-                    .collect::<Vec<String>>()
-                    .join(",");
-
-                let track_row = TrackRow {
-                    id: generate_id(),
-                    medium: medium_id.to_owned(),
-                    index: index as i32,
-                    recording: track.recording.id.clone(),
-                    work_parts,
-                    source_index: track.source_index as i32,
-                    path: track.path.clone(),
+                let medium_row = MediumRow {
+                    id: medium_id.to_owned(),
+                    name: medium.name.clone(),
+                    discid: medium.discid.clone(),
                     last_used: Some(Utc::now().timestamp()),
-                    last_played: track.last_played.map(|t| t.timestamp()),
+                    last_played: medium.last_played.map(|t| t.timestamp()),
                 };
 
-                diesel::insert_into(tracks::table)
-                    .values(track_row)
-                    .execute(&self.connection)?;
-            }
+                diesel::insert_into(mediums::table)
+                    .values(medium_row)
+                    .execute(connection)?;
 
-            Ok(())
-        })?;
+                for (index, track) in medium.tracks.iter().enumerate() {
+                    // Add associated items from the server, if they don't already exist.
+
+                    if self.get_recording(&track.recording.id)?.is_none() {
+                        self.update_recording(track.recording.clone())?;
+                    }
+
+                    // Add the actual track data.
+
+                    let work_parts = track
+                        .work_parts
+                        .iter()
+                        .map(|part_index| part_index.to_string())
+                        .collect::<Vec<String>>()
+                        .join(",");
+
+                    let track_row = TrackRow {
+                        id: generate_id(),
+                        medium: medium_id.to_owned(),
+                        index: index as i32,
+                        recording: track.recording.id.clone(),
+                        work_parts,
+                        source_index: track.source_index as i32,
+                        path: track.path.clone(),
+                        last_used: Some(Utc::now().timestamp()),
+                        last_played: track.last_played.map(|t| t.timestamp()),
+                    };
+
+                    diesel::insert_into(tracks::table)
+                        .values(track_row)
+                        .execute(connection)?;
+                }
+
+                Ok(())
+            })?;
 
         Ok(())
     }
@@ -172,7 +175,7 @@ impl Database {
     pub fn get_medium(&self, id: &str) -> Result<Option<Medium>> {
         let row = mediums::table
             .filter(mediums::id.eq(id))
-            .load::<MediumRow>(&self.connection)?
+            .load::<MediumRow>(&mut *self.connection.lock().unwrap())?
             .into_iter()
             .next();
 
@@ -190,7 +193,7 @@ impl Database {
 
         let rows = mediums::table
             .filter(mediums::discid.nullable().eq(source_id))
-            .load::<MediumRow>(&self.connection)?;
+            .load::<MediumRow>(&mut *self.connection.lock().unwrap())?;
 
         for row in rows {
             let medium = self.get_medium_data(row)?;
@@ -212,7 +215,7 @@ impl Database {
             .filter(persons::id.eq(person_id))
             .select(mediums::table::all_columns())
             .distinct()
-            .load::<MediumRow>(&self.connection)?;
+            .load::<MediumRow>(&mut *self.connection.lock().unwrap())?;
 
         for row in rows {
             let medium = self.get_medium_data(row)?;
@@ -234,7 +237,7 @@ impl Database {
             .filter(ensembles::id.eq(ensemble_id))
             .select(mediums::table::all_columns())
             .distinct()
-            .load::<MediumRow>(&self.connection)?;
+            .load::<MediumRow>(&mut *self.connection.lock().unwrap())?;
 
         for row in rows {
             let medium = self.get_medium_data(row)?;
@@ -248,7 +251,8 @@ impl Database {
     /// library contains audio files referencing any of those tracks.
     pub fn delete_medium(&self, id: &str) -> Result<()> {
         info!("Deleting medium {}", id);
-        diesel::delete(mediums::table.filter(mediums::id.eq(id))).execute(&self.connection)?;
+        diesel::delete(mediums::table.filter(mediums::id.eq(id)))
+            .execute(&mut *self.connection.lock().unwrap())?;
         Ok(())
     }
 
@@ -260,7 +264,7 @@ impl Database {
             .inner_join(recordings::table.on(recordings::id.eq(tracks::recording)))
             .filter(recordings::id.eq(recording_id))
             .select(tracks::table::all_columns())
-            .load::<TrackRow>(&self.connection)?;
+            .load::<TrackRow>(&mut *self.connection.lock().unwrap())?;
 
         for row in rows {
             let track = self.get_track_from_row(row)?;
@@ -273,7 +277,7 @@ impl Database {
     /// Get a random track from the database.
     pub fn random_track(&self) -> Result<Track> {
         let row = diesel::sql_query("SELECT * FROM tracks ORDER BY RANDOM() LIMIT 1")
-            .load::<TrackRow>(&self.connection)?
+            .load::<TrackRow>(&mut *self.connection.lock().unwrap())?
             .into_iter()
             .next()
             .ok_or(Error::Other("Failed to generate random track"))?;
@@ -286,7 +290,7 @@ impl Database {
         let track_rows = tracks::table
             .filter(tracks::medium.eq(&row.id))
             .order_by(tracks::index)
-            .load::<TrackRow>(&self.connection)?;
+            .load::<TrackRow>(&mut *self.connection.lock().unwrap())?;
 
         let mut tracks = Vec::new();
 

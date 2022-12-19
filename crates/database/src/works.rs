@@ -112,60 +112,63 @@ impl Database {
         info!("Updating work {:?}", work);
         self.defer_foreign_keys()?;
 
-        self.connection.transaction::<(), Error, _>(|| {
-            let work_id = &work.id;
-            self.delete_work(work_id)?;
+        self.connection
+            .lock()
+            .unwrap()
+            .transaction::<(), Error, _>(|connection| {
+                let work_id = &work.id;
+                self.delete_work(work_id)?;
 
-            // Add associated items from the server, if they don't already exist.
+                // Add associated items from the server, if they don't already exist.
 
-            if self.get_person(&work.composer.id)?.is_none() {
-                self.update_person(work.composer.clone())?;
-            }
-
-            for instrument in &work.instruments {
-                if self.get_instrument(&instrument.id)?.is_none() {
-                    self.update_instrument(instrument.clone())?;
+                if self.get_person(&work.composer.id)?.is_none() {
+                    self.update_person(work.composer.clone())?;
                 }
-            }
 
-            // Add the actual work.
+                for instrument in &work.instruments {
+                    if self.get_instrument(&instrument.id)?.is_none() {
+                        self.update_instrument(instrument.clone())?;
+                    }
+                }
 
-            let row: WorkRow = work.clone().into();
-            diesel::insert_into(works::table)
-                .values(row)
-                .execute(&self.connection)?;
+                // Add the actual work.
 
-            let Work {
-                instruments, parts, ..
-            } = work;
-
-            for instrument in instruments {
-                let row = InstrumentationRow {
-                    id: rand::random(),
-                    work: work_id.to_string(),
-                    instrument: instrument.id,
-                };
-
-                diesel::insert_into(instrumentations::table)
+                let row: WorkRow = work.clone().into();
+                diesel::insert_into(works::table)
                     .values(row)
-                    .execute(&self.connection)?;
-            }
+                    .execute(&mut *self.connection.lock().unwrap())?;
 
-            for (index, part) in parts.into_iter().enumerate() {
-                let row = WorkPartRow {
-                    id: rand::random(),
-                    work: work_id.to_string(),
-                    part_index: index as i64,
-                    title: part.title,
-                };
+                let Work {
+                    instruments, parts, ..
+                } = work;
 
-                diesel::insert_into(work_parts::table)
-                    .values(row)
-                    .execute(&self.connection)?;
-            }
+                for instrument in instruments {
+                    let row = InstrumentationRow {
+                        id: rand::random(),
+                        work: work_id.to_string(),
+                        instrument: instrument.id,
+                    };
 
-            Ok(())
-        })?;
+                    diesel::insert_into(instrumentations::table)
+                        .values(row)
+                        .execute(connection)?;
+                }
+
+                for (index, part) in parts.into_iter().enumerate() {
+                    let row = WorkPartRow {
+                        id: rand::random(),
+                        work: work_id.to_string(),
+                        part_index: index as i64,
+                        title: part.title,
+                    };
+
+                    diesel::insert_into(work_parts::table)
+                        .values(row)
+                        .execute(connection)?;
+                }
+
+                Ok(())
+            })?;
 
         Ok(())
     }
@@ -174,7 +177,7 @@ impl Database {
     pub fn get_work(&self, id: &str) -> Result<Option<Work>> {
         let row = works::table
             .filter(works::id.eq(id))
-            .load::<WorkRow>(&self.connection)?
+            .load::<WorkRow>(&mut *self.connection.lock().unwrap())?
             .first()
             .cloned();
 
@@ -192,7 +195,7 @@ impl Database {
 
         let instrumentations = instrumentations::table
             .filter(instrumentations::work.eq(&row.id))
-            .load::<InstrumentationRow>(&self.connection)?;
+            .load::<InstrumentationRow>(&mut *self.connection.lock().unwrap())?;
 
         for instrumentation in instrumentations {
             let id = instrumentation.instrument;
@@ -206,7 +209,7 @@ impl Database {
 
         let part_rows = work_parts::table
             .filter(work_parts::work.eq(&row.id))
-            .load::<WorkPartRow>(&self.connection)?;
+            .load::<WorkPartRow>(&mut *self.connection.lock().unwrap())?;
 
         for part_row in part_rows {
             parts.push(WorkPart {
@@ -234,7 +237,8 @@ impl Database {
     /// this work except for the things that are part of the information on the work it
     pub fn delete_work(&self, id: &str) -> Result<()> {
         info!("Deleting work {}", id);
-        diesel::delete(works::table.filter(works::id.eq(id))).execute(&self.connection)?;
+        diesel::delete(works::table.filter(works::id.eq(id)))
+            .execute(&mut *self.connection.lock().unwrap())?;
         Ok(())
     }
 
@@ -244,7 +248,7 @@ impl Database {
 
         let rows = works::table
             .filter(works::composer.eq(composer_id))
-            .load::<WorkRow>(&self.connection)?;
+            .load::<WorkRow>(&mut *self.connection.lock().unwrap())?;
 
         for row in rows {
             works.push(self.get_work_data(row)?);

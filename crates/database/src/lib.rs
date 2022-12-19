@@ -1,10 +1,5 @@
-// Required for schema.rs
-#[macro_use]
-extern crate diesel;
-
-// Required for embed_migrations macro in database.rs
-#[macro_use]
-extern crate diesel_migrations;
+use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
+use std::sync::{Arc, Mutex};
 
 use diesel::prelude::*;
 use log::info;
@@ -33,7 +28,7 @@ pub use works::*;
 mod schema;
 
 // This makes the SQL migration scripts accessible from the code.
-embed_migrations!();
+const MIGRATIONS: EmbeddedMigrations = embed_migrations!();
 
 /// Generate a random string suitable as an item ID.
 pub fn generate_id() -> String {
@@ -42,25 +37,28 @@ pub fn generate_id() -> String {
 
 /// Interface to a Musicus database.
 pub struct Database {
-    connection: SqliteConnection,
+    connection: Arc<Mutex<SqliteConnection>>,
 }
 
 impl Database {
     /// Create a new database interface and run migrations if necessary.
     pub fn new(file_name: &str) -> Result<Database> {
         info!("Opening database file '{}'", file_name);
-        let connection = SqliteConnection::establish(file_name)?;
-        diesel::sql_query("PRAGMA foreign_keys = ON").execute(&connection)?;
+        let mut connection = SqliteConnection::establish(file_name)?;
+        diesel::sql_query("PRAGMA foreign_keys = ON").execute(&mut connection)?;
 
         info!("Running migrations if necessary");
-        embedded_migrations::run(&connection)?;
+        connection.run_pending_migrations(MIGRATIONS)?;
 
-        Ok(Database { connection })
+        Ok(Database {
+            connection: Arc::new(Mutex::new(connection)),
+        })
     }
 
     /// Defer all foreign keys for the next transaction.
     fn defer_foreign_keys(&self) -> Result<()> {
-        diesel::sql_query("PRAGMA defer_foreign_keys = ON").execute(&self.connection)?;
+        diesel::sql_query("PRAGMA defer_foreign_keys = ON")
+            .execute(&mut *self.connection.lock().unwrap())?;
         Ok(())
     }
 }

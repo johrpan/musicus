@@ -131,65 +131,68 @@ impl Database {
     pub fn update_recording(&self, recording: Recording) -> Result<()> {
         info!("Updating recording {:?}", recording);
         self.defer_foreign_keys()?;
-        self.connection.transaction::<(), Error, _>(|| {
-            let recording_id = &recording.id;
-            self.delete_recording(recording_id)?;
+        self.connection
+            .lock()
+            .unwrap()
+            .transaction::<(), Error, _>(|connection| {
+                let recording_id = &recording.id;
+                self.delete_recording(recording_id)?;
 
-            // Add associated items from the server, if they don't already exist.
+                // Add associated items from the server, if they don't already exist.
 
-            if self.get_work(&recording.work.id)?.is_none() {
-                self.update_work(recording.work.clone())?;
-            }
+                if self.get_work(&recording.work.id)?.is_none() {
+                    self.update_work(recording.work.clone())?;
+                }
 
-            for performance in &recording.performances {
-                match &performance.performer {
-                    PersonOrEnsemble::Person(person) => {
-                        if self.get_person(&person.id)?.is_none() {
-                            self.update_person(person.clone())?;
+                for performance in &recording.performances {
+                    match &performance.performer {
+                        PersonOrEnsemble::Person(person) => {
+                            if self.get_person(&person.id)?.is_none() {
+                                self.update_person(person.clone())?;
+                            }
+                        }
+                        PersonOrEnsemble::Ensemble(ensemble) => {
+                            if self.get_ensemble(&ensemble.id)?.is_none() {
+                                self.update_ensemble(ensemble.clone())?;
+                            }
                         }
                     }
-                    PersonOrEnsemble::Ensemble(ensemble) => {
-                        if self.get_ensemble(&ensemble.id)?.is_none() {
-                            self.update_ensemble(ensemble.clone())?;
+
+                    if let Some(role) = &performance.role {
+                        if self.get_instrument(&role.id)?.is_none() {
+                            self.update_instrument(role.clone())?;
                         }
                     }
                 }
 
-                if let Some(role) = &performance.role {
-                    if self.get_instrument(&role.id)?.is_none() {
-                        self.update_instrument(role.clone())?;
-                    }
-                }
-            }
+                // Add the actual recording.
 
-            // Add the actual recording.
-
-            let row: RecordingRow = recording.clone().into();
-            diesel::insert_into(recordings::table)
-                .values(row)
-                .execute(&self.connection)?;
-
-            for performance in recording.performances {
-                let (person, ensemble) = match performance.performer {
-                    PersonOrEnsemble::Person(person) => (Some(person.id), None),
-                    PersonOrEnsemble::Ensemble(ensemble) => (None, Some(ensemble.id)),
-                };
-
-                let row = PerformanceRow {
-                    id: rand::random(),
-                    recording: recording_id.to_string(),
-                    person,
-                    ensemble,
-                    role: performance.role.map(|role| role.id),
-                };
-
-                diesel::insert_into(performances::table)
+                let row: RecordingRow = recording.clone().into();
+                diesel::insert_into(recordings::table)
                     .values(row)
-                    .execute(&self.connection)?;
-            }
+                    .execute(connection)?;
 
-            Ok(())
-        })?;
+                for performance in recording.performances {
+                    let (person, ensemble) = match performance.performer {
+                        PersonOrEnsemble::Person(person) => (Some(person.id), None),
+                        PersonOrEnsemble::Ensemble(ensemble) => (None, Some(ensemble.id)),
+                    };
+
+                    let row = PerformanceRow {
+                        id: rand::random(),
+                        recording: recording_id.to_string(),
+                        person,
+                        ensemble,
+                        role: performance.role.map(|role| role.id),
+                    };
+
+                    diesel::insert_into(performances::table)
+                        .values(row)
+                        .execute(connection)?;
+                }
+
+                Ok(())
+            })?;
 
         Ok(())
     }
@@ -198,7 +201,7 @@ impl Database {
     pub fn recording_exists(&self, id: &str) -> Result<bool> {
         let exists = recordings::table
             .filter(recordings::id.eq(id))
-            .load::<RecordingRow>(&self.connection)?
+            .load::<RecordingRow>(&mut *self.connection.lock().unwrap())?
             .first()
             .is_some();
 
@@ -209,7 +212,7 @@ impl Database {
     pub fn get_recording(&self, id: &str) -> Result<Option<Recording>> {
         let row = recordings::table
             .filter(recordings::id.eq(id))
-            .load::<RecordingRow>(&self.connection)?
+            .load::<RecordingRow>(&mut *self.connection.lock().unwrap())?
             .into_iter()
             .next();
 
@@ -224,7 +227,7 @@ impl Database {
     /// Get a random recording from the database.
     pub fn random_recording(&self) -> Result<Recording> {
         let row = diesel::sql_query("SELECT * FROM recordings ORDER BY RANDOM() LIMIT 1")
-            .load::<RecordingRow>(&self.connection)?
+            .load::<RecordingRow>(&mut *self.connection.lock().unwrap())?
             .into_iter()
             .next()
             .ok_or(Error::Other("Failed to find random recording."))?;
@@ -238,7 +241,7 @@ impl Database {
 
         let performance_rows = performances::table
             .filter(performances::recording.eq(&row.id))
-            .load::<PerformanceRow>(&self.connection)?;
+            .load::<PerformanceRow>(&mut *self.connection.lock().unwrap())?;
 
         for row in performance_rows {
             performance_descriptions.push(Performance {
@@ -291,7 +294,7 @@ impl Database {
             .inner_join(persons::table.on(persons::id.nullable().eq(performances::person)))
             .filter(persons::id.eq(person_id))
             .select(recordings::table::all_columns())
-            .load::<RecordingRow>(&self.connection)?;
+            .load::<RecordingRow>(&mut *self.connection.lock().unwrap())?;
 
         for row in rows {
             recordings.push(self.get_recording_data(row)?);
@@ -309,7 +312,7 @@ impl Database {
             .inner_join(ensembles::table.on(ensembles::id.nullable().eq(performances::ensemble)))
             .filter(ensembles::id.eq(ensemble_id))
             .select(recordings::table::all_columns())
-            .load::<RecordingRow>(&self.connection)?;
+            .load::<RecordingRow>(&mut *self.connection.lock().unwrap())?;
 
         for row in rows {
             recordings.push(self.get_recording_data(row)?);
@@ -324,7 +327,7 @@ impl Database {
 
         let rows = recordings::table
             .filter(recordings::work.eq(work_id))
-            .load::<RecordingRow>(&self.connection)?;
+            .load::<RecordingRow>(&mut *self.connection.lock().unwrap())?;
 
         for row in rows {
             recordings.push(self.get_recording_data(row)?);
@@ -338,7 +341,7 @@ impl Database {
     pub fn delete_recording(&self, id: &str) -> Result<()> {
         info!("Deleting recording {}", id);
         diesel::delete(recordings::table.filter(recordings::id.eq(id)))
-            .execute(&self.connection)?;
+            .execute(&mut *self.connection.lock().unwrap())?;
         Ok(())
     }
 }

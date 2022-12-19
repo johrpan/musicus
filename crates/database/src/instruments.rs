@@ -32,10 +32,10 @@ impl Database {
 
         instrument.last_used = Some(Utc::now().timestamp());
 
-        self.connection.transaction(|| {
+        self.connection.lock().unwrap().transaction(|connection| {
             diesel::replace_into(instruments::table)
                 .values(instrument)
-                .execute(&self.connection)
+                .execute(connection)
         })?;
 
         Ok(())
@@ -45,7 +45,7 @@ impl Database {
     pub fn get_instrument(&self, id: &str) -> Result<Option<Instrument>> {
         let instrument = instruments::table
             .filter(instruments::id.eq(id))
-            .load::<Instrument>(&self.connection)?
+            .load::<Instrument>(&mut *self.connection.lock().unwrap())?
             .into_iter()
             .next();
 
@@ -56,14 +56,15 @@ impl Database {
     pub fn delete_instrument(&self, id: &str) -> Result<()> {
         info!("Deleting instrument {}", id);
         diesel::delete(instruments::table.filter(instruments::id.eq(id)))
-            .execute(&self.connection)?;
+            .execute(&mut *self.connection.lock().unwrap())?;
 
         Ok(())
     }
 
     /// Get all existing instruments.
     pub fn get_instruments(&self) -> Result<Vec<Instrument>> {
-        let instruments = instruments::table.load::<Instrument>(&self.connection)?;
+        let instruments =
+            instruments::table.load::<Instrument>(&mut *self.connection.lock().unwrap())?;
 
         Ok(instruments)
     }
@@ -72,7 +73,7 @@ impl Database {
     pub fn get_recent_instruments(&self) -> Result<Vec<Instrument>> {
         let instruments = instruments::table
             .order(instruments::last_used.desc())
-            .load::<Instrument>(&self.connection)?;
+            .load::<Instrument>(&mut *self.connection.lock().unwrap())?;
 
         Ok(instruments)
     }
