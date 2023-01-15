@@ -1113,6 +1113,7 @@ dependencies = [
 name = "musicus_backend"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "fragile",
  "gio",
  "glib 0.16.7",

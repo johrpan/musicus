@@ -5,6 +5,7 @@ use std::{
     cell::{Cell, RefCell},
     path::PathBuf,
     rc::Rc,
+    sync::Arc,
 };
 use tokio::sync::{broadcast, broadcast::Sender};
 
@@ -18,6 +19,7 @@ pub mod library;
 pub use library::*;
 
 mod logger;
+pub use logger::{LogMessage, Logger};
 
 pub mod player;
 pub use player::*;
@@ -40,6 +42,9 @@ pub enum BackendState {
 
 /// A collection of all backend state and functionality.
 pub struct Backend {
+    /// Registered instance of [Logger].
+    logger: Arc<Logger>,
+
     /// A closure that will be called whenever the backend state changes.
     state_cb: RefCell<Option<Box<dyn Fn(BackendState)>>>,
 
@@ -72,11 +77,11 @@ impl Backend {
     /// and call init() afterwards. There may be only one backend for a process and this method
     /// may only be called exactly once. Otherwise it will panic.
     pub fn new() -> Self {
-        logger::register();
-
+        let logger = logger::register();
         let (library_updated_sender, _) = broadcast::channel(1024);
 
         Backend {
+            logger,
             state_cb: RefCell::new(None),
             settings: gio::Settings::new("de.johrpan.musicus"),
             music_library_path: RefCell::new(None),
@@ -86,6 +91,11 @@ impl Backend {
             keep_playing: Cell::new(false),
             play_full_recordings: Cell::new(true),
         }
+    }
+
+    /// Get the registered instance of [Logger].
+    pub fn logger(&self) -> Arc<Logger> {
+        Arc::clone(&self.logger)
     }
 
     /// Set the closure to be called whenever the backend state changes.

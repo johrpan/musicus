@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+chrono = "0.4"
 fragile = "2"
 gio = "0.16"
 glib = "0.16"

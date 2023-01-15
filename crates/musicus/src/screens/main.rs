@@ -43,8 +43,10 @@ impl Screen<(), ()> for MainScreen {
 
         let actions = gio::SimpleActionGroup::new();
         let preferences_action = gio::SimpleAction::new("preferences", None);
+        let log_action = gio::SimpleAction::new("log", None);
         let about_action = gio::SimpleAction::new("about", None);
         actions.add_action(&preferences_action);
+        actions.add_action(&log_action);
         actions.add_action(&about_action);
         widget.insert_action_group("widget", Some(&actions));
 
@@ -74,6 +76,10 @@ impl Screen<(), ()> for MainScreen {
 
         preferences_action.connect_activate(clone!(@weak this =>  move |_, _| {
             Preferences::new(Rc::clone(&this.handle.backend), &this.handle.window).show();
+        }));
+
+        log_action.connect_activate(clone!(@weak this => move |_, _| {
+            this.show_log_window();
         }));
 
         about_action.connect_activate(clone!(@weak this =>  move |_, _| {
@@ -192,6 +198,70 @@ impl Widget for MainScreen {
 }
 
 impl MainScreen {
+    /// Show a window displaying all currently cached log messages.
+    fn show_log_window(&self) {
+        let copy_button = gtk::Button::builder().icon_name("copy-symbolic").build();
+        let logger = self.handle.backend.logger();
+        let toast_overlay = adw::ToastOverlay::new();
+
+        copy_button.connect_clicked(clone!(@weak logger, @weak toast_overlay => move |widget| {
+            widget.clipboard().set_text(&logger.messages().into_iter().map(|m| m.to_string()).collect::<Vec<String>>().join("\n"));
+            toast_overlay.add_toast(&adw::Toast::builder().title(&gettext("Copied to clipboard")).build());
+        }));
+
+        let header = adw::HeaderBar::builder()
+            .title_widget(
+                &adw::WindowTitle::builder()
+                    .title(&gettext("Debug log"))
+                    .build(),
+            )
+            .build();
+
+        header.pack_end(&copy_button);
+
+        let log_list = gtk::ListBox::builder()
+            .selection_mode(gtk::SelectionMode::None)
+            .build();
+
+        for message in logger.messages() {
+            log_list.append(
+                &adw::ActionRow::builder()
+                    .title(&format!(
+                        "<b>{}</b> {} <i>{}</i>",
+                        message.level,
+                        message.time.format("%Y-%m-%d %H:%M:%S"),
+                        message.module
+                    ))
+                    .subtitle(&message.message)
+                    .build(),
+            );
+        }
+
+        let content = gtk::Box::builder()
+            .orientation(gtk::Orientation::Vertical)
+            .build();
+
+        content.append(&header);
+        content.append(
+            &gtk::ScrolledWindow::builder()
+                .vexpand(true)
+                .child(&log_list)
+                .build(),
+        );
+
+        toast_overlay.set_child(Some(&content));
+
+        adw::Window::builder()
+            .transient_for(&self.handle.window)
+            .modal(true)
+            .title(&gettext("Debug log"))
+            .default_width(640)
+            .default_height(480)
+            .content(&toast_overlay)
+            .build()
+            .show();
+    }
+
     /// Show a dialog with information on this application.
     fn show_about_dialog(&self) {
         let dialog = adw::AboutWindow::builder()

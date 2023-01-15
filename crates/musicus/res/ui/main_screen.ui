@@ -151,6 +151,10 @@
         <attribute name="action">widget.preferences</attribute>
       </item>
       <item>
+        <attribute name="label" translatable="yes">Debug log</attribute>
+        <attribute name="action">widget.log</attribute>
+      </item>
+      <item>
         <attribute name="label" translatable="yes">About Musicus</attribute>
         <attribute name="action">widget.about</attribute>
       </item>
