@@ -7,7 +7,7 @@ use adw::prelude::*;
 use gettextrs::gettext;
 use glib::clone;
 use log::warn;
-use musicus_backend::db::{Person, Recording, Work};
+use musicus_backend::db::{self, Person, Recording, Work};
 use std::rc::Rc;
 
 /// A screen for selecting a recording.
@@ -81,8 +81,9 @@ impl Screen<(), Recording> for RecordingSelector {
         this.selector
             .set_filter(|search, person| person.name_fl().to_lowercase().contains(search));
 
-        this.selector
-            .set_items(this.handle.backend.db().get_recent_persons().unwrap());
+        this.selector.set_items(
+            db::get_recent_persons(&mut this.handle.backend.db().lock().unwrap()).unwrap(),
+        );
 
         this
     }
@@ -144,8 +145,13 @@ impl Screen<Person, Work> for RecordingSelectorWorkScreen {
         this.selector
             .set_filter(|search, work| work.title.to_lowercase().contains(search));
 
-        this.selector
-            .set_items(this.handle.backend.db().get_works(&this.person.id).unwrap());
+        this.selector.set_items(
+            db::get_works(
+                &mut this.handle.backend.db().lock().unwrap(),
+                &this.person.id,
+            )
+            .unwrap(),
+        );
 
         this
     }
@@ -198,7 +204,7 @@ impl Screen<Work, Recording> for RecordingSelectorRecordingScreen {
 
                 let recording = recording.to_owned();
                 row.connect_activated(clone!(@weak this =>  move |_| {
-                    if let Err(err) = this.handle.backend.db().update_recording(recording.clone()) {
+                    if let Err(err) = db::update_recording(&mut this.handle.backend.db().lock().unwrap(), recording.clone()) {
                         warn!("Failed to update access time. {err}");
                     }
 
@@ -213,11 +219,11 @@ impl Screen<Work, Recording> for RecordingSelectorRecordingScreen {
         });
 
         this.selector.set_items(
-            this.handle
-                .backend
-                .db()
-                .get_recordings_for_work(&this.work.id)
-                .unwrap(),
+            db::get_recordings_for_work(
+                &mut this.handle.backend.db().lock().unwrap(),
+                &this.work.id,
+            )
+            .unwrap(),
         );
 
         this

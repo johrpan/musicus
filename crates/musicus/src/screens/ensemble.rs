@@ -7,7 +7,7 @@ use adw::builders::ActionRowBuilder;
 use adw::prelude::*;
 use gettextrs::gettext;
 use glib::clone;
-use musicus_backend::db::{Ensemble, Medium, Recording};
+use musicus_backend::db::{self, Ensemble, Medium, Recording};
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -60,7 +60,7 @@ impl Screen<Ensemble, ()> for EnsembleScreen {
             &gettext("Delete ensemble"),
             clone!(@weak this =>  move || {
                 spawn!(@clone this, async move {
-                    this.handle.backend.db().delete_ensemble(&this.ensemble.id).unwrap();
+                    db::delete_ensemble(&mut this.handle.backend.db().lock().unwrap(), &this.ensemble.id).unwrap();
                     this.handle.backend.library_changed();
                 });
             }),
@@ -131,19 +131,17 @@ impl Screen<Ensemble, ()> for EnsembleScreen {
 
         // Load the content.
 
-        let recordings = this
-            .handle
-            .backend
-            .db()
-            .get_recordings_for_ensemble(&this.ensemble.id)
-            .unwrap();
+        let recordings = db::get_recordings_for_ensemble(
+            &mut this.handle.backend.db().lock().unwrap(),
+            &this.ensemble.id,
+        )
+        .unwrap();
 
-        let mediums = this
-            .handle
-            .backend
-            .db()
-            .get_mediums_for_ensemble(&this.ensemble.id)
-            .unwrap();
+        let mediums = db::get_mediums_for_ensemble(
+            &mut this.handle.backend.db().lock().unwrap(),
+            &this.ensemble.id,
+        )
+        .unwrap();
 
         if !recordings.is_empty() {
             let length = recordings.len();

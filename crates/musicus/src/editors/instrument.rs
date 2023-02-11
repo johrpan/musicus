@@ -3,7 +3,7 @@ use crate::widgets::{Editor, Section, Widget};
 use anyhow::Result;
 use gettextrs::gettext;
 use gtk::{builders::ListBoxBuilder, glib::clone, prelude::*};
-use musicus_backend::db::{generate_id, Instrument};
+use musicus_backend::db::{self, generate_id, Instrument};
 use std::rc::Rc;
 
 /// A dialog for creating or editing a instrument.
@@ -88,10 +88,11 @@ impl InstrumentEditor {
 
         let instrument = Instrument::new(self.id.clone(), name.to_string());
 
-        self.handle
-            .backend
-            .db()
-            .update_instrument(instrument.clone())?;
+        db::update_instrument(
+            &mut self.handle.backend.db().lock().unwrap(),
+            instrument.clone(),
+        )?;
+
         self.handle.backend.library_changed();
 
         Ok(instrument)

@@ -1,6 +1,7 @@
 use crate::{Backend, Error, Result};
+use db::Track;
 use glib::clone;
-use musicus_database::Track;
+use musicus_database as db;
 use std::cell::{Cell, RefCell};
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -458,7 +459,7 @@ impl TrackGenerator for RandomTrackGenerator {
     }
 
     fn next(&self) -> Vec<Track> {
-        vec![self.backend.db().random_track().unwrap()]
+        vec![db::random_track(&mut self.backend.db().lock().unwrap()).unwrap()]
     }
 }
 
@@ -479,7 +480,7 @@ impl TrackGenerator for RandomRecordingGenerator {
     }
 
     fn next(&self) -> Vec<Track> {
-        let recording = self.backend.db().random_recording().unwrap();
-        self.backend.db().get_tracks(&recording.id).unwrap()
+        let recording = db::random_recording(&mut self.backend.db().lock().unwrap()).unwrap();
+        db::get_tracks(&mut self.backend.db().lock().unwrap(), &recording.id).unwrap()
     }
 }

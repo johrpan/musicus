@@ -6,7 +6,7 @@ use adw::builders::ActionRowBuilder;
 use adw::prelude::*;
 use gettextrs::gettext;
 use glib::clone;
-use musicus_backend::db::{Recording, Track};
+use musicus_backend::db::{self, Recording, Track};
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -64,7 +64,7 @@ impl Screen<Recording, ()> for RecordingScreen {
             &gettext("Delete recording"),
             clone!(@weak this =>  move || {
                 spawn!(@clone this, async move {
-                    this.handle.backend.db().delete_recording(&this.recording.id).unwrap();
+                    db::delete_recording(&mut this.handle.backend.db().lock().unwrap(), &this.recording.id).unwrap();
                     this.handle.backend.library_changed();
                 });
             }),
@@ -94,12 +94,11 @@ impl Screen<Recording, ()> for RecordingScreen {
 
         // Load the content.
 
-        let tracks = this
-            .handle
-            .backend
-            .db()
-            .get_tracks(&this.recording.id)
-            .unwrap();
+        let tracks = db::get_tracks(
+            &mut this.handle.backend.db().lock().unwrap(),
+            &this.recording.id,
+        )
+        .unwrap();
 
         this.show_tracks(tracks);
         this.widget.ready();

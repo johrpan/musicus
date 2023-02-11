@@ -1,8 +1,8 @@
-use super::schema::ensembles;
-use super::{Database, Result};
 use chrono::Utc;
 use diesel::prelude::*;
 use log::info;
+
+use crate::{Result, schema::ensembles, defer_foreign_keys};
 
 /// An ensemble that takes part in recordings.
 #[derive(Insertable, Queryable, PartialEq, Eq, Hash, Debug, Clone)]
@@ -24,54 +24,51 @@ impl Ensemble {
     }
 }
 
-impl Database {
-    /// Update an existing ensemble or insert a new one.
-    pub fn update_ensemble(&self, mut ensemble: Ensemble) -> Result<()> {
-        info!("Updating ensemble {:?}", ensemble);
-        self.defer_foreign_keys()?;
+/// Update an existing ensemble or insert a new one.
+pub fn update_ensemble(connection: &mut SqliteConnection, mut ensemble: Ensemble) -> Result<()> {
+    info!("Updating ensemble {:?}", ensemble);
+    defer_foreign_keys(connection)?;
 
-        ensemble.last_used = Some(Utc::now().timestamp());
+    ensemble.last_used = Some(Utc::now().timestamp());
 
-        self.connection.lock().unwrap().transaction(|connection| {
-            diesel::replace_into(ensembles::table)
-                .values(ensemble)
-                .execute(connection)
-        })?;
+    connection.transaction(|connection| {
+        diesel::replace_into(ensembles::table)
+            .values(ensemble)
+            .execute(connection)
+    })?;
 
-        Ok(())
-    }
+    Ok(())
+}
 
-    /// Get an existing ensemble.
-    pub fn get_ensemble(&self, id: &str) -> Result<Option<Ensemble>> {
-        let ensemble = ensembles::table
-            .filter(ensembles::id.eq(id))
-            .load::<Ensemble>(&mut *self.connection.lock().unwrap())?
-            .into_iter()
-            .next();
+/// Get an existing ensemble.
+pub fn get_ensemble(connection: &mut SqliteConnection, id: &str) -> Result<Option<Ensemble>> {
+    let ensemble = ensembles::table
+        .filter(ensembles::id.eq(id))
+        .load::<Ensemble>(connection)?
+        .into_iter()
+        .next();
 
-        Ok(ensemble)
-    }
+    Ok(ensemble)
+}
 
-    /// Delete an existing ensemble.
-    pub fn delete_ensemble(&self, id: &str) -> Result<()> {
-        info!("Deleting ensemble {}", id);
-        diesel::delete(ensembles::table.filter(ensembles::id.eq(id)))
-            .execute(&mut *self.connection.lock().unwrap())?;
-        Ok(())
-    }
+/// Delete an existing ensemble.
+pub fn delete_ensemble(connection: &mut SqliteConnection, id: &str) -> Result<()> {
+    info!("Deleting ensemble {}", id);
+    diesel::delete(ensembles::table.filter(ensembles::id.eq(id))).execute(connection)?;
+    Ok(())
+}
 
-    /// Get all existing ensembles.
-    pub fn get_ensembles(&self) -> Result<Vec<Ensemble>> {
-        let ensembles = ensembles::table.load::<Ensemble>(&mut *self.connection.lock().unwrap())?;
-        Ok(ensembles)
-    }
+/// Get all existing ensembles.
+pub fn get_ensembles(connection: &mut SqliteConnection) -> Result<Vec<Ensemble>> {
+    let ensembles = ensembles::table.load::<Ensemble>(connection)?;
+    Ok(ensembles)
+}
 
-    /// Get recently used ensembles.
-    pub fn get_recent_ensembles(&self) -> Result<Vec<Ensemble>> {
-        let ensembles = ensembles::table
-            .order(ensembles::last_used.desc())
-            .load::<Ensemble>(&mut *self.connection.lock().unwrap())?;
+/// Get recently used ensembles.
+pub fn get_recent_ensembles(connection: &mut SqliteConnection) -> Result<Vec<Ensemble>> {
+    let ensembles = ensembles::table
+        .order(ensembles::last_used.desc())
+        .load::<Ensemble>(connection)?;
 
-        Ok(ensembles)
-    }
+    Ok(ensembles)
 }

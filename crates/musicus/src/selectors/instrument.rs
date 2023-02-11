@@ -7,7 +7,7 @@ use adw::prelude::*;
 use gettextrs::gettext;
 use glib::clone;
 use log::warn;
-use musicus_backend::db::Instrument;
+use musicus_backend::db::{Instrument, self};
 use std::rc::Rc;
 
 /// A screen for selecting a instrument.
@@ -50,7 +50,7 @@ impl Screen<(), Instrument> for InstrumentSelector {
                 let instrument = instrument.to_owned();
 
                 row.connect_activated(clone!(@weak this =>  move |_| {
-                    if let Err(err) = this.handle.backend.db().update_instrument(instrument.clone()) {
+                    if let Err(err) = db::update_instrument(&mut this.handle.backend.db().lock().unwrap(), instrument.clone()) {
                         warn!("Failed to update access time. {err}");
                     }
 
@@ -64,7 +64,7 @@ impl Screen<(), Instrument> for InstrumentSelector {
             .set_filter(|search, instrument| instrument.name.to_lowercase().contains(search));
 
         this.selector
-            .set_items(this.handle.backend.db().get_recent_instruments().unwrap());
+            .set_items(db::get_recent_instruments(&mut this.handle.backend.db().lock().unwrap(), ).unwrap());
 
         this
     }

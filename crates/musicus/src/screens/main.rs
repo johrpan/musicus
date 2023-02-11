@@ -9,7 +9,7 @@ use adw::prelude::*;
 use gettextrs::gettext;
 use glib::clone;
 use gtk_macros::get_widget;
-use musicus_backend::db::PersonOrEnsemble;
+use musicus_backend::db::{self, PersonOrEnsemble};
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -142,8 +142,9 @@ impl Screen<(), ()> for MainScreen {
         );
 
         play_button.connect_clicked(clone!(@weak this => move |_| {
-            if let Ok(recording) = this.handle.backend.db().random_recording() {
-                this.handle.backend.pl().add_items(this.handle.backend.db().get_tracks(&recording.id).unwrap()).unwrap();
+            let recording = db::random_recording(&mut this.handle.backend.db().lock().unwrap());
+            if let Ok(recording) = recording {
+                this.handle.backend.pl().add_items(db::get_tracks(&mut this.handle.backend.db().lock().unwrap(), &recording.id).unwrap()).unwrap();
             }
         }));
 
@@ -164,8 +165,8 @@ impl Screen<(), ()> for MainScreen {
 
                 let mut poes = Vec::new();
 
-                let persons = this.handle.backend.db().get_persons().unwrap();
-                let ensembles = this.handle.backend.db().get_ensembles().unwrap();
+                let persons = db::get_persons(&mut this.handle.backend.db().lock().unwrap(), ).unwrap();
+                let ensembles = db::get_ensembles(&mut this.handle.backend.db().lock().unwrap(), ).unwrap();
 
                 for person in persons {
                     poes.push(PersonOrEnsemble::Person(person));

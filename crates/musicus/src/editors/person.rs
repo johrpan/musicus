@@ -4,7 +4,7 @@ use anyhow::Result;
 use gettextrs::gettext;
 use glib::clone;
 use gtk::{builders::ListBoxBuilder, prelude::*};
-use musicus_backend::db::{generate_id, Person};
+use musicus_backend::db::{generate_id, Person, self};
 use std::rc::Rc;
 
 /// A dialog for creating or editing a person.
@@ -110,7 +110,11 @@ impl PersonEditor {
             last_name.to_string(),
         );
 
-        self.handle.backend.db().update_person(person.clone())?;
+        db::update_person(
+            &mut self.handle.backend.db().lock().unwrap(),
+            person.clone(),
+        )?;
+
         self.handle.backend.library_changed();
 
         Ok(person)

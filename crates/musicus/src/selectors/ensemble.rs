@@ -7,7 +7,7 @@ use adw::prelude::*;
 use gettextrs::gettext;
 use glib::clone;
 use log::warn;
-use musicus_backend::db::Ensemble;
+use musicus_backend::db::{Ensemble, self};
 use std::rc::Rc;
 
 /// A screen for selecting a ensemble.
@@ -50,7 +50,7 @@ impl Screen<(), Ensemble> for EnsembleSelector {
                 let ensemble = ensemble.to_owned();
 
                 row.connect_activated(clone!(@weak this =>  move |_| {
-                    if let Err(err) = this.handle.backend.db().update_ensemble(ensemble.clone()) {
+                    if let Err(err) = db::update_ensemble(&mut this.handle.backend.db().lock().unwrap(), ensemble.clone()) {
                         warn!("Failed to update access time. {err}");
                     }
 
@@ -64,7 +64,7 @@ impl Screen<(), Ensemble> for EnsembleSelector {
             .set_filter(|search, ensemble| ensemble.name.to_lowercase().contains(search));
 
         this.selector
-            .set_items(this.handle.backend.db().get_recent_ensembles().unwrap());
+            .set_items(db::get_recent_ensembles(&mut this.handle.backend.db().lock().unwrap(), ).unwrap());
 
         this
     }

@@ -1,9 +1,10 @@
 use crate::{Backend, BackendState, Player, Result};
 use gio::prelude::*;
 use log::warn;
-use musicus_database::Database;
+use musicus_database::SqliteConnection;
 use std::path::PathBuf;
 use std::rc::Rc;
+use std::sync::{Arc, Mutex};
 
 impl Backend {
     /// Initialize the music library if it is set in the settings.
@@ -41,8 +42,11 @@ impl Backend {
         let mut db_path = path.clone();
         db_path.push("musicus.db");
 
-        let database = Rc::new(Database::new(db_path.to_str().unwrap())?);
-        self.database.replace(Some(Rc::clone(&database)));
+        let database = Arc::new(Mutex::new(musicus_database::connect(
+            db_path.to_str().unwrap(),
+        )?));
+
+        self.database.replace(Some(database));
 
         let player = Player::new(path);
         self.player.replace(Some(player));
@@ -60,7 +64,7 @@ impl Backend {
     }
 
     /// Get an interface to the database and panic if there is none.
-    pub fn db(&self) -> Rc<Database> {
+    pub fn db(&self) -> Arc<Mutex<SqliteConnection>> {
         self.database.borrow().clone().unwrap()
     }
 

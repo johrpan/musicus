@@ -7,7 +7,7 @@ use adw::prelude::*;
 use gettextrs::gettext;
 use glib::clone;
 use log::warn;
-use musicus_backend::db::Person;
+use musicus_backend::db::{Person, self};
 use std::rc::Rc;
 
 /// A screen for selecting a person.
@@ -50,7 +50,7 @@ impl Screen<(), Person> for PersonSelector {
                 let person = person.to_owned();
 
                 row.connect_activated(clone!(@weak this =>  move |_| {
-                    if let Err(err) = this.handle.backend.db().update_person(person.clone()) {
+                    if let Err(err) = db::update_person(&mut this.handle.backend.db().lock().unwrap(), person.clone()) {
                         warn!("Failed to update access time. {err}");
                     }
 
@@ -64,7 +64,7 @@ impl Screen<(), Person> for PersonSelector {
             .set_filter(|search, person| person.name_fl().to_lowercase().contains(search));
 
         this.selector
-            .set_items(this.handle.backend.db().get_recent_persons().unwrap());
+            .set_items(db::get_recent_persons(&mut this.handle.backend.db().lock().unwrap(), ).unwrap());
 
         this
     }

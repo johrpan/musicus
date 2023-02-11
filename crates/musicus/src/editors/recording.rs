@@ -8,7 +8,7 @@ use anyhow::Result;
 use gettextrs::gettext;
 use glib::clone;
 use gtk_macros::get_widget;
-use musicus_backend::db::{generate_id, Performance, Recording, Work};
+use musicus_backend::db::{self, generate_id, Performance, Recording, Work};
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -188,10 +188,11 @@ impl RecordingEditor {
             self.performances.borrow().clone(),
         );
 
-        self.handle
-            .backend
-            .db()
-            .update_recording(recording.clone())?;
+        db::update_recording(
+            &mut self.handle.backend.db().lock().unwrap(),
+            recording.clone(),
+        )?;
+
         self.handle.backend.library_changed();
 
         Ok(recording)

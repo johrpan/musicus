@@ -3,7 +3,7 @@ use crate::widgets::{Editor, Section, Widget};
 use anyhow::Result;
 use gettextrs::gettext;
 use gtk::{builders::ListBoxBuilder, glib::clone, prelude::*};
-use musicus_backend::db::{generate_id, Ensemble};
+use musicus_backend::db::{generate_id, Ensemble, self};
 use std::rc::Rc;
 
 /// A dialog for creating or editing a ensemble.
@@ -88,7 +88,7 @@ impl EnsembleEditor {
 
         let ensemble = Ensemble::new(self.id.clone(), name.to_string());
 
-        self.handle.backend.db().update_ensemble(ensemble.clone())?;
+        db::update_ensemble(&mut self.handle.backend.db().lock().unwrap(), ensemble.clone())?;
         self.handle.backend.library_changed();
 
         Ok(ensemble)

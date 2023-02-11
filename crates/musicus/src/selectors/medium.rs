@@ -6,7 +6,7 @@ use adw::prelude::*;
 use gettextrs::gettext;
 use glib::clone;
 use log::warn;
-use musicus_backend::db::{Medium, PersonOrEnsemble};
+use musicus_backend::db::{self, Medium, PersonOrEnsemble};
 use std::rc::Rc;
 
 /// A screen for selecting a medium.
@@ -56,8 +56,10 @@ impl Screen<(), Medium> for MediumSelector {
 
         let mut poes = Vec::new();
 
-        let persons = this.handle.backend.db().get_recent_persons().unwrap();
-        let ensembles = this.handle.backend.db().get_recent_ensembles().unwrap();
+        let persons =
+            db::get_recent_persons(&mut this.handle.backend.db().lock().unwrap()).unwrap();
+        let ensembles =
+            db::get_recent_ensembles(&mut this.handle.backend.db().lock().unwrap()).unwrap();
 
         for person in persons {
             poes.push(PersonOrEnsemble::Person(person));
@@ -111,7 +113,7 @@ impl Screen<PersonOrEnsemble, Medium> for MediumSelectorMediumScreen {
 
                 let medium = medium.to_owned();
                 row.connect_activated(clone!(@weak this =>  move |_| {
-                    if let Err(err) = this.handle.backend.db().update_medium(medium.clone()) {
+                    if let Err(err) = db::update_medium(&mut this.handle.backend.db().lock().unwrap(), medium.clone()) {
                         warn!("Failed to update access time. {err}");
                     }
 
@@ -128,20 +130,20 @@ impl Screen<PersonOrEnsemble, Medium> for MediumSelectorMediumScreen {
         match this.poe.clone() {
             PersonOrEnsemble::Person(person) => {
                 this.selector.set_items(
-                    this.handle
-                        .backend
-                        .db()
-                        .get_mediums_for_person(&person.id)
-                        .unwrap(),
+                    db::get_mediums_for_person(
+                        &mut this.handle.backend.db().lock().unwrap(),
+                        &person.id,
+                    )
+                    .unwrap(),
                 );
             }
             PersonOrEnsemble::Ensemble(ensemble) => {
                 this.selector.set_items(
-                    this.handle
-                        .backend
-                        .db()
-                        .get_mediums_for_ensemble(&ensemble.id)
-                        .unwrap(),
+                    db::get_mediums_for_ensemble(
+                        &mut this.handle.backend.db().lock().unwrap(),
+                        &ensemble.id,
+                    )
+                    .unwrap(),
                 );
             }
         }

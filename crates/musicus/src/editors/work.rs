@@ -8,7 +8,7 @@ use anyhow::Result;
 use gettextrs::gettext;
 use glib::clone;
 use gtk_macros::get_widget;
-use musicus_backend::db::{generate_id, Instrument, Person, Work, WorkPart};
+use musicus_backend::db::{self, generate_id, Instrument, Person, Work, WorkPart};
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -261,7 +261,7 @@ impl WorkEditor {
             self.parts.borrow().clone(),
         );
 
-        self.handle.backend.db().update_work(work.clone())?;
+        db::update_work(&mut self.handle.backend.db().lock().unwrap(), work.clone())?;
         self.handle.backend.library_changed();
 
         Ok(work)

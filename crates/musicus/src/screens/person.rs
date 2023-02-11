@@ -7,7 +7,7 @@ use adw::builders::ActionRowBuilder;
 use adw::prelude::*;
 use gettextrs::gettext;
 use glib::clone;
-use musicus_backend::db::{Medium, Person, Recording, Work};
+use musicus_backend::db::{self, Medium, Person, Recording, Work};
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -65,7 +65,7 @@ impl Screen<Person, ()> for PersonScreen {
             &gettext("Delete person"),
             clone!(@weak this =>  move || {
                 spawn!(@clone this, async move {
-                    this.handle.backend.db().delete_person(&this.person.id).unwrap();
+                    db::delete_person(&mut this.handle.backend.db().lock().unwrap(), &this.person.id).unwrap();
                     this.handle.backend.library_changed();
                 });
             }),
@@ -165,21 +165,23 @@ impl Screen<Person, ()> for PersonScreen {
 
         // Load the content.
 
-        let works = this.handle.backend.db().get_works(&this.person.id).unwrap();
+        let works = db::get_works(
+            &mut this.handle.backend.db().lock().unwrap(),
+            &this.person.id,
+        )
+        .unwrap();
 
-        let recordings = this
-            .handle
-            .backend
-            .db()
-            .get_recordings_for_person(&this.person.id)
-            .unwrap();
+        let recordings = db::get_recordings_for_person(
+            &mut this.handle.backend.db().lock().unwrap(),
+            &this.person.id,
+        )
+        .unwrap();
 
-        let mediums = this
-            .handle
-            .backend
-            .db()
-            .get_mediums_for_person(&this.person.id)
-            .unwrap();
+        let mediums = db::get_mediums_for_person(
+            &mut this.handle.backend.db().lock().unwrap(),
+            &this.person.id,
+        )
+        .unwrap();
 
         if !works.is_empty() {
             let length = works.len();

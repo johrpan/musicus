@@ -1,11 +1,11 @@
+use db::SqliteConnection;
 use gio::traits::SettingsExt;
 use log::warn;
-use musicus_database::Database;
 use std::{
     cell::{Cell, RefCell},
     path::PathBuf,
     rc::Rc,
-    sync::Arc,
+    sync::{Arc, Mutex},
 };
 use tokio::sync::{broadcast, broadcast::Sender};
 
@@ -59,7 +59,7 @@ pub struct Backend {
     library_updated_sender: Sender<()>,
 
     /// The database. This can be assumed to exist, when the state is set to BackendState::Ready.
-    database: RefCell<Option<Rc<Database>>>,
+    database: RefCell<Option<Arc<Mutex<SqliteConnection>>>>,
 
     /// The player handling playlist and playback. This can be assumed to exist, when the state is
     /// set to BackendState::Ready.

@@ -7,7 +7,7 @@ use adw::builders::ActionRowBuilder;
 use adw::prelude::*;
 use glib::clone;
 use gtk_macros::get_widget;
-use musicus_backend::db::Medium;
+use musicus_backend::db::{self, Medium};
 use musicus_backend::import::ImportSession;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -29,7 +29,10 @@ impl ImportScreen {
 
         let this = self;
         spawn!(@clone this, async move {
-            let mediums = this.handle.backend.db().get_mediums_by_source_id(this.session.source_id());
+            let mediums = db::get_mediums_by_source_id(
+                &mut this.handle.backend.db().lock().unwrap(),
+                this.session.source_id()
+            );
 
             match mediums {
                 Ok(mediums) => {
@@ -110,7 +113,7 @@ impl Screen<Arc<ImportSession>, ()> for ImportScreen {
         get_widget!(builder, adw::ActionRow, error_row);
         get_widget!(builder, gtk::ListBox, matching_list);
         get_widget!(builder, gtk::Button, select_button);
-        get_widget!(builder, gtk::Button, add_button);
+        get_widget!(builder, gtk::Button, add_medium_button);
 
         let this = Rc::new(Self {
             handle,
@@ -139,7 +142,7 @@ impl Screen<Arc<ImportSession>, ()> for ImportScreen {
             });
         }));
 
-        add_button.connect_clicked(clone!(@weak this =>  move |_| {
+        add_medium_button.connect_clicked(clone!(@weak this =>  move |_| {
             spawn!(@clone this, async move {
                 if let Some(medium) = push!(this.handle, MediumEditor, (Arc::clone(&this.session), None)).await {
                     this.select_medium(medium);
@@ -151,7 +154,7 @@ impl Screen<Arc<ImportSession>, ()> for ImportScreen {
 
         this.load_matches();
 
-        // Copy the tracks in the background, if neccessary.
+        // Copy the tracks in the background, if necessary.
         this.session.copy();
 
         this

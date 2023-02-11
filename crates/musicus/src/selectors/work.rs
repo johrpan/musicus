@@ -7,7 +7,7 @@ use adw::prelude::*;
 use gettextrs::gettext;
 use glib::clone;
 use log::warn;
-use musicus_backend::db::{Person, Work};
+use musicus_backend::db::{Person, Work, self};
 use std::rc::Rc;
 
 /// A screen for selecting a work.
@@ -72,7 +72,7 @@ impl Screen<(), Work> for WorkSelector {
             .set_filter(|search, person| person.name_fl().to_lowercase().contains(search));
 
         this.selector
-            .set_items(this.handle.backend.db().get_recent_persons().unwrap());
+            .set_items(db::get_recent_persons(&mut this.handle.backend.db().lock().unwrap()).unwrap());
 
         this
     }
@@ -125,7 +125,7 @@ impl Screen<Person, Work> for WorkSelectorWorkScreen {
 
                 let work = work.to_owned();
                 row.connect_activated(clone!(@weak this =>  move |_| {
-                    if let Err(err) = this.handle.backend.db().update_work(work.clone()) {
+                    if let Err(err) = db::update_work(&mut this.handle.backend.db().lock().unwrap(), work.clone()) {
                         warn!("Failed to update access time. {err}");
                     }
 
@@ -139,7 +139,7 @@ impl Screen<Person, Work> for WorkSelectorWorkScreen {
             .set_filter(|search, work| work.title.to_lowercase().contains(search));
 
         this.selector
-            .set_items(this.handle.backend.db().get_works(&this.person.id).unwrap());
+            .set_items(db::get_works(&mut this.handle.backend.db().lock().unwrap(), &this.person.id).unwrap());
 
         this
     }

@@ -1,8 +1,8 @@
-use super::schema::instruments;
-use super::{Database, Result};
 use chrono::Utc;
 use diesel::prelude::*;
 use log::info;
+
+use crate::{defer_foreign_keys, schema::instruments, Result};
 
 /// An instrument or any other possible role within a recording.
 #[derive(Insertable, Queryable, PartialEq, Eq, Hash, Debug, Clone)]
@@ -24,57 +24,56 @@ impl Instrument {
     }
 }
 
-impl Database {
-    /// Update an existing instrument or insert a new one.
-    pub fn update_instrument(&self, mut instrument: Instrument) -> Result<()> {
-        info!("Updating instrument {:?}", instrument);
-        self.defer_foreign_keys()?;
+/// Update an existing instrument or insert a new one.
+pub fn update_instrument(
+    connection: &mut SqliteConnection,
+    mut instrument: Instrument,
+) -> Result<()> {
+    info!("Updating instrument {:?}", instrument);
+    defer_foreign_keys(connection)?;
 
-        instrument.last_used = Some(Utc::now().timestamp());
+    instrument.last_used = Some(Utc::now().timestamp());
 
-        self.connection.lock().unwrap().transaction(|connection| {
-            diesel::replace_into(instruments::table)
-                .values(instrument)
-                .execute(connection)
-        })?;
+    connection.transaction(|connection| {
+        diesel::replace_into(instruments::table)
+            .values(instrument)
+            .execute(connection)
+    })?;
 
-        Ok(())
-    }
+    Ok(())
+}
 
-    /// Get an existing instrument.
-    pub fn get_instrument(&self, id: &str) -> Result<Option<Instrument>> {
-        let instrument = instruments::table
-            .filter(instruments::id.eq(id))
-            .load::<Instrument>(&mut *self.connection.lock().unwrap())?
-            .into_iter()
-            .next();
+/// Get an existing instrument.
+pub fn get_instrument(connection: &mut SqliteConnection, id: &str) -> Result<Option<Instrument>> {
+    let instrument = instruments::table
+        .filter(instruments::id.eq(id))
+        .load::<Instrument>(connection)?
+        .into_iter()
+        .next();
 
-        Ok(instrument)
-    }
+    Ok(instrument)
+}
 
-    /// Delete an existing instrument.
-    pub fn delete_instrument(&self, id: &str) -> Result<()> {
-        info!("Deleting instrument {}", id);
-        diesel::delete(instruments::table.filter(instruments::id.eq(id)))
-            .execute(&mut *self.connection.lock().unwrap())?;
+/// Delete an existing instrument.
+pub fn delete_instrument(connection: &mut SqliteConnection, id: &str) -> Result<()> {
+    info!("Deleting instrument {}", id);
+    diesel::delete(instruments::table.filter(instruments::id.eq(id))).execute(connection)?;
 
-        Ok(())
-    }
+    Ok(())
+}
 
-    /// Get all existing instruments.
-    pub fn get_instruments(&self) -> Result<Vec<Instrument>> {
-        let instruments =
-            instruments::table.load::<Instrument>(&mut *self.connection.lock().unwrap())?;
+/// Get all existing instruments.
+pub fn get_instruments(connection: &mut SqliteConnection) -> Result<Vec<Instrument>> {
+    let instruments = instruments::table.load::<Instrument>(connection)?;
 
-        Ok(instruments)
-    }
+    Ok(instruments)
+}
 
-    /// Get recently used instruments.
-    pub fn get_recent_instruments(&self) -> Result<Vec<Instrument>> {
-        let instruments = instruments::table
-            .order(instruments::last_used.desc())
-            .load::<Instrument>(&mut *self.connection.lock().unwrap())?;
+/// Get recently used instruments.
+pub fn get_recent_instruments(connection: &mut SqliteConnection) -> Result<Vec<Instrument>> {
+    let instruments = instruments::table
+        .order(instruments::last_used.desc())
+        .load::<Instrument>(connection)?;
 
-        Ok(instruments)
-    }
+    Ok(instruments)
 }

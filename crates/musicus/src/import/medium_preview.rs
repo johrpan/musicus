@@ -8,7 +8,7 @@ use glib::clone;
 use gtk::builders::{FrameBuilder, ListBoxBuilder};
 use gtk::prelude::*;
 use gtk_macros::get_widget;
-use musicus_backend::db::Medium;
+use musicus_backend::db::{self, Medium};
 use musicus_backend::import::{ImportSession, State};
 use std::cell::RefCell;
 use std::path::PathBuf;
@@ -226,7 +226,7 @@ impl MediumPreview {
         );
 
         let directory = PathBuf::from(&directory_name);
-        std::fs::create_dir(&music_library_path.join(&directory))?;
+        std::fs::create_dir(music_library_path.join(&directory))?;
 
         // Copy the tracks to the music library.
 
@@ -243,7 +243,7 @@ impl MediumPreview {
             track.path = track_path.to_str().unwrap().to_owned();
 
             // Copy the corresponding audio file to the music library.
-            std::fs::copy(&import_track.path, &music_library_path.join(&track_path))?;
+            std::fs::copy(&import_track.path, music_library_path.join(&track_path))?;
 
             tracks.push(track);
         }
@@ -257,7 +257,7 @@ impl MediumPreview {
             tracks,
         );
 
-        self.handle.backend.db().update_medium(medium)?;
+        db::update_medium(&mut self.handle.backend.db().lock().unwrap(), medium)?;
         self.handle.backend.library_changed();
 
         Ok(())
