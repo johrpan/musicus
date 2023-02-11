@@ -93,7 +93,7 @@ struct MediumRow {
 #[table_name = "tracks"]
 struct TrackRow {
     pub id: String,
-    pub medium: String,
+    pub medium: Option<String>,
     pub index: i32,
     pub recording: String,
     pub work_parts: String,
@@ -150,7 +150,7 @@ impl Database {
 
                     let track_row = TrackRow {
                         id: generate_id(),
-                        medium: medium_id.to_owned(),
+                        medium: Some(medium_id.to_owned()),
                         index: index as i32,
                         recording: track.recording.id.clone(),
                         work_parts,
@@ -208,7 +208,7 @@ impl Database {
         let mut mediums: Vec<Medium> = Vec::new();
 
         let rows = mediums::table
-            .inner_join(tracks::table.on(tracks::medium.eq(mediums::id)))
+            .inner_join(tracks::table.on(tracks::medium.eq(mediums::id.nullable())))
             .inner_join(recordings::table.on(recordings::id.eq(tracks::recording)))
             .inner_join(performances::table.on(performances::recording.eq(recordings::id)))
             .inner_join(persons::table.on(persons::id.nullable().eq(performances::person)))
@@ -230,7 +230,7 @@ impl Database {
         let mut mediums: Vec<Medium> = Vec::new();
 
         let rows = mediums::table
-            .inner_join(tracks::table.on(tracks::medium.eq(tracks::id)))
+            .inner_join(tracks::table.on(tracks::medium.eq(tracks::id.nullable())))
             .inner_join(recordings::table.on(recordings::id.eq(tracks::recording)))
             .inner_join(performances::table.on(performances::recording.eq(recordings::id)))
             .inner_join(ensembles::table.on(ensembles::id.nullable().eq(performances::ensemble)))

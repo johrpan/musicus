@@ -69,7 +69,7 @@ diesel::table! {
 diesel::table! {
     tracks (id) {
         id -> Text,
-        medium -> Text,
+        medium -> Nullable<Text>,
         index -> Integer,
         recording -> Text,
         work_parts -> Text,
