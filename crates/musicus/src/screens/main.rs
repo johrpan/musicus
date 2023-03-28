@@ -4,7 +4,7 @@ use crate::import::SourceSelector;
 use crate::navigator::{NavigationHandle, Navigator, NavigatorWindow, Screen};
 use crate::preferences::Preferences;
 use crate::widgets::{List, PlayerBar, Widget};
-use adw::builders::ActionRowBuilder;
+
 use adw::prelude::*;
 use gettextrs::gettext;
 use glib::clone;
@@ -102,9 +102,9 @@ impl Screen<(), ()> for MainScreen {
             .set_make_widget_cb(clone!(@weak this =>  @default-panic, move |index| {
                 let poe = &this.poes.borrow()[index];
 
-                let row = ActionRowBuilder::new()
+                let row = adw::ActionRow::builder()
                     .activatable(true)
-                    .title(&poe.get_title())
+                    .title(poe.get_title())
                     .build();
 
                 let poe = poe.to_owned();
@@ -207,13 +207,13 @@ impl MainScreen {
 
         copy_button.connect_clicked(clone!(@weak logger, @weak toast_overlay => move |widget| {
             widget.clipboard().set_text(&logger.messages().into_iter().map(|m| m.to_string()).collect::<Vec<String>>().join("\n"));
-            toast_overlay.add_toast(&adw::Toast::builder().title(&gettext("Copied to clipboard")).build());
+            toast_overlay.add_toast(adw::Toast::builder().title(gettext("Copied to clipboard")).build());
         }));
 
         let header = adw::HeaderBar::builder()
             .title_widget(
                 &adw::WindowTitle::builder()
-                    .title(&gettext("Debug log"))
+                    .title(gettext("Debug log"))
                     .build(),
             )
             .build();
@@ -227,7 +227,7 @@ impl MainScreen {
         for message in logger.messages() {
             log_list.append(
                 &adw::ActionRow::builder()
-                    .title(&format!(
+                    .title(format!(
                         "<b>{}</b> {} <i>{}</i>",
                         message.level,
                         message.time.format("%Y-%m-%d %H:%M:%S"),
@@ -255,7 +255,7 @@ impl MainScreen {
         adw::Window::builder()
             .transient_for(&self.handle.window)
             .modal(true)
-            .title(&gettext("Debug log"))
+            .title(gettext("Debug log"))
             .default_width(640)
             .default_height(480)
             .content(&toast_overlay)
@@ -269,10 +269,10 @@ impl MainScreen {
             .transient_for(&self.handle.window)
             .modal(true)
             .application_icon("de.johrpan.musicus")
-            .application_name(&gettext("Musicus"))
+            .application_name(gettext("Musicus"))
             .developer_name("Elias Projahn")
             .version(config::VERSION)
-            .comments(&gettext("The classical music player and organizer."))
+            .comments(gettext("The classical music player and organizer."))
             .website("https://code.johrpan.de/johrpan/musicus")
             .developers(vec![String::from("Elias Projahn <elias@johrpan.de>")])
             .copyright("© 2022 Elias Projahn")

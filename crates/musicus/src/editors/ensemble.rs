@@ -2,8 +2,8 @@ use crate::navigator::{NavigationHandle, Screen};
 use crate::widgets::{Editor, Section, Widget};
 use anyhow::Result;
 use gettextrs::gettext;
-use gtk::{builders::ListBoxBuilder, glib::clone, prelude::*};
-use musicus_backend::db::{generate_id, Ensemble, self};
+use gtk::{glib::clone, prelude::*};
+use musicus_backend::db::{self, generate_id, Ensemble};
 use std::rc::Rc;
 
 /// A dialog for creating or editing a ensemble.
@@ -23,12 +23,12 @@ impl Screen<Option<Ensemble>, Ensemble> for EnsembleEditor {
         let editor = Editor::new();
         editor.set_title("Ensemble");
 
-        let list = ListBoxBuilder::new()
+        let list = gtk::ListBox::builder()
             .selection_mode(gtk::SelectionMode::None)
             .css_classes(vec![String::from("boxed-list")])
             .build();
 
-        let name = adw::EntryRow::builder().title(&gettext("Name")).build();
+        let name = adw::EntryRow::builder().title(gettext("Name")).build();
         list.append(&name);
 
         let section = Section::new(&gettext("General"), &list);
@@ -88,7 +88,10 @@ impl EnsembleEditor {
 
         let ensemble = Ensemble::new(self.id.clone(), name.to_string());
 
-        db::update_ensemble(&mut self.handle.backend.db().lock().unwrap(), ensemble.clone())?;
+        db::update_ensemble(
+            &mut self.handle.backend.db().lock().unwrap(),
+            ensemble.clone(),
+        )?;
         self.handle.backend.library_changed();
 
         Ok(ensemble)

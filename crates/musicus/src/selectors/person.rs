@@ -2,12 +2,12 @@ use super::selector::Selector;
 use crate::editors::PersonEditor;
 use crate::navigator::{NavigationHandle, Screen};
 use crate::widgets::Widget;
-use adw::builders::ActionRowBuilder;
+
 use adw::prelude::*;
 use gettextrs::gettext;
 use glib::clone;
 use log::warn;
-use musicus_backend::db::{Person, self};
+use musicus_backend::db::{self, Person};
 use std::rc::Rc;
 
 /// A screen for selecting a person.
@@ -42,9 +42,9 @@ impl Screen<(), Person> for PersonSelector {
 
         this.selector
             .set_make_widget(clone!(@weak this =>  @default-panic, move |person| {
-                let row = ActionRowBuilder::new()
+                let row = adw::ActionRow::builder()
                     .activatable(true)
-                    .title(&person.name_lf())
+                    .title(person.name_lf())
                     .build();
 
                 let person = person.to_owned();
@@ -63,8 +63,9 @@ impl Screen<(), Person> for PersonSelector {
         this.selector
             .set_filter(|search, person| person.name_fl().to_lowercase().contains(search));
 
-        this.selector
-            .set_items(db::get_recent_persons(&mut this.handle.backend.db().lock().unwrap(), ).unwrap());
+        this.selector.set_items(
+            db::get_recent_persons(&mut this.handle.backend.db().lock().unwrap()).unwrap(),
+        );
 
         this
     }

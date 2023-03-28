@@ -1,9 +1,7 @@
 use crate::navigator::{NavigationHandle, Screen};
 use crate::widgets::Widget;
-use adw::builders::{HeaderBarBuilder, StatusPageBuilder};
 use gettextrs::gettext;
 use glib::clone;
-use gtk::builders::{BoxBuilder, ButtonBuilder};
 use gtk::prelude::*;
 use std::rc::Rc;
 
@@ -17,23 +15,23 @@ pub struct WelcomeScreen {
 
 impl Screen<(), ()> for WelcomeScreen {
     fn new(_: (), handle: NavigationHandle<()>) -> Rc<Self> {
-        let widget = BoxBuilder::new()
+        let widget = gtk::Box::builder()
             .orientation(gtk::Orientation::Vertical)
             .build();
 
-        let header = HeaderBarBuilder::new()
+        let header = gtk::HeaderBar::builder()
             .title_widget(&adw::WindowTitle::new("Musicus", ""))
             .build();
 
-        let button = ButtonBuilder::new()
+        let button = gtk::Button::builder()
             .halign(gtk::Align::Center)
-            .label(&gettext("Select folder"))
+            .label(gettext("Select folder"))
             .build();
 
-        let welcome = StatusPageBuilder::new()
+        let welcome = adw::StatusPage::builder()
             .icon_name("folder-music-symbolic")
-            .title(&gettext("Welcome to Musicus!"))
-            .description(&gettext(
+            .title(gettext("Welcome to Musicus!"))
+            .description(gettext(
                 "Get startet by selecting the folder containing your music \
                 files! Musicus will create a new database there or open one that already exists.",
             ))

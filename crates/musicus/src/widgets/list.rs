@@ -1,6 +1,6 @@
 use super::indexed_list_model::{IndexedListModel, ItemIndex};
 use glib::clone;
-use gtk::{builders::ListBoxBuilder, gdk, prelude::*};
+use gtk::{gdk, prelude::*};
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
@@ -20,14 +20,14 @@ impl List {
     pub fn new() -> Rc<Self> {
         let model = IndexedListModel::default();
         let filter = gtk::CustomFilter::new(|_| true);
-        let filter_model = gtk::FilterListModel::new(Some(&model), Some(&filter));
+        let filter_model = gtk::FilterListModel::new(Some(model.clone()), Some(filter.clone()));
 
         // TODO: Switch to gtk::ListView.
         // let selection = gtk::NoSelection::new(Some(&model));
         // let factory = gtk::SignalListItemFactory::new();
         // let widget = gtk::ListView::new(Some(&selection), Some(&factory));
 
-        let widget = ListBoxBuilder::new()
+        let widget = gtk::ListBox::builder()
             .selection_mode(gtk::SelectionMode::None)
             .css_classes(vec![String::from("boxed-list")])
             .build();
@@ -45,7 +45,7 @@ impl List {
         this.filter
             .set_filter_func(clone!(@strong this => move |index| {
                 if let Some(cb) = &*this.filter_cb.borrow() {
-                    let index = index.downcast_ref::<ItemIndex>().unwrap().get() as usize;
+                    let index = index.downcast_ref::<ItemIndex>().unwrap().value() as usize;
                     cb(index)
                 } else {
                     true
@@ -81,8 +81,8 @@ impl List {
                         }
                     }));
 
-                    widget.add_controller(&drag_source);
-                    widget.add_controller(&drop_target);
+                    widget.add_controller(drag_source);
+                    widget.add_controller(drop_target);
                 }
 
                 widget
@@ -109,6 +109,7 @@ impl List {
     /// false, the item will not be shown.
     pub fn set_filter_cb<F: Fn(usize) -> bool + 'static>(&self, cb: F) {
         self.filter_cb.replace(Some(Box::new(cb)));
+        self.invalidate_filter();
     }
 
     /// Set the closure to be called to when the use has dragged an item to a

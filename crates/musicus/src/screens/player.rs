@@ -65,7 +65,7 @@ impl Screen<(), ()> for PlayerScreen {
         content.append(&list.widget);
 
         let event_controller = gtk::EventControllerLegacy::new();
-        position_scale.add_controller(&event_controller);
+        position_scale.add_controller(event_controller.clone());
 
         let this = Rc::new(Self {
             handle,

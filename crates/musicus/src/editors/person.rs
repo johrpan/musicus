@@ -3,8 +3,8 @@ use crate::widgets::{Editor, Section, Widget};
 use anyhow::Result;
 use gettextrs::gettext;
 use glib::clone;
-use gtk::{builders::ListBoxBuilder, prelude::*};
-use musicus_backend::db::{generate_id, Person, self};
+use gtk::prelude::*;
+use musicus_backend::db::{self, generate_id, Person};
 use std::rc::Rc;
 
 /// A dialog for creating or editing a person.
@@ -25,18 +25,16 @@ impl Screen<Option<Person>, Person> for PersonEditor {
         let editor = Editor::new();
         editor.set_title("Person");
 
-        let list = ListBoxBuilder::new()
+        let list = gtk::ListBox::builder()
             .selection_mode(gtk::SelectionMode::None)
             .css_classes(vec![String::from("boxed-list")])
             .build();
 
         let first_name = adw::EntryRow::builder()
-            .title(&gettext("First name"))
+            .title(gettext("First name"))
             .build();
 
-        let last_name = adw::EntryRow::builder()
-            .title(&gettext("Last name"))
-            .build();
+        let last_name = adw::EntryRow::builder().title(gettext("Last name")).build();
 
         list.append(&first_name);
         list.append(&last_name);

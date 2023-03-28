@@ -1,7 +1,7 @@
 use super::track_set_editor::{TrackData, TrackSetData, TrackSetEditor};
 use crate::navigator::{NavigationHandle, Screen};
 use crate::widgets::{List, Widget};
-use adw::builders::ActionRowBuilder;
+
 use adw::prelude::*;
 use anyhow::Result;
 use glib::clone;
@@ -109,10 +109,10 @@ impl Screen<(Arc<ImportSession>, Option<Medium>), Medium> for MediumEditor {
                 edit_button.set_valign(gtk::Align::Center);
                 edit_button.set_child(Some(&edit_image));
 
-                let row = ActionRowBuilder::new()
+                let row = adw::ActionRow::builder()
                     .focusable(false)
-                    .title(&title)
-                    .subtitle(&subtitle)
+                    .title(title)
+                    .subtitle(subtitle)
                     .activatable_widget(&edit_button)
                     .build();
 

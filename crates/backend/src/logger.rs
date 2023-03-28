@@ -1,6 +1,9 @@
-use chrono::{Local, DateTime};
+use chrono::{DateTime, Local};
 use log::{Level, LevelFilter, Log, Metadata, Record};
-use std::{fmt::Display, sync::{Arc, Mutex}};
+use std::{
+    fmt::Display,
+    sync::{Arc, Mutex},
+};
 
 /// Register the custom logger. This will panic if called more than once.
 pub fn register() -> Arc<Logger> {
@@ -72,6 +75,10 @@ impl<'a> From<&Record<'a>> for LogMessage {
 
 impl Display for LogMessage {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} {} ({}): {}", self.time, self.module, self.level, self.message)
+        write!(
+            f,
+            "{} {} ({}): {}",
+            self.time, self.module, self.level, self.message
+        )
     }
 }

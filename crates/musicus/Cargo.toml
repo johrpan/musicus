@@ -5,13 +5,13 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1"
-adw = { package = "libadwaita", version = "0.2", features = ["v1_2"] }
+adw = { package = "libadwaita", version = "0.3", features = ["v1_2"] }
 futures-channel = "0.3"
 gettext-rs = { version = "0.7", features = ["gettext-system"] }
-gio = "0.16"
-glib = "0.16"
-gstreamer = "0.19"
-gtk = { package = "gtk4", version = "0.5" }
+gio = "0.17"
+glib = "0.17"
+gstreamer = "0.20"
+gtk = { package = "gtk4", version = "0.6" }
 gtk-macros = "0.3"
 log = "0.4"
 musicus_backend = { version = "0.1.0", path = "../backend" }

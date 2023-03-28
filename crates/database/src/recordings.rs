@@ -97,7 +97,7 @@ impl PersonOrEnsemble {
 
 /// Database table data for a recording.
 #[derive(Insertable, Queryable, QueryableByName, Debug, Clone)]
-#[table_name = "recordings"]
+#[diesel(table_name = recordings)]
 struct RecordingRow {
     pub id: String,
     pub work: String,
@@ -120,7 +120,7 @@ impl From<Recording> for RecordingRow {
 
 /// Database table data for a performance.
 #[derive(Insertable, Queryable, Debug, Clone)]
-#[table_name = "performances"]
+#[diesel(table_name = performances)]
 struct PerformanceRow {
     pub id: i64,
     pub recording: String,

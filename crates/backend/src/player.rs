@@ -1,6 +1,7 @@
 use crate::{Backend, Error, Result};
 use db::Track;
 use glib::clone;
+use gstreamer_player::PlayerVideoRenderer;
 use musicus_database as db;
 use std::cell::{Cell, RefCell};
 use std::path::PathBuf;
@@ -32,10 +33,7 @@ pub struct Player {
 impl Player {
     pub fn new(music_library_path: PathBuf) -> Rc<Self> {
         let dispatcher = gstreamer_player::PlayerGMainContextSignalDispatcher::new(None);
-        let player = gstreamer_player::Player::new(
-            gstreamer_player::PlayerVideoRenderer::NONE,
-            Some(&dispatcher),
-        );
+        let player = gstreamer_player::Player::new(None::<PlayerVideoRenderer>, Some(dispatcher));
         let mut config = player.config();
         config.set_position_update_interval(250);
         player.set_config(config).unwrap();

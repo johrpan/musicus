@@ -1,5 +1,6 @@
 use crate::error::{Error, Result};
 use crate::session::{ImportSession, ImportTrack, State};
+use base64::Engine;
 use gstreamer::ClockTime;
 use gstreamer_pbutils::Discoverer;
 use log::{info, warn};
@@ -64,7 +65,7 @@ pub(super) fn new(path: PathBuf) -> Result<ImportSession> {
         }
     }
 
-    let source_id = base64::encode_config(hasher.finalize(), base64::URL_SAFE);
+    let source_id = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(hasher.finalize());
 
     info!("Source ID: {}", source_id);
 

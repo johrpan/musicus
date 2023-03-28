@@ -1,5 +1,6 @@
 use crate::error::{Error, Result};
 use crate::session::{ImportSession, ImportTrack, State};
+use base64::Engine;
 use gstreamer::prelude::*;
 use gstreamer::tags::{Duration, TrackNumber};
 use gstreamer::{ClockTime, ElementFactory, MessageType, MessageView, TocEntryType};
@@ -108,7 +109,7 @@ pub(super) fn new() -> Result<ImportSession> {
         }
     }
 
-    let source_id = base64::encode_config(hasher.finalize(), base64::URL_SAFE);
+    let source_id = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(hasher.finalize());
 
     info!("Successfully loaded audio CD with {} tracks.", tracks.len());
     info!("Source ID: {}", source_id);

@@ -3,8 +3,8 @@ use crate::selectors::{EnsembleSelector, InstrumentSelector, PersonSelector};
 use crate::widgets::{ButtonRow, Editor, Section, Widget};
 use adw::prelude::*;
 use gettextrs::gettext;
-use gtk::builders::ButtonBuilder;
-use gtk::{builders::ListBoxBuilder, glib::clone};
+
+use gtk::glib::clone;
 use log::error;
 use musicus_backend::db::{Ensemble, Instrument, Performance, Person, PersonOrEnsemble};
 use std::cell::RefCell;
@@ -30,7 +30,7 @@ impl Screen<Option<Performance>, Performance> for PerformanceEditor {
         editor.set_title("Performance");
         editor.set_may_save(false);
 
-        let performer_list = ListBoxBuilder::new()
+        let performer_list = gtk::ListBox::builder()
             .selection_mode(gtk::SelectionMode::None)
             .css_classes(vec![String::from("boxed-list")])
             .build();
@@ -46,12 +46,12 @@ impl Screen<Option<Performance>, Performance> for PerformanceEditor {
             "Select either a person or an ensemble as a performer.",
         ));
 
-        let role_list = ListBoxBuilder::new()
+        let role_list = gtk::ListBox::builder()
             .selection_mode(gtk::SelectionMode::None)
             .css_classes(vec![String::from("boxed-list")])
             .build();
 
-        let reset_role_button = ButtonBuilder::new()
+        let reset_role_button = gtk::Button::builder()
             .icon_name("user-trash-symbolic")
             .valign(gtk::Align::Center)
             .visible(false)

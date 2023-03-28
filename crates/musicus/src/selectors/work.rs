@@ -2,12 +2,12 @@ use super::selector::Selector;
 use crate::editors::{PersonEditor, WorkEditor};
 use crate::navigator::{NavigationHandle, Screen};
 use crate::widgets::Widget;
-use adw::builders::ActionRowBuilder;
+
 use adw::prelude::*;
 use gettextrs::gettext;
 use glib::clone;
 use log::warn;
-use musicus_backend::db::{Person, Work, self};
+use musicus_backend::db::{self, Person, Work};
 use std::rc::Rc;
 
 /// A screen for selecting a work.
@@ -47,9 +47,9 @@ impl Screen<(), Work> for WorkSelector {
         }));
 
         this.selector.set_make_widget(clone!(@weak this =>  @default-panic, move |person| {
-            let row = ActionRowBuilder::new()
+            let row = adw::ActionRow::builder()
                 .activatable(true)
-                .title(&person.name_lf())
+                .title(person.name_lf())
                 .build();
 
             let person = person.to_owned();
@@ -71,8 +71,9 @@ impl Screen<(), Work> for WorkSelector {
         this.selector
             .set_filter(|search, person| person.name_fl().to_lowercase().contains(search));
 
-        this.selector
-            .set_items(db::get_recent_persons(&mut this.handle.backend.db().lock().unwrap()).unwrap());
+        this.selector.set_items(
+            db::get_recent_persons(&mut this.handle.backend.db().lock().unwrap()).unwrap(),
+        );
 
         this
     }
@@ -118,7 +119,7 @@ impl Screen<Person, Work> for WorkSelectorWorkScreen {
 
         this.selector
             .set_make_widget(clone!(@weak this =>  @default-panic, move |work| {
-                let row = ActionRowBuilder::new()
+                let row = adw::ActionRow::builder()
                     .activatable(true)
                     .title(&work.title)
                     .build();
@@ -138,8 +139,13 @@ impl Screen<Person, Work> for WorkSelectorWorkScreen {
         this.selector
             .set_filter(|search, work| work.title.to_lowercase().contains(search));
 
-        this.selector
-            .set_items(db::get_works(&mut this.handle.backend.db().lock().unwrap(), &this.person.id).unwrap());
+        this.selector.set_items(
+            db::get_works(
+                &mut this.handle.backend.db().lock().unwrap(),
+                &this.person.id,
+            )
+            .unwrap(),
+        );
 
         this
     }

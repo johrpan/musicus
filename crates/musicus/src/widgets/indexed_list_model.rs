@@ -1,6 +1,6 @@
 use gio::prelude::*;
 use gio::subclass::prelude::*;
-use once_cell::sync::Lazy;
+
 use std::cell::Cell;
 
 glib::wrapper! {
@@ -12,24 +12,28 @@ glib::wrapper! {
 impl IndexedListModel {
     /// Set the length of the list model.
     pub fn set_length(&self, length: u32) {
-        let old_length = self.property("length");
-        self.set_property("length", &length);
+        let old_length = self.n_items();
+        self.set_n_items(length);
         self.items_changed(0, old_length, length);
     }
 }
 
 impl Default for IndexedListModel {
     fn default() -> Self {
-        glib::Object::new(&[])
+        glib::Object::new()
     }
 }
 
 mod indexed_list_model_imp {
+    use glib::Properties;
+
     use super::*;
 
-    #[derive(Debug, Default)]
+    #[derive(Properties, Default)]
+    #[properties(wrapper_type = super::IndexedListModel)]
     pub struct IndexedListModel {
-        length: Cell<u32>,
+        #[property(get, set)]
+        n_items: Cell<u32>,
     }
 
     #[glib::object_subclass]
@@ -42,36 +46,15 @@ mod indexed_list_model_imp {
 
     impl ObjectImpl for IndexedListModel {
         fn properties() -> &'static [glib::ParamSpec] {
-            static PROPERTIES: Lazy<Vec<glib::ParamSpec>> = Lazy::new(|| {
-                vec![glib::ParamSpecUInt::new(
-                    "length",
-                    "Length",
-                    "Length",
-                    0,
-                    std::u32::MAX,
-                    0,
-                    glib::ParamFlags::READWRITE,
-                )]
-            });
-
-            PROPERTIES.as_ref()
+            Self::derived_properties()
         }
 
-        fn set_property(&self, _: usize, value: &glib::Value, pspec: &glib::ParamSpec) {
-            match pspec.name() {
-                "length" => {
-                    let length = value.get::<u32>().unwrap();
-                    self.length.set(length);
-                }
-                _ => unimplemented!(),
-            }
+        fn set_property(&self, id: usize, value: &glib::Value, pspec: &glib::ParamSpec) {
+            self.derived_set_property(id, value, pspec)
         }
 
-        fn property(&self, _id: usize, pspec: &glib::ParamSpec) -> glib::Value {
-            match pspec.name() {
-                "length" => self.length.get().to_value(),
-                _ => unimplemented!(),
-            }
+        fn property(&self, id: usize, pspec: &glib::ParamSpec) -> glib::Value {
+            self.derived_property(id, pspec)
         }
     }
 
@@ -81,7 +64,7 @@ mod indexed_list_model_imp {
         }
 
         fn n_items(&self) -> u32 {
-            self.length.get()
+            self.n_items.get()
         }
 
         fn item(&self, position: u32) -> Option<glib::Object> {
@@ -98,7 +81,9 @@ glib::wrapper! {
 impl ItemIndex {
     /// Create a new item index.
     pub fn new(value: u32) -> Self {
-        glib::Object::new(&[("value", &value)])
+        let object = glib::Object::new::<Self>();
+        object.set_value(value);
+        object
     }
 
     /// Get the value of the item index..
@@ -108,10 +93,14 @@ impl ItemIndex {
 }
 
 mod item_index_imp {
+    use glib::Properties;
+
     use super::*;
 
-    #[derive(Debug, Default)]
+    #[derive(Properties, Default)]
+    #[properties(wrapper_type = super::ItemIndex)]
     pub struct ItemIndex {
+        #[property(get, set)]
         value: Cell<u32>,
     }
 
@@ -125,36 +114,15 @@ mod item_index_imp {
 
     impl ObjectImpl for ItemIndex {
         fn properties() -> &'static [glib::ParamSpec] {
-            static PROPERTIES: Lazy<Vec<glib::ParamSpec>> = Lazy::new(|| {
-                vec![glib::ParamSpecUInt::new(
-                    "value",
-                    "Value",
-                    "Value",
-                    0,
-                    std::u32::MAX,
-                    0,
-                    glib::ParamFlags::READWRITE,
-                )]
-            });
-
-            PROPERTIES.as_ref()
+            Self::derived_properties()
         }
 
-        fn set_property(&self, _: usize, value: &glib::Value, pspec: &glib::ParamSpec) {
-            match pspec.name() {
-                "value" => {
-                    let value = value.get::<u32>().unwrap();
-                    self.value.set(value);
-                }
-                _ => unimplemented!(),
-            }
+        fn set_property(&self, id: usize, value: &glib::Value, pspec: &glib::ParamSpec) {
+            self.derived_set_property(id, value, pspec)
         }
 
-        fn property(&self, _id: usize, pspec: &glib::ParamSpec) -> glib::Value {
-            match pspec.name() {
-                "value" => self.value.get().to_value(),
-                _ => unimplemented!(),
-            }
+        fn property(&self, id: usize, pspec: &glib::ParamSpec) -> glib::Value {
+            self.derived_property(id, pspec)
         }
     }
 }

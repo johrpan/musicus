@@ -1,9 +1,9 @@
 use crate::navigator::Navigator;
 use crate::screens::{MainScreen, WelcomeScreen};
-use adw::builders::HeaderBarBuilder;
+
 use adw::prelude::*;
 use glib::clone;
-use gtk::builders::{BoxBuilder, SpinnerBuilder};
+
 use musicus_backend::{Backend, BackendState};
 use std::rc::Rc;
 
@@ -23,15 +23,15 @@ impl Window {
         window.set_title(Some("Musicus"));
         window.set_default_size(1000, 707);
 
-        let loading_screen = BoxBuilder::new()
+        let loading_screen = gtk::Box::builder()
             .orientation(gtk::Orientation::Vertical)
             .build();
 
-        let header = HeaderBarBuilder::new()
+        let header = gtk::HeaderBar::builder()
             .title_widget(&adw::WindowTitle::new("Musicus", ""))
             .build();
 
-        let spinner = SpinnerBuilder::new()
+        let spinner = gtk::Spinner::builder()
             .hexpand(true)
             .vexpand(true)
             .halign(gtk::Align::Center)

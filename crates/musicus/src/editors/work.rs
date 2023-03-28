@@ -2,7 +2,7 @@ use super::work_part::WorkPartEditor;
 use crate::navigator::{NavigationHandle, Screen};
 use crate::selectors::{InstrumentSelector, PersonSelector};
 use crate::widgets::{List, Widget};
-use adw::builders::ActionRowBuilder;
+
 use adw::prelude::*;
 use anyhow::Result;
 use gettextrs::gettext;
@@ -125,7 +125,7 @@ impl Screen<Option<Work>, Work> for WorkEditor {
                     this.instrument_list.update(length);
                 }));
 
-                let row = ActionRowBuilder::new()
+                let row = adw::ActionRow::builder()
                     .title(&instrument.name)
                     .build();
 
@@ -184,7 +184,7 @@ impl Screen<Option<Work>, Work> for WorkEditor {
                     });
                 }));
 
-                let row = ActionRowBuilder::new()
+                let row = adw::ActionRow::builder()
                     .focusable(false)
                     .title(&part.title)
                     .activatable_widget(&edit_button)

@@ -1,5 +1,5 @@
 use super::Widget;
-use gtk::{builders::ButtonBuilder, prelude::*};
+use gtk::prelude::*;
 use gtk_macros::get_widget;
 
 /// A widget displaying a title, a framed child widget and, if needed, some
@@ -46,7 +46,7 @@ impl Section {
     /// situations where the widget is visible. The new button will be packed
     /// to the end of the title box.
     pub fn add_action<F: Fn() + 'static>(&self, icon_name: &str, cb: F) {
-        let button = ButtonBuilder::new()
+        let button = gtk::Button::builder()
             .has_frame(false)
             .valign(gtk::Align::Center)
             .margin_top(12)

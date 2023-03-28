@@ -2,12 +2,12 @@ use super::selector::Selector;
 use crate::editors::EnsembleEditor;
 use crate::navigator::{NavigationHandle, Screen};
 use crate::widgets::Widget;
-use adw::builders::ActionRowBuilder;
+
 use adw::prelude::*;
 use gettextrs::gettext;
 use glib::clone;
 use log::warn;
-use musicus_backend::db::{Ensemble, self};
+use musicus_backend::db::{self, Ensemble};
 use std::rc::Rc;
 
 /// A screen for selecting a ensemble.
@@ -42,7 +42,7 @@ impl Screen<(), Ensemble> for EnsembleSelector {
 
         this.selector
             .set_make_widget(clone!(@weak this => @default-panic,  move |ensemble| {
-                let row = ActionRowBuilder::new()
+                let row = adw::ActionRow::builder()
                     .activatable(true)
                     .title(&ensemble.name)
                     .build();
@@ -63,8 +63,9 @@ impl Screen<(), Ensemble> for EnsembleSelector {
         this.selector
             .set_filter(|search, ensemble| ensemble.name.to_lowercase().contains(search));
 
-        this.selector
-            .set_items(db::get_recent_ensembles(&mut this.handle.backend.db().lock().unwrap(), ).unwrap());
+        this.selector.set_items(
+            db::get_recent_ensembles(&mut this.handle.backend.db().lock().unwrap()).unwrap(),
+        );
 
         this
     }

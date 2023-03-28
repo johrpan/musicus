@@ -1,11 +1,11 @@
 use super::medium_editor::MediumEditor;
 use crate::navigator::{NavigationHandle, Screen};
 use crate::widgets::Widget;
-use adw::builders::ActionRowBuilder;
+
 use anyhow::{anyhow, Result};
 use gettextrs::gettext;
 use glib::clone;
-use gtk::builders::{FrameBuilder, ListBoxBuilder};
+
 use gtk::prelude::*;
 use gtk_macros::get_widget;
 use musicus_backend::db::{self, Medium};
@@ -141,16 +141,16 @@ impl MediumPreview {
             if track.recording.id != last_recording_id {
                 last_recording_id = &track.recording.id;
 
-                let list = ListBoxBuilder::new()
+                let list = gtk::ListBox::builder()
                     .selection_mode(gtk::SelectionMode::None)
                     .margin_bottom(12)
                     .css_classes(vec![String::from("boxed-list")])
                     .build();
 
-                let header = ActionRowBuilder::new()
+                let header = adw::ActionRow::builder()
                     .activatable(false)
-                    .title(&track.recording.work.get_title())
-                    .subtitle(&track.recording.get_performers())
+                    .title(track.recording.work.get_title())
+                    .subtitle(track.recording.get_performers())
                     .build();
 
                 list.append(&header);
@@ -174,9 +174,9 @@ impl MediumPreview {
                     parts.join(", ")
                 };
 
-                let row = ActionRowBuilder::new()
+                let row = adw::ActionRow::builder()
                     .activatable(false)
-                    .title(&title)
+                    .title(title)
                     .subtitle(&import_tracks[track.source_index].name)
                     .margin_start(12)
                     .build();
@@ -186,7 +186,7 @@ impl MediumPreview {
         }
 
         if let Some(list) = &last_list {
-            let frame = FrameBuilder::new().margin_bottom(12).build();
+            let frame = gtk::Frame::builder().margin_bottom(12).build();
 
             frame.set_child(Some(list));
             self.medium_box.append(&frame);

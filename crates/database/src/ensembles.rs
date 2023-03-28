@@ -2,7 +2,7 @@ use chrono::Utc;
 use diesel::prelude::*;
 use log::info;
 
-use crate::{Result, schema::ensembles, defer_foreign_keys};
+use crate::{defer_foreign_keys, schema::ensembles, Result};
 
 /// An ensemble that takes part in recordings.
 #[derive(Insertable, Queryable, PartialEq, Eq, Hash, Debug, Clone)]

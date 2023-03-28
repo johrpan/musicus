@@ -82,7 +82,7 @@ impl Track {
 
 /// Table data for a [`Medium`].
 #[derive(Insertable, Queryable, Debug, Clone)]
-#[table_name = "mediums"]
+#[diesel(table_name = mediums)]
 struct MediumRow {
     pub id: String,
     pub name: String,
@@ -93,7 +93,7 @@ struct MediumRow {
 
 /// Table data for a [`Track`].
 #[derive(Insertable, Queryable, QueryableByName, Debug, Clone)]
-#[table_name = "tracks"]
+#[diesel(table_name = tracks)]
 struct TrackRow {
     pub id: String,
     pub medium: Option<String>,

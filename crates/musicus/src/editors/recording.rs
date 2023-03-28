@@ -2,7 +2,7 @@ use super::performance::PerformanceEditor;
 use crate::navigator::{NavigationHandle, Screen};
 use crate::selectors::WorkSelector;
 use crate::widgets::{List, Widget};
-use adw::builders::ActionRowBuilder;
+
 use adw::prelude::*;
 use anyhow::Result;
 use gettextrs::gettext;
@@ -129,10 +129,10 @@ impl Screen<Option<Recording>, Recording> for RecordingEditor {
                 });
             }));
 
-            let row = ActionRowBuilder::new()
+            let row = adw::ActionRow::builder()
                 .focusable(false)
                 .activatable_widget(&edit_button)
-                .title(&performance.get_title())
+                .title(performance.get_title())
                 .build();
 
             row.add_suffix(&delete_button);

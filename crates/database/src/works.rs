@@ -10,7 +10,7 @@ use crate::{
 
 /// Table row data for a work.
 #[derive(Insertable, Queryable, Debug, Clone)]
-#[table_name = "works"]
+#[diesel(table_name = works)]
 struct WorkRow {
     pub id: String,
     pub composer: String,
@@ -33,7 +33,7 @@ impl From<Work> for WorkRow {
 
 /// Definition that a work uses an instrument.
 #[derive(Insertable, Queryable, Debug, Clone)]
-#[table_name = "instrumentations"]
+#[diesel(table_name = instrumentations)]
 struct InstrumentationRow {
     pub id: i64,
     pub work: String,
@@ -42,7 +42,7 @@ struct InstrumentationRow {
 
 /// Table row data for a work part.
 #[derive(Insertable, Queryable, Debug, Clone)]
-#[table_name = "work_parts"]
+#[diesel(table_name = work_parts)]
 struct WorkPartRow {
     pub id: i64,
     pub work: String,

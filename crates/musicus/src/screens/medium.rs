@@ -1,7 +1,7 @@
 use crate::navigator::{NavigationHandle, Screen};
 use crate::widgets;
 use crate::widgets::{List, Section, Widget};
-use adw::builders::ActionRowBuilder;
+
 use adw::prelude::*;
 use gettextrs::gettext;
 use glib::clone;
@@ -75,10 +75,10 @@ impl Screen<Medium, ()> for MediumScreen {
                     parts.join(", ")
                 };
 
-                let row = ActionRowBuilder::new()
+                let row = adw::ActionRow::builder()
                     .margin_start(12)
                     .selectable(false)
-                    .title(&title)
+                    .title(title)
                     .build();
 
                 row.upcast()
