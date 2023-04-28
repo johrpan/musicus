@@ -113,7 +113,7 @@ impl Screen<Arc<ImportSession>, ()> for ImportScreen {
         get_widget!(builder, adw::ActionRow, error_row);
         get_widget!(builder, gtk::ListBox, matching_list);
         get_widget!(builder, gtk::Button, select_button);
-        get_widget!(builder, gtk::Button, add_medium_button);
+        get_widget!(builder, gtk::Button, add_button);
 
         let this = Rc::new(Self {
             handle,
@@ -142,7 +142,7 @@ impl Screen<Arc<ImportSession>, ()> for ImportScreen {
             });
         }));
 
-        add_medium_button.connect_clicked(clone!(@weak this =>  move |_| {
+        add_button.connect_clicked(clone!(@weak this =>  move |_| {
             spawn!(@clone this, async move {
                 if let Some(medium) = push!(this.handle, MediumEditor, (Arc::clone(&this.session), None)).await {
                     this.select_medium(medium);
