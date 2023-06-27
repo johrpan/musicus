@@ -1,7 +1,2 @@
-/.flatpak
-/.flatpak-builder
-/.vscode
-/build
-/builddir
-/flatpak
-/target
+/.flatpak/
+/.vscode/
