@@ -1,5 +1,5 @@
 {
-    "app-id": "de.johrpan.musicus",
+    "id": "de.johrpan.musicus",
     "runtime": "org.gnome.Platform",
     "runtime-version": "master",
     "sdk": "org.gnome.Sdk",
@@ -53,8 +53,8 @@
             "buildsystem": "meson",
             "sources": [
                 {
-                    "type": "git",
-                    "url": "file:///home/johrpan/Rumpelkammer"
+                    "type": "dir",
+                    "path": "."
                 }
             ]
         }
