@@ -1,4 +1,4 @@
 data/de.johrpan.musicus.desktop.in
 data/de.johrpan.musicus.appdata.xml.in
 data/de.johrpan.musicus.gschema.xml
-src/window.ui
+src/window.blp

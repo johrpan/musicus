@@ -17,7 +17,7 @@ template $MusicusWindow : Adw.ApplicationWindow {
     }
 
     Label label {
-      label: "Hello, World!";
+      label: _("Hello, World!");
       vexpand: true;
       styles ["title-1"]
     }
@@ -26,11 +26,11 @@ template $MusicusWindow : Adw.ApplicationWindow {
 
 menu primary_menu {
   item {
-    label: "_Preferences";
+    label: _("_Preferences");
     action: "app.preferences";
   }
   item {
-    label: "_About Musicus";
+    label: _("_About Musicus");
     action: "app.about";
   }
 }

@@ -1,0 +1,39 @@
+# German translations for PACKAGE package
+# German translation for PACKAGE.
+# Copyright (C) 2023 THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+#  <elias@johrpan.de>, 2023.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2023-06-28 14:50+0200\n"
+"PO-Revision-Date: 2023-06-28 14:58+0200\n"
+"Last-Translator:  <elias@johrpan.de>\n"
+"Language-Team: German <translation-team-de@lists.sourceforge.net>\n"
+"Language: de\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: data/de.johrpan.musicus.desktop.in:3
+msgid "musicus"
+msgstr ""
+
+#: data/de.johrpan.musicus.appdata.xml.in:7
+msgid "No description"
+msgstr ""
+
+#: src/window.blp:20
+msgid "Hello, World!"
+msgstr "Hallo, Welt!"
+
+#: src/window.blp:29
+msgid "_Preferences"
+msgstr "_Einstellungen"
+
+#: src/window.blp:33
+msgid "_About Musicus"
+msgstr "_Über Musicus"
