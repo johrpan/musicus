@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-06-28 14:50+0200\n"
+"POT-Creation-Date: 2023-07-06 14:30+0200\n"
 "PO-Revision-Date: 2023-06-28 14:58+0200\n"
 "Last-Translator:  <elias@johrpan.de>\n"
 "Language-Team: German <translation-team-de@lists.sourceforge.net>\n"
@@ -19,12 +19,12 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 #: data/de.johrpan.musicus.desktop.in:3
-msgid "musicus"
-msgstr ""
+msgid "Musicus"
+msgstr "Musicus"
 
 #: data/de.johrpan.musicus.appdata.xml.in:7
 msgid "No description"
-msgstr ""
+msgstr "Keine Beschreibung"
 
 #: src/window.blp:20
 msgid "Hello, World!"
