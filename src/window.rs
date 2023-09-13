@@ -1,3 +1,5 @@
+use crate::welcome_page::MusicusWelcomePage;
+
 use adw::subclass::prelude::*;
 use gtk::{gio, glib};
 
@@ -7,11 +9,8 @@ mod imp {
     #[derive(Debug, Default, gtk::CompositeTemplate)]
     #[template(resource = "/de/johrpan/musicus/window.ui")]
     pub struct MusicusWindow {
-        // Template widgets
         #[template_child]
-        pub header_bar: TemplateChild<gtk::HeaderBar>,
-        #[template_child]
-        pub label: TemplateChild<gtk::Label>,
+        pub navigation_view: TemplateChild<adw::NavigationView>,
     }
 
     #[glib::object_subclass]
@@ -29,7 +28,14 @@ mod imp {
         }
     }
 
-    impl ObjectImpl for MusicusWindow {}
+    impl ObjectImpl for MusicusWindow {
+        fn constructed(&self) {
+            self.parent_constructed();
+
+            self.navigation_view.add(&MusicusWelcomePage::new());
+        }
+    }
+
     impl WidgetImpl for MusicusWindow {}
     impl WindowImpl for MusicusWindow {}
     impl ApplicationWindowImpl for MusicusWindow {}
@@ -38,7 +44,8 @@ mod imp {
 
 glib::wrapper! {
     pub struct MusicusWindow(ObjectSubclass<imp::MusicusWindow>)
-        @extends gtk::Widget, gtk::Window, gtk::ApplicationWindow, adw::ApplicationWindow,        @implements gio::ActionGroup, gio::ActionMap;
+        @extends gtk::Widget, gtk::Window, gtk::ApplicationWindow, adw::ApplicationWindow,
+        @implements gio::ActionGroup, gio::ActionMap;
 }
 
 impl MusicusWindow {

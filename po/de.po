@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-07-06 14:30+0200\n"
+"POT-Creation-Date: 2023-09-13 14:57+0200\n"
 "PO-Revision-Date: 2023-06-28 14:58+0200\n"
 "Last-Translator:  <elias@johrpan.de>\n"
 "Language-Team: German <translation-team-de@lists.sourceforge.net>\n"
@@ -18,7 +18,32 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: data/de.johrpan.musicus.desktop.in:3
+#: data/res/welcome_page.blp:5 data/res/welcome_page.blp:19
+msgid "Welcome to Musicus"
+msgstr ""
+
+#: data/res/welcome_page.blp:20
+msgid ""
+"Get started by choosing where to store your music library. Is this your "
+"first time using Musicus? If so, create a new empty folder for your library. "
+"Musicus will use this location to manage your recordings. You can also "
+"select a folder that already contains a music library created by Musicus."
+msgstr ""
+
+#: data/res/welcome_page.blp:24
+msgid "Choose library folder"
+msgstr ""
+
+#: data/res/welcome_page.blp:32
+msgid "_Preferences"
+msgstr "_Einstellungen"
+
+#: data/res/welcome_page.blp:36
+msgid "_About Musicus"
+msgstr "_Über Musicus"
+
+#: data/res/window.blp:5 data/de.johrpan.musicus.desktop.in:3
+#: src/application.rs:79
 msgid "Musicus"
 msgstr "Musicus"
 
@@ -26,14 +51,5 @@ msgstr "Musicus"
 msgid "No description"
 msgstr "Keine Beschreibung"
 
-#: src/window.blp:20
-msgid "Hello, World!"
-msgstr "Hallo, Welt!"
-
-#: src/window.blp:29
-msgid "_Preferences"
-msgstr "_Einstellungen"
-
-#: src/window.blp:33
-msgid "_About Musicus"
-msgstr "_Über Musicus"
+#~ msgid "Hello, World!"
+#~ msgstr "Hallo, Welt!"
