@@ -1,4 +1,6 @@
+data/res/welcome_page.blp
+data/res/window.blp
 data/de.johrpan.musicus.desktop.in
 data/de.johrpan.musicus.appdata.xml.in
 data/de.johrpan.musicus.gschema.xml
-src/window.blp
+src/application.rs

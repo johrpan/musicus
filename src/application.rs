@@ -1,6 +1,6 @@
-use gtk::prelude::*;
 use adw::subclass::prelude::*;
-use gtk::{gio, glib};
+use gettextrs::gettext;
+use gtk::{gio, glib, prelude::*};
 
 use crate::config::VERSION;
 use crate::MusicusWindow;
@@ -28,13 +28,9 @@ mod imp {
     }
 
     impl ApplicationImpl for MusicusApplication {
-        // We connect to the activate callback to create a window when the application
-        // has been launched. Additionally, this callback notifies us when the user
-        // tries to launch a "second instance" of the application. When they try
-        // to do that, we'll just present any existing window.
         fn activate(&self) {
             let application = self.obj();
-            // Get the current window or create one if necessary
+
             let window = if let Some(window) = application.active_window() {
                 window
             } else {
@@ -42,7 +38,6 @@ mod imp {
                 window.upcast()
             };
 
-            // Ask the window manager/compositor to present the window
             window.present();
         }
     }
@@ -69,9 +64,11 @@ impl MusicusApplication {
         let quit_action = gio::ActionEntry::builder("quit")
             .activate(move |app: &Self, _, _| app.quit())
             .build();
+
         let about_action = gio::ActionEntry::builder("about")
             .activate(move |app: &Self, _, _| app.show_about())
             .build();
+
         self.add_action_entries([quit_action, about_action]);
     }
 
@@ -79,12 +76,14 @@ impl MusicusApplication {
         let window = self.active_window().unwrap();
         let about = adw::AboutWindow::builder()
             .transient_for(&window)
-            .application_name("musicus")
+            .application_name(gettext("Musicus"))
             .application_icon("de.johrpan.musicus")
-            .developer_name("Unknown")
+            .developer_name("Elias Projahn")
             .version(VERSION)
-            .developers(vec!["Unknown"])
-            .copyright("© 2023 Unknown")
+            .website("https://code.johrpan.de/johrpan/musicus")
+            .developers(vec!["Elias Projahn <elias@johrpan.de>"])
+            .copyright("© 2023 Elias Projahn")
+            .license_type(gtk::License::Gpl30)
             .build();
 
         about.present();

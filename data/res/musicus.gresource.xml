@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <gresources>
   <gresource prefix="/de/johrpan/musicus">
+    <file preprocess="xml-stripblanks">welcome_page.ui</file>
     <file preprocess="xml-stripblanks">window.ui</file>
   </gresource>
 </gresources>
