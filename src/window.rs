@@ -1,7 +1,7 @@
 use crate::welcome_page::MusicusWelcomePage;
 
 use adw::subclass::prelude::*;
-use gtk::{gio, glib};
+use gtk::{gio, glib, prelude::*};
 
 mod imp {
     use super::*;
@@ -20,7 +20,9 @@ mod imp {
         type ParentType = adw::ApplicationWindow;
 
         fn class_init(klass: &mut Self::Class) {
+            MusicusWelcomePage::static_type();
             klass.bind_template();
+            klass.bind_template_instance_callbacks();
         }
 
         fn instance_init(obj: &glib::subclass::InitializingObject<Self>) {
@@ -31,8 +33,6 @@ mod imp {
     impl ObjectImpl for MusicusWindow {
         fn constructed(&self) {
             self.parent_constructed();
-
-            self.navigation_view.add(&MusicusWelcomePage::new());
         }
     }
 
@@ -48,10 +48,17 @@ glib::wrapper! {
         @implements gio::ActionGroup, gio::ActionMap;
 }
 
+#[gtk::template_callbacks]
 impl MusicusWindow {
     pub fn new<P: glib::IsA<gtk::Application>>(application: &P) -> Self {
         glib::Object::builder()
             .property("application", application)
             .build()
+    }
+
+    #[template_callback]
+    async fn set_library_folder(&self, folder: &gio::File) {
+        let path = folder.path();
+        log::info!("{path:?}");
     }
 }
