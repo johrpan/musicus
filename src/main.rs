@@ -10,6 +10,8 @@ use gettextrs::{bind_textdomain_codeset, bindtextdomain, textdomain};
 use gtk::{gio, glib, prelude::*};
 
 fn main() -> glib::ExitCode {
+    tracing_subscriber::fmt::init();
+
     bindtextdomain(GETTEXT_PACKAGE, LOCALEDIR).expect("Unable to bind the text domain");
     bind_textdomain_codeset(GETTEXT_PACKAGE, "UTF-8")
         .expect("Unable to set the text domain encoding");

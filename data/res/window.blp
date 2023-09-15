@@ -6,5 +6,9 @@ template $MusicusWindow : Adw.ApplicationWindow {
   default-width: 800;
   default-height: 600;
 
-  Adw.NavigationView navigation_view {}
+  Adw.NavigationView navigation_view {
+    $MusicusWelcomePage {
+      folder-selected => $set_library_folder() swapped;
+    }
+  }
 }

@@ -3,6 +3,7 @@ using Adw 1;
 
 template $MusicusWelcomePage : Adw.NavigationPage {
   title: _("Welcome to Musicus");
+  tag: "welcome";
 
   Adw.ToolbarView {
     [top]
@@ -18,10 +19,11 @@ template $MusicusWelcomePage : Adw.NavigationPage {
       icon-name: "de.johrpan.musicus";
       title: _("Welcome to Musicus");
       description: _("Get started by choosing where to store your music library. Is this your first time using Musicus? If so, create a new empty folder for your library. Musicus will use this location to manage your recordings. You can also select a folder that already contains a music library created by Musicus.");
-      child: Gtk.Button choose_library_button {
+      child: Gtk.Button {
         styles ["suggested-action", "pill"]
         halign: center;
         label: _("Choose library folder");
+        clicked => $choose_library_folder() swapped;
       };
     }
   }
