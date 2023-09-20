@@ -3,6 +3,8 @@ gnome = import('gnome')
 
 blueprints = custom_target('blueprints',
   input: files(
+    'home_page.blp',
+    'tile.blp',
     'welcome_page.blp',
     'window.blp'
   ),
