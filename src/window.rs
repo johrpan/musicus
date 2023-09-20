@@ -1,4 +1,4 @@
-use crate::welcome_page::MusicusWelcomePage;
+use crate::{welcome_page::MusicusWelcomePage, home_page::MusicusHomePage};
 
 use adw::subclass::prelude::*;
 use gtk::{gio, glib, prelude::*};
@@ -20,6 +20,7 @@ mod imp {
         type ParentType = adw::ApplicationWindow;
 
         fn class_init(klass: &mut Self::Class) {
+            MusicusHomePage::static_type();
             MusicusWelcomePage::static_type();
             klass.bind_template();
             klass.bind_template_instance_callbacks();
@@ -60,5 +61,6 @@ impl MusicusWindow {
     async fn set_library_folder(&self, folder: &gio::File) {
         let path = folder.path();
         log::info!("{path:?}");
+        self.imp().navigation_view.replace_with_tags(&["home"]);
     }
 }
