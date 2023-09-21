@@ -1,5 +1,5 @@
 use adw::subclass::{navigation_page::NavigationPageImpl, prelude::*};
-use gtk::glib;
+use gtk::{glib, prelude::*};
 
 mod imp {
     use crate::tile::MusicusTile;
@@ -17,6 +17,8 @@ mod imp {
         pub works_flow_box: TemplateChild<gtk::FlowBox>,
         #[template_child]
         pub recordings_flow_box: TemplateChild<gtk::FlowBox>,
+        #[template_child]
+        pub play_button: TemplateChild<gtk::Button>,
     }
 
     #[glib::object_subclass]
@@ -27,6 +29,7 @@ mod imp {
 
         fn class_init(klass: &mut Self::Class) {
             klass.bind_template();
+            klass.bind_template_instance_callbacks();
         }
 
         fn instance_init(obj: &glib::subclass::InitializingObject<Self>) {
@@ -57,8 +60,19 @@ glib::wrapper! {
         @extends gtk::Widget, adw::NavigationPage;
 }
 
+#[gtk::template_callbacks]
 impl MusicusHomePage {
     pub fn new() -> Self {
         glib::Object::new()
+    }
+
+    #[template_callback]
+    fn play(&self, _: &gtk::Button) {
+        log::info!("Play button clicked");
+    }
+
+    #[template_callback]
+    fn search(&self, entry: &gtk::SearchEntry) {
+        log::info!("Search changed: \"{}\"", entry.text());
     }
 }

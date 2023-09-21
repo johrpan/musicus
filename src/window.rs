@@ -11,6 +11,8 @@ mod imp {
     pub struct MusicusWindow {
         #[template_child]
         pub navigation_view: TemplateChild<adw::NavigationView>,
+        #[template_child]
+        pub player_bar_revealer: TemplateChild<gtk::Revealer>,
     }
 
     #[glib::object_subclass]
