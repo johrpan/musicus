@@ -1,5 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist gettext-domain="musicus">
 	<schema id="de.johrpan.musicus" path="/de/johrpan/musicus/">
+		<key name="window-width" type="i">
+			<default>800</default>
+			<summary>Window width</summary>
+		</key>
+		<key name="window-height" type="i">
+			<default>600</default>
+			<summary>Window height</summary>
+		</key>
+		<key name="is-maximized" type="b">
+			<default>false</default>
+			<summary>Window maximized state</summary>
+		</key>
 	</schema>
 </schemalist>

@@ -1,4 +1,4 @@
-use crate::{welcome_page::MusicusWelcomePage, home_page::MusicusHomePage};
+use crate::{home_page::MusicusHomePage, welcome_page::MusicusWelcomePage};
 
 use adw::subclass::prelude::*;
 use gtk::{gio, glib, prelude::*};
@@ -36,11 +36,22 @@ mod imp {
     impl ObjectImpl for MusicusWindow {
         fn constructed(&self) {
             self.parent_constructed();
+            self.obj().load_window_state();
         }
     }
 
     impl WidgetImpl for MusicusWindow {}
-    impl WindowImpl for MusicusWindow {}
+
+    impl WindowImpl for MusicusWindow {
+        fn close_request(&self) -> glib::signal::Inhibit {
+            if let Err(err) = self.obj().save_window_state() {
+                log::warn!("Failed to save window state: {err}");
+            }
+
+            glib::signal::Inhibit(false)
+        }
+    }
+
     impl ApplicationWindowImpl for MusicusWindow {}
     impl AdwApplicationWindowImpl for MusicusWindow {}
 }
@@ -59,8 +70,25 @@ impl MusicusWindow {
             .build()
     }
 
+    pub fn load_window_state(&self) {
+        let settings = gio::Settings::new("de.johrpan.musicus");
+        self.set_default_size(settings.int("window-width"), settings.int("window-height"));
+        self.set_property("maximized", settings.boolean("is-maximized"));
+    }
+
+    pub fn save_window_state(&self) -> Result<(), glib::BoolError> {
+        let settings = gio::Settings::new("de.johrpan.musicus");
+
+        let size = self.default_size();
+        settings.set_int("window-width", size.0)?;
+        settings.set_int("window-height", size.1)?;
+        settings.set_boolean("is-maximized", self.is_maximized())?;
+
+        Ok(())
+    }
+
     #[template_callback]
-    async fn set_library_folder(&self, folder: &gio::File) {
+    fn set_library_folder(&self, folder: &gio::File) {
         let path = folder.path();
         log::info!("{path:?}");
         self.imp().navigation_view.replace_with_tags(&["home"]);
