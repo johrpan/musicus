@@ -6,11 +6,63 @@ template $MusicusWindow : Adw.ApplicationWindow {
   default-width: 800;
   default-height: 600;
 
-  Adw.NavigationView navigation_view {
-    $MusicusWelcomePage {
-      folder-selected => $set_library_folder() swapped;
+  Adw.ToolbarView {
+    Adw.NavigationView navigation_view {
+      $MusicusWelcomePage {
+        folder-selected => $set_library_folder() swapped;
+      }
+
+      $MusicusHomePage {}
     }
 
-    $MusicusHomePage {}
+    [bottom]
+    Gtk.Revealer player_bar_revealer {
+      reveal-child: false;
+      transition-type: slide_up;
+
+      Gtk.Box {
+        margin-start: 6;
+        margin-end: 6;
+        margin-top: 6;
+        margin-bottom: 6;
+        spacing: 6;
+
+        Gtk.Button play_button {
+          styles ["circular"]
+          valign: center;
+          icon-name: "media-playback-start-symbolic";
+        }
+
+        Gtk.Box {
+          hexpand: true;
+          valign: center;
+          orientation: vertical;
+
+          Gtk.Label title_label {
+            styles ["caption-heading"]
+            halign: start;
+            label: _("Title");
+          }
+
+          Gtk.Label subtitle_label {
+            styles ["caption"]
+            halign: start;
+            label: _("Subtitle");
+          }
+        }
+
+        Gtk.Label {
+          styles ["caption", "numeric"]
+          valign: center;
+          label: "00:00 / 01:00";
+        }
+
+        Gtk.Button {
+          styles ["flat"]
+          valign: center;
+          icon-name: "playlist-symbolic";
+        }
+      }
+    }
   }
 }
