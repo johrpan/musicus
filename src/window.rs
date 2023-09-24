@@ -1,4 +1,7 @@
-use crate::{home_page::MusicusHomePage, welcome_page::MusicusWelcomePage};
+use crate::{
+    home_page::MusicusHomePage, playlist_page::MusicusPlaylistPage,
+    welcome_page::MusicusWelcomePage,
+};
 
 use adw::subclass::prelude::*;
 use gtk::{gio, glib, prelude::*};
@@ -10,9 +13,13 @@ mod imp {
     #[template(resource = "/de/johrpan/musicus/window.ui")]
     pub struct MusicusWindow {
         #[template_child]
+        pub stack: TemplateChild<gtk::Stack>,
+        #[template_child]
         pub navigation_view: TemplateChild<adw::NavigationView>,
         #[template_child]
         pub player_bar_revealer: TemplateChild<gtk::Revealer>,
+        #[template_child]
+        pub playlist_button: TemplateChild<gtk::ToggleButton>,
     }
 
     #[glib::object_subclass]
@@ -23,6 +30,7 @@ mod imp {
 
         fn class_init(klass: &mut Self::Class) {
             MusicusHomePage::static_type();
+            MusicusPlaylistPage::static_type();
             MusicusWelcomePage::static_type();
             klass.bind_template();
             klass.bind_template_instance_callbacks();
@@ -92,5 +100,21 @@ impl MusicusWindow {
         let path = folder.path();
         log::info!("{path:?}");
         self.imp().navigation_view.replace_with_tags(&["home"]);
+    }
+
+    #[template_callback]
+    fn show_playlist(&self, button: &gtk::ToggleButton) {
+        self.imp()
+            .stack
+            .set_visible_child_name(if button.is_active() {
+                "playlist"
+            } else {
+                "navigation"
+            });
+    }
+
+    #[template_callback]
+    fn hide_playlist(&self, _: &MusicusPlaylistPage) {
+        self.imp().playlist_button.set_active(false);
     }
 }

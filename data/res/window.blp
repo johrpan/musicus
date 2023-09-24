@@ -5,17 +5,31 @@ template $MusicusWindow : Adw.ApplicationWindow {
   title: _("Musicus");
 
   Adw.ToolbarView {
-    Adw.NavigationView navigation_view {
-      $MusicusWelcomePage {
-        folder-selected => $set_library_folder() swapped;
-      }
+    Gtk.Stack stack {
+      transition-type: over_up_down;
 
-      $MusicusHomePage {}
+      Gtk.StackPage {
+        name: "navigation";
+        child: Adw.NavigationView navigation_view {
+          $MusicusWelcomePage {
+            folder-selected => $set_library_folder() swapped;
+          }
+
+          $MusicusHomePage {}
+        };
+      }
+       
+      Gtk.StackPage {
+        name: "playlist";
+        child: $MusicusPlaylistPage {
+          close => $hide_playlist() swapped;
+        };
+      }
     }
 
     [bottom]
     Gtk.Revealer player_bar_revealer {
-      reveal-child: false;
+      reveal-child: true;
       transition-type: slide_up;
 
       Gtk.Box {
@@ -55,10 +69,11 @@ template $MusicusWindow : Adw.ApplicationWindow {
           label: "00:00 / 01:00";
         }
 
-        Gtk.Button {
+        Gtk.ToggleButton playlist_button {
           styles ["flat"]
           valign: center;
           icon-name: "playlist-symbolic";
+          toggled => $show_playlist() swapped;
         }
       }
     }
