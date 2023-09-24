@@ -7,7 +7,7 @@ mod imp {
     use super::*;
 
     #[derive(Debug, Default, gtk::CompositeTemplate)]
-    #[template(resource = "/de/johrpan/musicus/welcome_page.ui")]
+    #[template(file = "data/ui/welcome_page.blp")]
     pub struct MusicusWelcomePage {}
 
     #[glib::object_subclass]

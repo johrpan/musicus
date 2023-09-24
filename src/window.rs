@@ -10,7 +10,7 @@ mod imp {
     use super::*;
 
     #[derive(Debug, Default, gtk::CompositeTemplate)]
-    #[template(resource = "/de/johrpan/musicus/window.ui")]
+    #[template(file = "data/ui/window.blp")]
     pub struct MusicusWindow {
         #[template_child]
         pub stack: TemplateChild<gtk::Stack>,

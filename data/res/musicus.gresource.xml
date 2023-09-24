@@ -2,11 +2,6 @@
 <gresources>
   <gresource prefix="/de/johrpan/musicus">
     <file preprocess="xml-stripblanks">icons/scalable/actions/playlist-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">home_page.ui</file>
-    <file preprocess="xml-stripblanks">playlist_page.ui</file>
-    <file preprocess="xml-stripblanks">tile.ui</file>
-    <file preprocess="xml-stripblanks">welcome_page.ui</file>
-    <file preprocess="xml-stripblanks">window.ui</file>
     <file compressed="true">style.css</file>
   </gresource>
 </gresources>
