@@ -4,17 +4,7 @@ The classical music player and organizer.
 
 ## Hacking
 
-## Blueprint files
-
-When adding a new Blueprint file in `data/res/`, remember to add it to the
-following file lists:
-
- - list of bluprint sources in `data/res/meson.build`
- - list of resources in `data/res/musicus.gresource.xml` (`.blp` replaced with
-   `.ui`)
- - list of translatable files in `po/POTFILES`
-
-## Internationalization
+### Internationalization
 
 Execute the following commands from the project root directory to update
 translation files whenever translatable strings have been changed.

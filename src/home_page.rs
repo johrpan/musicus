@@ -7,7 +7,7 @@ mod imp {
     use super::*;
 
     #[derive(Debug, Default, gtk::CompositeTemplate)]
-    #[template(resource = "/de/johrpan/musicus/home_page.ui")]
+    #[template(file = "data/ui/home_page.blp")]
     pub struct MusicusHomePage {
         #[template_child]
         pub search_entry: TemplateChild<gtk::SearchEntry>,
