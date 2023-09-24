@@ -1,0 +1,28 @@
+using Gtk 4.0;
+using Adw 1;
+
+template $MusicusPlaylistPage : Adw.Bin {
+  Adw.ToolbarView {
+    [top]
+    Adw.HeaderBar {
+      title-widget: Adw.WindowTitle {
+        title: _("Playlist");
+      };
+
+      [start]
+      Gtk.Button close_button {
+        icon-name: "go-down-symbolic";
+        clicked => $close() swapped;
+      }
+    }
+
+    Gtk.ScrolledWindow {
+      hscrollbar-policy: never;
+
+      Adw.Clamp {
+        maximum-size: 1000;
+        tightening-threshold: 600;
+      }
+    }
+  }
+}
