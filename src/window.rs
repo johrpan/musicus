@@ -51,12 +51,12 @@ mod imp {
     impl WidgetImpl for MusicusWindow {}
 
     impl WindowImpl for MusicusWindow {
-        fn close_request(&self) -> glib::signal::Inhibit {
+        fn close_request(&self) -> glib::signal::Propagation {
             if let Err(err) = self.obj().save_window_state() {
                 log::warn!("Failed to save window state: {err}");
             }
 
-            glib::signal::Inhibit(false)
+            glib::signal::Propagation::Proceed
         }
     }
 
