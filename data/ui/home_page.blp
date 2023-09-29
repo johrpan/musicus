@@ -21,13 +21,8 @@ template $MusicusHomePage : Adw.NavigationPage {
         maximum-size: 1000;
         tightening-threshold: 600;
 
-        Adw.Bin {
-          styles ["searchbar"]
-
-          Gtk.SearchEntry search_entry {
-            placeholder-text: _("Enter composers, performers, works…");
-            search-changed => $search() swapped;
-          }
+        $MusicusSearchEntry search_entry {
+          activate => $select() swapped;
         }
       }
 

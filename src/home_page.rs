@@ -1,10 +1,9 @@
-use crate::player::MusicusPlayer;
+use crate::{player::MusicusPlayer, tile::MusicusTile, search_entry::MusicusSearchEntry};
 use adw::subclass::{navigation_page::NavigationPageImpl, prelude::*};
 use gtk::{glib, glib::Properties, prelude::*};
 use std::cell::RefCell;
 
 mod imp {
-    use crate::tile::MusicusTile;
 
     use super::*;
 
@@ -16,7 +15,7 @@ mod imp {
         pub player: RefCell<MusicusPlayer>,
 
         #[template_child]
-        pub search_entry: TemplateChild<gtk::SearchEntry>,
+        pub search_entry: TemplateChild<MusicusSearchEntry>,
         #[template_child]
         pub persons_flow_box: TemplateChild<gtk::FlowBox>,
         #[template_child]
@@ -47,8 +46,8 @@ mod imp {
     impl ObjectImpl for MusicusHomePage {
         fn constructed(&self) {
             self.parent_constructed();
-            self.search_entry
-                .set_key_capture_widget(Some(self.obj().as_ref()));
+
+            self.search_entry.set_key_capture_widget(&*self.obj());
 
             self.player
                 .borrow()
@@ -87,7 +86,7 @@ impl MusicusHomePage {
     }
 
     #[template_callback]
-    fn search(&self, entry: &gtk::SearchEntry) {
-        log::info!("Search changed: \"{}\"", entry.text());
+    fn select(&self, search_entry: &MusicusSearchEntry) {
+        search_entry.add_tag("Tag");
     }
 }
