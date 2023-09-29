@@ -1,6 +1,7 @@
 mod application;
 mod config;
 mod home_page;
+mod player;
 mod playlist_page;
 mod tile;
 mod welcome_page;

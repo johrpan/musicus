@@ -1,10 +1,10 @@
 use crate::{
-    home_page::MusicusHomePage, playlist_page::MusicusPlaylistPage,
+    home_page::MusicusHomePage, player::MusicusPlayer, playlist_page::MusicusPlaylistPage,
     welcome_page::MusicusWelcomePage,
 };
 
 use adw::subclass::prelude::*;
-use gtk::{gio, glib, prelude::*};
+use gtk::{gio, glib, glib::clone, prelude::*};
 
 mod imp {
     use super::*;
@@ -12,12 +12,16 @@ mod imp {
     #[derive(Debug, Default, gtk::CompositeTemplate)]
     #[template(file = "data/ui/window.blp")]
     pub struct MusicusWindow {
+        pub player: MusicusPlayer,
+
         #[template_child]
         pub stack: TemplateChild<gtk::Stack>,
         #[template_child]
         pub navigation_view: TemplateChild<adw::NavigationView>,
         #[template_child]
         pub player_bar_revealer: TemplateChild<gtk::Revealer>,
+        #[template_child]
+        pub play_button: TemplateChild<gtk::Button>,
         #[template_child]
         pub playlist_button: TemplateChild<gtk::ToggleButton>,
     }
@@ -45,6 +49,30 @@ mod imp {
         fn constructed(&self) {
             self.parent_constructed();
             self.obj().load_window_state();
+            self.player
+                .bind_property("active", &self.player_bar_revealer.get(), "reveal-child")
+                .sync_create()
+                .build();
+
+            let play_button = self.play_button.get();
+
+            self.player
+                .connect_playing_notify(clone!(@weak play_button => move |player| {
+                    play_button.set_icon_name(if player.playing() {
+                        "media-playback-pause-symbolic"
+                    } else {
+                        "media-playback-start-symbolic"
+                    });
+                }));
+
+            self.play_button
+                .connect_clicked(clone!(@weak self.player as player => move |_| {
+                    if player.playing() {
+                        player.pause();
+                    } else {
+                        player.play();
+                    }
+                }));
         }
     }
 
@@ -99,7 +127,9 @@ impl MusicusWindow {
     fn set_library_folder(&self, folder: &gio::File) {
         let path = folder.path();
         log::info!("{path:?}");
-        self.imp().navigation_view.replace_with_tags(&["home"]);
+        self.imp()
+            .navigation_view
+            .replace(&[MusicusHomePage::new(&self.imp().player).into()]);
     }
 
     #[template_callback]

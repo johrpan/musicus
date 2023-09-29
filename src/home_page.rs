@@ -1,14 +1,20 @@
+use crate::player::MusicusPlayer;
 use adw::subclass::{navigation_page::NavigationPageImpl, prelude::*};
-use gtk::{glib, prelude::*};
+use gtk::{glib, glib::Properties, prelude::*};
+use std::cell::RefCell;
 
 mod imp {
     use crate::tile::MusicusTile;
 
     use super::*;
 
-    #[derive(Debug, Default, gtk::CompositeTemplate)]
+    #[derive(Properties, Debug, Default, gtk::CompositeTemplate)]
+    #[properties(wrapper_type = super::MusicusHomePage)]
     #[template(file = "data/ui/home_page.blp")]
     pub struct MusicusHomePage {
+        #[property(get, set)]
+        pub player: RefCell<MusicusPlayer>,
+
         #[template_child]
         pub search_entry: TemplateChild<gtk::SearchEntry>,
         #[template_child]
@@ -37,11 +43,19 @@ mod imp {
         }
     }
 
+    #[glib::derived_properties]
     impl ObjectImpl for MusicusHomePage {
         fn constructed(&self) {
             self.parent_constructed();
             self.search_entry
                 .set_key_capture_widget(Some(self.obj().as_ref()));
+
+            self.player
+                .borrow()
+                .bind_property("active", &self.play_button.get(), "visible")
+                .invert_boolean()
+                .sync_create()
+                .build();
 
             for _ in 0..9 {
                 self.persons_flow_box.append(&MusicusTile::new());
@@ -62,13 +76,14 @@ glib::wrapper! {
 
 #[gtk::template_callbacks]
 impl MusicusHomePage {
-    pub fn new() -> Self {
-        glib::Object::new()
+    pub fn new(player: &MusicusPlayer) -> Self {
+        glib::Object::builder().property("player", player).build()
     }
 
     #[template_callback]
     fn play(&self, _: &gtk::Button) {
         log::info!("Play button clicked");
+        self.imp().player.borrow().play();
     }
 
     #[template_callback]
