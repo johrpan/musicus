@@ -1,0 +1,21 @@
+using Gtk 4.0;
+using Adw 1;
+
+template $MusicusSearchTag : Gtk.Box {
+  styles ["searchtag"]
+
+  margin-start: 6;
+  margin-end: 6;
+
+  Gtk.Label label {
+    styles ["caption-heading"]
+    margin-start: 12;
+    margin-end: 6;
+  }
+
+  Gtk.Button button {
+    styles ["flat", "circular"]
+    icon-name: "window-close-symbolic";
+    clicked => $remove() swapped;
+  }
+}

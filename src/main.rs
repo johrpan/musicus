@@ -3,6 +3,8 @@ mod config;
 mod home_page;
 mod player;
 mod playlist_page;
+mod search_entry;
+mod search_tag;
 mod tile;
 mod welcome_page;
 mod window;
