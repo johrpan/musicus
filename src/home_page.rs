@@ -53,6 +53,10 @@ mod imp {
 
             self.search_entry.set_key_capture_widget(&*self.obj());
 
+            self.search_entry.connect_query_changed(|entry| {
+                log::info!("{}", entry.query());
+            });
+
             self.player
                 .borrow()
                 .bind_property("active", &self.play_button.get(), "visible")
