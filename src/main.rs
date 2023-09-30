@@ -1,6 +1,8 @@
+mod db;
 mod application;
 mod config;
 mod home_page;
+mod library;
 mod player;
 mod playlist_page;
 mod search_entry;
