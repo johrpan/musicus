@@ -2,3 +2,4 @@
 /.flatpak/
 /.vscode/
 /target/
+/test.sqlite

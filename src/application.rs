@@ -1,9 +1,7 @@
+use crate::{config::VERSION, MusicusWindow};
 use adw::subclass::prelude::*;
 use gettextrs::gettext;
 use gtk::{gio, glib, prelude::*};
-
-use crate::config::VERSION;
-use crate::MusicusWindow;
 
 mod imp {
     use super::*;

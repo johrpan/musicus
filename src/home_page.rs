@@ -1,10 +1,12 @@
-use crate::{player::MusicusPlayer, tile::MusicusTile, search_entry::MusicusSearchEntry};
+use crate::{
+    library::MusicusLibrary, player::MusicusPlayer, search_entry::MusicusSearchEntry,
+    tile::MusicusTile,
+};
 use adw::subclass::{navigation_page::NavigationPageImpl, prelude::*};
 use gtk::{glib, glib::Properties, prelude::*};
-use std::cell::RefCell;
+use std::cell::{OnceCell, RefCell};
 
 mod imp {
-
     use super::*;
 
     #[derive(Properties, Debug, Default, gtk::CompositeTemplate)]
@@ -13,6 +15,8 @@ mod imp {
     pub struct MusicusHomePage {
         #[property(get, set)]
         pub player: RefCell<MusicusPlayer>,
+
+        pub library: OnceCell<MusicusLibrary>,
 
         #[template_child]
         pub search_entry: TemplateChild<MusicusSearchEntry>,
@@ -75,8 +79,10 @@ glib::wrapper! {
 
 #[gtk::template_callbacks]
 impl MusicusHomePage {
-    pub fn new(player: &MusicusPlayer) -> Self {
-        glib::Object::builder().property("player", player).build()
+    pub fn new(library: &MusicusLibrary, player: &MusicusPlayer) -> Self {
+        let obj: MusicusHomePage = glib::Object::builder().property("player", player).build();
+        obj.imp().library.set(library.to_owned()).unwrap();
+        obj
     }
 
     #[template_callback]

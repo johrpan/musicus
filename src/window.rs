@@ -1,6 +1,6 @@
 use crate::{
-    home_page::MusicusHomePage, player::MusicusPlayer, playlist_page::MusicusPlaylistPage,
-    welcome_page::MusicusWelcomePage,
+    home_page::MusicusHomePage, library::MusicusLibrary, player::MusicusPlayer,
+    playlist_page::MusicusPlaylistPage, welcome_page::MusicusWelcomePage,
 };
 
 use adw::subclass::prelude::*;
@@ -125,11 +125,11 @@ impl MusicusWindow {
 
     #[template_callback]
     fn set_library_folder(&self, folder: &gio::File) {
-        let path = folder.path();
-        log::info!("{path:?}");
+        let path = folder.path().unwrap();
+        let library = MusicusLibrary::new(path);
         self.imp()
             .navigation_view
-            .replace(&[MusicusHomePage::new(&self.imp().player).into()]);
+            .replace(&[MusicusHomePage::new(&library, &self.imp().player).into()]);
     }
 
     #[template_callback]

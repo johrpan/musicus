@@ -4,6 +4,24 @@ The classical music player and organizer.
 
 ## Hacking
 
+### ORM
+
+This program uses [Diesel](https://diesel.rs) as its ORM. After installing
+the Diesel command line utility, you will be able to create a new schema
+migration using the following command:
+
+```
+$ diesel migration generate [change_description]
+```
+
+To update the `src/db/schema.rs` file, you should use the following command:
+
+```
+$ diesel migration run --database-url test.sqlite
+```
+
+This file should never be edited manually.
+
 ### Internationalization
 
 Execute the following commands from the project root directory to update
