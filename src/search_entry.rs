@@ -1,7 +1,7 @@
 use crate::search_tag::MusicusSearchTag;
-use adw::{gdk, glib, glib::clone, glib::subclass::Signal, prelude::*, subclass::prelude::*};
+use adw::{gdk, gio, glib, glib::clone, glib::subclass::Signal, prelude::*, subclass::prelude::*};
 use once_cell::sync::Lazy;
-use std::cell::RefCell;
+use std::{cell::RefCell, time::Duration};
 
 mod imp {
     use super::*;
@@ -17,6 +17,7 @@ mod imp {
         pub clear_icon: TemplateChild<gtk::Image>,
 
         pub tags: RefCell<Vec<MusicusSearchTag>>,
+        pub query_changed: RefCell<Option<gio::Cancellable>>,
     }
 
     #[glib::object_subclass]
@@ -70,8 +71,12 @@ mod imp {
         }
 
         fn signals() -> &'static [Signal] {
-            static SIGNALS: Lazy<Vec<Signal>> =
-                Lazy::new(|| vec![Signal::builder("activate").build()]);
+            static SIGNALS: Lazy<Vec<Signal>> = Lazy::new(|| {
+                vec![
+                    Signal::builder("activate").build(),
+                    Signal::builder("query-changed").build(),
+                ]
+            });
 
             SIGNALS.as_ref()
         }
@@ -95,6 +100,14 @@ glib::wrapper! {
 impl MusicusSearchEntry {
     pub fn new() -> Self {
         glib::Object::new()
+    }
+
+    pub fn connect_query_changed<F: Fn(&Self) + 'static>(&self, f: F) -> glib::SignalHandlerId {
+        self.connect_local("query-changed", true, move |values| {
+            let obj = values[0].get::<Self>().unwrap();
+            f(&obj);
+            None
+        })
     }
 
     pub fn set_key_capture_widget(&self, widget: &impl IsA<gtk::Widget>) {
@@ -134,6 +147,10 @@ impl MusicusSearchEntry {
         self.imp().tags.borrow_mut().push(tag);
     }
 
+    pub fn query(&self) -> String {
+        self.imp().text.text().to_string()
+    }
+
     #[template_callback]
     fn activate(&self, _: &gtk::Text) {
         self.emit_by_name::<()>("activate", &[]);
@@ -146,5 +163,26 @@ impl MusicusSearchEntry {
                 self.imp().tags_box.remove(&tag);
             }
         }
+    }
+
+    #[template_callback]
+    async fn text_changed(&self, text: &gtk::Text) {
+        self.imp().clear_icon.set_visible(!text.text().is_empty());
+
+        if let Some(cancellable) = self.imp().query_changed.borrow_mut().take() {
+            cancellable.cancel();
+        }
+
+        let cancellable = gio::Cancellable::new();
+        self.imp().query_changed.replace(Some(cancellable.clone()));
+
+        let _ = gio::CancellableFuture::new(
+            async {
+                glib::timeout_future(Duration::from_millis(150)).await;
+                self.emit_by_name::<()>("query-changed", &[]);
+            },
+            cancellable,
+        )
+        .await;
     }
 }

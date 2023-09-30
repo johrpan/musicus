@@ -22,9 +22,11 @@ template $MusicusSearchEntry : Gtk.Box {
       hexpand: true;
       activate => $activate() swapped;
       backspace => $backspace() swapped;
+      changed => $text_changed() swapped;
   }
 
   Gtk.Image clear_icon {
+      visible: false;
       icon-name: "edit-clear-symbolic";
       tooltip-text: _("Clear entry");
   }
