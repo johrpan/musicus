@@ -27,7 +27,11 @@ mod imp {
         #[template_child]
         pub search_entry: TemplateChild<MusicusSearchEntry>,
         #[template_child]
+        pub stack: TemplateChild<gtk::Stack>,
+        #[template_child]
         pub persons_flow_box: TemplateChild<gtk::FlowBox>,
+        #[template_child]
+        pub ensembles_flow_box: TemplateChild<gtk::FlowBox>,
         #[template_child]
         pub works_flow_box: TemplateChild<gtk::FlowBox>,
         #[template_child]
@@ -73,12 +77,6 @@ mod imp {
                 .build();
 
             self.obj().query(&LibraryQuery::default());
-
-            for _ in 0..9 {
-                self.works_flow_box.append(&MusicusTile::with_title("Test"));
-                self.recordings_flow_box
-                    .append(&MusicusTile::with_title("Test"));
-            }
         }
     }
 
@@ -112,19 +110,52 @@ impl MusicusHomePage {
     }
 
     fn query(&self, query: &LibraryQuery) {
+        let imp = self.imp();
         let results = self.library().query(query);
 
-        clear_flowbox(&self.imp().persons_flow_box);
-        for person in results.persons {
-            self.imp()
-                .persons_flow_box
-                .append(&MusicusTile::with_title(&person.name_fl()));
+        for flowbox in [
+            &imp.persons_flow_box,
+            &imp.ensembles_flow_box,
+            &imp.works_flow_box,
+            &imp.recordings_flow_box,
+        ] {
+            while let Some(widget) = flowbox.first_child() {
+                flowbox.remove(&widget);
+            }
         }
-    }
-}
 
-fn clear_flowbox(flowbox: &gtk::FlowBox) {
-    while let Some(widget) = flowbox.first_child() {
-        flowbox.remove(&widget);
+        if results.is_empty() {
+            imp.stack.set_visible_child_name("empty");
+        } else {
+            imp.stack.set_visible_child_name("results");
+
+            imp.persons_flow_box
+                .set_visible(!results.persons.is_empty());
+            imp.ensembles_flow_box
+                .set_visible(!results.ensembles.is_empty());
+            imp.works_flow_box.set_visible(!results.works.is_empty());
+            imp.recordings_flow_box
+                .set_visible(!results.recordings.is_empty());
+
+            for person in results.persons {
+                imp.persons_flow_box
+                    .append(&MusicusTile::with_title(&person.name_fl()));
+            }
+
+            for ensemble in results.ensembles {
+                imp.ensembles_flow_box
+                    .append(&MusicusTile::with_title(&ensemble.name));
+            }
+
+            for work in results.works {
+                imp.works_flow_box
+                    .append(&MusicusTile::with_subtitle(&work.title, &work.composer.name_fl()));
+            }
+
+            for _recording in results.recordings {
+                imp.recordings_flow_box
+                    .append(&MusicusTile::with_title("TODO"));
+            }
+        }
     }
 }

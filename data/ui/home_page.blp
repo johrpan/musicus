@@ -26,68 +26,97 @@ template $MusicusHomePage : Adw.NavigationPage {
         }
       }
 
-      Gtk.ScrolledWindow {
-        hscrollbar-policy: never;
+      Gtk.Stack stack {
+        Gtk.StackPage {
+          name: "results";
+          child: Gtk.ScrolledWindow {
+            hscrollbar-policy: never;
 
-        Adw.Clamp {
-          maximum-size: 1000;
-          tightening-threshold: 600;
+            Adw.Clamp {
+              maximum-size: 1000;
+              tightening-threshold: 600;
 
-          Gtk.Box {
-            orientation: vertical;
-            margin-start: 12;
-            margin-end: 12;
-            margin-top: 24;
-            margin-bottom: 68;
+              Gtk.Box {
+                orientation: vertical;
+                margin-start: 12;
+                margin-end: 12;
+                margin-top: 24;
+                margin-bottom: 68;
 
-            Gtk.Label {
-              styles ["heading"]
-              visible: bind persons_flow_box.visible; 
-              halign: start;
-              label: _("Composers and performers");
+                Gtk.Label {
+                  styles ["heading"]
+                  visible: bind persons_flow_box.visible; 
+                  halign: start;
+                  label: _("Composers and performers");
+                }
+
+                Gtk.FlowBox persons_flow_box {
+                  margin-top: 12;
+                  margin-bottom: 24;
+                  column-spacing: 12;
+                  row-spacing: 12;
+                  homogeneous: true;
+                  selection-mode: none;
+                }
+
+                Gtk.Label {
+                  styles ["heading"]
+                  visible: bind ensembles_flow_box.visible; 
+                  halign: start;
+                  label: _("Ensembles");
+                }
+
+                Gtk.FlowBox ensembles_flow_box {
+                  margin-top: 12;
+                  margin-bottom: 24;
+                  column-spacing: 12;
+                  row-spacing: 12;
+                  homogeneous: true;
+                  selection-mode: none;
+                }
+
+                Gtk.Label {
+                  styles ["heading"]
+                  visible: bind works_flow_box.visible;
+                  halign: start;
+                  label: _("Works");
+                }
+
+                Gtk.FlowBox works_flow_box {
+                  margin-top: 12;
+                  margin-bottom: 24;
+                  column-spacing: 12;
+                  row-spacing: 12;
+                  homogeneous: true;
+                  selection-mode: none;
+                }
+
+                Gtk.Label {
+                  styles ["heading"]
+                  visible: bind recordings_flow_box.visible;
+                  halign: start;
+                  label: _("Recordings");
+                }
+
+                Gtk.FlowBox recordings_flow_box {
+                  margin-top: 12;
+                  margin-bottom: 24;
+                  column-spacing: 12;
+                  row-spacing: 12;
+                  homogeneous: true;
+                  selection-mode: none;
+                }
+              }
             }
-
-            Gtk.FlowBox persons_flow_box {
-              margin-top: 12;
-              margin-bottom: 24;
-              column-spacing: 12;
-              row-spacing: 12;
-              homogeneous: true;
-              selection-mode: none;
-            }
-
-            Gtk.Label {
-              styles ["heading"]
-              visible: bind works_flow_box.visible;
-              halign: start;
-              label: _("Works");
-            }
-
-            Gtk.FlowBox works_flow_box {
-              margin-top: 12;
-              margin-bottom: 24;
-              column-spacing: 12;
-              row-spacing: 12;
-              homogeneous: true;
-              selection-mode: none;
-            }
-
-            Gtk.Label {
-              styles ["heading"]
-              visible: bind recordings_flow_box.visible;
-              halign: start;
-              label: _("Recordings");
-            }
-
-            Gtk.FlowBox recordings_flow_box {
-              margin-top: 12;
-              margin-bottom: 24;
-              column-spacing: 12;
-              row-spacing: 12;
-              homogeneous: true;
-              selection-mode: none;
-            }
-          }
+          };
+        }
+        Gtk.StackPage {
+          name: "empty";
+          child: Adw.StatusPage {
+            icon-name: "system-search-symbolic";
+            title: _("Nothing Found");
+            description: _("Try a different search.");
+          };
         }
       }
     }
