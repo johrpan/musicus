@@ -114,12 +114,20 @@ impl MusicusHomePage {
     fn select(&self, search_entry: &MusicusSearchEntry) {
         let imp = self.imp();
 
-        if let Some(person) = imp.persons.borrow().first() {
-            search_entry.add_tag(Tag::Person(person.clone()));
-        } else if let Some(ensemble) = imp.ensembles.borrow().first() {
-            search_entry.add_tag(Tag::Ensemble(ensemble.clone()));
-        } else if let Some(work) = imp.works.borrow().first() {
-            search_entry.add_tag(Tag::Work(work.clone()));
+        let (person, ensemble, work) = {
+            (
+                imp.persons.borrow().first().cloned(),
+                imp.ensembles.borrow().first().cloned(),
+                imp.works.borrow().first().cloned(),
+            )
+        };
+
+        if let Some(person) = person {
+            search_entry.add_tag(Tag::Person(person));
+        } else if let Some(ensemble) = ensemble {
+            search_entry.add_tag(Tag::Ensemble(ensemble));
+        } else if let Some(work) = work {
+            search_entry.add_tag(Tag::Work(work));
         }
     }
 
