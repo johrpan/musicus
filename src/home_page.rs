@@ -1,10 +1,15 @@
 use crate::{
-    library::MusicusLibrary, player::MusicusPlayer, search_entry::MusicusSearchEntry,
+    library::{LibraryQuery, MusicusLibrary},
+    player::MusicusPlayer,
+    search_entry::MusicusSearchEntry,
     tile::MusicusTile,
 };
 use adw::subclass::{navigation_page::NavigationPageImpl, prelude::*};
-use gtk::{glib, glib::Properties, prelude::*};
-use std::cell::{OnceCell, RefCell};
+use gtk::{
+    glib::{self, clone, Properties},
+    prelude::*,
+};
+use std::cell::OnceCell;
 
 mod imp {
     use super::*;
@@ -13,10 +18,11 @@ mod imp {
     #[properties(wrapper_type = super::MusicusHomePage)]
     #[template(file = "data/ui/home_page.blp")]
     pub struct MusicusHomePage {
-        #[property(get, set)]
-        pub player: RefCell<MusicusPlayer>,
-
+        #[property(get, construct_only)]
         pub library: OnceCell<MusicusLibrary>,
+
+        #[property(get, construct_only)]
+        pub player: OnceCell<MusicusPlayer>,
 
         #[template_child]
         pub search_entry: TemplateChild<MusicusSearchEntry>,
@@ -53,21 +59,25 @@ mod imp {
 
             self.search_entry.set_key_capture_widget(&*self.obj());
 
-            self.search_entry.connect_query_changed(|entry| {
-                log::info!("{}", entry.query());
-            });
+            self.search_entry
+                .connect_query_changed(clone!(@weak self as _self => move |entry| {
+                    _self.obj().query(&entry.query());
+                }));
 
             self.player
-                .borrow()
+                .get()
+                .unwrap()
                 .bind_property("active", &self.play_button.get(), "visible")
                 .invert_boolean()
                 .sync_create()
                 .build();
 
+            self.obj().query(&LibraryQuery::default());
+
             for _ in 0..9 {
-                self.persons_flow_box.append(&MusicusTile::new());
-                self.works_flow_box.append(&MusicusTile::new());
-                self.recordings_flow_box.append(&MusicusTile::new());
+                self.works_flow_box.append(&MusicusTile::with_title("Test"));
+                self.recordings_flow_box
+                    .append(&MusicusTile::with_title("Test"));
             }
         }
     }
@@ -84,19 +94,37 @@ glib::wrapper! {
 #[gtk::template_callbacks]
 impl MusicusHomePage {
     pub fn new(library: &MusicusLibrary, player: &MusicusPlayer) -> Self {
-        let obj: MusicusHomePage = glib::Object::builder().property("player", player).build();
-        obj.imp().library.set(library.to_owned()).unwrap();
-        obj
+        glib::Object::builder()
+            .property("library", library)
+            .property("player", player)
+            .build()
     }
 
     #[template_callback]
     fn play(&self, _: &gtk::Button) {
         log::info!("Play button clicked");
-        self.imp().player.borrow().play();
+        self.player().play();
     }
 
     #[template_callback]
     fn select(&self, search_entry: &MusicusSearchEntry) {
         search_entry.add_tag("Tag");
+    }
+
+    fn query(&self, query: &LibraryQuery) {
+        let results = self.library().query(query);
+
+        clear_flowbox(&self.imp().persons_flow_box);
+        for person in results.persons {
+            self.imp()
+                .persons_flow_box
+                .append(&MusicusTile::with_title(&person.name_fl()));
+        }
+    }
+}
+
+fn clear_flowbox(flowbox: &gtk::FlowBox) {
+    while let Some(widget) = flowbox.first_child() {
+        flowbox.remove(&widget);
     }
 }

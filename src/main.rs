@@ -1,4 +1,3 @@
-mod db;
 mod application;
 mod config;
 mod home_page;

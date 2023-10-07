@@ -1,4 +1,4 @@
-use crate::search_tag::MusicusSearchTag;
+use crate::{library::LibraryQuery, search_tag::MusicusSearchTag};
 use adw::{gdk, gio, glib, glib::clone, glib::subclass::Signal, prelude::*, subclass::prelude::*};
 use once_cell::sync::Lazy;
 use std::{cell::RefCell, time::Duration};
@@ -147,8 +147,11 @@ impl MusicusSearchEntry {
         self.imp().tags.borrow_mut().push(tag);
     }
 
-    pub fn query(&self) -> String {
-        self.imp().text.text().to_string()
+    pub fn query(&self) -> LibraryQuery {
+        LibraryQuery {
+            search: self.imp().text.text().to_string(),
+            ..Default::default()
+        }
     }
 
     #[template_callback]
