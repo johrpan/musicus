@@ -8,3 +8,16 @@
   min-height: 24px;
   margin: 0px;
 }
+
+.tile {
+  min-height: 50px;
+  min-width: 200px;
+}
+
+.tile > box {
+  margin: 6px 12px;
+}
+
+.tile .subtitle {
+  font-size: smaller;
+}

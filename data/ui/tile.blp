@@ -2,24 +2,21 @@ using Gtk 4.0;
 using Adw 1;
 
 template $MusicusTile : Gtk.FlowBoxChild {
-  styles ["card", "activatable"]
-  width-request: 200;
+  styles ["card", "activatable", "tile"]
 
   Gtk.Box {
     orientation: vertical;
-    margin-start: 6;
-    margin-end: 6;
-    margin-top: 6;
-    margin-bottom: 6;
+    valign: center;
     
     Gtk.Label title_label {
-      styles ["caption-heading"]
+      styles ["title"]
       halign: start;
       label: _("Title");
     }
 
     Gtk.Label subtitle_label {
-      styles ["caption"]
+      visible: false;
+      styles ["subtitle", "dim-label"]
       halign: start;
       label: _("Subtitle");
     }
