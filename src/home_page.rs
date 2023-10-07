@@ -1,7 +1,8 @@
 use crate::{
-    library::{LibraryQuery, MusicusLibrary},
+    library::{Ensemble, LibraryQuery, MusicusLibrary, Person, Recording, Work},
     player::MusicusPlayer,
     search_entry::MusicusSearchEntry,
+    search_tag::Tag,
     tile::MusicusTile,
 };
 use adw::subclass::{navigation_page::NavigationPageImpl, prelude::*};
@@ -9,7 +10,7 @@ use gtk::{
     glib::{self, clone, Properties},
     prelude::*,
 };
-use std::cell::OnceCell;
+use std::cell::{OnceCell, RefCell};
 
 mod imp {
     use super::*;
@@ -23,6 +24,11 @@ mod imp {
 
         #[property(get, construct_only)]
         pub player: OnceCell<MusicusPlayer>,
+
+        pub persons: RefCell<Vec<Person>>,
+        pub ensembles: RefCell<Vec<Ensemble>>,
+        pub works: RefCell<Vec<Work>>,
+        pub recordings: RefCell<Vec<Recording>>,
 
         #[template_child]
         pub search_entry: TemplateChild<MusicusSearchEntry>,
@@ -106,7 +112,15 @@ impl MusicusHomePage {
 
     #[template_callback]
     fn select(&self, search_entry: &MusicusSearchEntry) {
-        search_entry.add_tag("Tag");
+        let imp = self.imp();
+
+        if let Some(person) = imp.persons.borrow().first() {
+            search_entry.add_tag(Tag::Person(person.clone()));
+        } else if let Some(ensemble) = imp.ensembles.borrow().first() {
+            search_entry.add_tag(Tag::Ensemble(ensemble.clone()));
+        } else if let Some(work) = imp.works.borrow().first() {
+            search_entry.add_tag(Tag::Work(work.clone()));
+        }
     }
 
     fn query(&self, query: &LibraryQuery) {
@@ -137,25 +151,34 @@ impl MusicusHomePage {
             imp.recordings_flow_box
                 .set_visible(!results.recordings.is_empty());
 
-            for person in results.persons {
+            for person in &results.persons {
                 imp.persons_flow_box
                     .append(&MusicusTile::with_title(&person.name_fl()));
             }
 
-            for ensemble in results.ensembles {
+            for ensemble in &results.ensembles {
                 imp.ensembles_flow_box
                     .append(&MusicusTile::with_title(&ensemble.name));
             }
 
-            for work in results.works {
-                imp.works_flow_box
-                    .append(&MusicusTile::with_subtitle(&work.title, &work.composer.name_fl()));
+            for work in &results.works {
+                imp.works_flow_box.append(&MusicusTile::with_subtitle(
+                    &work.title,
+                    &work.composer.name_fl(),
+                ));
             }
 
-            for _recording in results.recordings {
-                imp.recordings_flow_box
-                    .append(&MusicusTile::with_title("TODO"));
+            for recording in &results.recordings {
+                imp.recordings_flow_box.append(&MusicusTile::with_subtitle(
+                    &recording.work.title,
+                    &recording.work.composer.name_fl(),
+                ));
             }
+
+            imp.persons.replace(results.persons);
+            imp.ensembles.replace(results.ensembles);
+            imp.works.replace(results.works);
+            imp.recordings.replace(results.recordings);
         }
     }
 }

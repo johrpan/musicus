@@ -1,4 +1,7 @@
-use crate::{library::LibraryQuery, search_tag::MusicusSearchTag};
+use crate::{
+    library::LibraryQuery,
+    search_tag::{MusicusSearchTag, Tag},
+};
 use adw::{gdk, gio, glib, glib::clone, glib::subclass::Signal, prelude::*, subclass::prelude::*};
 use once_cell::sync::Lazy;
 use std::{cell::RefCell, time::Duration};
@@ -140,18 +143,28 @@ impl MusicusSearchEntry {
         self.imp().text.set_text("");
     }
 
-    pub fn add_tag(&self, name: &str) {
+    pub fn add_tag(&self, tag: Tag) {
         self.imp().text.set_text("");
-        let tag = MusicusSearchTag::new(name);
+        let tag = MusicusSearchTag::new(tag);
         self.imp().tags_box.append(&tag);
         self.imp().tags.borrow_mut().push(tag);
     }
 
     pub fn query(&self) -> LibraryQuery {
-        LibraryQuery {
+        let mut query = LibraryQuery {
             search: self.imp().text.text().to_string(),
             ..Default::default()
+        };
+
+        for tag in &*self.imp().tags.borrow() {
+            match tag.tag().clone() {
+                Tag::Person(person) => query.person = Some(person),
+                Tag::Ensemble(ensemble) => query.ensemble = Some(ensemble),
+                Tag::Work(work) => query.work = Some(work),
+            }
         }
+
+        query
     }
 
     #[template_callback]
@@ -162,8 +175,15 @@ impl MusicusSearchEntry {
     #[template_callback]
     fn backspace(&self, text: &gtk::Text) {
         if text.cursor_position() == 0 {
-            if let Some(tag) = self.imp().tags.borrow_mut().pop() {
+            let changed = if let Some(tag) = self.imp().tags.borrow_mut().pop() {
                 self.imp().tags_box.remove(&tag);
+                true
+            } else {
+                false
+            };
+
+            if changed {
+                self.emit_by_name::<()>("query-changed", &[]);
             }
         }
     }

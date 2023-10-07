@@ -1,5 +1,7 @@
+use crate::library::{Ensemble, Person, Work};
 use adw::{glib, glib::subclass::Signal, prelude::*, subclass::prelude::*};
 use once_cell::sync::Lazy;
+use std::cell::OnceCell;
 
 mod imp {
     use super::*;
@@ -9,6 +11,7 @@ mod imp {
     pub struct MusicusSearchTag {
         #[template_child]
         pub label: TemplateChild<gtk::Label>,
+        pub tag: OnceCell<Tag>,
     }
 
     #[glib::object_subclass]
@@ -47,14 +50,33 @@ glib::wrapper! {
 
 #[gtk::template_callbacks]
 impl MusicusSearchTag {
-    pub fn new(label: &str) -> Self {
-        let tag: MusicusSearchTag = glib::Object::new();
-        tag.imp().label.set_label(label);
-        tag
+    pub fn new(tag: Tag) -> Self {
+        let obj: MusicusSearchTag = glib::Object::new();
+
+        obj.imp().label.set_label(&match &tag {
+            Tag::Person(person) => person.name_fl(),
+            Tag::Ensemble(ensemble) => ensemble.name.clone(),
+            Tag::Work(work) => format!("{}: {}", &work.composer.name_fl(), &work.title),
+        });
+
+        obj.imp().tag.set(tag).unwrap();
+
+        obj
+    }
+
+    pub fn tag(&self) -> &Tag {
+        self.imp().tag.get().unwrap()
     }
 
     #[template_callback]
     fn remove(&self, _: &gtk::Button) {
         self.emit_by_name::<()>("remove", &[]);
     }
+}
+
+#[derive(Debug, Clone)]
+pub enum Tag {
+    Person(Person),
+    Ensemble(Ensemble),
+    Work(Work),
 }
