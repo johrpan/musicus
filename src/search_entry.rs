@@ -141,6 +141,7 @@ impl MusicusSearchEntry {
         }
 
         self.imp().text.set_text("");
+        self.emit_by_name::<()>("query-changed", &[]);
     }
 
     pub fn add_tag(&self, tag: Tag) {
@@ -148,6 +149,7 @@ impl MusicusSearchEntry {
         let tag = MusicusSearchTag::new(tag);
         self.imp().tags_box.append(&tag);
         self.imp().tags.borrow_mut().push(tag);
+        self.emit_by_name::<()>("query-changed", &[]);
     }
 
     pub fn query(&self) -> LibraryQuery {
