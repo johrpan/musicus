@@ -56,7 +56,7 @@ impl MusicusSearchTag {
         obj.imp().label.set_label(&match &tag {
             Tag::Person(person) => person.name_fl(),
             Tag::Ensemble(ensemble) => ensemble.name.clone(),
-            Tag::Work(work) => format!("{}: {}", &work.composer.name_fl(), &work.title),
+            Tag::Work(work) => work.title.clone(),
         });
 
         obj.imp().tag.set(tag).unwrap();
