@@ -65,6 +65,14 @@ impl MusicusSearchTag {
         obj
     }
 
+    pub fn connect_remove<F: Fn(&Self) + 'static>(&self, f: F) -> glib::SignalHandlerId {
+        self.connect_local("remove", true, move |values| {
+            let obj = values[0].get::<Self>().unwrap();
+            f(&obj);
+            None
+        })
+    }
+
     pub fn tag(&self) -> &Tag {
         self.imp().tag.get().unwrap()
     }
@@ -75,7 +83,7 @@ impl MusicusSearchTag {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Tag {
     Composer(Person),
     Performer(Person),
