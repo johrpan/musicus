@@ -147,6 +147,19 @@ impl MusicusSearchEntry {
     pub fn add_tag(&self, tag: Tag) {
         self.imp().text.set_text("");
         let tag = MusicusSearchTag::new(tag);
+
+        tag.connect_remove(clone!(@weak self as self_ => move |tag| {
+            let imp = self_.imp();
+
+            imp.tags_box.remove(tag);
+
+            {
+                imp.tags.borrow_mut().retain(|t| t.tag() != tag.tag());
+            }
+
+            self_.emit_by_name::<()>("query-changed", &[]);
+        }));
+
         self.imp().tags_box.append(&tag);
         self.imp().tags.borrow_mut().push(tag);
         self.emit_by_name::<()>("query-changed", &[]);

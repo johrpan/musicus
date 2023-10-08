@@ -291,11 +291,17 @@ impl LibraryResults {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq)]
 pub struct Person {
     pub id: String,
     pub first_name: String,
     pub last_name: String,
+}
+
+impl PartialEq for Person {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+    }
 }
 
 impl Person {
@@ -312,10 +318,16 @@ impl Person {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq)]
 pub struct Ensemble {
     pub id: String,
     pub name: String,
+}
+
+impl PartialEq for Ensemble {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+    }
 }
 
 impl Ensemble {
@@ -327,11 +339,17 @@ impl Ensemble {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq)]
 pub struct Work {
     pub id: String,
     pub title: String,
     pub composer: Person,
+}
+
+impl PartialEq for Work {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+    }
 }
 
 impl Work {
@@ -348,10 +366,16 @@ impl Work {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq)]
 pub struct Recording {
     pub id: String,
     pub work: Work,
+}
+
+impl PartialEq for Recording {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+    }
 }
 
 impl Recording {
