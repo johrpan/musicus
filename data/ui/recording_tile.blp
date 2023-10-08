@@ -1,0 +1,39 @@
+using Gtk 4.0;
+using Adw 1;
+
+template $MusicusRecordingTile : Gtk.FlowBoxChild {
+  styles ["card", "activatable", "tile"]
+
+  Gtk.Box {
+    spacing: 12;
+
+    Gtk.Image {
+      icon-name: "media-playback-start-symbolic";
+      valign: start;
+      margin-top: 12;
+    }
+
+    Gtk.Box {
+      orientation: vertical;
+      hexpand: true;
+      
+      Gtk.Label work_label {
+        styles ["work"]
+        halign: start;
+        wrap: true;
+      }
+      
+      Gtk.Label composer_label {
+        styles ["composer"]
+        halign: start;
+        wrap: true;
+      }
+
+      Gtk.Label performances_label {
+        styles ["performances", "dim-label"]
+        halign: start;
+        wrap: true;
+      }
+    }
+  }
+}

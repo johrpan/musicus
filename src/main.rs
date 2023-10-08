@@ -4,9 +4,10 @@ mod home_page;
 mod library;
 mod player;
 mod playlist_page;
+mod recording_tile;
 mod search_entry;
 mod search_tag;
-mod tile;
+mod tag_tile;
 mod welcome_page;
 mod window;
 

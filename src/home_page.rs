@@ -1,9 +1,10 @@
 use crate::{
     library::{Ensemble, LibraryQuery, MusicusLibrary, Person, Recording, Work},
     player::MusicusPlayer,
+    recording_tile::MusicusRecordingTile,
     search_entry::MusicusSearchEntry,
     search_tag::Tag,
-    tile::MusicusTile,
+    tag_tile::MusicusTagTile,
 };
 use adw::subclass::{navigation_page::NavigationPageImpl, prelude::*};
 use gtk::{
@@ -170,31 +171,28 @@ impl MusicusHomePage {
 
             for composer in &results.composers {
                 imp.composers_flow_box
-                    .append(&MusicusTile::with_title(&composer.name_fl()));
+                    .append(&MusicusTagTile::new(Tag::Composer(composer.clone())));
             }
 
             for performer in &results.performers {
                 imp.performers_flow_box
-                    .append(&MusicusTile::with_title(&performer.name_fl()));
+                    .append(&MusicusTagTile::new(Tag::Performer(performer.clone())));
             }
 
             for ensemble in &results.ensembles {
                 imp.ensembles_flow_box
-                    .append(&MusicusTile::with_title(&ensemble.name));
+                    .append(&MusicusTagTile::new(Tag::Ensemble(ensemble.clone())));
             }
 
             for work in &results.works {
-                imp.works_flow_box.append(&MusicusTile::with_subtitle(
-                    &work.title,
-                    &work.composer.name_fl(),
-                ));
+                imp.works_flow_box
+                    .append(&MusicusTagTile::new(Tag::Work(work.clone())));
             }
 
             for recording in &results.recordings {
-                imp.recordings_flow_box.append(&MusicusTile::with_subtitle(
-                    &recording.work.title,
-                    &recording.work.composer.name_fl(),
-                ));
+                let performances = self.library().performances(recording);
+                imp.recordings_flow_box
+                    .append(&MusicusRecordingTile::new(recording, performances));
             }
 
             imp.composers.replace(results.composers);

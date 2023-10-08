@@ -1,7 +1,7 @@
 using Gtk 4.0;
 using Adw 1;
 
-template $MusicusTile : Gtk.FlowBoxChild {
+template $MusicusTagTile : Gtk.FlowBoxChild {
   styles ["card", "activatable", "tile"]
 
   Gtk.Box {
@@ -11,26 +11,16 @@ template $MusicusTile : Gtk.FlowBoxChild {
     Gtk.Label title_label {
       styles ["title"]
       halign: start;
-      label: _("Title");
+      lines: 1;
+      ellipsize: end;
     }
 
     Gtk.Label subtitle_label {
       visible: false;
       styles ["subtitle", "dim-label"]
       halign: start;
-      label: _("Subtitle");
+      lines: 1;
+      ellipsize: end;
     }
-  }
-}
-
-menu item_menu {
-  item {
-    label: _("_Play");
-  }
-  item {
-    label: _("_Edit");
-  }
-  item {
-    label: _("_Delete");
   }
 }
