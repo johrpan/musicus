@@ -25,7 +25,8 @@ mod imp {
         #[property(get, construct_only)]
         pub player: OnceCell<MusicusPlayer>,
 
-        pub persons: RefCell<Vec<Person>>,
+        pub composers: RefCell<Vec<Person>>,
+        pub performers: RefCell<Vec<Person>>,
         pub ensembles: RefCell<Vec<Ensemble>>,
         pub works: RefCell<Vec<Work>>,
         pub recordings: RefCell<Vec<Recording>>,
@@ -35,7 +36,9 @@ mod imp {
         #[template_child]
         pub stack: TemplateChild<gtk::Stack>,
         #[template_child]
-        pub persons_flow_box: TemplateChild<gtk::FlowBox>,
+        pub composers_flow_box: TemplateChild<gtk::FlowBox>,
+        #[template_child]
+        pub performers_flow_box: TemplateChild<gtk::FlowBox>,
         #[template_child]
         pub ensembles_flow_box: TemplateChild<gtk::FlowBox>,
         #[template_child]
@@ -114,16 +117,19 @@ impl MusicusHomePage {
     fn select(&self, search_entry: &MusicusSearchEntry) {
         let imp = self.imp();
 
-        let (person, ensemble, work) = {
+        let (composer, performer, ensemble, work) = {
             (
-                imp.persons.borrow().first().cloned(),
+                imp.composers.borrow().first().cloned(),
+                imp.performers.borrow().first().cloned(),
                 imp.ensembles.borrow().first().cloned(),
                 imp.works.borrow().first().cloned(),
             )
         };
 
-        if let Some(person) = person {
-            search_entry.add_tag(Tag::Person(person));
+        if let Some(person) = composer {
+            search_entry.add_tag(Tag::Composer(person));
+        } else if let Some(person) = performer {
+            search_entry.add_tag(Tag::Performer(person));
         } else if let Some(ensemble) = ensemble {
             search_entry.add_tag(Tag::Ensemble(ensemble));
         } else if let Some(work) = work {
@@ -136,7 +142,8 @@ impl MusicusHomePage {
         let results = self.library().query(query);
 
         for flowbox in [
-            &imp.persons_flow_box,
+            &imp.composers_flow_box,
+            &imp.performers_flow_box,
             &imp.ensembles_flow_box,
             &imp.works_flow_box,
             &imp.recordings_flow_box,
@@ -151,17 +158,24 @@ impl MusicusHomePage {
         } else {
             imp.stack.set_visible_child_name("results");
 
-            imp.persons_flow_box
-                .set_visible(!results.persons.is_empty());
+            imp.composers_flow_box
+                .set_visible(!results.composers.is_empty());
+            imp.performers_flow_box
+                .set_visible(!results.performers.is_empty());
             imp.ensembles_flow_box
                 .set_visible(!results.ensembles.is_empty());
             imp.works_flow_box.set_visible(!results.works.is_empty());
             imp.recordings_flow_box
                 .set_visible(!results.recordings.is_empty());
 
-            for person in &results.persons {
-                imp.persons_flow_box
-                    .append(&MusicusTile::with_title(&person.name_fl()));
+            for composer in &results.composers {
+                imp.composers_flow_box
+                    .append(&MusicusTile::with_title(&composer.name_fl()));
+            }
+
+            for performer in &results.performers {
+                imp.performers_flow_box
+                    .append(&MusicusTile::with_title(&performer.name_fl()));
             }
 
             for ensemble in &results.ensembles {
@@ -183,7 +197,8 @@ impl MusicusHomePage {
                 ));
             }
 
-            imp.persons.replace(results.persons);
+            imp.composers.replace(results.composers);
+            imp.performers.replace(results.performers);
             imp.ensembles.replace(results.ensembles);
             imp.works.replace(results.works);
             imp.recordings.replace(results.recordings);
