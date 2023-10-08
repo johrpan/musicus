@@ -54,7 +54,8 @@ impl MusicusSearchTag {
         let obj: MusicusSearchTag = glib::Object::new();
 
         obj.imp().label.set_label(&match &tag {
-            Tag::Person(person) => person.name_fl(),
+            Tag::Composer(person) => person.name_fl(),
+            Tag::Performer(person) => person.name_fl(),
             Tag::Ensemble(ensemble) => ensemble.name.clone(),
             Tag::Work(work) => work.title.clone(),
         });
@@ -76,7 +77,8 @@ impl MusicusSearchTag {
 
 #[derive(Debug, Clone)]
 pub enum Tag {
-    Person(Person),
+    Composer(Person),
+    Performer(Person),
     Ensemble(Ensemble),
     Work(Work),
 }

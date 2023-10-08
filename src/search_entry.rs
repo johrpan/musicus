@@ -160,7 +160,8 @@ impl MusicusSearchEntry {
 
         for tag in &*self.imp().tags.borrow() {
             match tag.tag().clone() {
-                Tag::Person(person) => query.person = Some(person),
+                Tag::Composer(person) => query.composer = Some(person),
+                Tag::Performer(person) => query.performer = Some(person),
                 Tag::Ensemble(ensemble) => query.ensemble = Some(ensemble),
                 Tag::Work(work) => query.work = Some(work),
             }

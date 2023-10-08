@@ -45,12 +45,28 @@ template $MusicusHomePage : Adw.NavigationPage {
 
                 Gtk.Label {
                   styles ["heading"]
-                  visible: bind persons_flow_box.visible; 
+                  visible: bind composers_flow_box.visible; 
                   halign: start;
-                  label: _("Composers and performers");
+                  label: _("Composers");
                 }
 
-                Gtk.FlowBox persons_flow_box {
+                Gtk.FlowBox composers_flow_box {
+                  margin-top: 12;
+                  margin-bottom: 24;
+                  column-spacing: 12;
+                  row-spacing: 12;
+                  homogeneous: true;
+                  selection-mode: none;
+                }
+
+                Gtk.Label {
+                  styles ["heading"]
+                  visible: bind performers_flow_box.visible; 
+                  halign: start;
+                  label: _("Performers");
+                }
+
+                Gtk.FlowBox performers_flow_box {
                   margin-top: 12;
                   margin-bottom: 24;
                   column-spacing: 12;

@@ -50,13 +50,22 @@ impl MusicusLibrary {
 
         match query {
             LibraryQuery {
-                person: None,
+                composer: None,
+                performer: None,
                 ensemble: None,
                 work: None,
                 ..
             } => {
-                let persons = self.con()
-                    .prepare("SELECT id, first_name, last_name FROM persons WHERE first_name LIKE ?1 OR last_name LIKE ?1 LIMIT 9")
+                let composers = self.con()
+                    .prepare("SELECT DISTINCT persons.id, persons.first_name, persons.last_name FROM persons INNER JOIN works ON works.composer = persons.id WHERE persons.first_name LIKE ?1 OR persons.last_name LIKE ?1 LIMIT 9")
+                    .unwrap()
+                    .query_map([&search], Person::from_row)
+                    .unwrap()
+                    .collect::<rusqlite::Result<Vec<Person>>>()
+                    .unwrap();
+            
+                let performers = self.con()
+                    .prepare("SELECT DISTINCT persons.id, persons.first_name, persons.last_name FROM persons INNER JOIN performances ON performances.person = persons.id WHERE persons.first_name LIKE ?1 OR persons.last_name LIKE ?1 LIMIT 9")
                     .unwrap()
                     .query_map([&search], Person::from_row)
                     .unwrap()
@@ -82,22 +91,24 @@ impl MusicusLibrary {
                     .unwrap();
 
                 LibraryResults {
-                    persons,
+                    composers,
+                    performers,
                     ensembles,
                     works,
                     ..Default::default()
                 }
             }
             LibraryQuery {
-                person: Some(person),
+                composer: Some(composer),
+                performer: None,
                 ensemble: None,
                 work: None,
                 ..
             } => {
-                let persons = self.con()
+                let performers = self.con()
                     .prepare("SELECT DISTINCT persons.id, persons.first_name, persons.last_name FROM persons INNER JOIN performances ON performances.person = persons.id INNER JOIN recordings ON recordings.id = performances.recording INNER JOIN works ON works.id = recordings.work WHERE works.composer IS ?1 AND (persons.first_name LIKE ?2 OR persons.last_name LIKE ?2) LIMIT 9")
                     .unwrap()
-                    .query_map([&person.id, &search], Person::from_row)
+                    .query_map([&composer.id, &search], Person::from_row)
                     .unwrap()
                     .collect::<rusqlite::Result<Vec<Person>>>()
                     .unwrap();
@@ -106,7 +117,7 @@ impl MusicusLibrary {
                     .con()
                     .prepare("SELECT DISTINCT ensembles.id, ensembles.name FROM ensembles INNER JOIN performances ON performances.ensemble = ensembles.id INNER JOIN recordings ON recordings.id = performances.recording INNER JOIN works ON works.id = recordings.work WHERE works.composer IS ?1 AND ensembles.name LIKE ?2 LIMIT 9")
                     .unwrap()
-                    .query_map([&person.id, &search], Ensemble::from_row)
+                    .query_map([&composer.id, &search], Ensemble::from_row)
                     .unwrap()
                     .collect::<rusqlite::Result<Vec<Ensemble>>>()
                     .unwrap();
@@ -115,34 +126,26 @@ impl MusicusLibrary {
                     .con()
                     .prepare("SELECT DISTINCT works.id, works.title, persons.id, persons.first_name, persons.last_name FROM works INNER JOIN persons ON works.composer = persons.id WHERE works.composer = ?1 AND title LIKE ?2 LIMIT 9")
                     .unwrap()
-                    .query_map([&person.id, &search], Work::from_row)
+                    .query_map([&composer.id, &search], Work::from_row)
                     .unwrap()
                     .collect::<rusqlite::Result<Vec<Work>>>()
                     .unwrap();
 
-                let recordings = self
-                    .con()
-                    .prepare("SELECT DISTINCT recordings.id, works.id, works.title, persons.id, persons.first_name, persons.last_name FROM recordings INNER JOIN works ON recordings.work = works.id INNER JOIN persons ON works.composer = persons.id INNER JOIN performances ON recordings.id = performances.recording WHERE performances.person IS ?1 AND (works.title LIKE ?2 OR persons.first_name LIKE ?2 OR persons.last_name LIKE ?2) LIMIT 9")
-                    .unwrap()
-                    .query_map([&person.id, &search], Recording::from_row)
-                    .unwrap()
-                    .collect::<rusqlite::Result<Vec<Recording>>>()
-                    .unwrap();
-
                 LibraryResults {
-                    persons,
+                    performers,
                     ensembles,
                     works,
-                    recordings,
+                    ..Default::default()
                 }
             }
             LibraryQuery {
-                person: None,
+                composer: None,
+                performer: None,
                 ensemble: Some(ensemble),
                 work: None,
                 ..
             } => {
-                let persons = self.con()
+                let composers = self.con()
                     .prepare("SELECT DISTINCT persons.id, persons.first_name, persons.last_name FROM persons INNER JOIN works ON works.composer = persons.id INNER JOIN recordings ON recordings.work = works.id INNER JOIN performances ON performances.recording = recordings.id WHERE performances.ensemble IS ?1 AND (persons.first_name LIKE ?2 OR persons.last_name LIKE ?2) LIMIT 9")
                     .unwrap()
                     .query_map([&ensemble.id, &search], Person::from_row)
@@ -160,22 +163,71 @@ impl MusicusLibrary {
                     .unwrap();
 
                 LibraryResults {
-                    persons,
+                    composers,
                     recordings,
                     ..Default::default()
                 }
             },
             LibraryQuery {
-                person: Some(person),
+                composer: None,
+                performer: Some(performer),
+                work: None,
+                ..
+            } => {
+                let composers = self.con()
+                    .prepare("SELECT DISTINCT persons.id, persons.first_name, persons.last_name FROM persons INNER JOIN works ON works.composer = persons.id INNER JOIN recordings ON recordings.work = works.id INNER JOIN performances ON performances.recording = recordings.id WHERE performances.person IS ?1 AND (persons.first_name LIKE ?2 OR persons.last_name LIKE ?2) LIMIT 9")
+                    .unwrap()
+                    .query_map([&performer.id, &search], Person::from_row)
+                    .unwrap()
+                    .collect::<rusqlite::Result<Vec<Person>>>()
+                    .unwrap();
+
+                let recordings = self
+                    .con()
+                    .prepare("SELECT DISTINCT recordings.id, works.id, works.title, persons.id, persons.first_name, persons.last_name FROM recordings INNER JOIN works ON recordings.work = works.id INNER JOIN persons ON works.composer = persons.id INNER JOIN performances ON recordings.id = performances.recording WHERE performances.person IS ?1 AND (works.title LIKE ?2 OR persons.first_name LIKE ?2 OR persons.last_name LIKE ?2) LIMIT 9")
+                    .unwrap()
+                    .query_map([&performer.id, &search], Recording::from_row)
+                    .unwrap()
+                    .collect::<rusqlite::Result<Vec<Recording>>>()
+                    .unwrap();
+
+                LibraryResults {
+                    composers,
+                    recordings,
+                    ..Default::default()
+                }
+            },
+            LibraryQuery {
+                composer: Some(composer),
                 ensemble: Some(ensemble),
                 work: None,
                 ..
             } => {
                 let recordings = self
                     .con()
-                    .prepare("SELECT DISTINCT recordings.id, works.id, works.title, persons.id, persons.first_name, persons.last_name FROM recordings INNER JOIN works ON recordings.work = works.id INNER JOIN persons ON works.composer = persons.id INNER JOIN performances ON recordings.id = performances.recording WHERE works.composer IS ?1 AND performances.ensemble IS ?2 AND (works.title LIKE ?3 OR persons.first_name LIKE ?3 OR persons.last_name LIKE ?3) LIMIT 9")
+                    .prepare("SELECT DISTINCT recordings.id, works.id, works.title, persons.id, persons.first_name, persons.last_name FROM recordings INNER JOIN works ON recordings.work = works.id INNER JOIN persons ON works.composer = persons.id INNER JOIN performances ON recordings.id = performances.recording WHERE works.composer IS ?1 AND performances.ensemble IS ?2 AND works.title LIKE ?3 LIMIT 9")
                     .unwrap()
-                    .query_map([&person.id, &ensemble.id, &search], Recording::from_row)
+                    .query_map([&composer.id, &ensemble.id, &search], Recording::from_row)
+                    .unwrap()
+                    .collect::<rusqlite::Result<Vec<Recording>>>()
+                    .unwrap();
+
+                LibraryResults {
+                    recordings,
+                    ..Default::default()
+                }
+            },
+            LibraryQuery {
+                composer: Some(composer),
+                performer: Some(performer),
+                work: None,
+                ..
+            } => {
+                let recordings = self
+                    .con()
+                    .prepare("SELECT DISTINCT recordings.id, works.id, works.title, persons.id, persons.first_name, persons.last_name FROM recordings INNER JOIN works ON recordings.work = works.id INNER JOIN persons ON works.composer = persons.id INNER JOIN performances ON recordings.id = performances.recording WHERE works.composer IS ?1 AND performances.person IS ?2 AND works.title LIKE ?3 LIMIT 9")
+                    .unwrap()
+                    .query_map([&composer.id, &performer.id, &search], Recording::from_row)
                     .unwrap()
                     .collect::<rusqlite::Result<Vec<Recording>>>()
                     .unwrap();
@@ -213,7 +265,8 @@ impl MusicusLibrary {
 
 #[derive(Default, Debug)]
 pub struct LibraryQuery {
-    pub person: Option<Person>,
+    pub composer: Option<Person>,
+    pub performer: Option<Person>,
     pub ensemble: Option<Ensemble>,
     pub work: Option<Work>,
     pub search: String,
@@ -221,7 +274,8 @@ pub struct LibraryQuery {
 
 #[derive(Default, Debug)]
 pub struct LibraryResults {
-    pub persons: Vec<Person>,
+    pub composers: Vec<Person>,
+    pub performers: Vec<Person>,
     pub ensembles: Vec<Ensemble>,
     pub works: Vec<Work>,
     pub recordings: Vec<Recording>,
@@ -229,7 +283,8 @@ pub struct LibraryResults {
 
 impl LibraryResults {
     pub fn is_empty(&self) -> bool {
-        self.persons.is_empty()
+        self.composers.is_empty()
+            && self.performers.is_empty()
             && self.ensembles.is_empty()
             && self.works.is_empty()
             && self.recordings.is_empty()
