@@ -1,10 +1,11 @@
-data/res/home_page.blp
-data/res/playlist_page.blp
+data/ui/home_page.blp
+data/ui/playlist_page.blp
+data/ui/recording_tile.blp
 data/ui/search_entry.blp
 data/ui/search_tag.blp
-data/res/tile.blp
-data/res/welcome_page.blp
-data/res/window.blp
+data/ui/tag_tile.blp
+data/ui/welcome_page.blp
+data/ui/window.blp
 data/de.johrpan.musicus.desktop.in
 data/de.johrpan.musicus.appdata.xml.in
 data/de.johrpan.musicus.gschema.xml

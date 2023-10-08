@@ -134,10 +134,11 @@ impl MusicusSearchEntry {
     }
 
     pub fn reset(&self) {
-        let mut tags = self.imp().tags.borrow_mut();
-
-        while let Some(tag) = tags.pop() {
-            self.imp().tags_box.remove(&tag);
+        {
+            let mut tags = self.imp().tags.borrow_mut();
+            while let Some(tag) = tags.pop() {
+                self.imp().tags_box.remove(&tag);
+            }
         }
 
         self.imp().text.set_text("");

@@ -63,7 +63,7 @@ impl MusicusLibrary {
                     .unwrap()
                     .collect::<rusqlite::Result<Vec<Person>>>()
                     .unwrap();
-            
+
                 let performers = self.con()
                     .prepare("SELECT DISTINCT persons.id, persons.first_name, persons.last_name FROM persons INNER JOIN performances ON performances.person = persons.id WHERE persons.first_name LIKE ?1 OR persons.last_name LIKE ?1 LIMIT 9")
                     .unwrap()
@@ -167,7 +167,7 @@ impl MusicusLibrary {
                     recordings,
                     ..Default::default()
                 }
-            },
+            }
             LibraryQuery {
                 composer: None,
                 performer: Some(performer),
@@ -196,7 +196,7 @@ impl MusicusLibrary {
                     recordings,
                     ..Default::default()
                 }
-            },
+            }
             LibraryQuery {
                 composer: Some(composer),
                 ensemble: Some(ensemble),
@@ -216,7 +216,7 @@ impl MusicusLibrary {
                     recordings,
                     ..Default::default()
                 }
-            },
+            }
             LibraryQuery {
                 composer: Some(composer),
                 performer: Some(performer),
@@ -236,10 +236,9 @@ impl MusicusLibrary {
                     recordings,
                     ..Default::default()
                 }
-            },
+            }
             LibraryQuery {
-                work: Some(work),
-                ..
+                work: Some(work), ..
             } => {
                 let recordings = self
                     .con()
@@ -256,6 +255,28 @@ impl MusicusLibrary {
                 }
             }
         }
+    }
+
+    pub fn performances(&self, recording: &Recording) -> Vec<Performance> {
+        let mut performances = self
+            .con()
+            .prepare("SELECT persons.id, persons.first_name, persons.last_name, instruments.id, instruments.name FROM performances INNER JOIN persons ON persons.id = performances.person LEFT JOIN instruments ON instruments.id = performances.role INNER JOIN recordings ON performances.recording = recordings.id WHERE recordings.id IS ?1")
+            .unwrap()
+            .query_map([&recording.id], Performance::from_person_row)
+            .unwrap()
+            .collect::<rusqlite::Result<Vec<Performance>>>()
+            .unwrap();
+
+        performances.append(&mut self
+            .con()
+            .prepare("SELECT ensembles.id, ensembles.name, instruments.id, instruments.name FROM performances INNER JOIN ensembles ON ensembles.id = performances.ensemble LEFT JOIN instruments ON instruments.id = performances.role INNER JOIN recordings ON performances.recording = recordings.id WHERE recordings.id IS ?1")
+            .unwrap()
+            .query_map([&recording.id], Performance::from_ensemble_row)
+            .unwrap()
+            .collect::<rusqlite::Result<Vec<Performance>>>()
+            .unwrap());
+
+        performances
     }
 
     fn con(&self) -> &Connection {
@@ -392,5 +413,62 @@ impl Recording {
                 },
             },
         })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Performance {
+    Person(Person, Option<Role>),
+    Ensemble(Ensemble, Option<Role>),
+}
+
+impl Performance {
+    pub fn from_person_row(row: &Row) -> rusqlite::Result<Self> {
+        let person = Person {
+            id: row.get(0)?,
+            first_name: row.get(1)?,
+            last_name: row.get(2)?,
+        };
+
+        Ok(match row.get::<_, Option<String>>(3)? {
+            None => Self::Person(person, None),
+            Some(role_id) => Self::Person(
+                person,
+                Some(Role {
+                    id: role_id,
+                    name: row.get(4)?,
+                }),
+            ),
+        })
+    }
+
+    pub fn from_ensemble_row(row: &Row) -> rusqlite::Result<Self> {
+        let ensemble = Ensemble {
+            id: row.get(0)?,
+            name: row.get(1)?,
+        };
+
+        Ok(match row.get::<_, Option<String>>(2)? {
+            None => Self::Ensemble(ensemble, None),
+            Some(role_id) => Self::Ensemble(
+                ensemble,
+                Some(Role {
+                    id: role_id,
+                    name: row.get(3)?,
+                }),
+            ),
+        })
+    }
+}
+
+#[derive(Debug, Clone, Eq)]
+pub struct Role {
+    pub id: String,
+    pub name: String,
+}
+
+impl PartialEq for Role {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
     }
 }

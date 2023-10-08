@@ -21,3 +21,17 @@
 .tile .subtitle {
   font-size: smaller;
 }
+
+.tile .work {
+  margin-top: 3px;
+}
+
+.tile .composer {
+  font-size: smaller;
+}
+
+.tile .performances {
+  margin-top: 3px;
+  margin-bottom: 3px;
+  font-size: smaller;
+}
