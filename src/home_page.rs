@@ -118,12 +118,13 @@ impl MusicusHomePage {
     fn select(&self, search_entry: &MusicusSearchEntry) {
         let imp = self.imp();
 
-        let (composer, performer, ensemble, work) = {
+        let (composer, performer, ensemble, work, recording) = {
             (
                 imp.composers.borrow().first().cloned(),
                 imp.performers.borrow().first().cloned(),
                 imp.ensembles.borrow().first().cloned(),
                 imp.works.borrow().first().cloned(),
+                imp.recordings.borrow().first().cloned(),
             )
         };
 
@@ -135,7 +136,29 @@ impl MusicusHomePage {
             search_entry.add_tag(Tag::Ensemble(ensemble));
         } else if let Some(work) = work {
             search_entry.add_tag(Tag::Work(work));
+        } else if let Some(recording) = recording {
+            self.play_recording(&recording);
         }
+    }
+
+    #[template_callback]
+    fn tile_selected(&self, tile: &gtk::FlowBoxChild, _: &gtk::FlowBox) {
+        self.imp()
+            .search_entry
+            .add_tag(tile.downcast_ref::<MusicusTagTile>().unwrap().tag().clone())
+    }
+
+    #[template_callback]
+    fn recording_selected(&self, tile: &gtk::FlowBoxChild, _: &gtk::FlowBox) {
+        self.play_recording(
+            tile.downcast_ref::<MusicusRecordingTile>()
+                .unwrap()
+                .recording(),
+        );
+    }
+
+    fn play_recording(&self, recording: &Recording) {
+        log::info!("Play recording: {:?}", recording)
     }
 
     fn query(&self, query: &LibraryQuery) {

@@ -64,4 +64,8 @@ impl MusicusTagTile {
 
         obj
     }
+
+    pub fn tag(&self) -> &Tag {
+        self.imp().tag.get().unwrap()
+    }
 }
