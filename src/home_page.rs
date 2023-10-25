@@ -1,6 +1,7 @@
 use crate::{
-    library::{Ensemble, LibraryQuery, MusicusLibrary, Person, Recording, Work},
+    library::{Ensemble, LibraryQuery, MusicusLibrary, Person, Recording, Track, Work},
     player::MusicusPlayer,
+    playlist_item::PlaylistItem,
     recording_tile::MusicusRecordingTile,
     search_entry::MusicusSearchEntry,
     search_tag::Tag,
@@ -158,7 +159,62 @@ impl MusicusHomePage {
     }
 
     fn play_recording(&self, recording: &Recording) {
-        log::info!("Play recording: {:?}", recording)
+        let tracks = self.library().tracks(recording);
+
+        if tracks.is_empty() {
+            log::warn!("Ignoring recording without tracks being added to the playlist.");
+            return;
+        }
+
+        let title = format!(
+            "{}: {}",
+            recording.work.composer.name_fl(),
+            recording.work.title
+        );
+
+        let performances = self.library().performances(recording);
+        let performances = if performances.is_empty() {
+            None
+        } else {
+            Some(performances.join(", "))
+        };
+
+        let mut items = Vec::new();
+
+        if tracks.len() == 1 {
+            items.push(PlaylistItem::new(
+                &title,
+                performances.as_ref().map(|x| x.as_str()),
+                None,
+                &tracks[0].path,
+            ))
+        } else {
+            let work_parts = self.library().work_parts(&recording.work);
+            let mut tracks = tracks.into_iter();
+            let first_track = tracks.next().unwrap();
+
+            let track_title = |track: &Track| -> String {
+                track
+                    .work_parts
+                    .iter()
+                    .map(|w| work_parts[*w].clone())
+                    .collect::<Vec<String>>()
+                    .join(", ")
+            };
+
+            items.push(PlaylistItem::new(
+                &title,
+                performances.as_ref().map(|x| x.as_str()),
+                Some(&track_title(&first_track)),
+                &first_track.path,
+            ));
+
+            while let Some(track) = tracks.next() {
+                items.push(PlaylistItem::new_part(&track_title(&track), &track.path));
+            }
+        }
+
+        self.player().append(items);
     }
 
     fn query(&self, query: &LibraryQuery) {

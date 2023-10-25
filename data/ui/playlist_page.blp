@@ -22,6 +22,15 @@ template $MusicusPlaylistPage : Adw.Bin {
       Adw.Clamp {
         maximum-size: 1000;
         tightening-threshold: 600;
+
+        Gtk.ListView playlist {
+          styles ["playlist", "background"]
+          margin-top: 12;
+          margin-bottom: 12;
+          margin-start: 12;
+          margin-end: 12;
+          single-click-activate: true;
+        }
       }
     }
   }

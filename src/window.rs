@@ -33,8 +33,6 @@ mod imp {
         type ParentType = adw::ApplicationWindow;
 
         fn class_init(klass: &mut Self::Class) {
-            MusicusHomePage::static_type();
-            MusicusPlaylistPage::static_type();
             MusicusWelcomePage::static_type();
             klass.bind_template();
             klass.bind_template_instance_callbacks();
@@ -73,6 +71,14 @@ mod imp {
                         player.play();
                     }
                 }));
+
+            let playlist_page = MusicusPlaylistPage::new(&self.player);
+            let playlist_button = self.playlist_button.get();
+            playlist_page.connect_close(move |_| {
+                playlist_button.set_active(false);
+            });
+
+            self.stack.add_named(&playlist_page, Some("playlist"));
         }
     }
 
@@ -141,10 +147,5 @@ impl MusicusWindow {
             } else {
                 "navigation"
             });
-    }
-
-    #[template_callback]
-    fn hide_playlist(&self, _: &MusicusPlaylistPage) {
-        self.imp().playlist_button.set_active(false);
     }
 }

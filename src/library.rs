@@ -2,6 +2,7 @@ use gtk::{glib, glib::Properties, prelude::*, subclass::prelude::*};
 use rusqlite::{Connection, Row};
 use std::{
     cell::OnceCell,
+    num::ParseIntError,
     path::{Path, PathBuf},
 };
 
@@ -257,7 +258,51 @@ impl MusicusLibrary {
         }
     }
 
-    pub fn performances(&self, recording: &Recording) -> Vec<Performance> {
+    pub fn work_parts(&self, work: &Work) -> Vec<String> {
+        self.con()
+            .prepare("SELECT * FROM work_parts WHERE work IS ?1 ORDER BY part_index")
+            .unwrap()
+            .query_map([&work.id], |row| row.get::<_, String>(3))
+            .unwrap()
+            .collect::<rusqlite::Result<Vec<String>>>()
+            .unwrap()
+    }
+
+    pub fn tracks(&self, recording: &Recording) -> Vec<Track> {
+        self.con()
+            .prepare("SELECT * FROM tracks WHERE recording IS ?1 ORDER BY \"index\"")
+            .unwrap()
+            .query_map([&recording.id], |row| {
+                Ok(Track {
+                    work_parts: row
+                        .get::<_, String>(4)?
+                        .split(',')
+                        .filter(|s| !s.is_empty())
+                        .map(|s| str::parse::<usize>(s))
+                        .collect::<Result<Vec<usize>, ParseIntError>>()
+                        .expect("work part IDs should be valid integers"),
+                    path: PathBuf::from(self.folder()).join(row.get::<_, String>(6)?),
+                })
+            })
+            .unwrap()
+            .collect::<rusqlite::Result<Vec<Track>>>()
+            .unwrap()
+    }
+
+    pub fn random_recording(&self, query: &LibraryQuery) -> Option<Recording> {
+        match query {
+            LibraryQuery { .. } => self
+                .con()
+                .prepare("SELECT * FROM recordings ORDER BY RANDOM() LIMIT 1")
+                .unwrap()
+                .query_map([], Recording::from_row)
+                .unwrap()
+                .next()
+                .map(|r| r.unwrap()),
+        }
+    }
+
+    pub fn performances(&self, recording: &Recording) -> Vec<String> {
         let mut performances = self
             .con()
             .prepare("SELECT persons.id, persons.first_name, persons.last_name, instruments.id, instruments.name FROM performances INNER JOIN persons ON persons.id = performances.person LEFT JOIN instruments ON instruments.id = performances.role INNER JOIN recordings ON performances.recording = recordings.id WHERE recordings.id IS ?1")
@@ -277,6 +322,24 @@ impl MusicusLibrary {
             .unwrap());
 
         performances
+            .into_iter()
+            .map(|performance| match performance {
+                Performance::Person(person, role) => {
+                    let mut result = person.name_fl();
+                    if let Some(role) = role {
+                        result.push_str(&format!(" ({})", role.name));
+                    }
+                    result
+                }
+                Performance::Ensemble(ensemble, role) => {
+                    let mut result = ensemble.name;
+                    if let Some(role) = role {
+                        result.push_str(&format!(" ({})", role.name));
+                    }
+                    result
+                }
+            })
+            .collect::<Vec<String>>()
     }
 
     fn con(&self) -> &Connection {
@@ -471,4 +534,10 @@ impl PartialEq for Role {
     fn eq(&self, other: &Self) -> bool {
         self.id == other.id
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct Track {
+    pub work_parts: Vec<usize>,
+    pub path: PathBuf,
 }

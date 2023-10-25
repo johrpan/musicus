@@ -35,3 +35,23 @@
   margin-bottom: 3px;
   font-size: smaller;
 }
+
+.playlist {
+  background-color: rgba(0, 0, 0, 0);
+}
+
+.playlist > row {
+  border-radius: 12px;
+}
+
+.playlisttile .title {
+  font-weight: bold;
+}
+
+.playlisttile .subtitle {
+  font-size: smaller;
+}
+
+.playlisttile .parttitle {
+  font-size: smaller;
+}

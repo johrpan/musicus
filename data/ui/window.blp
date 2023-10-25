@@ -16,13 +16,6 @@ template $MusicusWindow : Adw.ApplicationWindow {
           }
         };
       }
-       
-      Gtk.StackPage {
-        name: "playlist";
-        child: $MusicusPlaylistPage {
-          close => $hide_playlist() swapped;
-        };
-      }
     }
 
     [bottom]

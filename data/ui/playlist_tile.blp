@@ -1,0 +1,45 @@
+using Gtk 4.0;
+using Adw 1;
+
+template $MusicusPlaylistTile : Gtk.Box {
+  styles ["playlisttile"]
+
+  Adw.Bin {
+    width-request: 48;
+
+    Gtk.Image playing_icon {
+      visible: false;
+      icon-name: "media-playback-start-symbolic";
+    }
+  }
+
+  Gtk.Box {
+    margin-end: 12;
+    orientation: vertical;
+    
+    Gtk.Label title_label {
+      styles ["title"]
+      visible: false;
+      margin-top: 24;
+      halign: start;
+      wrap: true;
+    }
+
+    Gtk.Label performances_label {
+      styles ["subtitle", "dim-label"]
+      visible: false;
+      halign: start;
+      wrap: true;
+    }
+
+    Gtk.Label part_title_label {
+      styles ["parttitle"]
+      margin-top: 12;
+      margin-bottom: 12;
+      visible: false;
+      margin-start: 24;
+      halign: start;
+      wrap: true;
+    }
+  }
+}
