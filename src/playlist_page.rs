@@ -1,13 +1,24 @@
+use crate::{player::MusicusPlayer, playlist_tile::PlaylistTile};
 use adw::subclass::prelude::*;
-use gtk::{glib, glib::subclass::Signal, prelude::*};
+use gtk::{glib, glib::subclass::Signal, glib::Properties, prelude::*};
 use once_cell::sync::Lazy;
+use std::cell::OnceCell;
 
 mod imp {
+    use crate::playlist_item::PlaylistItem;
+
     use super::*;
 
-    #[derive(Debug, Default, gtk::CompositeTemplate)]
+    #[derive(Properties, Debug, Default, gtk::CompositeTemplate)]
+    #[properties(wrapper_type = super::MusicusPlayer)]
     #[template(file = "data/ui/playlist_page.blp")]
-    pub struct MusicusPlaylistPage {}
+    pub struct MusicusPlaylistPage {
+        #[property(get, construct_only)]
+        pub player: OnceCell<MusicusPlayer>,
+
+        #[template_child]
+        pub playlist: TemplateChild<gtk::ListView>,
+    }
 
     #[glib::object_subclass]
     impl ObjectSubclass for MusicusPlaylistPage {
@@ -25,12 +36,37 @@ mod imp {
         }
     }
 
+    #[glib::derived_properties]
     impl ObjectImpl for MusicusPlaylistPage {
         fn signals() -> &'static [Signal] {
             static SIGNALS: Lazy<Vec<Signal>> =
                 Lazy::new(|| vec![Signal::builder("close").build()]);
 
             SIGNALS.as_ref()
+        }
+
+        fn constructed(&self) {
+            self.parent_constructed();
+
+            self.playlist.set_model(Some(&gtk::NoSelection::new(Some(
+                self.player.get().unwrap().playlist(),
+            ))));
+
+            let factory = gtk::SignalListItemFactory::new();
+
+            factory.connect_setup(|_, item| {
+                let item = item.downcast_ref::<gtk::ListItem>().unwrap();
+                item.set_child(Some(&PlaylistTile::new()));
+            });
+
+            factory.connect_bind(|_, item| {
+                let item = item.downcast_ref::<gtk::ListItem>().unwrap();
+                let tile = item.child().and_downcast::<PlaylistTile>().unwrap();
+                let playlist_item = item.item().and_downcast::<PlaylistItem>().unwrap();
+                tile.set_item(&playlist_item);
+            });
+
+            self.playlist.set_factory(Some(&factory));
         }
     }
 
@@ -45,8 +81,16 @@ glib::wrapper! {
 
 #[gtk::template_callbacks]
 impl MusicusPlaylistPage {
-    pub fn new() -> Self {
-        glib::Object::new()
+    pub fn new(player: &MusicusPlayer) -> Self {
+        glib::Object::builder().property("player", player).build()
+    }
+
+    pub fn connect_close<F: Fn(&Self) + 'static>(&self, f: F) -> glib::SignalHandlerId {
+        self.connect_local("close", true, move |values| {
+            let obj = values[0].get::<Self>().unwrap();
+            f(&obj);
+            None
+        })
     }
 
     #[template_callback]

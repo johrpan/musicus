@@ -1,4 +1,4 @@
-use crate::library::{Performance, Recording};
+use crate::library::Recording;
 use gtk::{glib, subclass::prelude::*};
 use std::cell::OnceCell;
 
@@ -44,37 +44,14 @@ glib::wrapper! {
 }
 
 impl MusicusRecordingTile {
-    pub fn new(recording: &Recording, performances: Vec<Performance>) -> Self {
+    pub fn new(recording: &Recording, performances: Vec<String>) -> Self {
         let obj: Self = glib::Object::new();
         let imp = obj.imp();
 
         imp.work_label.set_label(&recording.work.title);
         imp.composer_label
             .set_label(&recording.work.composer.name_fl());
-
-        imp.performances_label.set_label(
-            &performances
-                .into_iter()
-                .map(|performance| match performance {
-                    Performance::Person(person, role) => {
-                        let mut result = person.name_fl();
-                        if let Some(role) = role {
-                            result.push_str(&format!(" ({})", role.name));
-                        }
-                        result
-                    }
-                    Performance::Ensemble(ensemble, role) => {
-                        let mut result = ensemble.name;
-                        if let Some(role) = role {
-                            result.push_str(&format!(" ({})", role.name));
-                        }
-                        result
-                    }
-                })
-                .collect::<Vec<String>>()
-                .join(", "),
-        );
-
+        imp.performances_label.set_label(&performances.join(", "));
         imp.recording.set(recording.clone()).unwrap();
 
         obj

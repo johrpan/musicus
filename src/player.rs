@@ -1,5 +1,6 @@
-use gtk::{glib, glib::Properties, prelude::*, subclass::prelude::*};
-use std::cell::Cell;
+use crate::playlist_item::PlaylistItem;
+use gtk::{gio, glib, glib::Properties, prelude::*, subclass::prelude::*};
+use std::cell::{Cell, OnceCell};
 
 mod imp {
     use super::*;
@@ -11,6 +12,10 @@ mod imp {
         pub active: Cell<bool>,
         #[property(get, set)]
         pub playing: Cell<bool>,
+        #[property(get, construct_only)]
+        pub playlist: OnceCell<gio::ListStore>,
+        #[property(get, set)]
+        pub current_index: Cell<u32>,
     }
 
     #[glib::object_subclass]
@@ -29,19 +34,30 @@ glib::wrapper! {
 
 impl MusicusPlayer {
     pub fn new() -> Self {
-        glib::Object::new()
+        glib::Object::builder()
+            .property("active", false)
+            .property("playing", false)
+            .property("playlist", gio::ListStore::new::<PlaylistItem>())
+            .property("current-index", 0u32)
+            .build()
+    }
+
+    pub fn append(&self, tracks: Vec<PlaylistItem>) {
+        let playlist = self.playlist();
+        
+        for track in tracks {
+            playlist.append(&track);
+        }
+
+        self.set_active(true);
     }
 
     pub fn play(&self) {
-        if !self.imp().active.get() {
-            self.set_property("active", true);
-        }
-
-        self.set_property("playing", true);
+        self.set_playing(true)
     }
 
     pub fn pause(&self) {
-        self.set_property("playing", false);
+        self.set_playing(false)
     }
 }
 
