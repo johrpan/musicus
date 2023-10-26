@@ -24,47 +24,89 @@ template $MusicusWindow : Adw.ApplicationWindow {
       transition-type: slide_up;
 
       Gtk.Box {
+        styles ["playerbar"]
+        orientation: vertical;
         margin-start: 6;
         margin-end: 6;
-        margin-top: 6;
-        margin-bottom: 6;
+        margin-top: 12;
+        margin-bottom: 12;
         spacing: 6;
 
-        Gtk.Button play_button {
-          styles ["circular"]
-          valign: center;
-          icon-name: "media-playback-start-symbolic";
+        Gtk.Box {
+          spacing: 6;
+          
+          Gtk.Box {
+            valign: center;
+            hexpand: true;
+            margin-start: 10;
+            orientation: vertical;
+
+            Gtk.Label title_label {
+              styles ["title"]
+              halign: start;
+              label: _("Title");
+              ellipsize: end;
+            }
+
+            Gtk.Label subtitle_label {
+              styles ["subtitle", "dim-label"]
+              halign: start;
+              label: _("Subtitle");
+              ellipsize: end;
+            }
+          }
+
+          Gtk.Button back_button {
+            styles ["circular", "flat"]
+            valign: center;
+            icon-name: "media-skip-backward-symbolic";
+          }
+
+          Gtk.ToggleButton playlist_button {
+            styles ["flat", "circular"]
+            valign: center;
+            icon-name: "playlist-symbolic";
+            toggled => $show_playlist() swapped;
+          }
+
+          Gtk.Button forward_button {
+            styles ["circular", "flat"]
+            valign: center;
+            icon-name: "media-skip-forward-symbolic";
+          }
         }
 
         Gtk.Box {
-          hexpand: true;
-          valign: center;
-          orientation: vertical;
+          spacing: 6;
 
-          Gtk.Label title_label {
-            styles ["caption-heading"]
-            halign: start;
-            label: _("Title");
+          Gtk.Button play_button {
+            styles ["circular", "flat"]
+            valign: center;
+            icon-name: "media-playback-start-symbolic";
           }
 
-          Gtk.Label subtitle_label {
-            styles ["caption"]
-            halign: start;
-            label: _("Subtitle");
+          Gtk.Label current_time_label {
+            styles ["caption", "numeric"]
+            valign: center;
+            label: "00:00";
           }
-        }
 
-        Gtk.Label {
-          styles ["caption", "numeric"]
-          valign: center;
-          label: "00:00 / 01:00";
-        }
+          Gtk.Scale slider {
+            valign: center;
+            hexpand: true;
+            adjustment: Gtk.Adjustment {
+              lower: 0;
+              upper: 1;
+              value: 0.2;
+              step-increment: 0.01;
+            };
+          }
 
-        Gtk.ToggleButton playlist_button {
-          styles ["flat"]
-          valign: center;
-          icon-name: "playlist-symbolic";
-          toggled => $show_playlist() swapped;
+          Gtk.Label remaining_time_label {
+            styles ["caption", "numeric"]
+            valign: center;
+            label: "01:00";
+          }
         }
       }
     }

@@ -1,3 +1,11 @@
+.playerbar .title {
+  font-weight: bold;
+}
+
+.playerbar .subtitle {
+  font-size: smaller;
+}
+
 .searchbar .searchtag {
   background-color: alpha(currentColor, 0.1);
   border-radius: 100px;
