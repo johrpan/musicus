@@ -14,8 +14,24 @@ mod imp {
         pub playing: Cell<bool>,
         #[property(get, construct_only)]
         pub playlist: OnceCell<gio::ListStore>,
-        #[property(get, set)]
+        #[property(get, set = Self::set_current_index)]
         pub current_index: Cell<u32>,
+    }
+
+    impl MusicusPlayer {
+        pub fn set_current_index(&self, index: u32) {
+            let playlist = self.playlist.get().unwrap();
+            
+            if let Some(item) = playlist.item(self.current_index.get()) {
+                item.downcast::<PlaylistItem>().unwrap().set_is_playing(false);
+            }
+
+            self.current_index.set(index);
+            
+            if let Some(item) = playlist.item(index) {
+                item.downcast::<PlaylistItem>().unwrap().set_is_playing(true);
+            }
+        }
     }
 
     #[glib::object_subclass]

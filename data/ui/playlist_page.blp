@@ -19,7 +19,7 @@ template $MusicusPlaylistPage : Adw.Bin {
     Gtk.ScrolledWindow {
       hscrollbar-policy: never;
 
-      Adw.Clamp {
+      Adw.ClampScrollable {
         maximum-size: 1000;
         tightening-threshold: 600;
 
@@ -30,6 +30,7 @@ template $MusicusPlaylistPage : Adw.Bin {
           margin-start: 12;
           margin-end: 12;
           single-click-activate: true;
+          activate => $select_item() swapped;
         }
       }
     }
