@@ -2,9 +2,9 @@ use crate::{
     home_page::MusicusHomePage, library::MusicusLibrary, player::MusicusPlayer,
     playlist_page::MusicusPlaylistPage, welcome_page::MusicusWelcomePage,
 };
-
 use adw::subclass::prelude::*;
 use gtk::{gio, glib, glib::clone, prelude::*};
+use std::cell::OnceCell;
 
 mod imp {
     use super::*;
@@ -13,6 +13,7 @@ mod imp {
     #[template(file = "data/ui/window.blp")]
     pub struct MusicusWindow {
         pub player: MusicusPlayer,
+        pub playlist_page: OnceCell<MusicusPlaylistPage>,
 
         #[template_child]
         pub stack: TemplateChild<gtk::Stack>,
@@ -79,6 +80,7 @@ mod imp {
             });
 
             self.stack.add_named(&playlist_page, Some("playlist"));
+            self.playlist_page.set(playlist_page).unwrap();
         }
     }
 
@@ -140,12 +142,13 @@ impl MusicusWindow {
 
     #[template_callback]
     fn show_playlist(&self, button: &gtk::ToggleButton) {
-        self.imp()
-            .stack
-            .set_visible_child_name(if button.is_active() {
-                "playlist"
-            } else {
-                "navigation"
-            });
+        let imp = self.imp();
+
+        if button.is_active() {
+            imp.playlist_page.get().unwrap().scroll_to_current();
+            imp.stack.set_visible_child_name("playlist");
+        } else {
+            imp.stack.set_visible_child_name("navigation");
+        };
     }
 }

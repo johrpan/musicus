@@ -1,6 +1,6 @@
 use crate::{player::MusicusPlayer, playlist_tile::PlaylistTile};
 use adw::subclass::prelude::*;
-use gtk::{glib, glib::subclass::Signal, glib::Properties, prelude::*};
+use gtk::{glib, glib::subclass::Signal, glib::Properties, prelude::*, ListScrollFlags};
 use once_cell::sync::Lazy;
 use std::cell::OnceCell;
 
@@ -10,7 +10,7 @@ mod imp {
     use super::*;
 
     #[derive(Properties, Debug, Default, gtk::CompositeTemplate)]
-    #[properties(wrapper_type = super::MusicusPlayer)]
+    #[properties(wrapper_type = super::MusicusPlaylistPage)]
     #[template(file = "data/ui/playlist_page.blp")]
     pub struct MusicusPlaylistPage {
         #[property(get, construct_only)]
@@ -63,7 +63,13 @@ mod imp {
                 let item = item.downcast_ref::<gtk::ListItem>().unwrap();
                 let tile = item.child().and_downcast::<PlaylistTile>().unwrap();
                 let playlist_item = item.item().and_downcast::<PlaylistItem>().unwrap();
-                tile.set_item(&playlist_item);
+                tile.set_item(Some(&playlist_item));
+            });
+
+            factory.connect_unbind(|_, item| {
+                let item = item.downcast_ref::<gtk::ListItem>().unwrap();
+                let tile = item.child().and_downcast::<PlaylistTile>().unwrap();
+                tile.set_item(None);
             });
 
             self.playlist.set_factory(Some(&factory));
@@ -91,6 +97,15 @@ impl MusicusPlaylistPage {
             f(&obj);
             None
         })
+    }
+
+    pub fn scroll_to_current(&self) {
+        self.imp().playlist.scroll_to(self.player().current_index(), ListScrollFlags::NONE, None);
+    }
+    
+    #[template_callback]
+    fn select_item(&self, index: u32, _: &gtk::ListView) {
+        self.player().set_current_index(index);
     }
 
     #[template_callback]

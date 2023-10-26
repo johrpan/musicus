@@ -1,5 +1,6 @@
 use crate::playlist_item::PlaylistItem;
 use gtk::{glib, prelude::*, subclass::prelude::*};
+use std::cell::RefCell;
 
 mod imp {
     use super::*;
@@ -15,6 +16,8 @@ mod imp {
         pub performances_label: TemplateChild<gtk::Label>,
         #[template_child]
         pub part_title_label: TemplateChild<gtk::Label>,
+
+        pub binding: RefCell<Option<glib::Binding>>,
     }
 
     #[glib::object_subclass]
@@ -47,28 +50,36 @@ impl PlaylistTile {
         glib::Object::new()
     }
 
-    pub fn set_item(&self, item: &PlaylistItem) {
+    pub fn set_item(&self, item: Option<&PlaylistItem>) {
         let imp = self.imp();
 
-        if let Some(title) = item.title() {
-            imp.title_label.set_label(&title);
-            imp.title_label.set_visible(true);
+        if let Some(binding) = &*imp.binding.borrow() {
+            binding.unbind();
         }
 
-        if let Some(performances) = item.performers() {
-            imp.performances_label.set_label(&performances);
-            imp.performances_label.set_visible(true);
-        }
+        if let Some(item) = item {
+            if let Some(title) = item.title() {
+                imp.title_label.set_label(&title);
+                imp.title_label.set_visible(true);
+            }
 
-        if let Some(part_title) = item.part_title() {
-            imp.part_title_label.set_label(&part_title);
-            imp.part_title_label.set_visible(true);
-        } else {
-            imp.obj().set_margin_bottom(24);
-        }
-    }
+            if let Some(performances) = item.performers() {
+                imp.performances_label.set_label(&performances);
+                imp.performances_label.set_visible(true);
+            }
 
-    pub fn set_playing(&self, playing: bool) {
-        self.imp().playing_icon.set_visible(playing);
+            if let Some(part_title) = item.part_title() {
+                imp.part_title_label.set_label(&part_title);
+                imp.part_title_label.set_visible(true);
+            } else {
+                imp.obj().set_margin_bottom(24);
+            }
+
+            imp.binding.replace(Some(
+                item.bind_property("is-playing", &imp.playing_icon.get(), "visible")
+                    .sync_create()
+                    .build(),
+            ));
+        }
     }
 }

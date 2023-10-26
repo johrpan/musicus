@@ -1,6 +1,6 @@
 use gtk::{glib, glib::Properties, prelude::*, subclass::prelude::*};
 use std::{
-    cell::OnceCell,
+    cell::{Cell, OnceCell},
     path::{Path, PathBuf},
 };
 
@@ -10,6 +10,9 @@ mod imp {
     #[derive(Properties, Default)]
     #[properties(wrapper_type = super::PlaylistItem)]
     pub struct PlaylistItem {
+        #[property(get, set)]
+        pub is_playing: Cell<bool>,
+
         #[property(get, construct_only)]
         pub is_title: OnceCell<bool>,
 
