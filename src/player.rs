@@ -21,15 +21,19 @@ mod imp {
     impl MusicusPlayer {
         pub fn set_current_index(&self, index: u32) {
             let playlist = self.playlist.get().unwrap();
-            
+
             if let Some(item) = playlist.item(self.current_index.get()) {
-                item.downcast::<PlaylistItem>().unwrap().set_is_playing(false);
+                item.downcast::<PlaylistItem>()
+                    .unwrap()
+                    .set_is_playing(false);
             }
 
             self.current_index.set(index);
-            
+
             if let Some(item) = playlist.item(index) {
-                item.downcast::<PlaylistItem>().unwrap().set_is_playing(true);
+                item.downcast::<PlaylistItem>()
+                    .unwrap()
+                    .set_is_playing(true);
             }
         }
     }
@@ -60,7 +64,7 @@ impl MusicusPlayer {
 
     pub fn append(&self, tracks: Vec<PlaylistItem>) {
         let playlist = self.playlist();
-        
+
         for track in tracks {
             playlist.append(&track);
         }
@@ -74,6 +78,15 @@ impl MusicusPlayer {
 
     pub fn pause(&self) {
         self.set_playing(false)
+    }
+
+    pub fn current_item(&self) -> Option<PlaylistItem> {
+        let imp = self.imp();
+        imp.playlist
+            .get()
+            .unwrap()
+            .item(imp.current_index.get())
+            .and_downcast::<PlaylistItem>()
     }
 }
 
