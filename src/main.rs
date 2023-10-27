@@ -3,6 +3,7 @@ mod config;
 mod home_page;
 mod library;
 mod player;
+mod player_bar;
 mod playlist_item;
 mod playlist_page;
 mod playlist_tile;

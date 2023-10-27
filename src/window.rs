@@ -1,10 +1,9 @@
 use crate::{
     home_page::MusicusHomePage, library::MusicusLibrary, player::MusicusPlayer,
-    playlist_page::MusicusPlaylistPage, welcome_page::MusicusWelcomePage,
+    player_bar::PlayerBar, playlist_page::MusicusPlaylistPage, welcome_page::MusicusWelcomePage,
 };
 use adw::subclass::prelude::*;
 use gtk::{gio, glib, glib::clone, prelude::*};
-use std::cell::OnceCell;
 
 mod imp {
     use super::*;
@@ -13,7 +12,6 @@ mod imp {
     #[template(file = "data/ui/window.blp")]
     pub struct MusicusWindow {
         pub player: MusicusPlayer,
-        pub playlist_page: OnceCell<MusicusPlaylistPage>,
 
         #[template_child]
         pub stack: TemplateChild<gtk::Stack>,
@@ -21,10 +19,6 @@ mod imp {
         pub navigation_view: TemplateChild<adw::NavigationView>,
         #[template_child]
         pub player_bar_revealer: TemplateChild<gtk::Revealer>,
-        #[template_child]
-        pub play_button: TemplateChild<gtk::Button>,
-        #[template_child]
-        pub playlist_button: TemplateChild<gtk::ToggleButton>,
     }
 
     #[glib::object_subclass]
@@ -48,39 +42,31 @@ mod imp {
         fn constructed(&self) {
             self.parent_constructed();
             self.obj().load_window_state();
+
+            let player_bar = PlayerBar::new(&self.player);
+            self.player_bar_revealer.set_child(Some(&player_bar));
+
+            let playlist_page = MusicusPlaylistPage::new(&self.player);
+            self.stack.add_named(&playlist_page, Some("playlist"));
+
+            playlist_page.connect_close(clone!(@weak player_bar => move |_| {
+                player_bar.playlist_hidden();
+            }));
+
+            let stack = self.stack.get();
+            player_bar.connect_show_playlist(clone!(@weak playlist_page => move |_, show| {
+                if show {
+                    playlist_page.scroll_to_current();
+                    stack.set_visible_child_name("playlist");
+                } else {
+                    stack.set_visible_child_name("navigation");
+                };
+            }));
+
             self.player
                 .bind_property("active", &self.player_bar_revealer.get(), "reveal-child")
                 .sync_create()
                 .build();
-
-            let play_button = self.play_button.get();
-
-            self.player
-                .connect_playing_notify(clone!(@weak play_button => move |player| {
-                    play_button.set_icon_name(if player.playing() {
-                        "media-playback-pause-symbolic"
-                    } else {
-                        "media-playback-start-symbolic"
-                    });
-                }));
-
-            self.play_button
-                .connect_clicked(clone!(@weak self.player as player => move |_| {
-                    if player.playing() {
-                        player.pause();
-                    } else {
-                        player.play();
-                    }
-                }));
-
-            let playlist_page = MusicusPlaylistPage::new(&self.player);
-            let playlist_button = self.playlist_button.get();
-            playlist_page.connect_close(move |_| {
-                playlist_button.set_active(false);
-            });
-
-            self.stack.add_named(&playlist_page, Some("playlist"));
-            self.playlist_page.set(playlist_page).unwrap();
         }
     }
 
@@ -138,17 +124,5 @@ impl MusicusWindow {
         self.imp()
             .navigation_view
             .replace(&[MusicusHomePage::new(&library, &self.imp().player).into()]);
-    }
-
-    #[template_callback]
-    fn show_playlist(&self, button: &gtk::ToggleButton) {
-        let imp = self.imp();
-
-        if button.is_active() {
-            imp.playlist_page.get().unwrap().scroll_to_current();
-            imp.stack.set_visible_child_name("playlist");
-        } else {
-            imp.stack.set_visible_child_name("navigation");
-        };
     }
 }
