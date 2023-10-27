@@ -16,8 +16,8 @@ mod imp {
         #[property(get, construct_only)]
         pub is_title: OnceCell<bool>,
 
-        #[property(get, construct_only, nullable)]
-        pub title: OnceCell<Option<String>>,
+        #[property(get, construct_only)]
+        pub title: OnceCell<String>,
 
         #[property(get, construct_only, nullable)]
         pub performers: OnceCell<Option<String>>,
@@ -45,23 +45,16 @@ glib::wrapper! {
 
 impl PlaylistItem {
     pub fn new(
+        is_title: bool,
         title: &str,
         performers: Option<&str>,
         part_title: Option<&str>,
         path: impl AsRef<Path>,
     ) -> Self {
         glib::Object::builder()
-            .property("is-title", true)
+            .property("is-title", is_title)
             .property("title", title)
             .property("performers", performers)
-            .property("part-title", part_title)
-            .property("path", path.as_ref())
-            .build()
-    }
-
-    pub fn new_part(part_title: &str, path: impl AsRef<Path>) -> Self {
-        glib::Object::builder()
-            .property("is-title", false)
             .property("part-title", part_title)
             .property("path", path.as_ref())
             .build()

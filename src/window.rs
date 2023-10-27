@@ -49,12 +49,13 @@ mod imp {
             let playlist_page = MusicusPlaylistPage::new(&self.player);
             self.stack.add_named(&playlist_page, Some("playlist"));
 
-            playlist_page.connect_close(clone!(@weak player_bar => move |_| {
+            let stack = self.stack.get();
+            playlist_page.connect_close(clone!(@weak player_bar, @weak stack => move |_| {
+                stack.set_visible_child_name("navigation");
                 player_bar.playlist_hidden();
             }));
 
-            let stack = self.stack.get();
-            player_bar.connect_show_playlist(clone!(@weak playlist_page => move |_, show| {
+            player_bar.connect_show_playlist(clone!(@weak playlist_page, @weak stack => move |_, show| {
                 if show {
                     playlist_page.scroll_to_current();
                     stack.set_visible_child_name("playlist");

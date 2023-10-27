@@ -58,14 +58,14 @@ impl PlaylistTile {
         }
 
         if let Some(item) = item {
-            if let Some(title) = item.title() {
-                imp.title_label.set_label(&title);
+            if item.is_title() {
+                imp.title_label.set_label(&item.title());
                 imp.title_label.set_visible(true);
-            }
 
-            if let Some(performances) = item.performers() {
-                imp.performances_label.set_label(&performances);
-                imp.performances_label.set_visible(true);
+                if let Some(performances) = item.performers() {
+                    imp.performances_label.set_label(&performances);
+                    imp.performances_label.set_visible(true);
+                }
             }
 
             if let Some(part_title) = item.part_title() {

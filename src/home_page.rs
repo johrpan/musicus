@@ -183,11 +183,12 @@ impl MusicusHomePage {
 
         if tracks.len() == 1 {
             items.push(PlaylistItem::new(
+                true,
                 &title,
                 performances.as_ref().map(|x| x.as_str()),
                 None,
                 &tracks[0].path,
-            ))
+            ));
         } else {
             let work_parts = self.library().work_parts(&recording.work);
             let mut tracks = tracks.into_iter();
@@ -203,6 +204,7 @@ impl MusicusHomePage {
             };
 
             items.push(PlaylistItem::new(
+                true,
                 &title,
                 performances.as_ref().map(|x| x.as_str()),
                 Some(&track_title(&first_track)),
@@ -210,7 +212,13 @@ impl MusicusHomePage {
             ));
 
             while let Some(track) = tracks.next() {
-                items.push(PlaylistItem::new_part(&track_title(&track), &track.path));
+                items.push(PlaylistItem::new(
+                    false,
+                    &title,
+                    performances.as_ref().map(|x| x.as_str()),
+                    Some(&track_title(&track)),
+                    &track.path,
+                ));
             }
         }
 

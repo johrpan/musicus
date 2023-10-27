@@ -68,8 +68,9 @@ mod imp {
         fn constructed(&self) {
             self.parent_constructed();
 
-            self.player
-                .borrow()
+            let player = self.player.borrow();
+
+            player
                 .bind_property("playing", &self.play_button.get(), "icon-name")
                 .transform_to(|_, playing| {
                     Some(if playing {
@@ -80,6 +81,28 @@ mod imp {
                 })
                 .sync_create()
                 .build();
+
+            let title_label = self.title_label.get();
+            let subtitle_label = self.subtitle_label.get();
+            player.connect_current_index_notify(move |player| {
+                if let Some(item) = player.current_item() {
+                    let mut title = item.title();
+
+                    if let Some(part_title) = item.part_title() {
+                        title.push_str(": ");
+                        title.push_str(&part_title);
+                    }
+
+                    title_label.set_label(&title);
+
+                    if let Some(performances) = item.performers() {
+                        subtitle_label.set_label(&performances);
+                        subtitle_label.set_visible(true);
+                    } else {
+                        subtitle_label.set_visible(false);
+                    }
+                }
+            });
         }
     }
 
@@ -98,7 +121,10 @@ impl PlayerBar {
         glib::Object::builder().property("player", player).build()
     }
 
-    pub fn connect_show_playlist<F: Fn(&Self, bool) + 'static>(&self, f: F) -> glib::SignalHandlerId {
+    pub fn connect_show_playlist<F: Fn(&Self, bool) + 'static>(
+        &self,
+        f: F,
+    ) -> glib::SignalHandlerId {
         self.connect_local("show-playlist", true, move |values| {
             let obj = values[0].get::<Self>().unwrap();
             let show = values[1].get::<bool>().unwrap();
