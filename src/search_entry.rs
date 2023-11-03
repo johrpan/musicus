@@ -146,7 +146,11 @@ impl MusicusSearchEntry {
     }
 
     pub fn add_tag(&self, tag: Tag) {
-        self.imp().text.set_text("");
+        let imp = self.imp();
+
+        imp.clear_icon.set_visible(true);
+        imp.text.set_text("");
+        
         let tag = MusicusSearchTag::new(tag);
 
         tag.connect_remove(clone!(@weak self as self_ => move |tag| {
@@ -161,8 +165,8 @@ impl MusicusSearchEntry {
             self_.emit_by_name::<()>("query-changed", &[]);
         }));
 
-        self.imp().tags_box.append(&tag);
-        self.imp().tags.borrow_mut().push(tag);
+        imp.tags_box.append(&tag);
+        imp.tags.borrow_mut().push(tag);
         self.emit_by_name::<()>("query-changed", &[]);
     }
 
@@ -207,14 +211,18 @@ impl MusicusSearchEntry {
 
     #[template_callback]
     async fn text_changed(&self, text: &gtk::Text) {
-        self.imp().clear_icon.set_visible(!text.text().is_empty());
+        let imp = self.imp();
 
-        if let Some(cancellable) = self.imp().query_changed.borrow_mut().take() {
+        if imp.tags.borrow().is_empty() {
+            imp.clear_icon.set_visible(!text.text().is_empty());
+        }
+
+        if let Some(cancellable) = imp.query_changed.borrow_mut().take() {
             cancellable.cancel();
         }
 
         let cancellable = gio::Cancellable::new();
-        self.imp().query_changed.replace(Some(cancellable.clone()));
+        imp.query_changed.replace(Some(cancellable.clone()));
 
         let _ = gio::CancellableFuture::new(
             async {
