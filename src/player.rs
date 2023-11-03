@@ -16,6 +16,12 @@ mod imp {
         pub playlist: OnceCell<gio::ListStore>,
         #[property(get, set = Self::set_current_index)]
         pub current_index: Cell<u32>,
+        #[property(get, set)]
+        pub current_time: Cell<u32>,
+        #[property(get, set)]
+        pub remaining_time: Cell<u32>,
+        #[property(get, set = Self::set_position)]
+        pub position: Cell<f64>,
     }
 
     impl MusicusPlayer {
@@ -35,6 +41,10 @@ mod imp {
                     .unwrap()
                     .set_is_playing(true);
             }
+        }
+
+        pub fn set_position(&self, position: f64) {
+            self.position.set(position);
         }
     }
 
@@ -59,6 +69,9 @@ impl MusicusPlayer {
             .property("playing", false)
             .property("playlist", gio::ListStore::new::<PlaylistItem>())
             .property("current-index", 0u32)
+            .property("current-time", 0u32)
+            .property("remaining-time", 10000u32)
+            .property("position", 0.0)
             .build()
     }
 
@@ -87,6 +100,18 @@ impl MusicusPlayer {
             .unwrap()
             .item(imp.current_index.get())
             .and_downcast::<PlaylistItem>()
+    }
+
+    pub fn next(&self) {
+        if self.current_index() < self.playlist().n_items() - 1 {
+            self.set_current_index(self.current_index() + 1);
+        }
+    }
+
+    pub fn previous(&self) {
+        if self.current_index() > 0 {
+            self.set_current_index(self.current_index() - 1);
+        }
     }
 }
 

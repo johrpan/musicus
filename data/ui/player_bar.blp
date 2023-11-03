@@ -36,6 +36,7 @@ template $MusicusPlayerBar : Gtk.Box {
       styles ["circular", "flat"]
       valign: center;
       icon-name: "media-skip-backward-symbolic";
+      clicked => $previous() swapped;
     }
 
     Gtk.ToggleButton playlist_button {
@@ -49,6 +50,7 @@ template $MusicusPlayerBar : Gtk.Box {
       styles ["circular", "flat"]
       valign: center;
       icon-name: "media-skip-forward-symbolic";
+      clicked => $next() swapped;
     }
   }
 
