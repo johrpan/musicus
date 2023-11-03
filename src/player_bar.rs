@@ -1,6 +1,6 @@
 use crate::player::MusicusPlayer;
 use gtk::{
-    glib::{self, subclass::Signal, Properties},
+    glib::{self, clone, subclass::Signal, Properties},
     prelude::*,
     subclass::prelude::*,
 };
@@ -35,6 +35,28 @@ mod imp {
         pub slider: TemplateChild<gtk::Scale>,
         #[template_child]
         pub remaining_time_label: TemplateChild<gtk::Label>,
+    }
+
+    impl PlayerBar {
+        fn update(&self) {
+            if let Some(item) = self.player.borrow().current_item() {
+                let mut title = item.title();
+
+                if let Some(part_title) = item.part_title() {
+                    title.push_str(": ");
+                    title.push_str(&part_title);
+                }
+
+                self.title_label.set_label(&title);
+
+                if let Some(performances) = item.performers() {
+                    self.subtitle_label.set_label(&performances);
+                    self.subtitle_label.set_visible(true);
+                } else {
+                    self.subtitle_label.set_visible(false);
+                }
+            }
+        }
     }
 
     #[glib::object_subclass]
@@ -82,27 +104,30 @@ mod imp {
                 .sync_create()
                 .build();
 
-            let title_label = self.title_label.get();
-            let subtitle_label = self.subtitle_label.get();
-            player.connect_current_index_notify(move |player| {
-                if let Some(item) = player.current_item() {
-                    let mut title = item.title();
+            let obj = self.obj().clone();
 
-                    if let Some(part_title) = item.part_title() {
-                        title.push_str(": ");
-                        title.push_str(&part_title);
-                    }
+            player.connect_current_index_notify(clone!(@weak obj => move |_| obj.imp().update()));
+            player
+                .playlist()
+                .connect_items_changed(clone!(@weak obj => move |_, _, _, _| obj.imp().update()));
 
-                    title_label.set_label(&title);
+            player
+                .bind_property("current-time", &self.current_time_label.get(), "label")
+                .transform_to(|_, t: u32| Some(format!("{:0>2}:{:0>2}", t / 60, t % 60)))
+                .sync_create()
+                .build();
 
-                    if let Some(performances) = item.performers() {
-                        subtitle_label.set_label(&performances);
-                        subtitle_label.set_visible(true);
-                    } else {
-                        subtitle_label.set_visible(false);
-                    }
-                }
-            });
+            player
+                .bind_property("remaining-time", &self.remaining_time_label.get(), "label")
+                .transform_to(|_, t: u32| Some(format!("{:0>2}:{:0>2}", t / 60, t % 60)))
+                .sync_create()
+                .build();
+
+            player
+                .bind_property("position", &self.slider.adjustment(), "value")
+                .sync_create()
+                .bidirectional()
+                .build();
         }
     }
 
@@ -138,8 +163,18 @@ impl PlayerBar {
     }
 
     #[template_callback]
+    fn previous(&self, _: &gtk::Button) {
+        self.player().previous();
+    }
+
+    #[template_callback]
     fn show_playlist(&self, button: &gtk::ToggleButton) {
         self.emit_by_name::<()>("show-playlist", &[&button.is_active()]);
+    }
+
+    #[template_callback]
+    fn next(&self, _: &gtk::Button) {
+        self.player().next();
     }
 
     #[template_callback]
