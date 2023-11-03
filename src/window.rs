@@ -4,6 +4,7 @@ use crate::{
 };
 use adw::subclass::prelude::*;
 use gtk::{gio, glib, glib::clone, prelude::*};
+use std::path::Path;
 
 mod imp {
     use super::*;
@@ -73,6 +74,12 @@ mod imp {
 
             let obj = self.obj().to_owned();
             self.player.connect_raise(move |_| obj.present());
+
+            let settings = gio::Settings::new("de.johrpan.musicus");
+            let library_path = settings.string("library-path").to_string();
+            if !library_path.is_empty() {
+                self.obj().load_library(&library_path);
+            }
         }
     }
 
@@ -126,6 +133,16 @@ impl MusicusWindow {
     #[template_callback]
     fn set_library_folder(&self, folder: &gio::File) {
         let path = folder.path().unwrap();
+
+        let settings = gio::Settings::new("de.johrpan.musicus");
+        settings
+            .set_string("library-path", path.to_str().unwrap())
+            .unwrap();
+
+        self.load_library(path);
+    }
+
+    fn load_library(&self, path: impl AsRef<Path>) {
         let library = MusicusLibrary::new(path);
         self.imp()
             .navigation_view
