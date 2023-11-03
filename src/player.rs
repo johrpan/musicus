@@ -3,11 +3,12 @@ use fragile::Fragile;
 use gstreamer_player::gst;
 use gtk::{
     gio,
-    glib::{self, clone, Properties},
+    glib::{self, clone, subclass::Signal, Properties},
     prelude::*,
     subclass::prelude::*,
 };
 use mpris_player::{MprisPlayer, PlaybackStatus};
+use once_cell::sync::Lazy;
 use std::{
     cell::{Cell, OnceCell},
     sync::Arc,
@@ -92,6 +93,13 @@ mod imp {
 
     #[glib::derived_properties]
     impl ObjectImpl for MusicusPlayer {
+        fn signals() -> &'static [Signal] {
+            static SIGNALS: Lazy<Vec<Signal>> =
+                Lazy::new(|| vec![Signal::builder("raise").build()]);
+
+            SIGNALS.as_ref()
+        }
+
         fn constructed(&self) {
             self.parent_constructed();
 
@@ -101,15 +109,16 @@ mod imp {
                 "de.johrpan.musicus.desktop".to_string(),
             );
 
+            mpris.set_can_raise(true);
             mpris.set_can_play(true);
             mpris.set_can_pause(true);
             mpris.set_can_go_previous(true);
             mpris.set_can_go_next(true);
             mpris.set_can_seek(false);
-            mpris.set_can_raise(false);
             mpris.set_can_set_fullscreen(false);
 
             let obj = self.obj();
+            mpris.connect_raise(clone!(@weak obj => move || obj.emit_by_name::<()>("raise", &[])));
             mpris.connect_play(clone!(@weak obj => move || obj.play()));
             mpris.connect_pause(clone!(@weak obj => move || obj.pause()));
             mpris.connect_play_pause(clone!(@weak obj => move || obj.play_pause()));
@@ -198,6 +207,14 @@ impl MusicusPlayer {
             .build()
     }
 
+    pub fn connect_raise<F: Fn(&Self) + 'static>(&self, f: F) -> glib::SignalHandlerId {
+        self.connect_local("raise", true, move |values| {
+            let obj = values[0].get::<Self>().unwrap();
+            f(&obj);
+            None
+        })
+    }
+
     pub fn append(&self, tracks: Vec<PlaylistItem>) {
         let playlist = self.playlist();
 
@@ -223,13 +240,21 @@ impl MusicusPlayer {
     pub fn play(&self) {
         self.player().play();
         self.set_playing(true);
-        self.imp().mpris.get().unwrap().set_playback_status(PlaybackStatus::Playing);
+        self.imp()
+            .mpris
+            .get()
+            .unwrap()
+            .set_playback_status(PlaybackStatus::Playing);
     }
 
     pub fn pause(&self) {
         self.player().pause();
         self.set_playing(false);
-        self.imp().mpris.get().unwrap().set_playback_status(PlaybackStatus::Paused);
+        self.imp()
+            .mpris
+            .get()
+            .unwrap()
+            .set_playback_status(PlaybackStatus::Paused);
     }
 
     pub fn current_item(&self) -> Option<PlaylistItem> {

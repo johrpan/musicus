@@ -55,19 +55,24 @@ mod imp {
                 player_bar.playlist_hidden();
             }));
 
-            player_bar.connect_show_playlist(clone!(@weak playlist_page, @weak stack => move |_, show| {
-                if show {
-                    playlist_page.scroll_to_current();
-                    stack.set_visible_child_name("playlist");
-                } else {
-                    stack.set_visible_child_name("navigation");
-                };
-            }));
+            player_bar.connect_show_playlist(
+                clone!(@weak playlist_page, @weak stack => move |_, show| {
+                    if show {
+                        playlist_page.scroll_to_current();
+                        stack.set_visible_child_name("playlist");
+                    } else {
+                        stack.set_visible_child_name("navigation");
+                    };
+                }),
+            );
 
             self.player
                 .bind_property("active", &self.player_bar_revealer.get(), "reveal-child")
                 .sync_create()
                 .build();
+
+            let obj = self.obj().to_owned();
+            self.player.connect_raise(move |_| obj.present());
         }
     }
 
