@@ -14,6 +14,8 @@
         "--device=dri",
         "--socket=wayland",
         "--socket=pulseaudio",
+        "--talk-name=org.mpris.MediaPlayer2.Player",
+        "--own-name=org.mpris.MediaPlayer2.de.johrpan.musicus",
         "--filesystem=host"
     ],
     "build-options": {

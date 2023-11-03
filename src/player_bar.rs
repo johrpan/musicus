@@ -40,17 +40,10 @@ mod imp {
     impl PlayerBar {
         fn update(&self) {
             if let Some(item) = self.player.borrow().current_item() {
-                let mut title = item.title();
+                self.title_label.set_label(&item.make_title());
 
-                if let Some(part_title) = item.part_title() {
-                    title.push_str(": ");
-                    title.push_str(&part_title);
-                }
-
-                self.title_label.set_label(&title);
-
-                if let Some(performances) = item.performers() {
-                    self.subtitle_label.set_label(&performances);
+                if let Some(subtitle) = item.make_subtitle() {
+                    self.subtitle_label.set_label(&subtitle);
                     self.subtitle_label.set_visible(true);
                 } else {
                     self.subtitle_label.set_visible(false);
@@ -179,12 +172,7 @@ impl PlayerBar {
 
     #[template_callback]
     fn play_pause(&self, _: &gtk::Button) {
-        let player = self.player();
-        if player.playing() {
-            player.pause();
-        } else {
-            player.play();
-        }
+        self.player().play_pause();
     }
 }
 

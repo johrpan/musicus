@@ -3,13 +3,19 @@ use fragile::Fragile;
 use gstreamer_player::gst;
 use gtk::{
     gio,
-    glib::{self, Properties},
+    glib::{self, clone, Properties},
     prelude::*,
     subclass::prelude::*,
 };
-use std::cell::{Cell, OnceCell};
+use mpris_player::{MprisPlayer, PlaybackStatus};
+use std::{
+    cell::{Cell, OnceCell},
+    sync::Arc,
+};
 
 mod imp {
+    use mpris_player::Metadata;
+
     use super::*;
 
     #[derive(Properties, Debug, Default)]
@@ -31,6 +37,8 @@ mod imp {
         pub position: Cell<f64>,
         #[property(get, construct_only)]
         pub player: OnceCell<gstreamer_player::Player>,
+
+        pub mpris: OnceCell<Arc<MprisPlayer>>,
     }
 
     impl MusicusPlayer {
@@ -39,21 +47,28 @@ mod imp {
 
             if let Some(item) = playlist.item(index) {
                 if let Some(old_item) = playlist.item(self.current_index.get()) {
-                    old_item.downcast::<PlaylistItem>()
+                    old_item
+                        .downcast::<PlaylistItem>()
                         .unwrap()
                         .set_is_playing(false);
                 }
-                
+
                 let item = item.downcast::<PlaylistItem>().unwrap();
+                self.mpris.get().unwrap().set_metadata(Metadata {
+                    artist: Some(vec![item.make_title()]),
+                    title: item.make_subtitle(),
+                    ..Default::default()
+                });
+
                 let uri = glib::filename_to_uri(&item.path(), None)
-                .expect("track path should be parsable as an URI");
-            
+                    .expect("track path should be parsable as an URI");
+
                 let player = self.player.get().unwrap();
                 player.set_uri(Some(&uri));
                 if self.playing.get() {
                     player.play();
                 }
-                
+
                 self.current_index.set(index);
                 item.set_is_playing(true);
             }
@@ -79,6 +94,29 @@ mod imp {
     impl ObjectImpl for MusicusPlayer {
         fn constructed(&self) {
             self.parent_constructed();
+
+            let mpris = MprisPlayer::new(
+                "de.johrpan.musicus".to_string(),
+                "Musicus".to_string(),
+                "de.johrpan.musicus.desktop".to_string(),
+            );
+
+            mpris.set_can_play(true);
+            mpris.set_can_pause(true);
+            mpris.set_can_go_previous(true);
+            mpris.set_can_go_next(true);
+            mpris.set_can_seek(false);
+            mpris.set_can_raise(false);
+            mpris.set_can_set_fullscreen(false);
+
+            let obj = self.obj();
+            mpris.connect_play(clone!(@weak obj => move || obj.play()));
+            mpris.connect_pause(clone!(@weak obj => move || obj.pause()));
+            mpris.connect_play_pause(clone!(@weak obj => move || obj.play_pause()));
+            mpris.connect_previous(clone!(@weak obj => move || obj.previous()));
+            mpris.connect_next(clone!(@weak obj => move || obj.next()));
+
+            self.mpris.set(mpris).expect("mpris should not be set");
 
             let player = self.player.get().unwrap();
 
@@ -174,14 +212,24 @@ impl MusicusPlayer {
         }
     }
 
+    pub fn play_pause(&self) {
+        if self.playing() {
+            self.pause();
+        } else {
+            self.play();
+        }
+    }
+
     pub fn play(&self) {
         self.player().play();
         self.set_playing(true);
+        self.imp().mpris.get().unwrap().set_playback_status(PlaybackStatus::Playing);
     }
 
     pub fn pause(&self) {
         self.player().pause();
         self.set_playing(false);
+        self.imp().mpris.get().unwrap().set_playback_status(PlaybackStatus::Paused);
     }
 
     pub fn current_item(&self) -> Option<PlaylistItem> {
