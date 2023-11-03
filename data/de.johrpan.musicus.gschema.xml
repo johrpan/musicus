@@ -13,5 +13,9 @@
 			<default>false</default>
 			<summary>Window maximized state</summary>
 		</key>
+		<key name="library-path" type="s">
+			<default>''</default>
+			<summary>Path to the music library</summary>
+		</key>
 	</schema>
 </schemalist>
