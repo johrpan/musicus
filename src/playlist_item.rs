@@ -59,4 +59,19 @@ impl PlaylistItem {
             .property("path", path.as_ref())
             .build()
     }
+
+    pub fn make_title(&self) -> String {
+        let mut title = self.title();
+
+        if let Some(part_title) = self.part_title() {
+            title.push_str(": ");
+            title.push_str(&part_title);
+        }
+
+        title
+    }
+
+    pub fn make_subtitle(&self) -> Option<String> {
+        self.performers()
+    }
 }
