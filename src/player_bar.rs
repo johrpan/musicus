@@ -111,17 +111,17 @@ mod imp {
                 .playlist()
                 .connect_items_changed(clone!(@weak obj => move |_, _, _, _| obj.imp().update()));
 
-            player
-                .bind_property("current-time", &self.current_time_label.get(), "label")
-                .transform_to(|_, t: u32| Some(format!("{:0>2}:{:0>2}", t / 60, t % 60)))
-                .sync_create()
-                .build();
+            player.connect_current_time_ms_notify(clone!(@weak obj => move |player| {
+                let imp = obj.imp();
+                imp.current_time_label.set_label(&format_time(player.current_time_ms()));
+                imp.remaining_time_label.set_label(&format_time(player.duration_ms() - player.current_time_ms()));
+            }));
 
-            player
-                .bind_property("remaining-time", &self.remaining_time_label.get(), "label")
-                .transform_to(|_, t: u32| Some(format!("{:0>2}:{:0>2}", t / 60, t % 60)))
-                .sync_create()
-                .build();
+            player.connect_duration_ms_notify(clone!(@weak obj => move |player| {
+                let imp = obj.imp();
+                imp.current_time_label.set_label(&format_time(player.current_time_ms()));
+                imp.remaining_time_label.set_label(&format_time(player.duration_ms() - player.current_time_ms()));
+            }));
 
             player
                 .bind_property("position", &self.slider.adjustment(), "value")
@@ -185,5 +185,17 @@ impl PlayerBar {
         } else {
             player.play();
         }
+    }
+}
+
+fn format_time(time_ms: u64) -> String {
+    let s = time_ms / 1000;
+    let (m, s) = (s / 60, s % 60);
+    let (h, m) = (m / 60, m % 60);
+
+    if h > 0 {
+        format!("{h:0>2}:{m:0>2}:{s:0>2}")
+    } else {
+        format!("{m:0>2}:{s:0>2}")
     }
 }

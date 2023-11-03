@@ -18,10 +18,12 @@ use self::{application::MusicusApplication, window::MusicusWindow};
 
 use config::{GETTEXT_PACKAGE, LOCALEDIR, PKGDATADIR};
 use gettextrs::{bind_textdomain_codeset, bindtextdomain, textdomain};
+use gstreamer_player::gst;
 use gtk::{gio, glib, prelude::*};
 
 fn main() -> glib::ExitCode {
     tracing_subscriber::fmt::init();
+    gst::init().expect("Failed to initialize GStreamer!");
 
     bindtextdomain(GETTEXT_PACKAGE, LOCALEDIR).expect("Unable to bind the text domain");
     bind_textdomain_codeset(GETTEXT_PACKAGE, "UTF-8")
