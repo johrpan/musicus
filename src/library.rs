@@ -57,16 +57,30 @@ impl MusicusLibrary {
                 work: None,
                 ..
             } => {
-                let composers = self.con()
-                    .prepare("SELECT DISTINCT persons.id, persons.first_name, persons.last_name FROM persons INNER JOIN works ON works.composer = persons.id WHERE persons.first_name LIKE ?1 OR persons.last_name LIKE ?1 LIMIT 9")
+                let composers = self
+                    .con()
+                    .prepare(
+                        "SELECT DISTINCT persons.id, persons.first_name, persons.last_name \
+                        FROM persons \
+                            JOIN works ON works.composer = persons.id \
+                        WHERE persons.first_name LIKE ?1 OR persons.last_name LIKE ?1 \
+                        LIMIT 9",
+                    )
                     .unwrap()
                     .query_map([&search], Person::from_row)
                     .unwrap()
                     .collect::<rusqlite::Result<Vec<Person>>>()
                     .unwrap();
 
-                let performers = self.con()
-                    .prepare("SELECT DISTINCT persons.id, persons.first_name, persons.last_name FROM persons INNER JOIN performances ON performances.person = persons.id WHERE persons.first_name LIKE ?1 OR persons.last_name LIKE ?1 LIMIT 9")
+                let performers = self
+                    .con()
+                    .prepare(
+                        "SELECT DISTINCT persons.id, persons.first_name, persons.last_name \
+                        FROM persons \
+                            JOIN performances ON performances.person = persons.id \
+                        WHERE persons.first_name LIKE ?1 OR persons.last_name LIKE ?1 \
+                        LIMIT 9",
+                    )
                     .unwrap()
                     .query_map([&search], Person::from_row)
                     .unwrap()
@@ -84,7 +98,13 @@ impl MusicusLibrary {
 
                 let works = self
                     .con()
-                    .prepare("SELECT works.id, works.title, persons.id, persons.first_name, persons.last_name FROM works INNER JOIN persons ON works.composer = persons.id WHERE title LIKE ?1 LIMIT 9")
+                    .prepare(
+                        "SELECT works.id, works.title, persons.id, persons.first_name, persons.last_name \
+                        FROM works \
+                            JOIN persons ON works.composer = persons.id \
+                        WHERE title LIKE ?1 \
+                        LIMIT 9"
+                    )
                     .unwrap()
                     .query_map([&search], Work::from_row)
                     .unwrap()
@@ -106,8 +126,18 @@ impl MusicusLibrary {
                 work: None,
                 ..
             } => {
-                let performers = self.con()
-                    .prepare("SELECT DISTINCT persons.id, persons.first_name, persons.last_name FROM persons INNER JOIN performances ON performances.person = persons.id INNER JOIN recordings ON recordings.id = performances.recording INNER JOIN works ON works.id = recordings.work WHERE works.composer IS ?1 AND (persons.first_name LIKE ?2 OR persons.last_name LIKE ?2) LIMIT 9")
+                let performers = self
+                    .con()
+                    .prepare(
+                        "SELECT DISTINCT persons.id, persons.first_name, persons.last_name \
+                        FROM persons \
+                            JOIN performances ON performances.person = persons.id \
+                            JOIN recordings ON recordings.id = performances.recording \
+                            JOIN works ON works.id = recordings.work \
+                        WHERE works.composer IS ?1 \
+                            AND (persons.first_name LIKE ?2 OR persons.last_name LIKE ?2) \
+                        LIMIT 9",
+                    )
                     .unwrap()
                     .query_map([&composer.id, &search], Person::from_row)
                     .unwrap()
@@ -116,7 +146,15 @@ impl MusicusLibrary {
 
                 let ensembles = self
                     .con()
-                    .prepare("SELECT DISTINCT ensembles.id, ensembles.name FROM ensembles INNER JOIN performances ON performances.ensemble = ensembles.id INNER JOIN recordings ON recordings.id = performances.recording INNER JOIN works ON works.id = recordings.work WHERE works.composer IS ?1 AND ensembles.name LIKE ?2 LIMIT 9")
+                    .prepare(
+                        "SELECT DISTINCT ensembles.id, ensembles.name \
+                        FROM ensembles \
+                            JOIN performances ON performances.ensemble = ensembles.id \
+                            JOIN recordings ON recordings.id = performances.recording \
+                            JOIN works ON works.id = recordings.work \
+                        WHERE works.composer IS ?1 AND ensembles.name LIKE ?2 \
+                        LIMIT 9",
+                    )
                     .unwrap()
                     .query_map([&composer.id, &search], Ensemble::from_row)
                     .unwrap()
@@ -125,7 +163,12 @@ impl MusicusLibrary {
 
                 let works = self
                     .con()
-                    .prepare("SELECT DISTINCT works.id, works.title, persons.id, persons.first_name, persons.last_name FROM works INNER JOIN persons ON works.composer = persons.id WHERE works.composer = ?1 AND title LIKE ?2 LIMIT 9")
+                    .prepare(
+                        "SELECT DISTINCT works.id, works.title, persons.id, persons.first_name, persons.last_name \
+                        FROM works \
+                            JOIN persons ON works.composer = persons.id \
+                        WHERE works.composer = ?1 AND title LIKE ?2 \
+                        LIMIT 9")
                     .unwrap()
                     .query_map([&composer.id, &search], Work::from_row)
                     .unwrap()
@@ -146,8 +189,18 @@ impl MusicusLibrary {
                 work: None,
                 ..
             } => {
-                let composers = self.con()
-                    .prepare("SELECT DISTINCT persons.id, persons.first_name, persons.last_name FROM persons INNER JOIN works ON works.composer = persons.id INNER JOIN recordings ON recordings.work = works.id INNER JOIN performances ON performances.recording = recordings.id WHERE performances.ensemble IS ?1 AND (persons.first_name LIKE ?2 OR persons.last_name LIKE ?2) LIMIT 9")
+                let composers = self
+                    .con()
+                    .prepare(
+                        "SELECT DISTINCT persons.id, persons.first_name, persons.last_name \
+                        FROM persons \
+                            JOIN works ON works.composer = persons.id \
+                            JOIN recordings ON recordings.work = works.id \
+                            JOIN performances ON performances.recording = recordings.id \
+                        WHERE performances.ensemble IS ?1 \
+                            AND (persons.first_name LIKE ?2 OR persons.last_name LIKE ?2) \
+                        LIMIT 9",
+                    )
                     .unwrap()
                     .query_map([&ensemble.id, &search], Person::from_row)
                     .unwrap()
@@ -156,7 +209,15 @@ impl MusicusLibrary {
 
                 let recordings = self
                     .con()
-                    .prepare("SELECT DISTINCT recordings.id, works.id, works.title, persons.id, persons.first_name, persons.last_name FROM recordings INNER JOIN works ON recordings.work = works.id INNER JOIN persons ON works.composer = persons.id INNER JOIN performances ON recordings.id = performances.recording WHERE performances.ensemble IS ?1 AND (works.title LIKE ?2 OR persons.first_name LIKE ?2 OR persons.last_name LIKE ?2) LIMIT 9")
+                    .prepare(
+                        "SELECT DISTINCT recordings.id, works.id, works.title, persons.id, persons.first_name, persons.last_name \
+                        FROM recordings \
+                            JOIN works ON recordings.work = works.id \
+                            JOIN persons ON works.composer = persons.id \
+                            JOIN performances ON recordings.id = performances.recording \
+                        WHERE performances.ensemble IS ?1 \
+                            AND (works.title LIKE ?2 OR persons.first_name LIKE ?2 OR persons.last_name LIKE ?2) \
+                        LIMIT 9")
                     .unwrap()
                     .query_map([&ensemble.id, &search], Recording::from_row)
                     .unwrap()
@@ -175,8 +236,18 @@ impl MusicusLibrary {
                 work: None,
                 ..
             } => {
-                let composers = self.con()
-                    .prepare("SELECT DISTINCT persons.id, persons.first_name, persons.last_name FROM persons INNER JOIN works ON works.composer = persons.id INNER JOIN recordings ON recordings.work = works.id INNER JOIN performances ON performances.recording = recordings.id WHERE performances.person IS ?1 AND (persons.first_name LIKE ?2 OR persons.last_name LIKE ?2) LIMIT 9")
+                let composers = self
+                    .con()
+                    .prepare(
+                        "SELECT DISTINCT persons.id, persons.first_name, persons.last_name \
+                        FROM persons \
+                            JOIN works ON works.composer = persons.id \
+                            JOIN recordings ON recordings.work = works.id \
+                            JOIN performances ON performances.recording = recordings.id \
+                        WHERE performances.person IS ?1 \
+                            AND (persons.first_name LIKE ?2 OR persons.last_name LIKE ?2) \
+                        LIMIT 9",
+                    )
                     .unwrap()
                     .query_map([&performer.id, &search], Person::from_row)
                     .unwrap()
@@ -185,7 +256,15 @@ impl MusicusLibrary {
 
                 let recordings = self
                     .con()
-                    .prepare("SELECT DISTINCT recordings.id, works.id, works.title, persons.id, persons.first_name, persons.last_name FROM recordings INNER JOIN works ON recordings.work = works.id INNER JOIN persons ON works.composer = persons.id INNER JOIN performances ON recordings.id = performances.recording WHERE performances.person IS ?1 AND (works.title LIKE ?2 OR persons.first_name LIKE ?2 OR persons.last_name LIKE ?2) LIMIT 9")
+                    .prepare(
+                        "SELECT DISTINCT recordings.id, works.id, works.title, persons.id, persons.first_name, persons.last_name \
+                        FROM recordings \
+                            JOIN works ON recordings.work = works.id \
+                            JOIN persons ON works.composer = persons.id \
+                            JOIN performances ON recordings.id = performances.recording \
+                        WHERE performances.person IS ?1 \
+                            AND (works.title LIKE ?2 OR persons.first_name LIKE ?2 OR persons.last_name LIKE ?2) \
+                        LIMIT 9")
                     .unwrap()
                     .query_map([&performer.id, &search], Recording::from_row)
                     .unwrap()
@@ -206,7 +285,16 @@ impl MusicusLibrary {
             } => {
                 let recordings = self
                     .con()
-                    .prepare("SELECT DISTINCT recordings.id, works.id, works.title, persons.id, persons.first_name, persons.last_name FROM recordings INNER JOIN works ON recordings.work = works.id INNER JOIN persons ON works.composer = persons.id INNER JOIN performances ON recordings.id = performances.recording WHERE works.composer IS ?1 AND performances.ensemble IS ?2 AND works.title LIKE ?3 LIMIT 9")
+                    .prepare(
+                        "SELECT DISTINCT recordings.id, works.id, works.title, persons.id, persons.first_name, persons.last_name \
+                        FROM recordings \
+                            JOIN works ON recordings.work = works.id \
+                            JOIN persons ON works.composer = persons.id \
+                            JOIN performances ON recordings.id = performances.recording \
+                        WHERE works.composer IS ?1 \
+                            AND performances.ensemble IS ?2 \
+                            AND works.title LIKE ?3 \
+                        LIMIT 9")
                     .unwrap()
                     .query_map([&composer.id, &ensemble.id, &search], Recording::from_row)
                     .unwrap()
@@ -226,7 +314,16 @@ impl MusicusLibrary {
             } => {
                 let recordings = self
                     .con()
-                    .prepare("SELECT DISTINCT recordings.id, works.id, works.title, persons.id, persons.first_name, persons.last_name FROM recordings INNER JOIN works ON recordings.work = works.id INNER JOIN persons ON works.composer = persons.id INNER JOIN performances ON recordings.id = performances.recording WHERE works.composer IS ?1 AND performances.person IS ?2 AND works.title LIKE ?3 LIMIT 9")
+                    .prepare(
+                        "SELECT DISTINCT recordings.id, works.id, works.title, persons.id, persons.first_name, persons.last_name \
+                        FROM recordings \
+                            JOIN works ON recordings.work = works.id \
+                            JOIN persons ON works.composer = persons.id \
+                            JOIN performances ON recordings.id = performances.recording \
+                        WHERE works.composer IS ?1 \
+                            AND performances.person IS ?2 \
+                            AND works.title LIKE ?3 \
+                        LIMIT 9")
                     .unwrap()
                     .query_map([&composer.id, &performer.id, &search], Recording::from_row)
                     .unwrap()
@@ -243,7 +340,12 @@ impl MusicusLibrary {
             } => {
                 let recordings = self
                     .con()
-                    .prepare("SELECT DISTINCT recordings.id, works.id, works.title, persons.id, persons.first_name, persons.last_name FROM recordings INNER JOIN works ON recordings.work = works.id INNER JOIN persons ON works.composer IS persons.id WHERE works.id IS ?1")
+                    .prepare(
+                        "SELECT DISTINCT recordings.id, works.id, works.title, persons.id, persons.first_name, persons.last_name \
+                        FROM recordings \
+                            JOIN works ON recordings.work = works.id \
+                            JOIN persons ON works.composer IS persons.id \
+                        WHERE works.id IS ?1")
                     .unwrap()
                     .query_map([&work.id], Recording::from_row)
                     .unwrap()
@@ -305,21 +407,36 @@ impl MusicusLibrary {
     pub fn performances(&self, recording: &Recording) -> Vec<String> {
         let mut performances = self
             .con()
-            .prepare("SELECT persons.id, persons.first_name, persons.last_name, instruments.id, instruments.name FROM performances INNER JOIN persons ON persons.id = performances.person LEFT JOIN instruments ON instruments.id = performances.role INNER JOIN recordings ON performances.recording = recordings.id WHERE recordings.id IS ?1")
+            .prepare(
+                "SELECT persons.id, persons.first_name, persons.last_name, instruments.id, instruments.name \
+                FROM performances \
+                    INNER JOIN persons ON persons.id = performances.person \
+                    LEFT JOIN instruments ON instruments.id = performances.role \
+                    INNER JOIN recordings ON performances.recording = recordings.id \
+                WHERE recordings.id IS ?1")
             .unwrap()
             .query_map([&recording.id], Performance::from_person_row)
             .unwrap()
             .collect::<rusqlite::Result<Vec<Performance>>>()
             .unwrap();
 
-        performances.append(&mut self
-            .con()
-            .prepare("SELECT ensembles.id, ensembles.name, instruments.id, instruments.name FROM performances INNER JOIN ensembles ON ensembles.id = performances.ensemble LEFT JOIN instruments ON instruments.id = performances.role INNER JOIN recordings ON performances.recording = recordings.id WHERE recordings.id IS ?1")
-            .unwrap()
-            .query_map([&recording.id], Performance::from_ensemble_row)
-            .unwrap()
-            .collect::<rusqlite::Result<Vec<Performance>>>()
-            .unwrap());
+        performances.append(
+            &mut self
+                .con()
+                .prepare(
+                    "SELECT ensembles.id, ensembles.name, instruments.id, instruments.name \
+                FROM performances \
+                    INNER JOIN ensembles ON ensembles.id = performances.ensemble \
+                    LEFT JOIN instruments ON instruments.id = performances.role \
+                    INNER JOIN recordings ON performances.recording = recordings.id \
+                WHERE recordings.id IS ?1",
+                )
+                .unwrap()
+                .query_map([&recording.id], Performance::from_ensemble_row)
+                .unwrap()
+                .collect::<rusqlite::Result<Vec<Performance>>>()
+                .unwrap(),
+        );
 
         performances
             .into_iter()
