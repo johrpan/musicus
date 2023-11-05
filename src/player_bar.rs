@@ -38,7 +38,7 @@ mod imp {
     }
 
     impl PlayerBar {
-        fn update(&self) {
+        fn update_item(&self) {
             if let Some(item) = self.player.borrow().current_item() {
                 self.title_label.set_label(&item.make_title());
 
@@ -49,6 +49,20 @@ mod imp {
                     self.subtitle_label.set_visible(false);
                 }
             }
+        }
+
+        fn update_time(&self) {
+            let player = self.player.borrow();
+
+            self.current_time_label
+                .set_label(&format_time(player.current_time_ms()));
+
+            self.remaining_time_label.set_label(&format_time(
+                player
+                    .duration_ms()
+                    .checked_sub(player.current_time_ms())
+                    .unwrap_or(0),
+            ));
         }
     }
 
@@ -99,22 +113,18 @@ mod imp {
 
             let obj = self.obj().clone();
 
-            player.connect_current_index_notify(clone!(@weak obj => move |_| obj.imp().update()));
+            player.connect_current_index_notify(
+                clone!(@weak obj => move |_| obj.imp().update_item()),
+            );
+            player.playlist().connect_items_changed(
+                clone!(@weak obj => move |_, _, _, _| obj.imp().update_item()),
+            );
+
+            player.connect_current_time_ms_notify(
+                clone!(@weak obj => move |_| obj.imp().update_time()),
+            );
             player
-                .playlist()
-                .connect_items_changed(clone!(@weak obj => move |_, _, _, _| obj.imp().update()));
-
-            player.connect_current_time_ms_notify(clone!(@weak obj => move |player| {
-                let imp = obj.imp();
-                imp.current_time_label.set_label(&format_time(player.current_time_ms()));
-                imp.remaining_time_label.set_label(&format_time(player.duration_ms() - player.current_time_ms()));
-            }));
-
-            player.connect_duration_ms_notify(clone!(@weak obj => move |player| {
-                let imp = obj.imp();
-                imp.current_time_label.set_label(&format_time(player.current_time_ms()));
-                imp.remaining_time_label.set_label(&format_time(player.duration_ms() - player.current_time_ms()));
-            }));
+                .connect_duration_ms_notify(clone!(@weak obj => move |_| obj.imp().update_time()));
 
             player
                 .bind_property("position", &self.slider.adjustment(), "value")
