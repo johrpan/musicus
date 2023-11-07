@@ -33,9 +33,7 @@ mod imp {
         #[property(get, set)]
         pub duration_ms: Cell<u64>,
         #[property(get, set)]
-        pub current_time_ms: Cell<u64>,
-        #[property(get, set = Self::set_position)]
-        pub position: Cell<f64>,
+        pub position_ms: Cell<u64>,
         #[property(get, construct_only)]
         pub player: OnceCell<gstreamer_player::Player>,
 
@@ -73,15 +71,6 @@ mod imp {
                 self.current_index.set(index);
                 item.set_is_playing(true);
             }
-        }
-
-        pub fn set_position(&self, position: f64) {
-            self.player
-                .get()
-                .unwrap()
-                .seek(gst::ClockTime::from_mseconds(
-                    (position * self.duration_ms.get() as f64) as u64,
-                ));
         }
     }
 
@@ -140,23 +129,11 @@ mod imp {
             });
 
             let obj = Fragile::new(self.obj().to_owned());
-            player.connect_position_updated(move |_, current_time| {
-                if let Some(current_time) = current_time {
+            player.connect_position_updated(move |_, position| {
+                if let Some(position) = position {
                     let obj = obj.get();
-                    let imp = obj.imp();
-
-                    let current_time_ms = current_time.mseconds();
-                    let duration_ms = imp.duration_ms.get();
-                    let mut position = current_time_ms as f64 / duration_ms as f64;
-                    if position > 1.0 {
-                        position = 1.0
-                    }
-
-                    imp.current_time_ms.set(current_time_ms);
-                    obj.notify_current_time_ms();
-
-                    imp.position.set(position);
-                    obj.notify_position();
+                    obj.imp().position_ms.set(position.mseconds());
+                    obj.notify_position_ms();
                 }
             });
 
@@ -165,17 +142,12 @@ mod imp {
                 if let Some(duration) = duration {
                     let obj = obj.get();
                     let imp = obj.imp();
-
-                    let duration_ms = duration.mseconds();
-
-                    imp.duration_ms.set(duration_ms);
+                    
+                    imp.position_ms.set(0);
+                    obj.notify_position_ms();
+                    
+                    imp.duration_ms.set(duration.mseconds());
                     obj.notify_duration_ms();
-
-                    imp.current_time_ms.set(0);
-                    obj.notify_current_time_ms();
-
-                    imp.position.set(0.0);
-                    obj.notify_position();
                 }
             });
         }
@@ -200,9 +172,8 @@ impl MusicusPlayer {
             .property("playing", false)
             .property("playlist", gio::ListStore::new::<PlaylistItem>())
             .property("current-index", 0u32)
-            .property("current-time-ms", 0u64)
+            .property("position-ms", 0u64)
             .property("duration-ms", 60_000u64)
-            .property("position", 0.0)
             .property("player", player)
             .build()
     }
@@ -255,6 +226,10 @@ impl MusicusPlayer {
             .get()
             .unwrap()
             .set_playback_status(PlaybackStatus::Paused);
+    }
+
+    pub fn seek_to(&self, time_ms: u64) {
+        self.player().seek(gst::ClockTime::from_mseconds(time_ms));
     }
 
     pub fn current_item(&self) -> Option<PlaylistItem> {
