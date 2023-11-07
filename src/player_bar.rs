@@ -1,11 +1,12 @@
 use crate::player::MusicusPlayer;
 use gtk::{
+    gdk,
     glib::{self, clone, subclass::Signal, Properties},
     prelude::*,
     subclass::prelude::*,
 };
 use once_cell::sync::Lazy;
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 
 mod imp {
     use super::*;
@@ -16,6 +17,8 @@ mod imp {
     pub struct PlayerBar {
         #[property(get, construct_only)]
         pub player: RefCell<MusicusPlayer>,
+
+        pub seeking: Cell<bool>,
 
         #[template_child]
         pub title_label: TemplateChild<gtk::Label>,
@@ -54,13 +57,22 @@ mod imp {
         fn update_time(&self) {
             let player = self.player.borrow();
 
+            let current_time_ms = if self.seeking.get() {
+                (self.slider.value() * player.duration_ms() as f64) as u64
+            } else {
+                let current_time_ms = player.position_ms();
+                self.slider
+                    .set_value(current_time_ms as f64 / player.duration_ms() as f64);
+                current_time_ms
+            };
+
             self.current_time_label
-                .set_label(&format_time(player.current_time_ms()));
+                .set_label(&format_time(current_time_ms));
 
             self.remaining_time_label.set_label(&format_time(
                 player
                     .duration_ms()
-                    .checked_sub(player.current_time_ms())
+                    .checked_sub(current_time_ms)
                     .unwrap_or(0),
             ));
         }
@@ -120,17 +132,41 @@ mod imp {
                 clone!(@weak obj => move |_, _, _, _| obj.imp().update_item()),
             );
 
-            player.connect_current_time_ms_notify(
-                clone!(@weak obj => move |_| obj.imp().update_time()),
-            );
+            player
+                .connect_position_ms_notify(clone!(@weak obj => move |_| obj.imp().update_time()));
             player
                 .connect_duration_ms_notify(clone!(@weak obj => move |_| obj.imp().update_time()));
 
-            player
-                .bind_property("position", &self.slider.adjustment(), "value")
-                .sync_create()
-                .bidirectional()
-                .build();
+            let seeking_controller = gtk::EventControllerLegacy::new();
+
+            seeking_controller.connect_event(
+                clone!(@weak obj => @default-return glib::Propagation::Proceed, move |_, event| {
+                    if let Some(event) = event.downcast_ref::<gdk::ButtonEvent>() {
+                        let imp = obj.imp();
+                        if event.button() == gdk::BUTTON_PRIMARY {
+                            match event.event_type() {
+                                gdk::EventType::ButtonPress => {
+                                    imp.seeking.set(true);
+                                }
+                                gdk::EventType::ButtonRelease => {
+                                    let player = obj.player();
+                                    player.seek_to((imp.slider.value() * player.duration_ms() as f64) as u64);
+                                    imp.seeking.set(false);
+                                }
+                                _ => (),
+                            }
+                        }
+
+                    }
+
+                    glib::Propagation::Proceed
+                }),
+            );
+
+            self.slider.add_controller(seeking_controller);
+
+            self.slider
+                .connect_value_changed(clone!(@weak obj => move |_| obj.imp().update_time()));
         }
     }
 
