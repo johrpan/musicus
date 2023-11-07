@@ -1,6 +1,7 @@
 use crate::{
-    home_page::MusicusHomePage, library::MusicusLibrary, player::MusicusPlayer,
-    player_bar::PlayerBar, playlist_page::MusicusPlaylistPage, welcome_page::MusicusWelcomePage,
+    home_page::MusicusHomePage, library::MusicusLibrary, library_manager::LibraryManager,
+    player::MusicusPlayer, player_bar::PlayerBar, playlist_page::MusicusPlaylistPage,
+    welcome_page::MusicusWelcomePage,
 };
 use adw::subclass::prelude::*;
 use gtk::{gio, glib, glib::clone, prelude::*};
@@ -43,6 +44,15 @@ mod imp {
         fn constructed(&self) {
             self.parent_constructed();
             self.obj().load_window_state();
+
+            let navigation_view = self.navigation_view.get().to_owned();
+            let library_action = gio::ActionEntry::builder("library")
+                .activate(move |_: &super::MusicusWindow, _, _| {
+                    navigation_view.push_by_tag("library")
+                })
+                .build();
+
+            self.obj().add_action_entries([library_action]);
 
             let player_bar = PlayerBar::new(&self.player);
             self.player_bar_revealer.set_child(Some(&player_bar));
@@ -144,8 +154,13 @@ impl MusicusWindow {
 
     fn load_library(&self, path: impl AsRef<Path>) {
         let library = MusicusLibrary::new(path);
+
         self.imp()
             .navigation_view
             .replace(&[MusicusHomePage::new(&library, &self.imp().player).into()]);
+
+        self.imp()
+            .navigation_view
+            .add(&LibraryManager::new(&library));
     }
 }
