@@ -1,4 +1,5 @@
 data/ui/home_page.blp
+data/ui/library_manager.blp
 data/ui/player_bar.blp
 data/ui/playlist_page.blp
 data/ui/playlist_tile.blp

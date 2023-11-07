@@ -1,6 +1,7 @@
 mod application;
 mod config;
 mod home_page;
+mod library_manager;
 mod library;
 mod player;
 mod player_bar;
