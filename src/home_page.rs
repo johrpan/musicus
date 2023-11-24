@@ -194,29 +194,36 @@ impl MusicusHomePage {
             let mut tracks = tracks.into_iter();
             let first_track = tracks.next().unwrap();
 
-            let track_title = |track: &Track| -> String {
-                track
+            let track_title = |track: &Track, number: usize| -> String {
+                let title = track
                     .work_parts
                     .iter()
                     .map(|w| work_parts[*w].clone())
                     .collect::<Vec<String>>()
-                    .join(", ")
+                    .join(", ");
+
+                if title.is_empty() {
+                    format!("Track {number}")
+                } else {
+                    title
+                }
             };
 
             items.push(PlaylistItem::new(
                 true,
                 &title,
                 performances.as_ref().map(|x| x.as_str()),
-                Some(&track_title(&first_track)),
+                Some(&track_title(&first_track, 1)),
                 &first_track.path,
             ));
 
-            while let Some(track) = tracks.next() {
+            for (index, track) in tracks.enumerate() {
                 items.push(PlaylistItem::new(
                     false,
                     &title,
                     performances.as_ref().map(|x| x.as_str()),
-                    Some(&track_title(&track)),
+                    // track number = track index + 1 (first track) + 1 (zero based)
+                    Some(&track_title(&track, index + 2)),
                     &track.path,
                 ));
             }
