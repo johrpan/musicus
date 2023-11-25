@@ -59,7 +59,7 @@ mod imp {
                     ..Default::default()
                 });
 
-                let uri = glib::filename_to_uri(&item.path(), None)
+                let uri = glib::filename_to_uri(item.path(), None)
                     .expect("track path should be parsable as an URI");
 
                 let player = self.player.get().unwrap();
