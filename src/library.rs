@@ -380,7 +380,7 @@ impl MusicusLibrary {
                         .get::<_, String>(4)?
                         .split(',')
                         .filter(|s| !s.is_empty())
-                        .map(|s| str::parse::<usize>(s))
+                        .map(str::parse::<usize>)
                         .collect::<Result<Vec<usize>, ParseIntError>>()
                         .expect("work part IDs should be valid integers"),
                     path: PathBuf::from(self.folder()).join(row.get::<_, String>(6)?),

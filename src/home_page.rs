@@ -185,7 +185,7 @@ impl MusicusHomePage {
             items.push(PlaylistItem::new(
                 true,
                 &title,
-                performances.as_ref().map(|x| x.as_str()),
+                performances.as_deref(),
                 None,
                 &tracks[0].path,
             ));
@@ -212,7 +212,7 @@ impl MusicusHomePage {
             items.push(PlaylistItem::new(
                 true,
                 &title,
-                performances.as_ref().map(|x| x.as_str()),
+                performances.as_deref(),
                 Some(&track_title(&first_track, 1)),
                 &first_track.path,
             ));
@@ -221,7 +221,7 @@ impl MusicusHomePage {
                 items.push(PlaylistItem::new(
                     false,
                     &title,
-                    performances.as_ref().map(|x| x.as_str()),
+                    performances.as_deref(),
                     // track number = track index + 1 (first track) + 1 (zero based)
                     Some(&track_title(&track, index + 2)),
                     &track.path,

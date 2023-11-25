@@ -71,9 +71,7 @@ mod imp {
 
             self.remaining_time_label.set_label(&format_time(
                 player
-                    .duration_ms()
-                    .checked_sub(current_time_ms)
-                    .unwrap_or(0),
+                    .duration_ms().saturating_sub(current_time_ms),
             ));
         }
     }
