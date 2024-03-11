@@ -19,7 +19,7 @@ use self::{application::MusicusApplication, window::MusicusWindow};
 
 use config::{GETTEXT_PACKAGE, LOCALEDIR, PKGDATADIR};
 use gettextrs::{bind_textdomain_codeset, bindtextdomain, textdomain};
-use gstreamer_player::gst;
+use gstreamer_play::gst;
 use gtk::{gio, glib, prelude::*};
 
 fn main() -> glib::ExitCode {

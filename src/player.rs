@@ -1,6 +1,6 @@
 use crate::playlist_item::PlaylistItem;
 use fragile::Fragile;
-use gstreamer_player::gst;
+use gstreamer_play::gst;
 use gtk::{
     gio,
     glib::{self, clone, subclass::Signal, Properties},
@@ -34,9 +34,9 @@ mod imp {
         pub duration_ms: Cell<u64>,
         #[property(get, set)]
         pub position_ms: Cell<u64>,
-        #[property(get, construct_only)]
-        pub player: OnceCell<gstreamer_player::Player>,
 
+        pub play: OnceCell<gstreamer_play::Play>,
+        pub play_signal_adapter: OnceCell<gstreamer_play::PlaySignalAdapter>,
         pub mpris: OnceCell<Arc<MprisPlayer>>,
     }
 
@@ -62,10 +62,10 @@ mod imp {
                 let uri = glib::filename_to_uri(item.path(), None)
                     .expect("track path should be parsable as an URI");
 
-                let player = self.player.get().unwrap();
-                player.set_uri(Some(&uri));
+                let play = self.play.get().unwrap();
+                play.set_uri(Some(&uri));
                 if self.playing.get() {
-                    player.play();
+                    play.play();
                 }
 
                 self.current_index.set(index);
@@ -92,6 +92,8 @@ mod imp {
         fn constructed(&self) {
             self.parent_constructed();
 
+            let play = gstreamer_play::Play::new(None::<gstreamer_play::PlayVideoRenderer>);
+
             let mpris = MprisPlayer::new(
                 "de.johrpan.musicus".to_string(),
                 "Musicus".to_string(),
@@ -116,20 +118,20 @@ mod imp {
 
             self.mpris.set(mpris).expect("mpris should not be set");
 
-            let player = self.player.get().unwrap();
-
-            let mut config = player.config();
+            let mut config = play.config();
             config.set_position_update_interval(250);
-            player.set_config(config).unwrap();
-            player.set_video_track_enabled(false);
+            play.set_config(config).unwrap();
+            play.set_video_track_enabled(false);
+
+            let play_signal_adapter = gstreamer_play::PlaySignalAdapter::new(&play);
 
             let obj = Fragile::new(self.obj().to_owned());
-            player.connect_end_of_stream(move |_| {
+            play_signal_adapter.connect_end_of_stream(move |_| {
                 obj.get().next();
             });
 
             let obj = Fragile::new(self.obj().to_owned());
-            player.connect_position_updated(move |_, position| {
+            play_signal_adapter.connect_position_updated(move |_, position| {
                 if let Some(position) = position {
                     let obj = obj.get();
                     obj.imp().position_ms.set(position.mseconds());
@@ -138,7 +140,7 @@ mod imp {
             });
 
             let obj = Fragile::new(self.obj().to_owned());
-            player.connect_duration_changed(move |_, duration| {
+            play_signal_adapter.connect_duration_changed(move |_, duration| {
                 if let Some(duration) = duration {
                     let obj = obj.get();
                     let imp = obj.imp();
@@ -150,6 +152,9 @@ mod imp {
                     obj.notify_duration_ms();
                 }
             });
+
+            self.play.set(play).unwrap();
+            self.play_signal_adapter.set(play_signal_adapter).unwrap();
         }
     }
 }
@@ -160,13 +165,6 @@ glib::wrapper! {
 
 impl MusicusPlayer {
     pub fn new() -> Self {
-        let player = gstreamer_player::Player::new(
-            None::<gstreamer_player::PlayerVideoRenderer>,
-            Some(gstreamer_player::PlayerGMainContextSignalDispatcher::new(
-                None,
-            )),
-        );
-
         glib::Object::builder()
             .property("active", false)
             .property("playing", false)
@@ -174,7 +172,6 @@ impl MusicusPlayer {
             .property("current-index", 0u32)
             .property("position-ms", 0u64)
             .property("duration-ms", 60_000u64)
-            .property("player", player)
             .build()
     }
 
@@ -209,27 +206,31 @@ impl MusicusPlayer {
     }
 
     pub fn play(&self) {
-        self.player().play();
+        let imp = self.imp();
+        imp.play.get().unwrap().play();
         self.set_playing(true);
-        self.imp()
-            .mpris
+        imp.mpris
             .get()
             .unwrap()
             .set_playback_status(PlaybackStatus::Playing);
     }
 
     pub fn pause(&self) {
-        self.player().pause();
+        let imp = self.imp();
+        imp.play.get().unwrap().pause();
         self.set_playing(false);
-        self.imp()
-            .mpris
+        imp.mpris
             .get()
             .unwrap()
             .set_playback_status(PlaybackStatus::Paused);
     }
 
     pub fn seek_to(&self, time_ms: u64) {
-        self.player().seek(gst::ClockTime::from_mseconds(time_ms));
+        let imp = self.imp();
+        imp.play
+            .get()
+            .unwrap()
+            .seek(gst::ClockTime::from_mseconds(time_ms));
     }
 
     pub fn current_item(&self) -> Option<PlaylistItem> {
