@@ -2,4 +2,5 @@
 /.flatpak/
 /.vscode/
 /target/
+/src/config.rs
 /test.sqlite
