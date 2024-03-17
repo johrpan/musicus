@@ -3,3 +3,5 @@
 /.vscode/
 /target/
 /test.sqlite
+/src/config.rs
+/test.sqlite
