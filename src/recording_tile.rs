@@ -1,6 +1,7 @@
-use crate::library::Recording;
 use gtk::{glib, subclass::prelude::*};
 use std::cell::OnceCell;
+
+use crate::db::models::Recording;
 
 mod imp {
     use super::*;
@@ -44,14 +45,14 @@ glib::wrapper! {
 }
 
 impl MusicusRecordingTile {
-    pub fn new(recording: &Recording, performances: Vec<String>) -> Self {
+    pub fn new(recording: &Recording) -> Self {
         let obj: Self = glib::Object::new();
         let imp = obj.imp();
 
-        imp.work_label.set_label(&recording.work.title);
-        imp.composer_label
-            .set_label(&recording.work.composer.name_fl());
-        imp.performances_label.set_label(&performances.join(", "));
+        imp.work_label.set_label(&recording.work.name.get());
+        imp.composer_label.set_label(&recording.work.composers_string());
+        imp.performances_label.set_label(&recording.performers_string());
+
         imp.recording.set(recording.clone()).unwrap();
 
         obj

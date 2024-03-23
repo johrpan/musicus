@@ -1,7 +1,8 @@
-use crate::library::{Ensemble, Person, Work};
 use adw::{glib, glib::subclass::Signal, prelude::*, subclass::prelude::*};
 use once_cell::sync::Lazy;
 use std::cell::OnceCell;
+
+use crate::db::models::{Ensemble, Person, Work};
 
 mod imp {
     use super::*;
@@ -53,11 +54,11 @@ impl MusicusSearchTag {
     pub fn new(tag: Tag) -> Self {
         let obj: MusicusSearchTag = glib::Object::new();
 
-        obj.imp().label.set_label(&match &tag {
-            Tag::Composer(person) => person.name_fl(),
-            Tag::Performer(person) => person.name_fl(),
-            Tag::Ensemble(ensemble) => ensemble.name.clone(),
-            Tag::Work(work) => work.title.clone(),
+        obj.imp().label.set_label(match &tag {
+            Tag::Composer(person) => person.name.get(),
+            Tag::Performer(person) => person.name.get(),
+            Tag::Ensemble(ensemble) => ensemble.name.get(),
+            Tag::Work(work) => work.name.get(),
         });
 
         obj.imp().tag.set(tag).unwrap();

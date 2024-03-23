@@ -48,14 +48,14 @@ impl MusicusTagTile {
 
         match &tag {
             Tag::Composer(person) | Tag::Performer(person) => {
-                imp.title_label.set_label(&person.name_fl());
+                imp.title_label.set_label(person.name.get());
             }
             Tag::Ensemble(ensemble) => {
-                imp.title_label.set_label(&ensemble.name);
+                imp.title_label.set_label(ensemble.name.get());
             }
             Tag::Work(work) => {
-                imp.title_label.set_label(&work.title);
-                imp.subtitle_label.set_label(&work.composer.name_fl());
+                imp.title_label.set_label(work.name.get());
+                imp.subtitle_label.set_label(&work.composers_string());
                 imp.subtitle_label.set_visible(true);
             }
         }
