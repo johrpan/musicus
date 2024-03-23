@@ -1,5 +1,6 @@
 use crate::{
-    library::{Ensemble, LibraryQuery, MusicusLibrary, Person, Recording, Track, Work},
+    db::models::*,
+    library::{LibraryQuery, MusicusLibrary},
     player::MusicusPlayer,
     playlist_item::PlaylistItem,
     recording_tile::MusicusRecordingTile,
@@ -159,7 +160,7 @@ impl MusicusHomePage {
     }
 
     fn play_recording(&self, recording: &Recording) {
-        let tracks = self.library().tracks(recording);
+        let tracks = &recording.tracks;
 
         if tracks.is_empty() {
             log::warn!("Ignoring recording without tracks being added to the playlist.");
@@ -168,16 +169,11 @@ impl MusicusHomePage {
 
         let title = format!(
             "{}: {}",
-            recording.work.composer.name_fl(),
-            recording.work.title
+            recording.work.composers_string(),
+            recording.work.name.get(),
         );
 
-        let performances = self.library().performances(recording);
-        let performances = if performances.is_empty() {
-            None
-        } else {
-            Some(performances.join(", "))
-        };
+        let performances = recording.performers_string();
 
         let mut items = Vec::new();
 
@@ -185,20 +181,19 @@ impl MusicusHomePage {
             items.push(PlaylistItem::new(
                 true,
                 &title,
-                performances.as_deref(),
+                Some(&performances),
                 None,
                 &tracks[0].path,
             ));
         } else {
-            let work_parts = self.library().work_parts(&recording.work);
             let mut tracks = tracks.into_iter();
             let first_track = tracks.next().unwrap();
 
             let track_title = |track: &Track, number: usize| -> String {
                 let title = track
-                    .work_parts
+                    .works
                     .iter()
-                    .map(|w| work_parts[*w].clone())
+                    .map(|w| w.name.get().to_string())
                     .collect::<Vec<String>>()
                     .join(", ");
 
@@ -212,7 +207,7 @@ impl MusicusHomePage {
             items.push(PlaylistItem::new(
                 true,
                 &title,
-                performances.as_deref(),
+                Some(&performances),
                 Some(&track_title(&first_track, 1)),
                 &first_track.path,
             ));
@@ -221,7 +216,7 @@ impl MusicusHomePage {
                 items.push(PlaylistItem::new(
                     false,
                     &title,
-                    performances.as_deref(),
+                    Some(&performances),
                     // track number = track index + 1 (first track) + 1 (zero based)
                     Some(&track_title(&track, index + 2)),
                     &track.path,
@@ -234,7 +229,7 @@ impl MusicusHomePage {
 
     fn query(&self, query: &LibraryQuery) {
         let imp = self.imp();
-        let results = self.library().query(query);
+        let results = self.library().query(query).unwrap();
 
         for flowbox in [
             &imp.composers_flow_box,
@@ -284,9 +279,8 @@ impl MusicusHomePage {
             }
 
             for recording in &results.recordings {
-                let performances = self.library().performances(recording);
                 imp.recordings_flow_box
-                    .append(&MusicusRecordingTile::new(recording, performances));
+                    .append(&MusicusRecordingTile::new(recording));
             }
 
             imp.composers.replace(results.composers);

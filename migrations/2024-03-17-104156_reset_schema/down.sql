@@ -1,0 +1,1 @@
+-- This migration is intended to become the initial schema.
