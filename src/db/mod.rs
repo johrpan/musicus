@@ -17,6 +17,8 @@ use diesel::{
 use diesel_migrations::{EmbeddedMigrations, MigrationHarness};
 use serde::{Deserialize, Serialize};
 
+use crate::util;
+
 // This makes the SQL migration scripts accessible from the code.
 const MIGRATIONS: EmbeddedMigrations = diesel_migrations::embed_migrations!();
 
@@ -48,10 +50,7 @@ impl TranslatedString {
     /// generic translation exists (which is a bug in the data), an empty string is
     /// returned and a warning is logged.
     pub fn get(&self) -> &str {
-        // TODO: Get language from locale.
-        let lang = "generic";
-
-        match self.0.get(lang) {
+        match self.0.get(&*util::LANG) {
             Some(s) => s,
             None => match self.0.get("generic") {
                 Some(s) => s,

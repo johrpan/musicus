@@ -1050,6 +1050,7 @@ dependencies = [
  "gettext-rs",
  "gstreamer-play",
  "gtk4",
+ "lazy_static",
  "libadwaita",
  "log",
  "mpris-player",

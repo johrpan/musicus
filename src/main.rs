@@ -13,6 +13,7 @@ mod recording_tile;
 mod search_entry;
 mod search_tag;
 mod tag_tile;
+mod util;
 mod welcome_page;
 mod window;
 
