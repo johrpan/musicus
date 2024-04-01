@@ -496,6 +496,16 @@ pub struct LibraryQuery {
     pub search: String,
 }
 
+impl LibraryQuery {
+    pub fn is_empty(&self) -> bool {
+        self.composer.is_none()
+            && self.performer.is_none()
+            && self.ensemble.is_none()
+            && self.work.is_none()
+            && self.search.is_empty()
+    }
+}
+
 #[derive(Default, Debug)]
 pub struct LibraryResults {
     pub composers: Vec<Person>,
