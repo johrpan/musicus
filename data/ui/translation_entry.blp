@@ -1,0 +1,59 @@
+using Gtk 4.0;
+using Adw 1;
+
+template $MusicusTranslationEntry : Adw.EntryRow {
+  title: _("Translated name");
+
+  Gtk.Button {
+    icon-name: "edit-delete-symbolic";
+    valign: center;
+    clicked => $remove() swapped;
+    styles ["flat"]
+  }
+
+  Gtk.Button {
+    valign: center;
+    clicked => $open_lang_popover() swapped;
+
+    Gtk.Box {
+      spacing: 6;
+
+      Gtk.Label {
+        label: bind lang_entry.text;
+      }
+
+      Gtk.Image {
+        icon-name: "pan-down-symbolic";
+      }
+
+      Gtk.Popover lang_popover {
+        Gtk.Box {
+          orientation: vertical;
+          spacing: 6;
+          margin-start: 6;
+          margin-end: 6;
+          margin-top: 6;
+          margin-bottom: 6;
+
+          Gtk.Label {
+            label: _("Language code");
+            halign: start;
+            styles ["heading"]
+          }
+
+          Gtk.Label {
+            width-request: 200;
+            label: _("Enter an <a href=\"https://en.wikipedia.org/wiki/List_of_ISO_639_language_codes\">ISO 639</a> two-letter language code identifying the language this translation uses.");
+            use-markup: true;
+            wrap: true;
+            max-width-chars: 40;
+            halign: start;
+            styles ["dim-label"]
+          }
+
+          Gtk.Entry lang_entry {}
+        }
+      }
+    }
+  }
+}

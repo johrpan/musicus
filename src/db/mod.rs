@@ -39,9 +39,9 @@ pub fn connect(file_name: &str) -> Result<SqliteConnection> {
 }
 
 /// A single translated string value.
-#[derive(Serialize, Deserialize, AsExpression, FromSqlRow, Clone, Debug)]
+#[derive(Serialize, Deserialize, AsExpression, FromSqlRow, Clone, Default, Debug)]
 #[diesel(sql_type = Text)]
-pub struct TranslatedString(HashMap<String, String>);
+pub struct TranslatedString(pub HashMap<String, String>);
 
 impl TranslatedString {
     /// Get the best translation for the user's current locale.
