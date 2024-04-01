@@ -1,0 +1,15 @@
+using Gtk 4.0;
+using Adw 1;
+
+template $MusicusPersonEditor : Adw.NavigationPage {
+  title: _("Person");
+
+  Adw.ToolbarView {
+    [top]
+    Adw.HeaderBar header_bar {}
+
+    Adw.Clamp {
+      $MusicusTranslationSection name_section {}
+    }
+  }
+}

@@ -1,10 +1,12 @@
-use crate::library::MusicusLibrary;
 use adw::{
     prelude::*,
     subclass::{navigation_page::NavigationPageImpl, prelude::*},
 };
 use gtk::glib::{self, Properties};
 use std::cell::OnceCell;
+
+use crate::editor::person_editor::MusicusPersonEditor;
+use crate::library::MusicusLibrary;
 
 mod imp {
     use super::*;
@@ -34,7 +36,12 @@ mod imp {
     }
 
     #[glib::derived_properties]
-    impl ObjectImpl for LibraryManager {}
+    impl ObjectImpl for LibraryManager {
+        fn constructed(&self) {
+            self.parent_constructed();
+            self.obj().set_child(Some(&MusicusPersonEditor::new()));
+        }
+    }
 
     impl WidgetImpl for LibraryManager {}
     impl NavigationPageImpl for LibraryManager {}

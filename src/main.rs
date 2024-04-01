@@ -1,6 +1,7 @@
 mod application;
 mod config;
 mod db;
+mod editor;
 mod home_page;
 mod library_manager;
 mod library;
