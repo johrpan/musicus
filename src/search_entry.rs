@@ -2,7 +2,11 @@ use crate::{
     library::LibraryQuery,
     search_tag::{MusicusSearchTag, Tag},
 };
-use adw::{gdk, gio, glib, glib::clone, glib::subclass::Signal, prelude::*, subclass::prelude::*};
+use adw::{prelude::*, subclass::prelude::*};
+use gtk::{
+    gdk, gio,
+    glib::{self, clone, subclass::Signal, Propagation},
+};
 use once_cell::sync::Lazy;
 use std::{cell::RefCell, time::Duration};
 
@@ -45,9 +49,9 @@ mod imp {
                     ) {
                         Some(obj) => {
                             obj.reset();
-                            true
+                            Propagation::Stop
                         }
-                        None => false,
+                        None => Propagation::Proceed,
                     }))
                     .build(),
             );
@@ -150,7 +154,7 @@ impl MusicusSearchEntry {
 
         imp.clear_icon.set_visible(true);
         imp.text.set_text("");
-        
+
         let tag = MusicusSearchTag::new(tag);
 
         tag.connect_remove(clone!(@weak self as self_ => move |tag| {
