@@ -5,6 +5,7 @@ use crate::{
     library::{LibraryQuery, MusicusLibrary},
     player::MusicusPlayer,
     playlist_item::PlaylistItem,
+    program_tile::{MusicusProgramTile, Program, ProgramTileDesign},
     recording_tile::MusicusRecordingTile,
     search_entry::MusicusSearchEntry,
     search_tag::Tag,
@@ -52,6 +53,8 @@ mod imp {
         pub title_label: TemplateChild<gtk::Label>,
         #[template_child]
         pub subtitle_label: TemplateChild<gtk::Label>,
+        #[template_child]
+        pub programs_flow_box: TemplateChild<gtk::FlowBox>,
         #[template_child]
         pub composers_flow_box: TemplateChild<gtk::FlowBox>,
         #[template_child]
@@ -103,6 +106,30 @@ mod imp {
                 .invert_boolean()
                 .sync_create()
                 .build();
+
+            self.programs_flow_box
+                .append(&MusicusProgramTile::new(Program {
+                        title: "Just play some music".to_string(),
+                        description: "Randomly select some music. Customize programs using the button in the top right."
+                            .to_string(),
+                        design: Some(ProgramTileDesign::Program1)
+                    },
+                ));
+
+            self.programs_flow_box
+                .append(&MusicusProgramTile::new(Program {
+                    title: "What's new?".to_string(),
+                    description: "Recordings that you recently added to your music library."
+                        .to_string(),
+                    design: Some(ProgramTileDesign::Program2),
+                }));
+
+            self.programs_flow_box
+                .append(&MusicusProgramTile::new(Program {
+                    title: "A long time ago".to_string(),
+                    description: "Works that you haven't listend to for a long time.".to_string(),
+                    design: Some(ProgramTileDesign::Program3),
+                }));
 
             self.obj().query(&LibraryQuery::default());
         }
@@ -167,30 +194,42 @@ impl MusicusHomePage {
     fn select(&self, search_entry: &MusicusSearchEntry) {
         let imp = self.imp();
 
-        let (composer, performer, ensemble, work, recording, album) = {
-            (
-                imp.composers.borrow().first().cloned(),
-                imp.performers.borrow().first().cloned(),
-                imp.ensembles.borrow().first().cloned(),
-                imp.works.borrow().first().cloned(),
-                imp.recordings.borrow().first().cloned(),
-                imp.albums.borrow().first().cloned(),
-            )
-        };
+        if imp.programs_flow_box.is_visible() {
+            log::info!("Program selected");
+        } else {
+            let (composer, performer, ensemble, work, recording, album) = {
+                (
+                    imp.composers.borrow().first().cloned(),
+                    imp.performers.borrow().first().cloned(),
+                    imp.ensembles.borrow().first().cloned(),
+                    imp.works.borrow().first().cloned(),
+                    imp.recordings.borrow().first().cloned(),
+                    imp.albums.borrow().first().cloned(),
+                )
+            };
 
-        if let Some(person) = composer {
-            search_entry.add_tag(Tag::Composer(person));
-        } else if let Some(person) = performer {
-            search_entry.add_tag(Tag::Performer(person));
-        } else if let Some(ensemble) = ensemble {
-            search_entry.add_tag(Tag::Ensemble(ensemble));
-        } else if let Some(work) = work {
-            search_entry.add_tag(Tag::Work(work));
-        } else if let Some(recording) = recording {
-            self.play_recording(&recording);
-        } else if let Some(album) = album {
-            self.show_album(&album);
+            if let Some(person) = composer {
+                search_entry.add_tag(Tag::Composer(person));
+            } else if let Some(person) = performer {
+                search_entry.add_tag(Tag::Performer(person));
+            } else if let Some(ensemble) = ensemble {
+                search_entry.add_tag(Tag::Ensemble(ensemble));
+            } else if let Some(work) = work {
+                search_entry.add_tag(Tag::Work(work));
+            } else if let Some(recording) = recording {
+                self.play_recording(&recording);
+            } else if let Some(album) = album {
+                self.show_album(&album);
+            }
         }
+    }
+
+    #[template_callback]
+    fn program_selected(&self, tile: &gtk::FlowBoxChild, _: &gtk::FlowBox) {
+        log::info!(
+            "Program selected: {:?}",
+            tile.downcast_ref::<MusicusProgramTile>().unwrap().program()
+        );
     }
 
     #[template_callback]
@@ -302,6 +341,8 @@ impl MusicusHomePage {
                 flowbox.remove(&widget);
             }
         }
+
+        imp.programs_flow_box.set_visible(query.is_empty());
 
         if let Some(tag) = imp.search_entry.tags().first() {
             match tag {

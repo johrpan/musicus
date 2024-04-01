@@ -1,0 +1,32 @@
+using Gtk 4.0;
+
+template $MusicusProgramTile : Gtk.FlowBoxChild {
+  styles ["program", "card", "activatable"]
+  
+  Gtk.Box {
+    orientation: vertical;
+  
+    Gtk.Button edit_button {
+      styles ["flat", "circular"]
+      halign: end;
+      icon-name: "document-edit-symbolic";
+    }
+
+    Gtk.Label title_label {
+      styles ["title"]
+      halign: start;
+      margin-top: 24;
+      wrap: true;
+      max-width-chars: 0;
+
+    }
+    
+    Gtk.Label description_label {
+      styles ["description"]
+      margin-top: 6;
+      halign: start;
+      wrap: true;
+      max-width-chars: 0;
+    }
+  }
+}
