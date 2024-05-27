@@ -40,8 +40,8 @@
             "sources": [
                 {
                     "type": "git",
-                    "url": "https://gitlab.gnome.org/jwestman/blueprint-compiler",
-                    "tag": "v0.8.1"
+                    "url": "https://gitlab.gnome.org/jwestman/blueprint-compiler.git",
+                    "tag": "v0.12.0"
                 }
             ]
         },
