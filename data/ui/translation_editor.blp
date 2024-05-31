@@ -1,0 +1,29 @@
+using Gtk 4.0;
+using Adw 1;
+
+template $MusicusTranslationEditor: Adw.Bin {
+  Gtk.ListBox list_box {
+    selection-mode: none;
+
+    styles [
+      "boxed-list"
+    ]
+
+    Adw.EntryRow entry_row {
+      title: _("Name");
+    }
+
+    Adw.ActionRow {
+      title: _("Add translation");
+      activatable: true;
+      activated => $add_translation() swapped;
+
+      [prefix]
+      Gtk.Box select_person_box {
+        Gtk.Image {
+          icon-name: "list-add-symbolic";
+        }
+      }
+    }
+  }
+}

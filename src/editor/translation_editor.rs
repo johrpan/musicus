@@ -12,8 +12,10 @@ mod imp {
     use super::*;
 
     #[derive(Debug, Default, gtk::CompositeTemplate)]
-    #[template(file = "data/ui/translation_section.blp")]
-    pub struct MusicusTranslationSection {
+    #[template(file = "data/ui/translation_editor.blp")]
+    pub struct MusicusTranslationEditor {
+        #[template_child]
+        pub list_box: TemplateChild<gtk::ListBox>,
         #[template_child]
         pub entry_row: TemplateChild<adw::EntryRow>,
 
@@ -21,10 +23,10 @@ mod imp {
     }
 
     #[glib::object_subclass]
-    impl ObjectSubclass for MusicusTranslationSection {
-        const NAME: &'static str = "MusicusTranslationSection";
-        type Type = super::MusicusTranslationSection;
-        type ParentType = adw::PreferencesGroup;
+    impl ObjectSubclass for MusicusTranslationEditor {
+        const NAME: &'static str = "MusicusTranslationEditor";
+        type Type = super::MusicusTranslationEditor;
+        type ParentType = adw::Bin;
 
         fn class_init(klass: &mut Self::Class) {
             klass.bind_template();
@@ -36,23 +38,23 @@ mod imp {
         }
     }
 
-    impl ObjectImpl for MusicusTranslationSection {
+    impl ObjectImpl for MusicusTranslationEditor {
         fn constructed(&self) {
             self.parent_constructed();
         }
     }
 
-    impl WidgetImpl for MusicusTranslationSection {}
-    impl PreferencesGroupImpl for MusicusTranslationSection {}
+    impl WidgetImpl for MusicusTranslationEditor {}
+    impl BinImpl for MusicusTranslationEditor {}
 }
 
 glib::wrapper! {
-    pub struct MusicusTranslationSection(ObjectSubclass<imp::MusicusTranslationSection>)
+    pub struct MusicusTranslationEditor(ObjectSubclass<imp::MusicusTranslationEditor>)
         @extends gtk::Widget, adw::PreferencesGroup;
 }
 
 #[gtk::template_callbacks]
-impl MusicusTranslationSection {
+impl MusicusTranslationEditor {
     pub fn new(translation: TranslatedString) -> Self {
         let obj: Self = glib::Object::new();
         let mut translation = translation.0;
@@ -69,7 +71,7 @@ impl MusicusTranslationSection {
     }
 
     #[template_callback]
-    fn add_translation(&self, _: &gtk::Button) {
+    fn add_translation(&self, _: &adw::ActionRow) {
         self.add_entry(&util::LANG, &self.imp().entry_row.text());
     }
 
@@ -90,14 +92,13 @@ impl MusicusTranslationSection {
 
         let obj = self.clone();
         entry.connect_remove(move |entry| {
-            let mut entries = obj.imp().translation_entries.borrow_mut();
-            if let Some(index) = entries.iter().position(|e| e == entry) {
-                entries.remove(index);
-            }
-            obj.remove(entry);
+            obj.imp().translation_entries.borrow_mut().retain(|e| e != entry);
+            obj.imp().list_box.remove(entry);
         });
 
-        self.add(&entry);
+        self.imp().list_box.insert(&entry, self.imp().translation_entries.borrow().len() as i32 + 1);
+        entry.grab_focus();
+
         self.imp().translation_entries.borrow_mut().push(entry);
     }
 }

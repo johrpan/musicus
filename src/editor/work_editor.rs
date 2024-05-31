@@ -3,7 +3,7 @@ use crate::{
     editor::{
         instrument_selector_popover::MusicusInstrumentSelectorPopover,
         person_selector_popover::MusicusPersonSelectorPopover,
-        translation_section::MusicusTranslationSection,
+        translation_editor::MusicusTranslationEditor,
         work_editor_composer_row::MusicusWorkEditorComposerRow,
     },
     library::MusicusLibrary,
@@ -50,7 +50,7 @@ mod imp {
         type ParentType = adw::NavigationPage;
 
         fn class_init(klass: &mut Self::Class) {
-            MusicusTranslationSection::static_type();
+            MusicusTranslationEditor::static_type();
             klass.bind_template();
             klass.bind_template_instance_callbacks();
         }

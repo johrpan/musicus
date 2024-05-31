@@ -16,7 +16,19 @@ template $MusicusWorkEditor: Adw.NavigationPage {
           margin-start: 12;
           margin-end: 12;
 
-          $MusicusTranslationSection name_section {}
+          Gtk.Label {
+            label: _("Name");
+            xalign: 0;
+            margin-top: 24;
+
+            styles [
+              "heading"
+            ]
+          }
+
+          $MusicusTranslationEditor name_editor {
+            margin-top: 12;
+          }
 
           Gtk.Label {
             label: _("Composers");
