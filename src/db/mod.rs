@@ -2,7 +2,7 @@ pub mod models;
 pub mod schema;
 pub mod tables;
 
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Display};
 
 use anyhow::{anyhow, Result};
 use diesel::{
@@ -60,6 +60,12 @@ impl TranslatedString {
                 }
             },
         }
+    }
+}
+
+impl Display for TranslatedString {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.get())
     }
 }
 

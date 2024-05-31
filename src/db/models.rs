@@ -16,7 +16,7 @@ pub struct Work {
     pub work_id: String,
     pub name: TranslatedString,
     pub parts: Vec<WorkPart>,
-    pub persons: Vec<Person>,
+    pub persons: Vec<Composer>,
     pub instruments: Vec<Instrument>,
 }
 
@@ -25,6 +25,14 @@ pub struct WorkPart {
     pub work_id: String,
     pub level: u8,
     pub name: TranslatedString,
+}
+
+#[derive(Queryable, Selectable, Clone, Debug)]
+pub struct Composer {
+    #[diesel(embed)]
+    pub person: Person,
+    #[diesel(embed)]
+    pub role: Role,
 }
 
 #[derive(Clone, Debug)]
@@ -65,6 +73,45 @@ impl PartialEq for Person {
     }
 }
 
+impl Display for Person {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.name)
+    }
+}
+
+impl Display for Instrument {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.name)
+    }
+}
+
+impl Eq for Instrument {}
+impl PartialEq for Instrument {
+    fn eq(&self, other: &Self) -> bool {
+        self.instrument_id == other.instrument_id
+    }
+}
+
+impl Display for Role {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.name)
+    }
+}
+
+impl Eq for Role {}
+impl PartialEq for Role {
+    fn eq(&self, other: &Self) -> bool {
+        self.role_id == other.role_id
+    }
+}
+
+impl Eq for Composer {}
+impl PartialEq for Composer {
+    fn eq(&self, other: &Self) -> bool {
+        self.person == other.person && self.role == other.role
+    }
+}
+
 impl Work {
     pub fn from_table(data: tables::Work, connection: &mut SqliteConnection) -> Result<Self> {
         fn visit_children(
@@ -95,11 +142,11 @@ impl Work {
 
         let parts = visit_children(&data.work_id, 0, connection)?;
 
-        let persons: Vec<Person> = persons::table
-            .inner_join(work_persons::table)
+        let persons: Vec<Composer> = persons::table
+            .inner_join(work_persons::table.inner_join(roles::table))
             .order(work_persons::sequence_number)
             .filter(work_persons::work_id.eq(&data.work_id))
-            .select(tables::Person::as_select())
+            .select(Composer::as_select())
             .load(connection)?;
 
         let instruments: Vec<Instrument> = instruments::table
@@ -119,9 +166,10 @@ impl Work {
     }
 
     pub fn composers_string(&self) -> String {
+        // TODO: Include roles except default composer.
         self.persons
             .iter()
-            .map(|p| p.name.get().to_string())
+            .map(|p| p.person.name.get().to_string())
             .collect::<Vec<String>>()
             .join(", ")
     }
@@ -131,6 +179,12 @@ impl Eq for Work {}
 impl PartialEq for Work {
     fn eq(&self, other: &Self) -> bool {
         self.work_id == other.work_id
+    }
+}
+
+impl Display for Work {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}: {}", self.composers_string(), self.name)
     }
 }
 
@@ -155,6 +209,12 @@ impl Eq for Ensemble {}
 impl PartialEq for Ensemble {
     fn eq(&self, other: &Self) -> bool {
         self.ensemble_id == other.ensemble_id
+    }
+}
+
+impl Display for Ensemble {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.name)
     }
 }
 
@@ -224,6 +284,12 @@ impl Recording {
         );
 
         performers.join(", ")
+    }
+}
+
+impl Display for Recording {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}; {}", self.work, self.performers_string())
     }
 }
 

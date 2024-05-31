@@ -1,0 +1,33 @@
+using Gtk 4.0;
+using Adw 1;
+
+template $MusicusWorkEditorComposerRow: Adw.ActionRow {
+  Gtk.Button {
+    icon-name: "user-trash-symbolic";
+    valign: center;
+    clicked => $remove() swapped;
+
+    styles [
+      "flat"
+    ]
+  }
+
+  Gtk.Button {
+    valign: center;
+    clicked => $open_role_popover() swapped;
+
+    styles [
+      "flat"
+    ]
+
+    Gtk.Box role_box {
+      spacing: 6;
+
+      Gtk.Label role_label {}
+
+      Gtk.Image {
+        icon-name: "pan-down-symbolic";
+      }
+    }
+  }
+}

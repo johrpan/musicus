@@ -1,0 +1,119 @@
+using Gtk 4.0;
+using Adw 1;
+
+template $MusicusWorkEditor: Adw.NavigationPage {
+  title: _("Work");
+
+  Adw.ToolbarView {
+    [top]
+    Adw.HeaderBar header_bar {}
+
+    Gtk.ScrolledWindow {
+      Adw.Clamp {
+        Gtk.Box {
+          orientation: vertical;
+          margin-bottom: 24;
+          margin-start: 12;
+          margin-end: 12;
+
+          $MusicusTranslationSection name_section {}
+
+          Gtk.Label {
+            label: _("Composers");
+            xalign: 0;
+            margin-top: 24;
+
+            styles [
+              "heading"
+            ]
+          }
+
+          Gtk.ListBox composer_list {
+            selection-mode: none;
+            margin-top: 12;
+
+            styles [
+              "boxed-list"
+            ]
+
+            Adw.ActionRow {
+              title: _("Add composer");
+              activatable: true;
+              activated => $add_person() swapped;
+
+              [prefix]
+              Gtk.Box select_person_box {
+                Gtk.Image {
+                  icon-name: "list-add-symbolic";
+                }
+              }
+            }
+          }
+
+          Gtk.Label {
+            label: _("Structure");
+            xalign: 0;
+            margin-top: 24;
+
+            styles [
+              "heading"
+            ]
+          }
+
+          Gtk.ListBox part_list {
+            selection-mode: none;
+            margin-top: 12;
+
+            styles [
+              "boxed-list"
+            ]
+
+            Adw.ActionRow {
+              title: _("Add part");
+              activatable: true;
+              activated => $add_part() swapped;
+
+              [prefix]
+              Gtk.Image {
+                icon-name: "list-add-symbolic";
+              }
+            }
+          }
+
+          Gtk.Label {
+            label: _("Instruments");
+            xalign: 0;
+            margin-top: 24;
+
+            styles [
+              "heading"
+            ]
+          }
+
+          Gtk.ListBox instrument_list {
+            selection-mode: none;
+            margin-top: 12;
+            margin-bottom: 24;
+
+            styles [
+              "boxed-list"
+            ]
+
+            Adw.ActionRow {
+              title: _("Add instrument");
+              activatable: true;
+              activated => $add_instrument() swapped;
+
+              [prefix]
+              Gtk.Box select_instrument_box {
+                Gtk.Image {
+                  icon-name: "list-add-symbolic";
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -357,6 +357,57 @@ impl MusicusLibrary {
             ),
         }
     }
+
+    pub fn search_persons(&self, search: &str) -> Result<Vec<Person>> {
+        let search = format!("%{}%", search);
+        let mut binding = self.imp().connection.borrow_mut();
+        let connection = &mut *binding.as_mut().unwrap();
+
+        let persons = persons::table
+            .order(persons::last_used_at.desc())
+            .filter(persons::name.like(&search))
+            .limit(20)
+            .load(connection)?;
+
+        Ok(persons)
+    }
+
+    pub fn search_roles(&self, search: &str) -> Result<Vec<Role>> {
+        let search = format!("%{}%", search);
+        let mut binding = self.imp().connection.borrow_mut();
+        let connection = &mut *binding.as_mut().unwrap();
+
+        let roles = roles::table
+            .order(roles::last_used_at.desc())
+            .filter(roles::name.like(&search))
+            .limit(20)
+            .load(connection)?;
+
+        Ok(roles)
+    }
+
+    pub fn search_instruments(&self, search: &str) -> Result<Vec<Instrument>> {
+        let search = format!("%{}%", search);
+        let mut binding = self.imp().connection.borrow_mut();
+        let connection = &mut *binding.as_mut().unwrap();
+
+        let instruments = instruments::table
+            .order(instruments::last_used_at.desc())
+            .filter(instruments::name.like(&search))
+            .limit(20)
+            .load(connection)?;
+
+        Ok(instruments)
+    }
+
+    pub fn composer_default_role(&self) -> Result<Role> {
+        let mut binding = self.imp().connection.borrow_mut();
+        let connection = &mut *binding.as_mut().unwrap();
+
+        Ok(roles::table
+            .filter(roles::role_id.eq("380d7e09eb2f49c1a90db2ba4acb6ffd"))
+            .first::<Role>(connection)?)
+    }
 }
 
 #[derive(Default, Debug)]

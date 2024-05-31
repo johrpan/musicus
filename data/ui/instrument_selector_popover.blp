@@ -1,0 +1,35 @@
+using Gtk 4.0;
+using Adw 1;
+
+template $MusicusInstrumentSelectorPopover: Gtk.Popover {
+  styles [
+    "selector"
+  ]
+
+  Adw.ToolbarView {
+    [top]
+    Gtk.SearchEntry search_entry {
+      placeholder-text: _("Search instruments…");
+      margin-start: 8;
+      margin-end: 8;
+      margin-top: 8;
+      margin-bottom: 6;
+      search-changed => $search_changed() swapped;
+      activate => $activate() swapped;
+      stop-search => $stop_search() swapped;
+    }
+
+    Gtk.ScrolledWindow scrolled_window {
+      height-request: 200;
+
+      Gtk.ListBox list_box {
+        styles [
+          "selector-list"
+        ]
+
+        selection-mode: none;
+        activate-on-single-click: true;
+      }
+    }
+  }
+}
