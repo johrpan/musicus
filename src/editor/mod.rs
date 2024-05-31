@@ -4,6 +4,6 @@ pub mod person_editor;
 pub mod person_selector_popover;
 pub mod role_selector_popover;
 pub mod translation_entry;
-pub mod translation_section;
+pub mod translation_editor;
 pub mod work_editor;
 pub mod work_editor_composer_row;

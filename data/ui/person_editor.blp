@@ -1,7 +1,7 @@
 using Gtk 4.0;
 using Adw 1;
 
-template $MusicusPersonEditor : Adw.NavigationPage {
+template $MusicusPersonEditor: Adw.NavigationPage {
   title: _("Person");
 
   Adw.ToolbarView {
@@ -9,7 +9,19 @@ template $MusicusPersonEditor : Adw.NavigationPage {
     Adw.HeaderBar header_bar {}
 
     Adw.Clamp {
-      $MusicusTranslationSection name_section {}
+      Gtk.Label {
+        label: _("Name");
+        xalign: 0;
+        margin-top: 24;
+
+        styles [
+          "heading"
+        ]
+      }
+
+      $MusicusTranslationEditor name_editor {
+        margin-start: 12;
+      }
     }
   }
 }

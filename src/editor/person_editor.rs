@@ -1,7 +1,7 @@
 use adw::{prelude::*, subclass::prelude::*};
 use gtk::glib;
 
-use crate::editor::translation_section::MusicusTranslationSection;
+use crate::editor::translation_editor::MusicusTranslationEditor;
 
 mod imp {
     use super::*;
@@ -17,7 +17,7 @@ mod imp {
         type ParentType = adw::NavigationPage;
 
         fn class_init(klass: &mut Self::Class) {
-            MusicusTranslationSection::static_type();
+            MusicusTranslationEditor::static_type();
             klass.bind_template();
             klass.bind_template_instance_callbacks();
         }
