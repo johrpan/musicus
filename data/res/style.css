@@ -63,3 +63,18 @@
 .playlisttile .parttitle {
   font-size: smaller;
 }
+
+.selector > contents {
+  padding: 0;
+}
+
+.selector-list {
+  padding-left: 8px;
+  padding-right: 8px;
+  padding-bottom: 8px;
+}
+
+.selector-list > row {
+  padding: 6px;
+  border-radius: 6px;
+}

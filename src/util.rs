@@ -11,7 +11,7 @@ lazy_static! {
             },
             None => "generic".to_string(),
         };
-        
+
         log::info!("Intialized user language to '{lang}'.");
         lang
     };

@@ -1,19 +1,26 @@
 using Gtk 4.0;
 using Adw 1;
 
-template $MusicusTranslationEntry : Adw.EntryRow {
+template $MusicusTranslationEntry: Adw.EntryRow {
   title: _("Translated name");
 
   Gtk.Button {
-    icon-name: "edit-delete-symbolic";
+    icon-name: "user-trash-symbolic";
     valign: center;
     clicked => $remove() swapped;
-    styles ["flat"]
+
+    styles [
+      "flat"
+    ]
   }
 
   Gtk.Button {
     valign: center;
     clicked => $open_lang_popover() swapped;
+
+    styles [
+      "flat"
+    ]
 
     Gtk.Box {
       spacing: 6;
@@ -38,7 +45,10 @@ template $MusicusTranslationEntry : Adw.EntryRow {
           Gtk.Label {
             label: _("Language code");
             halign: start;
-            styles ["heading"]
+
+            styles [
+              "heading"
+            ]
           }
 
           Gtk.Label {
@@ -48,7 +58,10 @@ template $MusicusTranslationEntry : Adw.EntryRow {
             wrap: true;
             max-width-chars: 40;
             halign: start;
-            styles ["dim-label"]
+
+            styles [
+              "dim-label"
+            ]
           }
 
           Gtk.Entry lang_entry {}

@@ -4,10 +4,12 @@
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
 use diesel::sqlite::Sqlite;
+use gtk::glib::{self, Boxed};
 
 use super::{schema::*, TranslatedString};
 
-#[derive(Insertable, Queryable, Selectable, Clone, Debug)]
+#[derive(Boxed, Insertable, Queryable, Selectable, Clone, Debug)]
+#[boxed_type(name = "MusicusPerson")]
 #[diesel(check_for_backend(Sqlite))]
 pub struct Person {
     pub person_id: String,
@@ -18,7 +20,8 @@ pub struct Person {
     pub last_played_at: Option<NaiveDateTime>,
 }
 
-#[derive(Insertable, Queryable, Selectable, Clone, Debug)]
+#[derive(Boxed, Insertable, Queryable, Selectable, Clone, Debug)]
+#[boxed_type(name = "MusicusRole")]
 #[diesel(check_for_backend(Sqlite))]
 pub struct Role {
     pub role_id: String,
@@ -28,7 +31,8 @@ pub struct Role {
     pub last_used_at: NaiveDateTime,
 }
 
-#[derive(Insertable, Queryable, Selectable, Clone, Debug)]
+#[derive(Boxed, Insertable, Queryable, Selectable, Clone, Debug)]
+#[boxed_type(name = "MusicusInstrument")]
 #[diesel(check_for_backend(Sqlite))]
 pub struct Instrument {
     pub instrument_id: String,
