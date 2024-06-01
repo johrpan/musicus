@@ -20,6 +20,7 @@ pub struct Work {
     pub instruments: Vec<Instrument>,
 }
 
+// TODO: Handle part composers.
 #[derive(Clone, Debug)]
 pub struct WorkPart {
     pub work_id: String,
@@ -167,6 +168,7 @@ impl Work {
 
     pub fn composers_string(&self) -> String {
         // TODO: Include roles except default composer.
+        // TODO: Think about works without composers.
         self.persons
             .iter()
             .map(|p| p.person.name.get().to_string())
@@ -184,6 +186,7 @@ impl PartialEq for Work {
 
 impl Display for Work {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // TODO: Handle works without composers.
         write!(f, "{}: {}", self.composers_string(), self.name)
     }
 }
