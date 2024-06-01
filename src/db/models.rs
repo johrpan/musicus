@@ -21,7 +21,7 @@ pub struct Work {
 }
 
 // TODO: Handle part composers.
-#[derive(Clone, Debug)]
+#[derive(Default, Clone, Debug)]
 pub struct WorkPart {
     pub work_id: String,
     pub level: u8,
@@ -110,6 +110,13 @@ impl Eq for Composer {}
 impl PartialEq for Composer {
     fn eq(&self, other: &Self) -> bool {
         self.person == other.person && self.role == other.role
+    }
+}
+
+impl Eq for WorkPart {}
+impl PartialEq for WorkPart {
+    fn eq(&self, other: &Self) -> bool {
+        self.work_id == other.work_id
     }
 }
 

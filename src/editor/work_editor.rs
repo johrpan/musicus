@@ -1,5 +1,8 @@
 use crate::{
-    db::models::{Composer, Instrument, Person},
+    db::{
+        self,
+        models::{Composer, Instrument, Person, WorkPart},
+    },
     editor::{
         instrument_selector_popover::MusicusInstrumentSelectorPopover,
         person_selector_popover::MusicusPersonSelectorPopover,
@@ -10,6 +13,7 @@ use crate::{
 };
 
 use adw::{prelude::*, subclass::prelude::*};
+use gettextrs::gettext;
 use gtk::glib::{self, clone, Properties};
 
 use std::cell::{OnceCell, RefCell};
@@ -28,6 +32,7 @@ mod imp {
         // results when finishing the process of editing the work. The composer rows
         // handle all state related to the composer.
         pub composer_rows: RefCell<Vec<MusicusWorkEditorComposerRow>>,
+        pub parts: RefCell<Vec<WorkPart>>,
         pub instruments: RefCell<Vec<Instrument>>,
 
         pub persons_popover: OnceCell<MusicusPersonSelectorPopover>,
@@ -37,6 +42,8 @@ mod imp {
         pub composer_list: TemplateChild<gtk::ListBox>,
         #[template_child]
         pub select_person_box: TemplateChild<gtk::Box>,
+        #[template_child]
+        pub part_list: TemplateChild<gtk::ListBox>,
         #[template_child]
         pub instrument_list: TemplateChild<gtk::ListBox>,
         #[template_child]
@@ -109,9 +116,7 @@ mod imp {
                     remove_button.connect_clicked(
                         clone!(@weak obj, @weak row, @strong instrument => move |_| {
                             obj.imp().instrument_list.remove(&row);
-                            let mut instruments = obj.imp().instruments.borrow_mut();
-                            let index = instruments.iter().position(|i| *i == instrument).unwrap();
-                            instruments.remove(index);
+                            obj.imp().instruments.borrow_mut().retain(|i| *i != instrument);
                         }),
                     );
 
@@ -152,7 +157,35 @@ impl MusicusWorkEditor {
 
     #[template_callback]
     fn add_part(&self, _: &adw::ActionRow) {
-        todo!();
+        let part = WorkPart {
+            work_id: db::generate_id(),
+            ..Default::default()
+        };
+
+        let row = adw::EntryRow::builder().title(gettext("Name")).build();
+
+        let remove_button = gtk::Button::builder()
+            .icon_name("user-trash-symbolic")
+            .valign(gtk::Align::Center)
+            .css_classes(["flat"])
+            .build();
+
+        remove_button.connect_clicked(
+            clone!(@weak self as obj, @weak row, @strong part => move |_| {
+                obj.imp().part_list.remove(&row);
+                obj.imp().parts.borrow_mut().retain(|p| *p != part);
+            }),
+        );
+
+        row.add_suffix(&remove_button);
+
+        self.imp()
+            .part_list
+            .insert(&row, self.imp().parts.borrow().len() as i32);
+
+        row.grab_focus();
+
+        self.imp().parts.borrow_mut().push(part);
     }
 
     #[template_callback]

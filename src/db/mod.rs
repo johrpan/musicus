@@ -38,6 +38,11 @@ pub fn connect(file_name: &str) -> Result<SqliteConnection> {
     Ok(connection)
 }
 
+/// Generate a random string suitable as an item ID.
+pub fn generate_id() -> String {
+    uuid::Uuid::new_v4().simple().to_string()
+}
+
 /// A single translated string value.
 #[derive(Serialize, Deserialize, AsExpression, FromSqlRow, Clone, Default, Debug)]
 #[diesel(sql_type = Text)]
