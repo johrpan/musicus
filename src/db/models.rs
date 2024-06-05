@@ -9,7 +9,7 @@ use diesel::prelude::*;
 use super::{schema::*, tables, TranslatedString};
 
 // Re-exports for tables that don't need additional information.
-pub use tables::{Instrument, Person, Role};
+pub use tables::{Album, Instrument, Person, Role};
 
 #[derive(Clone, Debug)]
 pub struct Work {
@@ -369,5 +369,12 @@ impl Track {
                 .to_string(),
             works,
         })
+    }
+}
+
+impl Eq for Album {}
+impl PartialEq for Album {
+    fn eq(&self, other: &Self) -> bool {
+        self.album_id == other.album_id
     }
 }

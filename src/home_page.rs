@@ -1,4 +1,5 @@
 use crate::{
+    album_tile::MusicusAlbumTile,
     db::models::*,
     library::{LibraryQuery, MusicusLibrary},
     player::MusicusPlayer,
@@ -8,11 +9,13 @@ use crate::{
     search_tag::Tag,
     tag_tile::MusicusTagTile,
 };
+
 use adw::subclass::{navigation_page::NavigationPageImpl, prelude::*};
 use gtk::{
     glib::{self, clone, Properties},
     prelude::*,
 };
+
 use std::cell::{OnceCell, RefCell};
 
 mod imp {
@@ -33,6 +36,7 @@ mod imp {
         pub ensembles: RefCell<Vec<Ensemble>>,
         pub works: RefCell<Vec<Work>>,
         pub recordings: RefCell<Vec<Recording>>,
+        pub albums: RefCell<Vec<Album>>,
 
         #[template_child]
         pub search_entry: TemplateChild<MusicusSearchEntry>,
@@ -48,6 +52,8 @@ mod imp {
         pub works_flow_box: TemplateChild<gtk::FlowBox>,
         #[template_child]
         pub recordings_flow_box: TemplateChild<gtk::FlowBox>,
+        #[template_child]
+        pub albums_flow_box: TemplateChild<gtk::FlowBox>,
         #[template_child]
         pub play_button: TemplateChild<gtk::Button>,
     }
@@ -120,13 +126,14 @@ impl MusicusHomePage {
     fn select(&self, search_entry: &MusicusSearchEntry) {
         let imp = self.imp();
 
-        let (composer, performer, ensemble, work, recording) = {
+        let (composer, performer, ensemble, work, recording, album) = {
             (
                 imp.composers.borrow().first().cloned(),
                 imp.performers.borrow().first().cloned(),
                 imp.ensembles.borrow().first().cloned(),
                 imp.works.borrow().first().cloned(),
                 imp.recordings.borrow().first().cloned(),
+                imp.albums.borrow().first().cloned(),
             )
         };
 
@@ -140,6 +147,8 @@ impl MusicusHomePage {
             search_entry.add_tag(Tag::Work(work));
         } else if let Some(recording) = recording {
             self.play_recording(&recording);
+        } else if let Some(album) = album {
+            self.show_album(&album);
         }
     }
 
@@ -157,6 +166,11 @@ impl MusicusHomePage {
                 .unwrap()
                 .recording(),
         );
+    }
+
+    #[template_callback]
+    fn album_selected(&self, tile: &gtk::FlowBoxChild, _: &gtk::FlowBox) {
+        self.show_album(tile.downcast_ref::<MusicusAlbumTile>().unwrap().album());
     }
 
     fn play_recording(&self, recording: &Recording) {
@@ -227,6 +241,10 @@ impl MusicusHomePage {
         self.player().append(items);
     }
 
+    fn show_album(&self, _album: &Album) {
+        todo!("Show album");
+    }
+
     fn query(&self, query: &LibraryQuery) {
         let imp = self.imp();
         let results = self.library().query(query).unwrap();
@@ -237,6 +255,7 @@ impl MusicusHomePage {
             &imp.ensembles_flow_box,
             &imp.works_flow_box,
             &imp.recordings_flow_box,
+            &imp.albums_flow_box,
         ] {
             while let Some(widget) = flowbox.first_child() {
                 flowbox.remove(&widget);
@@ -257,6 +276,7 @@ impl MusicusHomePage {
             imp.works_flow_box.set_visible(!results.works.is_empty());
             imp.recordings_flow_box
                 .set_visible(!results.recordings.is_empty());
+            imp.albums_flow_box.set_visible(!results.albums.is_empty());
 
             for composer in &results.composers {
                 imp.composers_flow_box
@@ -283,11 +303,16 @@ impl MusicusHomePage {
                     .append(&MusicusRecordingTile::new(recording));
             }
 
+            for album in &results.albums {
+                imp.albums_flow_box.append(&MusicusAlbumTile::new(album));
+            }
+
             imp.composers.replace(results.composers);
             imp.performers.replace(results.performers);
             imp.ensembles.replace(results.ensembles);
             imp.works.replace(results.works);
             imp.recordings.replace(results.recordings);
+            imp.albums.replace(results.albums);
         }
     }
 }

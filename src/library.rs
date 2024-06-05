@@ -109,11 +109,17 @@ impl MusicusLibrary {
                     .map(|w| Work::from_table(w, connection))
                     .collect::<Result<Vec<Work>>>()?;
 
+                let albums: Vec<Album> = albums::table
+                    .filter(albums::name.like(&search))
+                    .limit(9)
+                    .load(connection)?;
+
                 LibraryResults {
                     composers,
                     performers,
                     ensembles,
                     works,
+                    albums,
                     ..Default::default()
                 }
             }
@@ -219,9 +225,24 @@ impl MusicusLibrary {
                     .map(|r| Recording::from_table(r, &&self.folder(), connection))
                     .collect::<Result<Vec<Recording>>>()?;
 
+                let albums = albums::table
+                    .inner_join(
+                        album_recordings::table
+                            .inner_join(recordings::table.inner_join(recording_ensembles::table)),
+                    )
+                    .filter(
+                        recording_ensembles::ensemble_id
+                            .eq(&ensemble.ensemble_id)
+                            .and(albums::name.like(&search)),
+                    )
+                    .select(albums::all_columns)
+                    .distinct()
+                    .load(connection)?;
+
                 LibraryResults {
                     composers,
                     recordings,
+                    albums,
                     ..Default::default()
                 }
             }
@@ -265,9 +286,24 @@ impl MusicusLibrary {
                     .map(|r| Recording::from_table(r, &self.folder(), connection))
                     .collect::<Result<Vec<Recording>>>()?;
 
+                let albums = albums::table
+                    .inner_join(
+                        album_recordings::table
+                            .inner_join(recordings::table.inner_join(recording_persons::table)),
+                    )
+                    .filter(
+                        recording_persons::person_id
+                            .eq(&performer.person_id)
+                            .and(albums::name.like(&search)),
+                    )
+                    .select(albums::all_columns)
+                    .distinct()
+                    .load(connection)?;
+
                 LibraryResults {
                     composers,
                     recordings,
+                    albums,
                     ..Default::default()
                 }
             }
@@ -426,6 +462,7 @@ pub struct LibraryResults {
     pub ensembles: Vec<Ensemble>,
     pub works: Vec<Work>,
     pub recordings: Vec<Recording>,
+    pub albums: Vec<Album>,
 }
 
 impl LibraryResults {
@@ -435,5 +472,6 @@ impl LibraryResults {
             && self.ensembles.is_empty()
             && self.works.is_empty()
             && self.recordings.is_empty()
+            && self.albums.is_empty()
     }
 }
