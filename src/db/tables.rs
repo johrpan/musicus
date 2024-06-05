@@ -129,7 +129,9 @@ pub struct RecordingEnsemble {
 pub struct Track {
     pub track_id: String,
     pub recording_id: String,
-    pub sequence_number: i32,
+    pub recording_index: i32,
+    pub medium_id: Option<String>,
+    pub medium_index: Option<i32>,
     pub path: String,
     pub created_at: NaiveDateTime,
     pub edited_at: NaiveDateTime,
@@ -142,5 +144,43 @@ pub struct Track {
 pub struct TrackWork {
     pub track_id: String,
     pub work_id: String,
+    pub sequence_number: i32,
+}
+
+#[derive(Insertable, Queryable, Selectable, Clone, Debug)]
+#[diesel(check_for_backend(Sqlite))]
+pub struct Medium {
+    pub medium_id: String,
+    pub discid: String,
+    pub created_at: NaiveDateTime,
+    pub edited_at: NaiveDateTime,
+    pub last_used_at: NaiveDateTime,
+    pub last_played_at: Option<NaiveDateTime>,
+}
+
+#[derive(Insertable, Queryable, Selectable, Clone, Debug)]
+#[diesel(check_for_backend(Sqlite))]
+pub struct Album {
+    pub album_id: String,
+    pub name: TranslatedString,
+    pub created_at: NaiveDateTime,
+    pub edited_at: NaiveDateTime,
+    pub last_used_at: NaiveDateTime,
+    pub last_played_at: Option<NaiveDateTime>,
+}
+
+#[derive(Insertable, Queryable, Selectable, Clone, Debug)]
+#[diesel(check_for_backend(Sqlite))]
+pub struct AlbumRecording {
+    pub album_id: String,
+    pub recording_id: String,
+    pub sequence_number: i32,
+}
+
+#[derive(Insertable, Queryable, Selectable, Clone, Debug)]
+#[diesel(check_for_backend(Sqlite))]
+pub struct AlbumMedium {
+    pub album_id: String,
+    pub medium_id: String,
     pub sequence_number: i32,
 }

@@ -260,7 +260,7 @@ impl Recording {
             .collect::<Result<Vec<Ensemble>>>()?;
 
         let tracks: Vec<Track> = tracks::table
-            .order(tracks::sequence_number)
+            .order(tracks::recording_index)
             .filter(tracks::recording_id.eq(&data.recording_id))
             .select(tables::Track::as_select())
             .load::<tables::Track>(connection)?
