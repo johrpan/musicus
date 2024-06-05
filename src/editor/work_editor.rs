@@ -1,7 +1,7 @@
 use crate::{
     db::{
         self,
-        models::{Composer, Instrument, Person, WorkPart},
+        models::{Composer, Instrument, Person, Work, WorkPart},
     },
     editor::{
         instrument_selector_popover::MusicusInstrumentSelectorPopover,
@@ -26,6 +26,9 @@ mod imp {
     #[template(file = "data/ui/work_editor.blp")]
     pub struct MusicusWorkEditor {
         #[property(get, construct_only)]
+        pub navigation: OnceCell<adw::NavigationView>,
+
+        #[property(get, construct_only)]
         pub library: OnceCell<MusicusLibrary>,
 
         // Holding a reference to each composer row is the simplest way to enumerate all
@@ -38,6 +41,8 @@ mod imp {
         pub persons_popover: OnceCell<MusicusPersonSelectorPopover>,
         pub instruments_popover: OnceCell<MusicusInstrumentSelectorPopover>,
 
+        #[template_child]
+        pub name_editor: TemplateChild<MusicusTranslationEditor>,
         #[template_child]
         pub composer_list: TemplateChild<gtk::ListBox>,
         #[template_child]
@@ -146,8 +151,21 @@ glib::wrapper! {
 
 #[gtk::template_callbacks]
 impl MusicusWorkEditor {
-    pub fn new(library: &MusicusLibrary) -> Self {
-        glib::Object::builder().property("library", library).build()
+    pub fn new(
+        navigation: &adw::NavigationView,
+        library: &MusicusLibrary,
+        work: Option<&Work>,
+    ) -> Self {
+        let obj: Self = glib::Object::builder()
+            .property("navigation", navigation)
+            .property("library", library)
+            .build();
+
+        if let Some(_work) = work {
+            // TODO: Initialize work data.
+        }
+
+        obj
     }
 
     #[template_callback]

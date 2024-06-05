@@ -5,7 +5,6 @@ use adw::{
 use gtk::glib::{self, Properties};
 use std::cell::OnceCell;
 
-use crate::editor::work_editor::MusicusWorkEditor;
 use crate::library::MusicusLibrary;
 
 mod imp {
@@ -36,12 +35,7 @@ mod imp {
     }
 
     #[glib::derived_properties]
-    impl ObjectImpl for LibraryManager {
-        fn constructed(&self) {
-            self.parent_constructed();
-            self.obj().set_child(Some(&MusicusWorkEditor::new(self.library.get().unwrap())));
-        }
-    }
+    impl ObjectImpl for LibraryManager {}
 
     impl WidgetImpl for LibraryManager {}
     impl NavigationPageImpl for LibraryManager {}

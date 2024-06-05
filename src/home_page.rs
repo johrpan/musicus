@@ -1,6 +1,7 @@
 use crate::{
     album_tile::MusicusAlbumTile,
     db::models::*,
+    editor::{person_editor::MusicusPersonEditor, work_editor::MusicusWorkEditor},
     library::{LibraryQuery, MusicusLibrary},
     player::MusicusPlayer,
     playlist_item::PlaylistItem,
@@ -26,6 +27,9 @@ mod imp {
     #[template(file = "data/ui/home_page.blp")]
     pub struct MusicusHomePage {
         #[property(get, construct_only)]
+        pub navigation: OnceCell<adw::NavigationView>,
+
+        #[property(get, construct_only)]
         pub library: OnceCell<MusicusLibrary>,
 
         #[property(get, construct_only)]
@@ -42,6 +46,12 @@ mod imp {
         pub search_entry: TemplateChild<MusicusSearchEntry>,
         #[template_child]
         pub stack: TemplateChild<gtk::Stack>,
+        #[template_child]
+        pub header_box: TemplateChild<gtk::Box>,
+        #[template_child]
+        pub title_label: TemplateChild<gtk::Label>,
+        #[template_child]
+        pub subtitle_label: TemplateChild<gtk::Label>,
         #[template_child]
         pub composers_flow_box: TemplateChild<gtk::FlowBox>,
         #[template_child]
@@ -109,11 +119,39 @@ glib::wrapper! {
 
 #[gtk::template_callbacks]
 impl MusicusHomePage {
-    pub fn new(library: &MusicusLibrary, player: &MusicusPlayer) -> Self {
+    pub fn new(
+        navigation: &adw::NavigationView,
+        library: &MusicusLibrary,
+        player: &MusicusPlayer,
+    ) -> Self {
         glib::Object::builder()
+            .property("navigation", navigation)
             .property("library", library)
             .property("player", player)
             .build()
+    }
+
+    #[template_callback]
+    fn back_button_clicked(&self, _: &gtk::Button) {
+        self.imp().search_entry.reset();
+    }
+
+    #[template_callback]
+    fn edit_button_clicked(&self, _: &gtk::Button) {
+        if let Some(tag) = self.imp().search_entry.tags().first() {
+            match tag {
+                Tag::Composer(person) | Tag::Performer(person) => {
+                    self.navigation()
+                        .push(&MusicusPersonEditor::new(Some(person)));
+                }
+                Tag::Ensemble(_) => todo!(),
+                Tag::Work(work) => self.navigation().push(&MusicusWorkEditor::new(
+                    &self.navigation(),
+                    &self.library(),
+                    Some(work),
+                )),
+            }
+        }
     }
 
     #[template_callback]
@@ -260,6 +298,28 @@ impl MusicusHomePage {
             while let Some(widget) = flowbox.first_child() {
                 flowbox.remove(&widget);
             }
+        }
+
+        if let Some(tag) = imp.search_entry.tags().first() {
+            match tag {
+                Tag::Composer(person) | Tag::Performer(person) => {
+                    imp.title_label.set_text(&person.name.get());
+                    imp.subtitle_label.set_visible(false);
+                }
+                Tag::Ensemble(ensemble) => {
+                    imp.title_label.set_text(&ensemble.name.get());
+                    imp.subtitle_label.set_visible(false);
+                }
+                Tag::Work(work) => {
+                    imp.title_label.set_text(&work.name.get());
+                    imp.subtitle_label.set_text(&work.composers_string());
+                    imp.subtitle_label.set_visible(true);
+                }
+            }
+
+            imp.header_box.set_visible(true);
+        } else {
+            imp.header_box.set_visible(false);
         }
 
         if results.is_empty() {

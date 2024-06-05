@@ -174,6 +174,15 @@ impl MusicusSearchEntry {
         self.emit_by_name::<()>("query-changed", &[]);
     }
 
+    pub fn tags(&self) -> Vec<Tag> {
+        self.imp()
+            .tags
+            .borrow()
+            .iter()
+            .map(|t| t.tag().to_owned())
+            .collect()
+    }
+
     pub fn query(&self) -> LibraryQuery {
         let mut query = LibraryQuery {
             search: self.imp().text.text().to_string(),

@@ -1,14 +1,17 @@
 use adw::{prelude::*, subclass::prelude::*};
 use gtk::glib;
 
-use crate::editor::translation_editor::MusicusTranslationEditor;
+use crate::{db::models::Person, editor::translation_editor::MusicusTranslationEditor};
 
 mod imp {
     use super::*;
 
     #[derive(Debug, Default, gtk::CompositeTemplate)]
     #[template(file = "data/ui/person_editor.blp")]
-    pub struct MusicusPersonEditor {}
+    pub struct MusicusPersonEditor {
+        #[template_child]
+        pub name_editor: TemplateChild<MusicusTranslationEditor>,
+    }
 
     #[glib::object_subclass]
     impl ObjectSubclass for MusicusPersonEditor {
@@ -39,7 +42,13 @@ glib::wrapper! {
 
 #[gtk::template_callbacks]
 impl MusicusPersonEditor {
-    pub fn new() -> Self {
-        glib::Object::new()
+    pub fn new(person: Option<&Person>) -> Self {
+        let obj: Self = glib::Object::new();
+
+        if let Some(person) = person {
+            obj.imp().name_editor.set_translation(&person.name);
+        }
+
+        obj
     }
 }
