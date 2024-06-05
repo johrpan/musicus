@@ -1,7 +1,7 @@
 using Gtk 4.0;
 using Adw 1;
 
-template $MusicusHomePage : Adw.NavigationPage {
+template $MusicusHomePage: Adw.NavigationPage {
   title: _("Musicus");
   tag: "home";
 
@@ -21,14 +21,65 @@ template $MusicusHomePage : Adw.NavigationPage {
         maximum-size: 1000;
         tightening-threshold: 600;
 
-        $MusicusSearchEntry search_entry {
-          activate => $select() swapped;
+        Gtk.Box {
+          orientation: vertical;
+
+          $MusicusSearchEntry search_entry {
+            activate => $select() swapped;
+          }
+
+          Gtk.Box header_box {
+            visible: false;
+            spacing: 12;
+            margin-start: 12;
+            margin-end: 12;
+            margin-top: 24;
+            margin-bottom: 12;
+
+            Gtk.Button {
+              styles [
+                "flat"
+              ]
+
+              valign: center;
+              icon-name: "go-previous-symbolic";
+              clicked => $back_button_clicked() swapped;
+            }
+
+            Gtk.Box {
+              orientation: vertical;
+              hexpand: true;
+
+              Gtk.Label title_label {
+                styles [
+                  "title-1"
+                ]
+
+                xalign: 0.0;
+              }
+
+              Gtk.Label subtitle_label {
+                xalign: 0.0;
+              }
+            }
+
+            Gtk.Button {
+              styles [
+                "flat"
+              ]
+
+              valign: center;
+              icon-name: "document-edit-symbolic";
+              clicked => $edit_button_clicked() swapped;
+            }
+          }
         }
       }
 
       Gtk.Stack stack {
         Gtk.StackPage {
           name: "results";
+
           child: Gtk.ScrolledWindow {
             hscrollbar-policy: never;
 
@@ -44,8 +95,11 @@ template $MusicusHomePage : Adw.NavigationPage {
                 margin-bottom: 68;
 
                 Gtk.Label {
-                  styles ["heading"]
-                  visible: bind composers_flow_box.visible; 
+                  styles [
+                    "heading"
+                  ]
+
+                  visible: bind composers_flow_box.visible;
                   halign: start;
                   label: _("Composers");
                 }
@@ -61,8 +115,11 @@ template $MusicusHomePage : Adw.NavigationPage {
                 }
 
                 Gtk.Label {
-                  styles ["heading"]
-                  visible: bind performers_flow_box.visible; 
+                  styles [
+                    "heading"
+                  ]
+
+                  visible: bind performers_flow_box.visible;
                   halign: start;
                   label: _("Performers");
                 }
@@ -78,8 +135,11 @@ template $MusicusHomePage : Adw.NavigationPage {
                 }
 
                 Gtk.Label {
-                  styles ["heading"]
-                  visible: bind ensembles_flow_box.visible; 
+                  styles [
+                    "heading"
+                  ]
+
+                  visible: bind ensembles_flow_box.visible;
                   halign: start;
                   label: _("Ensembles");
                 }
@@ -95,7 +155,10 @@ template $MusicusHomePage : Adw.NavigationPage {
                 }
 
                 Gtk.Label {
-                  styles ["heading"]
+                  styles [
+                    "heading"
+                  ]
+
                   visible: bind works_flow_box.visible;
                   halign: start;
                   label: _("Works");
@@ -112,7 +175,10 @@ template $MusicusHomePage : Adw.NavigationPage {
                 }
 
                 Gtk.Label {
-                  styles ["heading"]
+                  styles [
+                    "heading"
+                  ]
+
                   visible: bind recordings_flow_box.visible;
                   halign: start;
                   label: _("Recordings");
@@ -129,7 +195,10 @@ template $MusicusHomePage : Adw.NavigationPage {
                 }
 
                 Gtk.Label {
-                  styles ["heading"]
+                  styles [
+                    "heading"
+                  ]
+
                   visible: bind albums_flow_box.visible;
                   halign: start;
                   label: _("Albums");
@@ -148,8 +217,10 @@ template $MusicusHomePage : Adw.NavigationPage {
             }
           };
         }
+
         Gtk.StackPage {
           name: "empty";
+
           child: Adw.StatusPage {
             icon-name: "system-search-symbolic";
             title: _("Nothing Found");
@@ -161,7 +232,11 @@ template $MusicusHomePage : Adw.NavigationPage {
 
     [overlay]
     Gtk.Button play_button {
-      styles ["pill", "suggested-action"]
+      styles [
+        "pill",
+        "suggested-action"
+      ]
+
       halign: end;
       valign: end;
       margin-end: 24;
@@ -177,10 +252,12 @@ menu primary_menu {
     label: _("_Library manager");
     action: "win.library";
   }
+
   item {
     label: _("_Preferences");
     action: "app.preferences";
   }
+
   item {
     label: _("_About Musicus");
     action: "app.about";

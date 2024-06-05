@@ -55,19 +55,20 @@ glib::wrapper! {
 
 #[gtk::template_callbacks]
 impl MusicusTranslationEditor {
-    pub fn new(translation: TranslatedString) -> Self {
-        let obj: Self = glib::Object::new();
-        let mut translation = translation.0;
+    pub fn new() -> Self {
+        glib::Object::new()
+    }
 
-        obj.imp()
+    pub fn set_translation(&self, translation: &TranslatedString) {
+        let mut translation = translation.0.clone();
+
+        self.imp()
             .entry_row
             .set_text(&translation.remove("generic").unwrap_or_default());
 
         for (lang, translation) in translation {
-            obj.add_entry(&lang, &translation);
+            self.add_entry(&lang, &translation);
         }
-
-        obj
     }
 
     #[template_callback]
@@ -92,11 +93,17 @@ impl MusicusTranslationEditor {
 
         let obj = self.clone();
         entry.connect_remove(move |entry| {
-            obj.imp().translation_entries.borrow_mut().retain(|e| e != entry);
+            obj.imp()
+                .translation_entries
+                .borrow_mut()
+                .retain(|e| e != entry);
             obj.imp().list_box.remove(entry);
         });
 
-        self.imp().list_box.insert(&entry, self.imp().translation_entries.borrow().len() as i32 + 1);
+        self.imp().list_box.insert(
+            &entry,
+            self.imp().translation_entries.borrow().len() as i32 + 1,
+        );
         entry.grab_focus();
 
         self.imp().translation_entries.borrow_mut().push(entry);
