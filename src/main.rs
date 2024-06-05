@@ -1,10 +1,11 @@
+mod album_tile;
 mod application;
 mod config;
 mod db;
 mod editor;
 mod home_page;
-mod library_manager;
 mod library;
+mod library_manager;
 mod player;
 mod player_bar;
 mod playlist_item;
