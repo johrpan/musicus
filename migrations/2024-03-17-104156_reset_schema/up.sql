@@ -97,7 +97,9 @@ CREATE TABLE recording_ensembles (
 CREATE TABLE tracks_new (
     track_id TEXT NOT NULL PRIMARY KEY,
     recording_id TEXT NOT NULL REFERENCES recordings(recording_id),
-    sequence_number INTEGER NOT NULL,
+    recording_index INTEGER NOT NULL,
+    medium_id TEXT REFERENCES mediums(medium_id),
+    medium_index INTEGER,
     path TEXT NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     edited_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -110,6 +112,38 @@ CREATE TABLE track_works (
     work_id TEXT NOT NULL REFERENCES works(work_id),
     sequence_number INTEGER NOT NULL,
     PRIMARY KEY (track_id, work_id)
+);
+
+CREATE TABLE mediums_new (
+    medium_id TEXT NOT NULL PRIMARY KEY,
+    discid TEXT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    edited_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    last_used_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    last_played_at TIMESTAMP
+);
+
+CREATE TABLE albums (
+    album_id TEXT NOT NULL PRIMARY KEY,
+    name TEXT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    edited_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    last_used_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    last_played_at TIMESTAMP
+);
+
+CREATE TABLE album_recordings (
+    album_id TEXT NOT NULL REFERENCES albums(album_id),
+    recording_id TEXT NOT NULL REFERENCES recordings(recording_id),
+    sequence_number INTEGER NOT NULL,
+    PRIMARY KEY (album_id, recording_id)
+);
+
+CREATE TABLE album_mediums (
+    album_id TEXT NOT NULL REFERENCES albums(album_id),
+    medium_id TEXT NOT NULL REFERENCES mediums(medium_id),
+    sequence_number INTEGER NOT NULL,
+    PRIMARY KEY (album_id, medium_id)
 );
 
 INSERT INTO persons_new (person_id, name)
@@ -164,8 +198,8 @@ SELECT recording, ensemble, '28ff0aeb11c041a6916d93e9b4884eef', 0
 FROM performances
 WHERE ensemble IS NOT NULL;
 
-INSERT INTO tracks_new (track_id, recording_id, sequence_number, path)
-SELECT id, recording, "index", path
+INSERT INTO tracks_new (track_id, recording_id, recording_index, medium_id, medium_index, path)
+SELECT id, recording, "index", medium, source_index, path
 FROM tracks;
 
 INSERT INTO track_works (track_id, work_id, sequence_number)
@@ -174,6 +208,27 @@ FROM tracks
     JOIN recordings ON tracks.recording = recordings.id
     JOIN work_parts ON recordings.work = work_parts.work
         AND tracks.work_parts = work_parts.part_index;
+
+INSERT INTO mediums_new (medium_id, discid)
+SELECT id, discid
+FROM mediums;
+
+INSERT INTO albums (album_id, name)
+SELECT id, json_set('{}', '$.generic', name)
+FROM mediums;
+
+-- This works because mediums, that become albums in this migration, keep their ID.
+INSERT INTO album_recordings (album_id, recording_id, sequence_number)
+SELECT medium, recording, ROW_NUMBER() OVER (PARTITION BY medium ORDER BY min_source_index)
+FROM (
+    SELECT medium, recording, MIN(source_index) AS min_source_index
+    FROM tracks GROUP BY medium, recording
+);
+
+-- See above
+INSERT INTO album_mediums (album_id, medium_id, sequence_number)
+SELECT id, id, 0
+FROM mediums;
 
 DROP TABLE persons;
 DROP TABLE instruments;
@@ -192,3 +247,4 @@ ALTER TABLE works_new RENAME TO works;
 ALTER TABLE recordings_new RENAME TO recordings;
 ALTER TABLE tracks_new RENAME TO tracks;
 ALTER TABLE ensembles_new RENAME TO ensembles;
+ALTER TABLE mediums_new RENAME TO mediums;
