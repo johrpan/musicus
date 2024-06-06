@@ -67,9 +67,12 @@ mod imp {
 
         fn signals() -> &'static [Signal] {
             static SIGNALS: Lazy<Vec<Signal>> = Lazy::new(|| {
-                vec![Signal::builder("role-selected")
-                    .param_types([Role::static_type()])
-                    .build()]
+                vec![
+                    Signal::builder("role-selected")
+                        .param_types([Role::static_type()])
+                        .build(),
+                    Signal::builder("create").build(),
+                ]
             });
 
             SIGNALS.as_ref()
@@ -109,6 +112,14 @@ impl MusicusRoleSelectorPopover {
             let obj = values[0].get::<Self>().unwrap();
             let role = values[1].get::<Role>().unwrap();
             f(&obj, role);
+            None
+        })
+    }
+
+    pub fn connect_create<F: Fn(&Self) + 'static>(&self, f: F) -> glib::SignalHandlerId {
+        self.connect_local("create", true, move |values| {
+            let obj = values[0].get::<Self>().unwrap();
+            f(&obj);
             None
         })
     }
@@ -182,7 +193,7 @@ impl MusicusRoleSelectorPopover {
     }
 
     fn create(&self) {
-        log::info!("Create role!");
+        self.emit_by_name::<()>("create", &[]);
         self.popdown();
     }
 }

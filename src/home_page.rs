@@ -141,8 +141,11 @@ impl MusicusHomePage {
         if let Some(tag) = self.imp().search_entry.tags().first() {
             match tag {
                 Tag::Composer(person) | Tag::Performer(person) => {
-                    self.navigation()
-                        .push(&MusicusPersonEditor::new(Some(person)));
+                    self.navigation().push(&MusicusPersonEditor::new(
+                        &self.navigation(),
+                        &self.library(),
+                        Some(person),
+                    ));
                 }
                 Tag::Ensemble(_) => todo!(),
                 Tag::Work(work) => self.navigation().push(&MusicusWorkEditor::new(

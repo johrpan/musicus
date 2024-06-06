@@ -4,10 +4,11 @@ use std::{
 };
 
 use anyhow::Result;
+use chrono::prelude::*;
 use diesel::{dsl::exists, prelude::*, QueryDsl, SqliteConnection};
 use gtk::{glib, glib::Properties, prelude::*, subclass::prelude::*};
 
-use crate::db::{self, models::*, schema::*, tables};
+use crate::db::{self, models::*, schema::*, tables, TranslatedString};
 
 diesel::sql_function! {
     /// Represents the SQL RANDOM() function.
@@ -443,6 +444,46 @@ impl MusicusLibrary {
         Ok(roles::table
             .filter(roles::role_id.eq("380d7e09eb2f49c1a90db2ba4acb6ffd"))
             .first::<Role>(connection)?)
+    }
+
+    pub fn create_person(&self, name: TranslatedString) -> Result<Person> {
+        let mut binding = self.imp().connection.borrow_mut();
+        let connection = &mut *binding.as_mut().unwrap();
+
+        let now = Local::now().naive_local();
+
+        let person = Person {
+            person_id: db::generate_id(),
+            name,
+            created_at: now,
+            edited_at: now,
+            last_used_at: now,
+            last_played_at: None,
+        };
+
+        diesel::insert_into(persons::table)
+            .values(&person)
+            .execute(connection)?;
+
+        Ok(person)
+    }
+
+    pub fn update_person(&self, id: &str, name: TranslatedString) -> Result<()> {
+        let mut binding = self.imp().connection.borrow_mut();
+        let connection = &mut *binding.as_mut().unwrap();
+
+        let now = Local::now().naive_local();
+
+        diesel::update(persons::table)
+            .filter(persons::person_id.eq(id))
+            .set((
+                persons::name.eq(name),
+                persons::edited_at.eq(now),
+                persons::last_used_at.eq(now),
+            ))
+            .execute(connection)?;
+
+        Ok(())
     }
 }
 

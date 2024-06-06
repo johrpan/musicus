@@ -67,9 +67,12 @@ mod imp {
 
         fn signals() -> &'static [Signal] {
             static SIGNALS: Lazy<Vec<Signal>> = Lazy::new(|| {
-                vec![Signal::builder("person-selected")
-                    .param_types([Person::static_type()])
-                    .build()]
+                vec![
+                    Signal::builder("person-selected")
+                        .param_types([Person::static_type()])
+                        .build(),
+                    Signal::builder("create").build(),
+                ]
             });
 
             SIGNALS.as_ref()
@@ -109,6 +112,14 @@ impl MusicusPersonSelectorPopover {
             let obj = values[0].get::<Self>().unwrap();
             let person = values[1].get::<Person>().unwrap();
             f(&obj, person);
+            None
+        })
+    }
+
+    pub fn connect_create<F: Fn(&Self) + 'static>(&self, f: F) -> glib::SignalHandlerId {
+        self.connect_local("create", true, move |values| {
+            let obj = values[0].get::<Self>().unwrap();
+            f(&obj);
             None
         })
     }
@@ -182,7 +193,7 @@ impl MusicusPersonSelectorPopover {
     }
 
     fn create(&self) {
-        log::info!("Create person!");
+        self.emit_by_name::<()>("create", &[]);
         self.popdown();
     }
 }

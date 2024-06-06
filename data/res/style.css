@@ -11,7 +11,7 @@
   border-radius: 100px;
 }
 
-.searchbar .searchtag > button {
+.searchbar .searchtag>button {
   min-width: 24px;
   min-height: 24px;
   margin: 0px;
@@ -22,7 +22,7 @@
   min-width: 200px;
 }
 
-.tile > box {
+.tile>box {
   margin: 6px 12px;
 }
 
@@ -48,7 +48,7 @@
   background-color: rgba(0, 0, 0, 0);
 }
 
-.playlist > row {
+.playlist>row {
   border-radius: 12px;
 }
 
@@ -64,7 +64,7 @@
   font-size: smaller;
 }
 
-.selector > contents {
+.selector>contents {
   padding: 0;
 }
 
@@ -74,7 +74,14 @@
   padding-bottom: 8px;
 }
 
-.selector-list > row {
+.selector-list>row {
   padding: 6px;
   border-radius: 6px;
+}
+
+button.save {
+  min-height: 48px;
+  font-weight: 700;
+  font-size: 11pt;
+  color: var(--accent-color);
 }
