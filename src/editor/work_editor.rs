@@ -5,7 +5,7 @@ use crate::{
     },
     editor::{
         instrument_selector_popover::MusicusInstrumentSelectorPopover,
-        person_selector_popover::MusicusPersonSelectorPopover,
+        person_editor::MusicusPersonEditor, person_selector_popover::MusicusPersonSelectorPopover,
         translation_editor::MusicusTranslationEditor,
         work_editor_composer_row::MusicusWorkEditorComposerRow,
     },
@@ -80,24 +80,20 @@ mod imp {
             let persons_popover = MusicusPersonSelectorPopover::new(self.library.get().unwrap());
 
             let obj = self.obj().clone();
-            persons_popover.connect_person_selected(
-                move |_: &MusicusPersonSelectorPopover, person: Person| {
-                    let role = obj.library().composer_default_role().unwrap();
-                    let composer = Composer { person, role };
-                    let row = MusicusWorkEditorComposerRow::new(&obj.library(), composer);
+            persons_popover.connect_person_selected(move |_, person| {
+                obj.add_composer(person);
+            });
 
-                    row.connect_remove(clone!(@weak obj => move |row| {
-                        obj.imp().composer_list.remove(row);
-                        obj.imp().composer_rows.borrow_mut().retain(|c| c != row);
-                    }));
+            let obj = self.obj().clone();
+            persons_popover.connect_create(move |_| {
+                let editor = MusicusPersonEditor::new(&obj.navigation(), &obj.library(), None);
 
-                    obj.imp()
-                        .composer_list
-                        .insert(&row, obj.imp().composer_rows.borrow().len() as i32);
+                editor.connect_created(clone!(@weak obj => move |_, person| {
+                    obj.add_composer(person);
+                }));
 
-                    obj.imp().composer_rows.borrow_mut().push(row);
-                },
-            );
+                obj.navigation().push(&editor);
+            });
 
             self.select_person_box.append(&persons_popover);
             self.persons_popover.set(persons_popover).unwrap();
@@ -209,5 +205,22 @@ impl MusicusWorkEditor {
     #[template_callback]
     fn add_instrument(&self, _: &adw::ActionRow) {
         self.imp().instruments_popover.get().unwrap().popup();
+    }
+
+    fn add_composer(&self, person: Person) {
+        let role = self.library().composer_default_role().unwrap();
+        let composer = Composer { person, role };
+        let row = MusicusWorkEditorComposerRow::new(&self.library(), composer);
+
+        row.connect_remove(clone!(@weak self as obj => move |row| {
+            obj.imp().composer_list.remove(row);
+            obj.imp().composer_rows.borrow_mut().retain(|c| c != row);
+        }));
+
+        self.imp()
+            .composer_list
+            .insert(&row, self.imp().composer_rows.borrow().len() as i32);
+
+        self.imp().composer_rows.borrow_mut().push(row);
     }
 }

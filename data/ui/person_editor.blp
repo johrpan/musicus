@@ -25,6 +25,17 @@ template $MusicusPersonEditor: Adw.NavigationPage {
         $MusicusTranslationEditor name_editor {
           margin-top: 12;
         }
+
+        Gtk.Button save_button {
+          margin-top: 24;
+          label: _("Create person");
+          clicked => $save() swapped;
+
+          styles [
+            "card",
+            "save"
+          ]
+        }
       }
     }
   }

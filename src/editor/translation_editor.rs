@@ -76,7 +76,7 @@ impl MusicusTranslationEditor {
         self.add_entry(&util::LANG, &self.imp().entry_row.text());
     }
 
-    fn translation(&self) -> TranslatedString {
+    pub fn translation(&self) -> TranslatedString {
         let imp = self.imp();
         let mut translation = HashMap::<String, String>::new();
 

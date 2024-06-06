@@ -67,9 +67,12 @@ mod imp {
 
         fn signals() -> &'static [Signal] {
             static SIGNALS: Lazy<Vec<Signal>> = Lazy::new(|| {
-                vec![Signal::builder("instrument-selected")
-                    .param_types([Instrument::static_type()])
-                    .build()]
+                vec![
+                    Signal::builder("instrument-selected")
+                        .param_types([Instrument::static_type()])
+                        .build(),
+                    Signal::builder("create").build(),
+                ]
             });
 
             SIGNALS.as_ref()
@@ -113,6 +116,14 @@ impl MusicusInstrumentSelectorPopover {
         })
     }
 
+    pub fn connect_create<F: Fn(&Self) + 'static>(&self, f: F) -> glib::SignalHandlerId {
+        self.connect_local("create", true, move |values| {
+            let obj = values[0].get::<Self>().unwrap();
+            f(&obj);
+            None
+        })
+    }
+
     #[template_callback]
     fn search_changed(&self, entry: &gtk::SearchEntry) {
         self.search(&entry.text());
@@ -135,7 +146,12 @@ impl MusicusInstrumentSelectorPopover {
     fn search(&self, search: &str) {
         let imp = self.imp();
 
-        let instruments = imp.library.get().unwrap().search_instruments(search).unwrap();
+        let instruments = imp
+            .library
+            .get()
+            .unwrap()
+            .search_instruments(search)
+            .unwrap();
 
         imp.list_box.remove_all();
 
@@ -182,7 +198,7 @@ impl MusicusInstrumentSelectorPopover {
     }
 
     fn create(&self) {
-        log::info!("Create instrument!");
+        self.emit_by_name::<()>("create", &[]);
         self.popdown();
     }
 }
