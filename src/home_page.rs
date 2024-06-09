@@ -5,7 +5,8 @@ use crate::{
     library::{LibraryQuery, MusicusLibrary},
     player::MusicusPlayer,
     playlist_item::PlaylistItem,
-    program_tile::{MusicusProgramTile, Program, ProgramTileDesign},
+    program::Program,
+    program_tile::MusicusProgramTile,
     recording_tile::MusicusRecordingTile,
     search_entry::MusicusSearchEntry,
     search_tag::Tag,
@@ -14,6 +15,7 @@ use crate::{
 
 use adw::subclass::{navigation_page::NavigationPageImpl, prelude::*};
 use gtk::{
+    gio,
     glib::{self, clone, Properties},
     prelude::*,
 };
@@ -107,29 +109,19 @@ mod imp {
                 .sync_create()
                 .build();
 
-            self.programs_flow_box
-                .append(&MusicusProgramTile::new(Program {
-                        title: "Just play some music".to_string(),
-                        description: "Randomly select some music. Customize programs using the button in the top right."
-                            .to_string(),
-                        design: Some(ProgramTileDesign::Program1)
-                    },
-                ));
+            let settings = gio::Settings::new("de.johrpan.musicus");
+            let program1 = Program::deserialize(&settings.string("program1")).unwrap();
+            let program2 = Program::deserialize(&settings.string("program2")).unwrap();
+            let program3 = Program::deserialize(&settings.string("program3")).unwrap();
 
             self.programs_flow_box
-                .append(&MusicusProgramTile::new(Program {
-                    title: "What's new?".to_string(),
-                    description: "Recordings that you recently added to your music library."
-                        .to_string(),
-                    design: Some(ProgramTileDesign::Program2),
-                }));
+                .append(&MusicusProgramTile::new(program1));
 
             self.programs_flow_box
-                .append(&MusicusProgramTile::new(Program {
-                    title: "A long time ago".to_string(),
-                    description: "Works that you haven't listend to for a long time.".to_string(),
-                    design: Some(ProgramTileDesign::Program3),
-                }));
+                .append(&MusicusProgramTile::new(program2));
+
+            self.programs_flow_box
+                .append(&MusicusProgramTile::new(program3));
 
             self.obj().query(&LibraryQuery::default());
         }
