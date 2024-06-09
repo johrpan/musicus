@@ -1,21 +1,29 @@
-use adw::prelude::WidgetExt;
-use gtk::{glib, subclass::prelude::*};
 use std::cell::OnceCell;
+
+use gtk::{
+    glib::{self, Properties},
+    prelude::*,
+    subclass::prelude::*,
+};
+
+use crate::program::{Program, ProgramDesign};
 
 mod imp {
     use super::*;
 
-    #[derive(Debug, Default, gtk::CompositeTemplate)]
+    #[derive(Properties, Debug, Default, gtk::CompositeTemplate)]
+    #[properties(wrapper_type = super::MusicusProgramTile)]
     #[template(file = "data/ui/program_tile.blp")]
     pub struct MusicusProgramTile {
+        #[property(get, construct_only)]
+        pub program: OnceCell<Program>,
+
         #[template_child]
         pub edit_button: TemplateChild<gtk::Button>,
         #[template_child]
         pub title_label: TemplateChild<gtk::Label>,
         #[template_child]
         pub description_label: TemplateChild<gtk::Label>,
-
-        pub program: OnceCell<Program>,
     }
 
     #[glib::object_subclass]
@@ -33,7 +41,9 @@ mod imp {
         }
     }
 
+    #[glib::derived_properties]
     impl ObjectImpl for MusicusProgramTile {}
+
     impl WidgetImpl for MusicusProgramTile {}
     impl FlowBoxChildImpl for MusicusProgramTile {}
 }
@@ -45,46 +55,33 @@ glib::wrapper! {
 
 impl MusicusProgramTile {
     pub fn new(program: Program) -> Self {
-        let obj: Self = glib::Object::new();
+        let obj: Self = glib::Object::builder()
+            .property("program", &program)
+            .build();
+
         let imp = obj.imp();
 
-        if let Some(design) = program.design {
+        if program.design() != ProgramDesign::Generic {
             obj.add_css_class("highlight");
-            obj.add_css_class(match design {
-                ProgramTileDesign::Program1 => "program1",
-                ProgramTileDesign::Program2 => "program2",
-                ProgramTileDesign::Program3 => "program3",
-                ProgramTileDesign::Program4 => "program4",
-                ProgramTileDesign::Program5 => "program5",
-                ProgramTileDesign::Program6 => "program6",
+            obj.add_css_class(match program.design() {
+                ProgramDesign::Generic => "generic",
+                ProgramDesign::Program1 => "program1",
+                ProgramDesign::Program2 => "program2",
+                ProgramDesign::Program3 => "program3",
+                ProgramDesign::Program4 => "program4",
+                ProgramDesign::Program5 => "program5",
+                ProgramDesign::Program6 => "program6",
             })
         }
-        
-        imp.title_label.set_label(&program.title);
-        imp.description_label.set_label(&program.description);
-        imp.program.set(program).unwrap();
+
+        if let Some(title) = program.title() {
+            imp.title_label.set_label(&title);
+        }
+
+        if let Some(description) = program.description() {
+            imp.description_label.set_label(&description);
+        }
 
         obj
     }
-
-    pub fn program(&self) -> &Program {
-        self.imp().program.get().unwrap()
-    }
-}
-
-#[derive(Debug, Default)]
-pub struct Program {
-    pub title: String,
-    pub description: String,
-    pub design: Option<ProgramTileDesign>,
-}
-
-#[derive(Clone, Copy, Debug)]
-pub enum ProgramTileDesign {
-    Program1,
-    Program2,
-    Program3,
-    Program4,
-    Program5,
-    Program6,
 }

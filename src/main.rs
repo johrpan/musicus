@@ -11,6 +11,7 @@ mod player_bar;
 mod playlist_item;
 mod playlist_page;
 mod playlist_tile;
+mod program;
 mod program_tile;
 mod recording_tile;
 mod search_entry;
