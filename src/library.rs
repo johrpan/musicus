@@ -10,7 +10,7 @@ use gtk::{glib, glib::Properties, prelude::*, subclass::prelude::*};
 
 use crate::db::{self, models::*, schema::*, tables, TranslatedString};
 
-diesel::sql_function! {
+diesel::define_sql_function! {
     /// Represents the SQL RANDOM() function.
     fn random() -> Integer
 }
