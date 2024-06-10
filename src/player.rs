@@ -1,4 +1,8 @@
-use crate::playlist_item::PlaylistItem;
+use std::{
+    cell::{Cell, OnceCell, RefCell},
+    sync::Arc,
+};
+
 use fragile::Fragile;
 use gstreamer_play::gst;
 use gtk::{
@@ -7,25 +11,30 @@ use gtk::{
     prelude::*,
     subclass::prelude::*,
 };
-use mpris_player::{MprisPlayer, PlaybackStatus};
+use mpris_player::{Metadata, MprisPlayer, PlaybackStatus};
 use once_cell::sync::Lazy;
-use std::{
-    cell::{Cell, OnceCell},
-    sync::Arc,
+
+use crate::{
+    db::models::{Recording, Track},
+    library::MusicusLibrary,
+    playlist_item::PlaylistItem,
+    program::Program,
 };
 
 mod imp {
-    use mpris_player::Metadata;
-
     use super::*;
 
     #[derive(Properties, Debug, Default)]
     #[properties(wrapper_type = super::MusicusPlayer)]
     pub struct MusicusPlayer {
         #[property(get, set)]
+        pub library: RefCell<Option<MusicusLibrary>>,
+        #[property(get, set)]
         pub active: Cell<bool>,
         #[property(get, set)]
         pub playing: Cell<bool>,
+        #[property(get, set = Self::set_program)]
+        pub program: RefCell<Option<Program>>,
         #[property(get, construct_only)]
         pub playlist: OnceCell<gio::ListStore>,
         #[property(get, set = Self::set_current_index)]
@@ -41,6 +50,17 @@ mod imp {
     }
 
     impl MusicusPlayer {
+        pub fn set_program(&self, program: &Program) {
+            self.program.replace(Some(program.to_owned()));
+
+            if !self.obj().active() {
+                self.obj().set_active(true);
+                self.obj().generate_items(program);
+                self.obj().set_current_index(0);
+                self.obj().play();
+            }
+        }
+
         pub fn set_current_index(&self, index: u32) {
             let playlist = self.playlist.get().unwrap();
 
@@ -144,10 +164,10 @@ mod imp {
                 if let Some(duration) = duration {
                     let obj = obj.get();
                     let imp = obj.imp();
-                    
+
                     imp.position_ms.set(0);
                     obj.notify_position_ms();
-                    
+
                     imp.duration_ms.set(duration.mseconds());
                     obj.notify_duration_ms();
                 }
@@ -181,6 +201,74 @@ impl MusicusPlayer {
             f(&obj);
             None
         })
+    }
+
+    pub fn play_recording(&self, recording: &Recording) {
+        let tracks = &recording.tracks;
+
+        if tracks.is_empty() {
+            log::warn!("Ignoring recording without tracks being added to the playlist.");
+            return;
+        }
+
+        let title = format!(
+            "{}: {}",
+            recording.work.composers_string(),
+            recording.work.name.get(),
+        );
+
+        let performances = recording.performers_string();
+
+        let mut items = Vec::new();
+
+        if tracks.len() == 1 {
+            items.push(PlaylistItem::new(
+                true,
+                &title,
+                Some(&performances),
+                None,
+                &tracks[0].path,
+            ));
+        } else {
+            let mut tracks = tracks.into_iter();
+            let first_track = tracks.next().unwrap();
+
+            let track_title = |track: &Track, number: usize| -> String {
+                let title = track
+                    .works
+                    .iter()
+                    .map(|w| w.name.get().to_string())
+                    .collect::<Vec<String>>()
+                    .join(", ");
+
+                if title.is_empty() {
+                    format!("Track {number}")
+                } else {
+                    title
+                }
+            };
+
+            items.push(PlaylistItem::new(
+                true,
+                &title,
+                Some(&performances),
+                Some(&track_title(&first_track, 1)),
+                &first_track.path,
+            ));
+
+            for (index, track) in tracks.enumerate() {
+                items.push(PlaylistItem::new(
+                    false,
+                    &title,
+                    Some(&performances),
+                    // track number = track index + 1 (first track) + 1 (zero based)
+                    Some(&track_title(&track, index + 2)),
+                    &track.path,
+                ));
+            }
+        }
+
+        self.append(items);
     }
 
     pub fn append(&self, tracks: Vec<PlaylistItem>) {
@@ -245,12 +333,23 @@ impl MusicusPlayer {
     pub fn next(&self) {
         if self.current_index() < self.playlist().n_items() - 1 {
             self.set_current_index(self.current_index() + 1);
+        } else if let Some(program) = self.program() {
+            self.generate_items(&program);
+            self.set_current_index(self.current_index() + 1);
         }
     }
 
     pub fn previous(&self) {
         if self.current_index() > 0 {
             self.set_current_index(self.current_index() - 1);
+        }
+    }
+
+    fn generate_items(&self, program: &Program) {
+        if let Some(library) = self.library() {
+            // TODO: if program.play_full_recordings() {
+            let recording = library.generate_recording(program).unwrap();
+            self.play_recording(&recording);
         }
     }
 }
