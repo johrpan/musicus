@@ -8,7 +8,10 @@ use chrono::prelude::*;
 use diesel::{dsl::exists, prelude::*, QueryDsl, SqliteConnection};
 use gtk::{glib, glib::Properties, prelude::*, subclass::prelude::*};
 
-use crate::db::{self, models::*, schema::*, tables, TranslatedString};
+use crate::{
+    db::{self, models::*, schema::*, tables, TranslatedString},
+    program::Program,
+};
 
 diesel::define_sql_function! {
     /// Represents the SQL RANDOM() function.
@@ -380,19 +383,45 @@ impl MusicusLibrary {
         })
     }
 
-    pub fn random_recording(&self, query: &LibraryQuery) -> Result<Recording> {
+    pub fn generate_recording(&self, program: &Program) -> Result<Recording> {
         let mut binding = self.imp().connection.borrow_mut();
         let connection = &mut *binding.as_mut().unwrap();
 
-        match query {
-            LibraryQuery { .. } => Recording::from_table(
-                recordings::table
-                    .order(random())
-                    .first::<tables::Recording>(connection)?,
-                &self.folder(),
-                connection,
-            ),
+        let mut query = recordings::table
+            .inner_join(works::table.inner_join(work_persons::table))
+            .inner_join(recording_persons::table)
+            .inner_join(recording_ensembles::table)
+            .inner_join(album_recordings::table)
+            .into_boxed();
+
+        if let Some(composer_id) = program.composer_id() {
+            query = query.filter(work_persons::person_id.eq(composer_id));
         }
+
+        if let Some(performer_id) = program.performer_id() {
+            query = query.filter(recording_persons::person_id.eq(performer_id));
+        }
+
+        if let Some(ensemble_id) = program.ensemble_id() {
+            query = query.filter(recording_ensembles::ensemble_id.eq(ensemble_id));
+        }
+
+        if let Some(work_id) = program.work_id() {
+            query = query.filter(recordings::work_id.eq(work_id));
+        }
+
+        if let Some(album_id) = program.album_id() {
+            query = query.filter(album_recordings::album_id.eq(album_id));
+        }
+
+        // TODO: Implement prefer_recently_added and prefer_least_recently_played.
+
+        let row = query
+            .order(random())
+            .select(tables::Recording::as_select())
+            .first::<tables::Recording>(connection)?;
+
+        Recording::from_table(row, &self.folder(), connection)
     }
 
     pub fn search_persons(&self, search: &str) -> Result<Vec<Person>> {

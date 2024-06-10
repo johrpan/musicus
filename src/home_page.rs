@@ -4,7 +4,6 @@ use crate::{
     editor::{person_editor::MusicusPersonEditor, work_editor::MusicusWorkEditor},
     library::{LibraryQuery, MusicusLibrary},
     player::MusicusPlayer,
-    playlist_item::PlaylistItem,
     program::Program,
     program_tile::MusicusProgramTile,
     recording_tile::MusicusRecordingTile,
@@ -38,6 +37,7 @@ mod imp {
         #[property(get, construct_only)]
         pub player: OnceCell<MusicusPlayer>,
 
+        pub programs: RefCell<Vec<Program>>,
         pub composers: RefCell<Vec<Person>>,
         pub performers: RefCell<Vec<Person>>,
         pub ensembles: RefCell<Vec<Ensemble>>,
@@ -110,18 +110,19 @@ mod imp {
                 .build();
 
             let settings = gio::Settings::new("de.johrpan.musicus");
-            let program1 = Program::deserialize(&settings.string("program1")).unwrap();
-            let program2 = Program::deserialize(&settings.string("program2")).unwrap();
-            let program3 = Program::deserialize(&settings.string("program3")).unwrap();
 
-            self.programs_flow_box
-                .append(&MusicusProgramTile::new(program1));
+            let programs = vec![
+                Program::deserialize(&settings.string("program1")).unwrap(),
+                Program::deserialize(&settings.string("program2")).unwrap(),
+                Program::deserialize(&settings.string("program3")).unwrap(),
+            ];
 
-            self.programs_flow_box
-                .append(&MusicusProgramTile::new(program2));
+            for program in &programs {
+                self.programs_flow_box
+                    .append(&MusicusProgramTile::new(program.to_owned()));
+            }
 
-            self.programs_flow_box
-                .append(&MusicusProgramTile::new(program3));
+            self.programs.replace(programs);
 
             self.obj().query(&LibraryQuery::default());
         }
@@ -179,6 +180,10 @@ impl MusicusHomePage {
     #[template_callback]
     fn play(&self, _: &gtk::Button) {
         log::info!("Play button clicked");
+
+        let program = Program::from_query(self.imp().search_entry.query());
+        self.player().set_program(program);
+
         self.player().play();
     }
 
@@ -187,7 +192,9 @@ impl MusicusHomePage {
         let imp = self.imp();
 
         if imp.programs_flow_box.is_visible() {
-            log::info!("Program selected");
+            if let Some(program) = imp.programs.borrow().first().cloned() {
+                self.player().set_program(program);
+            }
         } else {
             let (composer, performer, ensemble, work, recording, album) = {
                 (
@@ -209,7 +216,7 @@ impl MusicusHomePage {
             } else if let Some(work) = work {
                 search_entry.add_tag(Tag::Work(work));
             } else if let Some(recording) = recording {
-                self.play_recording(&recording);
+                self.player().play_recording(&recording);
             } else if let Some(album) = album {
                 self.show_album(&album);
             }
@@ -218,10 +225,8 @@ impl MusicusHomePage {
 
     #[template_callback]
     fn program_selected(&self, tile: &gtk::FlowBoxChild, _: &gtk::FlowBox) {
-        log::info!(
-            "Program selected: {:?}",
-            tile.downcast_ref::<MusicusProgramTile>().unwrap().program()
-        );
+        self.player()
+            .set_program(tile.downcast_ref::<MusicusProgramTile>().unwrap().program());
     }
 
     #[template_callback]
@@ -233,7 +238,7 @@ impl MusicusHomePage {
 
     #[template_callback]
     fn recording_selected(&self, tile: &gtk::FlowBoxChild, _: &gtk::FlowBox) {
-        self.play_recording(
+        self.player().play_recording(
             tile.downcast_ref::<MusicusRecordingTile>()
                 .unwrap()
                 .recording(),
@@ -243,74 +248,6 @@ impl MusicusHomePage {
     #[template_callback]
     fn album_selected(&self, tile: &gtk::FlowBoxChild, _: &gtk::FlowBox) {
         self.show_album(tile.downcast_ref::<MusicusAlbumTile>().unwrap().album());
-    }
-
-    fn play_recording(&self, recording: &Recording) {
-        let tracks = &recording.tracks;
-
-        if tracks.is_empty() {
-            log::warn!("Ignoring recording without tracks being added to the playlist.");
-            return;
-        }
-
-        let title = format!(
-            "{}: {}",
-            recording.work.composers_string(),
-            recording.work.name.get(),
-        );
-
-        let performances = recording.performers_string();
-
-        let mut items = Vec::new();
-
-        if tracks.len() == 1 {
-            items.push(PlaylistItem::new(
-                true,
-                &title,
-                Some(&performances),
-                None,
-                &tracks[0].path,
-            ));
-        } else {
-            let mut tracks = tracks.into_iter();
-            let first_track = tracks.next().unwrap();
-
-            let track_title = |track: &Track, number: usize| -> String {
-                let title = track
-                    .works
-                    .iter()
-                    .map(|w| w.name.get().to_string())
-                    .collect::<Vec<String>>()
-                    .join(", ");
-
-                if title.is_empty() {
-                    format!("Track {number}")
-                } else {
-                    title
-                }
-            };
-
-            items.push(PlaylistItem::new(
-                true,
-                &title,
-                Some(&performances),
-                Some(&track_title(&first_track, 1)),
-                &first_track.path,
-            ));
-
-            for (index, track) in tracks.enumerate() {
-                items.push(PlaylistItem::new(
-                    false,
-                    &title,
-                    Some(&performances),
-                    // track number = track index + 1 (first track) + 1 (zero based)
-                    Some(&track_title(&track, index + 2)),
-                    &track.path,
-                ));
-            }
-        }
-
-        self.player().append(items);
     }
 
     fn show_album(&self, _album: &Album) {

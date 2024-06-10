@@ -154,6 +154,7 @@ impl MusicusWindow {
 
     fn load_library(&self, path: impl AsRef<Path>) {
         let library = MusicusLibrary::new(path);
+        self.imp().player.set_library(&library);
 
         let navigation = self.imp().navigation_view.get();
         navigation.replace(&[MusicusHomePage::new(&navigation, &library, &self.imp().player).into()]);
