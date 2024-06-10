@@ -90,6 +90,13 @@ mod imp {
 
                 self.current_index.set(index);
                 item.set_is_playing(true);
+
+                self.library
+                    .borrow()
+                    .as_ref()
+                    .unwrap()
+                    .track_played(&item.track_id())
+                    .unwrap();
             }
         }
     }
@@ -228,6 +235,7 @@ impl MusicusPlayer {
                 Some(&performances),
                 None,
                 &tracks[0].path,
+                &tracks[0].track_id,
             ));
         } else {
             let mut tracks = tracks.into_iter();
@@ -254,6 +262,7 @@ impl MusicusPlayer {
                 Some(&performances),
                 Some(&track_title(&first_track, 1)),
                 &first_track.path,
+                &first_track.track_id,
             ));
 
             for (index, track) in tracks.enumerate() {
@@ -264,6 +273,7 @@ impl MusicusPlayer {
                     // track number = track index + 1 (first track) + 1 (zero based)
                     Some(&track_title(&track, index + 2)),
                     &track.path,
+                    &track.track_id,
                 ));
             }
         }

@@ -27,6 +27,9 @@ mod imp {
 
         #[property(get, construct_only)]
         pub path: OnceCell<PathBuf>,
+
+        #[property(get, construct_only)]
+        pub track_id: OnceCell<String>,
     }
 
     #[glib::object_subclass]
@@ -50,6 +53,7 @@ impl PlaylistItem {
         performers: Option<&str>,
         part_title: Option<&str>,
         path: impl AsRef<Path>,
+        track_id: &str,
     ) -> Self {
         glib::Object::builder()
             .property("is-title", is_title)
@@ -57,6 +61,7 @@ impl PlaylistItem {
             .property("performers", performers)
             .property("part-title", part_title)
             .property("path", path.as_ref())
+            .property("track-id", track_id)
             .build()
     }
 

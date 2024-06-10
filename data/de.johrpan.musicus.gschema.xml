@@ -19,7 +19,7 @@
 		</key>
 		<key name="program1" type="s">
 			<!-- Translators: Configuration for the default programs in JSON. Please only translate the values of "title" and "description". -->
-			<default l10n="messages">'{"title":"Just play some music","description":"Randomly select some music. Customize programs using the button in the top right.","design":"Program1","prefer_recently_added":0.0,"prefer_least_recently_played":0.0,"play_full_recordings":true}'</default>
+			<default l10n="messages">'{"title":"Just play some music","description":"Randomly select some music. Customize programs using the button in the top right.","design":"Program1","prefer_recently_added":0.0,"prefer_least_recently_played":0.1,"play_full_recordings":true}'</default>
 			<summary>Default settings for program 1</summary>
 		</key>
 		<key name="program2" type="s">
@@ -29,7 +29,7 @@
 		</key>
 		<key name="program3" type="s">
 			<!-- Translators: Configuration for the default programs in JSON. Please only translate the values of "title" and "description". -->
-			<default l10n="messages">'{"title":"A long time ago","description":"Works that you haven\'t listend to for a long time.","design":"Program3","prefer_recently_added":-1.0,"prefer_least_recently_played":1.0,"play_full_recordings":false}'</default>
+			<default l10n="messages">'{"title":"A long time ago","description":"Works that you haven\'t listend to for a long time.","design":"Program3","prefer_recently_added":0.0,"prefer_least_recently_played":1.0,"play_full_recordings":false}'</default>
 			<summary>Default settings for program 3</summary>
 		</key>
 	</schema>
