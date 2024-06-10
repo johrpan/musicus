@@ -5,7 +5,13 @@ use std::{
 
 use anyhow::Result;
 use chrono::prelude::*;
-use diesel::{dsl::exists, prelude::*, QueryDsl, SqliteConnection};
+use diesel::{
+    dsl::{exists, sql},
+    prelude::*,
+    sql_query,
+    sql_types::BigInt,
+    QueryDsl, SqliteConnection,
+};
 use gtk::{glib, glib::Properties, prelude::*, subclass::prelude::*};
 
 use crate::{
@@ -414,7 +420,59 @@ impl MusicusLibrary {
             query = query.filter(album_recordings::album_id.eq(album_id));
         }
 
-        // TODO: Implement prefer_recently_added and prefer_least_recently_played.
+        if program.prefer_recently_added() > 0.0 {
+            let oldest_timestamp = sql_query(
+                "SELECT CAST(STRFTIME('%s', MIN(created_at)) AS INTEGER) AS value FROM recordings",
+            )
+            .get_result::<IntegerValue>(connection)?
+            .value;
+
+            let newest_timestamp = sql_query(
+                "SELECT CAST(STRFTIME('%s', MAX(created_at)) AS INTEGER) AS value FROM recordings",
+            )
+            .get_result::<IntegerValue>(connection)?
+            .value;
+
+            let range = newest_timestamp - oldest_timestamp;
+
+            if range >= 60 {
+                let proportion = program.prefer_recently_added().max(1.0) * 0.9;
+                let cutoff_timestamp =
+                    oldest_timestamp + (proportion * range as f64).floor() as i64;
+
+                query = query.filter(
+                    sql::<BigInt>("CAST(STRFTIME('%s', recordings.created_at) AS INTEGER)")
+                        .ge(cutoff_timestamp)
+                        .or(recordings::last_played_at.is_null()),
+                );
+            }
+        }
+
+        if program.prefer_least_recently_played() > 0.0 {
+            let oldest_timestamp =
+                sql_query("SELECT CAST(STRFTIME('%s', MIN(last_played_at)) AS INTEGER) AS value FROM recordings")
+                    .get_result::<IntegerValue>(connection)?
+                    .value;
+
+            let newest_timestamp =
+                sql_query("SELECT CAST(STRFTIME('%s', MAX(last_played_at)) AS INTEGER) AS value FROM recordings")
+                    .get_result::<IntegerValue>(connection)?
+                    .value;
+
+            let range = newest_timestamp - oldest_timestamp;
+
+            if range >= 60 {
+                let proportion = 1.0 - program.prefer_least_recently_played().max(1.0) * 0.9;
+                let cutoff_timestamp =
+                    oldest_timestamp + (proportion * range as f64).floor() as i64;
+
+                query = query.filter(
+                    sql::<BigInt>("CAST(STRFTIME('%s', recordings.last_played_at) AS INTEGER)")
+                        .le(cutoff_timestamp)
+                        .or(recordings::last_played_at.is_null()),
+                );
+            }
+        }
 
         let row = query
             .order(random())
@@ -422,6 +480,31 @@ impl MusicusLibrary {
             .first::<tables::Recording>(connection)?;
 
         Recording::from_table(row, &self.folder(), connection)
+    }
+
+    pub fn track_played(&self, track_id: &str) -> Result<()> {
+        let mut binding = self.imp().connection.borrow_mut();
+        let connection = &mut *binding.as_mut().unwrap();
+
+        let now = Local::now().naive_local();
+
+        diesel::update(recordings::table)
+            .filter(exists(
+                tracks::table.filter(
+                    tracks::track_id
+                        .eq(track_id)
+                        .and(tracks::recording_id.eq(recordings::recording_id)),
+                ),
+            ))
+            .set(recordings::last_played_at.eq(now))
+            .execute(connection)?;
+
+        diesel::update(tracks::table)
+            .filter(tracks::track_id.eq(track_id))
+            .set(tracks::last_played_at.eq(now))
+            .execute(connection)?;
+
+        Ok(())
     }
 
     pub fn search_persons(&self, search: &str) -> Result<Vec<Person>> {
@@ -554,4 +637,10 @@ impl LibraryResults {
             && self.recordings.is_empty()
             && self.albums.is_empty()
     }
+}
+
+#[derive(QueryableByName)]
+pub struct IntegerValue {
+    #[diesel(sql_type = diesel::sql_types::BigInt)]
+    pub value: i64,
 }
