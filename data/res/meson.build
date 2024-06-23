@@ -1,9 +1,16 @@
-pkgdatadir = join_paths(get_option('prefix'), get_option('datadir'), meson.project_name())
-gnome = import('gnome')
+conf = configuration_data()
+conf.set('PATH_ID', path_id)
 
-gnome.compile_resources('musicus',
-  'musicus.gresource.xml',
+configure_file(
+  input: '@0@.gresource.xml.in'.format(base_id),
+  output: '@0@.gresource.xml'.format(app_id),
+  configuration: conf,
+)
+
+gnome.compile_resources(
+  app_id,
+  meson.project_build_root() / 'data' / 'res'/ '@0@.gresource.xml'.format(app_id),
   gresource_bundle: true,
   install: true,
-  install_dir: pkgdatadir,
+  install_dir: datadir / meson.project_name(),
 )

@@ -1,10 +1,21 @@
+# Desktop file
+
+conf = configuration_data()
+conf.set('NAME', name)
+conf.set('APP_ID', app_id)
+conf.set('PKGNAME', meson.project_name())
+
 desktop_file = i18n.merge_file(
-        input: 'de.johrpan.musicus.desktop.in',
-       output: 'de.johrpan.musicus.desktop',
-         type: 'desktop',
-       po_dir: '../po',
-      install: true,
-  install_dir: join_paths(get_option('datadir'), 'applications')
+  input: configure_file(
+    input: '@0@.desktop.in.in'.format(base_id),
+    output: '@0@.desktop.in'.format(app_id),
+    configuration: conf,
+  ),
+  output: '@0@.desktop'.format(app_id),
+  type: 'desktop',
+  po_dir: '../po',
+  install: true,
+  install_dir: datadir / 'applications',
 )
 
 desktop_utils = find_program('desktop-file-validate', required: false)
@@ -12,29 +23,39 @@ if desktop_utils.found()
   test('Validate desktop file', desktop_utils, args: [desktop_file])
 endif
 
-appstream_file = i18n.merge_file(
-        input: 'de.johrpan.musicus.appdata.xml.in',
-       output: 'de.johrpan.musicus.appdata.xml',
-       po_dir: '../po',
-      install: true,
-  install_dir: join_paths(get_option('datadir'), 'appdata')
-)
+# Settings
 
-appstream_util = find_program('appstream-util', required: false)
-if appstream_util.found()
-  test('Validate appstream file', appstream_util, args: ['validate', appstream_file])
-endif
+conf = configuration_data()
+conf.set('APP_ID', app_id)
+conf.set('PATH_ID', path_id)
+conf.set('PKGNAME', meson.project_name())
 
-install_data('de.johrpan.musicus.gschema.xml',
-  install_dir: join_paths(get_option('datadir'), 'glib-2.0/schemas')
+configure_file(
+  input: '@0@.gschema.xml.in'.format(base_id),
+  output: '@0@.gschema.xml'.format(app_id),
+  configuration: conf,
+  install: true,
+  install_dir: datadir / 'glib-2.0' / 'schemas',
 )
 
 compile_schemas = find_program('glib-compile-schemas', required: false)
 if compile_schemas.found()
-  test('Validate schema file',
-       compile_schemas,
-       args: ['--strict', '--dry-run', meson.current_source_dir()])
+  test('Validate schema file', compile_schemas, args: ['--strict', '--dry-run', meson.current_source_dir()])
 endif
+
+# DBus service
+
+conf = configuration_data()
+conf.set('APP_ID', app_id)
+conf.set('BINDIR', bindir)
+conf.set('PKGNAME', meson.project_name())
+
+configure_file(
+  input: '@0@.service.in'.format(base_id),
+  output: '@0@.service'.format(app_id),
+  configuration: conf,
+  install_dir: datadir / 'dbus-1' / 'services',
+)
 
 subdir('icons')
 subdir('res')

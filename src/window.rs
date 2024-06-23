@@ -1,11 +1,13 @@
+use std::path::Path;
+
+use adw::subclass::prelude::*;
+use gtk::{gio, glib, glib::clone, prelude::*};
+
 use crate::{
-    home_page::MusicusHomePage, library::MusicusLibrary, library_manager::LibraryManager,
+    config, home_page::MusicusHomePage, library::MusicusLibrary, library_manager::LibraryManager,
     player::MusicusPlayer, player_bar::PlayerBar, playlist_page::MusicusPlaylistPage,
     welcome_page::MusicusWelcomePage,
 };
-use adw::subclass::prelude::*;
-use gtk::{gio, glib, glib::clone, prelude::*};
-use std::path::Path;
 
 mod imp {
     use super::*;
@@ -44,6 +46,10 @@ mod imp {
         fn constructed(&self) {
             self.parent_constructed();
             self.obj().load_window_state();
+
+            if config::PROFILE == "development" {
+                self.obj().add_css_class("devel");
+            }
 
             let navigation_view = self.navigation_view.get().to_owned();
             let library_action = gio::ActionEntry::builder("library")
@@ -85,7 +91,7 @@ mod imp {
             let obj = self.obj().to_owned();
             self.player.connect_raise(move |_| obj.present());
 
-            let settings = gio::Settings::new("de.johrpan.musicus");
+            let settings = gio::Settings::new(config::APP_ID);
             let library_path = settings.string("library-path").to_string();
             if !library_path.is_empty() {
                 self.obj().load_library(&library_path);
@@ -124,13 +130,13 @@ impl MusicusWindow {
     }
 
     pub fn load_window_state(&self) {
-        let settings = gio::Settings::new("de.johrpan.musicus");
+        let settings = gio::Settings::new(config::APP_ID);
         self.set_default_size(settings.int("window-width"), settings.int("window-height"));
         self.set_property("maximized", settings.boolean("is-maximized"));
     }
 
     pub fn save_window_state(&self) -> Result<(), glib::BoolError> {
-        let settings = gio::Settings::new("de.johrpan.musicus");
+        let settings = gio::Settings::new(config::APP_ID);
 
         let size = self.default_size();
         settings.set_int("window-width", size.0)?;
@@ -144,7 +150,7 @@ impl MusicusWindow {
     fn set_library_folder(&self, folder: &gio::File) {
         let path = folder.path().unwrap();
 
-        let settings = gio::Settings::new("de.johrpan.musicus");
+        let settings = gio::Settings::new(config::APP_ID);
         settings
             .set_string("library-path", path.to_str().unwrap())
             .unwrap();
@@ -157,7 +163,8 @@ impl MusicusWindow {
         self.imp().player.set_library(&library);
 
         let navigation = self.imp().navigation_view.get();
-        navigation.replace(&[MusicusHomePage::new(&navigation, &library, &self.imp().player).into()]);
+        navigation
+            .replace(&[MusicusHomePage::new(&navigation, &library, &self.imp().player).into()]);
         navigation.add(&LibraryManager::new(&library));
     }
 }

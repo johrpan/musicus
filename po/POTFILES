@@ -1,3 +1,4 @@
+# TODO: Update for first release.
 data/ui/home_page.blp
 data/ui/library_manager.blp
 data/ui/player_bar.blp
@@ -9,7 +10,6 @@ data/ui/search_tag.blp
 data/ui/tag_tile.blp
 data/ui/welcome_page.blp
 data/ui/window.blp
-data/de.johrpan.musicus.desktop.in
-data/de.johrpan.musicus.appdata.xml.in
-data/de.johrpan.musicus.gschema.xml
+data/de.johrpan.Musicus.desktop.in.in
+data/de.johrpan.Musicus.gschema.xml.in
 src/application.rs

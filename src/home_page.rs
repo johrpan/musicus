@@ -1,5 +1,15 @@
+use std::cell::{OnceCell, RefCell};
+
+use adw::subclass::{navigation_page::NavigationPageImpl, prelude::*};
+use gtk::{
+    gio,
+    glib::{self, clone, Properties},
+    prelude::*,
+};
+
 use crate::{
     album_tile::MusicusAlbumTile,
+    config,
     db::models::*,
     editor::{person_editor::MusicusPersonEditor, work_editor::MusicusWorkEditor},
     library::{LibraryQuery, MusicusLibrary},
@@ -11,15 +21,6 @@ use crate::{
     search_tag::Tag,
     tag_tile::MusicusTagTile,
 };
-
-use adw::subclass::{navigation_page::NavigationPageImpl, prelude::*};
-use gtk::{
-    gio,
-    glib::{self, clone, Properties},
-    prelude::*,
-};
-
-use std::cell::{OnceCell, RefCell};
 
 mod imp {
     use super::*;
@@ -109,7 +110,7 @@ mod imp {
                 .sync_create()
                 .build();
 
-            let settings = gio::Settings::new("de.johrpan.musicus");
+            let settings = gio::Settings::new(&config::APP_ID);
 
             let programs = vec![
                 Program::deserialize(&settings.string("program1")).unwrap(),
