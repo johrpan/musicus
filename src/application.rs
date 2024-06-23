@@ -1,7 +1,8 @@
-use crate::{config::VERSION, MusicusWindow};
 use adw::subclass::prelude::*;
 use gettextrs::gettext;
 use gtk::{gio, glib, prelude::*};
+
+use crate::{config, MusicusWindow};
 
 mod imp {
     use super::*;
@@ -51,10 +52,10 @@ glib::wrapper! {
 }
 
 impl MusicusApplication {
-    pub fn new(application_id: &str, flags: &gio::ApplicationFlags) -> Self {
+    pub fn new() -> Self {
         glib::Object::builder()
-            .property("application-id", application_id)
-            .property("flags", flags)
+            .property("application-id", config::APP_ID)
+            .property("resource-base-path", config::PATH_ID)
             .build()
     }
 
@@ -74,10 +75,10 @@ impl MusicusApplication {
         let window = self.active_window().unwrap();
         let about = adw::AboutWindow::builder()
             .transient_for(&window)
-            .application_name(gettext("Musicus"))
-            .application_icon("de.johrpan.musicus")
+            .application_name(gettext(config::NAME))
+            .application_icon(config::APP_ID)
             .developer_name("Elias Projahn")
-            .version(VERSION)
+            .version(config::VERSION)
             .website("https://code.johrpan.de/johrpan/musicus")
             .developers(vec!["Elias Projahn <elias@johrpan.de>"])
             .copyright("© 2023 Elias Projahn")

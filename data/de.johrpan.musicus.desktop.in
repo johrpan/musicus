@@ -1,8 +1,0 @@
-[Desktop Entry]
-Name=Musicus
-Exec=musicus
-Icon=de.johrpan.musicus
-Terminal=false
-Type=Application
-Categories=GTK;
-StartupNotify=true

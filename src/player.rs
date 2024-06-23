@@ -15,6 +15,7 @@ use mpris_player::{Metadata, MprisPlayer, PlaybackStatus};
 use once_cell::sync::Lazy;
 
 use crate::{
+    config,
     db::models::{Recording, Track},
     library::MusicusLibrary,
     playlist_item::PlaylistItem,
@@ -122,9 +123,9 @@ mod imp {
             let play = gstreamer_play::Play::new(None::<gstreamer_play::PlayVideoRenderer>);
 
             let mpris = MprisPlayer::new(
-                "de.johrpan.musicus".to_string(),
-                "Musicus".to_string(),
-                "de.johrpan.musicus.desktop".to_string(),
+                config::APP_ID.to_owned(),
+                config::NAME.to_owned(),
+                config::APP_ID.to_owned(),
             );
 
             mpris.set_can_raise(true);

@@ -22,24 +22,31 @@ mod welcome_page;
 mod window;
 
 use self::{application::MusicusApplication, window::MusicusWindow};
-
-use config::{GETTEXT_PACKAGE, LOCALEDIR, PKGDATADIR};
-use gettextrs::{bind_textdomain_codeset, bindtextdomain, textdomain};
+use gettextrs::LocaleCategory;
 use gstreamer_play::gst;
 use gtk::{gio, glib, prelude::*};
 
 fn main() -> glib::ExitCode {
     tracing_subscriber::fmt::init();
+    gtk::init().expect("Failed to initialize GTK!");
     gst::init().expect("Failed to initialize GStreamer!");
 
-    bindtextdomain(GETTEXT_PACKAGE, LOCALEDIR).expect("Unable to bind the text domain");
-    bind_textdomain_codeset(GETTEXT_PACKAGE, "UTF-8")
-        .expect("Unable to set the text domain encoding");
-    textdomain(GETTEXT_PACKAGE).expect("Unable to switch to the text domain");
+    glib::set_application_name(config::NAME);
+    gtk::Window::set_default_icon_name(config::APP_ID);
 
-    let resources = gio::Resource::load(PKGDATADIR.to_owned() + "/musicus.gresource")
-        .expect("Could not load resources");
-    gio::resources_register(&resources);
+    gettextrs::setlocale(LocaleCategory::LcAll, "");
+    gettextrs::bindtextdomain(config::PKGNAME, config::LOCALEDIR).unwrap();
+    gettextrs::textdomain(config::PKGNAME).unwrap();
 
-    MusicusApplication::new("de.johrpan.musicus", &gio::ApplicationFlags::empty()).run()
+    gio::resources_register(
+        &gio::Resource::load(&format!(
+            "{}/{}/{}.gresource",
+            config::DATADIR,
+            config::PKGNAME,
+            config::APP_ID
+        ))
+        .expect("Could not load resources"),
+    );
+
+    MusicusApplication::new().run()
 }

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <gresources>
-  <gresource prefix="/de/johrpan/musicus">
+  <gresource prefix="@PATH_ID@">
     <file preprocess="xml-stripblanks">icons/scalable/actions/playlist-symbolic.svg</file>
     <file compressed="true">style.css</file>
   </gresource>
