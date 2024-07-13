@@ -17,7 +17,10 @@ mod imp {
         pub is_title: OnceCell<bool>,
 
         #[property(get, construct_only)]
-        pub title: OnceCell<String>,
+        pub composers: OnceCell<Option<String>>,
+
+        #[property(get, construct_only)]
+        pub work: OnceCell<String>,
 
         #[property(get, construct_only, nullable)]
         pub performers: OnceCell<Option<String>>,
@@ -49,7 +52,8 @@ glib::wrapper! {
 impl PlaylistItem {
     pub fn new(
         is_title: bool,
-        title: &str,
+        composers: Option<&str>,
+        work: &str,
         performers: Option<&str>,
         part_title: Option<&str>,
         path: impl AsRef<Path>,
@@ -57,7 +61,8 @@ impl PlaylistItem {
     ) -> Self {
         glib::Object::builder()
             .property("is-title", is_title)
-            .property("title", title)
+            .property("composers", composers)
+            .property("work", work)
             .property("performers", performers)
             .property("part-title", part_title)
             .property("path", path.as_ref())
@@ -66,7 +71,14 @@ impl PlaylistItem {
     }
 
     pub fn make_title(&self) -> String {
-        let mut title = self.title();
+        let mut title = String::new();
+
+        if let Some(composers) = self.composers() {
+            title.push_str(&composers);
+            title.push_str(": ");
+        }
+
+        title.push_str(&self.work());
 
         if let Some(part_title) = self.part_title() {
             title.push_str(": ");

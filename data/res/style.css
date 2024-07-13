@@ -52,16 +52,8 @@
   border-radius: 12px;
 }
 
-.playlisttile .title {
-  font-weight: bold;
-}
-
-.playlisttile .subtitle {
-  font-size: smaller;
-}
-
 .playlisttile .parttitle {
-  font-size: smaller;
+  font-style: italic;
 }
 
 .program {

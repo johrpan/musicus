@@ -219,12 +219,6 @@ impl MusicusPlayer {
             return;
         }
 
-        let title = format!(
-            "{}: {}",
-            recording.work.composers_string(),
-            recording.work.name.get(),
-        );
-
         let performances = recording.performers_string();
 
         let mut items = Vec::new();
@@ -232,7 +226,8 @@ impl MusicusPlayer {
         if tracks.len() == 1 {
             items.push(PlaylistItem::new(
                 true,
-                &title,
+                Some(&recording.work.composers_string()),
+                &recording.work.name.get(),
                 Some(&performances),
                 None,
                 &tracks[0].path,
@@ -259,7 +254,8 @@ impl MusicusPlayer {
 
             items.push(PlaylistItem::new(
                 true,
-                &title,
+                Some(&recording.work.composers_string()),
+                &recording.work.name.get(),
                 Some(&performances),
                 Some(&track_title(&first_track, 1)),
                 &first_track.path,
@@ -269,7 +265,8 @@ impl MusicusPlayer {
             for (index, track) in tracks.enumerate() {
                 items.push(PlaylistItem::new(
                     false,
-                    &title,
+                    Some(&recording.work.composers_string()),
+                    &recording.work.name.get(),
                     Some(&performances),
                     // track number = track index + 1 (first track) + 1 (zero based)
                     Some(&track_title(&track, index + 2)),

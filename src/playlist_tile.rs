@@ -11,7 +11,9 @@ mod imp {
         #[template_child]
         pub playing_icon: TemplateChild<gtk::Image>,
         #[template_child]
-        pub title_label: TemplateChild<gtk::Label>,
+        pub composers_label: TemplateChild<gtk::Label>,
+        #[template_child]
+        pub work_label: TemplateChild<gtk::Label>,
         #[template_child]
         pub performances_label: TemplateChild<gtk::Label>,
         #[template_child]
@@ -59,12 +61,19 @@ impl PlaylistTile {
 
         if let Some(item) = item {
             if item.is_title() {
-                imp.title_label.set_label(&item.title());
-                imp.title_label.set_visible(true);
+                if let Some(composers) = item.composers() {
+                    imp.composers_label.set_label(&composers);
+                    imp.composers_label.set_visible(true);
+                    imp.work_label.set_margin_top(3);
+                }
+
+                imp.work_label.set_label(&item.work());
+                imp.work_label.set_visible(true);
 
                 if let Some(performances) = item.performers() {
                     imp.performances_label.set_label(&performances);
                     imp.performances_label.set_visible(true);
+                    imp.work_label.set_margin_bottom(6);
                 }
             }
 
