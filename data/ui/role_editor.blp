@@ -1,0 +1,42 @@
+using Gtk 4.0;
+using Adw 1;
+
+template $MusicusRoleEditor: Adw.NavigationPage {
+  title: _("Role");
+
+  Adw.ToolbarView {
+    [top]
+    Adw.HeaderBar header_bar {}
+
+    Adw.Clamp {
+      Gtk.Box {
+        orientation: vertical;
+
+        Gtk.Label {
+          label: _("Name");
+          xalign: 0;
+          margin-top: 24;
+
+          styles [
+            "heading"
+          ]
+        }
+
+        $MusicusTranslationEditor name_editor {
+          margin-top: 12;
+        }
+
+        Gtk.Button save_button {
+          margin-top: 24;
+          label: _("Create role");
+          clicked => $save() swapped;
+
+          styles [
+            "card",
+            "save"
+          ]
+        }
+      }
+    }
+  }
+}

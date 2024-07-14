@@ -549,6 +549,29 @@ impl MusicusLibrary {
         Ok(instruments)
     }
 
+    pub fn search_works(&self, composer: &Person, search: &str) -> Result<Vec<Work>> {
+        let search = format!("%{}%", search);
+        let mut binding = self.imp().connection.borrow_mut();
+        let connection = &mut *binding.as_mut().unwrap();
+
+        let works: Vec<Work> = works::table
+            .inner_join(work_persons::table)
+            .filter(
+                works::name
+                    .like(&search)
+                    .and(work_persons::person_id.eq(&composer.person_id)),
+            )
+            .limit(9)
+            .select(works::all_columns)
+            .distinct()
+            .load::<tables::Work>(connection)?
+            .into_iter()
+            .map(|w| Work::from_table(w, connection))
+            .collect::<Result<Vec<Work>>>()?;
+
+        Ok(works)
+    }
+
     pub fn composer_default_role(&self) -> Result<Role> {
         let mut binding = self.imp().connection.borrow_mut();
         let connection = &mut *binding.as_mut().unwrap();
@@ -592,6 +615,45 @@ impl MusicusLibrary {
                 persons::name.eq(name),
                 persons::edited_at.eq(now),
                 persons::last_used_at.eq(now),
+            ))
+            .execute(connection)?;
+
+        Ok(())
+    }
+
+    pub fn create_role(&self, name: TranslatedString) -> Result<Role> {
+        let mut binding = self.imp().connection.borrow_mut();
+        let connection = &mut *binding.as_mut().unwrap();
+
+        let now = Local::now().naive_local();
+
+        let role = Role {
+            role_id: db::generate_id(),
+            name,
+            created_at: now,
+            edited_at: now,
+            last_used_at: now,
+        };
+
+        diesel::insert_into(roles::table)
+            .values(&role)
+            .execute(connection)?;
+
+        Ok(role)
+    }
+
+    pub fn update_role(&self, id: &str, name: TranslatedString) -> Result<()> {
+        let mut binding = self.imp().connection.borrow_mut();
+        let connection = &mut *binding.as_mut().unwrap();
+
+        let now = Local::now().naive_local();
+
+        diesel::update(roles::table)
+            .filter(roles::role_id.eq(id))
+            .set((
+                roles::name.eq(name),
+                roles::edited_at.eq(now),
+                roles::last_used_at.eq(now),
             ))
             .execute(connection)?;
 

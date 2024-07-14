@@ -78,7 +78,7 @@ impl MusicusTranslationEntry {
     }
 
     pub fn translation(&self) -> String {
-        self.imp().text().into()
+        self.text().to_string()
     }
 
     #[template_callback]
