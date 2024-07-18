@@ -70,9 +70,10 @@ mod imp {
                 gesture.set_state(gtk::EventSequenceState::Claimed);
             });
 
-            controller.connect_released(clone!(@weak self as _self => move |_, _, _, _| {
-                _self.obj().reset();
-            }));
+            let obj = self.obj().to_owned();
+            controller.connect_released(move |_, _, _, _| {
+                obj.reset();
+            });
 
             self.clear_icon.add_controller(controller);
         }
@@ -120,19 +121,29 @@ impl MusicusSearchEntry {
     pub fn set_key_capture_widget(&self, widget: &impl IsA<gtk::Widget>) {
         let controller = gtk::EventControllerKey::new();
 
-        controller.connect_key_pressed(clone!(@weak self as _self => @default-return glib::Propagation::Proceed, move |controller, _, _, _| {
-            match controller.forward(&_self.imp().text.get()) {
-                true => {
-                    _self.grab_focus();
-                    glib::Propagation::Stop
-                },
-                false => glib::Propagation::Proceed,
+        controller.connect_key_pressed(clone!(
+            #[weak(rename_to = this)]
+            self,
+            #[upgrade_or]
+            glib::Propagation::Proceed,
+            move |controller, _, _, _| {
+                match controller.forward(&this.imp().text.get()) {
+                    true => {
+                        this.grab_focus();
+                        glib::Propagation::Stop
+                    }
+                    false => glib::Propagation::Proceed,
+                }
             }
-        }));
+        ));
 
-        controller.connect_key_released(clone!(@weak self as _self => move |controller, _, _, _| {
-            controller.forward(&_self.imp().text.get());
-        }));
+        controller.connect_key_released(clone!(
+            #[weak(rename_to = this)]
+            self,
+            move |controller, _, _, _| {
+                controller.forward(&this.imp().text.get());
+            }
+        ));
 
         widget.add_controller(controller);
     }
@@ -157,17 +168,21 @@ impl MusicusSearchEntry {
 
         let tag = MusicusSearchTag::new(tag);
 
-        tag.connect_remove(clone!(@weak self as self_ => move |tag| {
-            let imp = self_.imp();
+        tag.connect_remove(clone!(
+            #[weak(rename_to = this)]
+            self,
+            move |tag| {
+                let imp = this.imp();
 
-            imp.tags_box.remove(tag);
+                imp.tags_box.remove(tag);
 
-            {
-                imp.tags.borrow_mut().retain(|t| t.tag() != tag.tag());
+                {
+                    imp.tags.borrow_mut().retain(|t| t.tag() != tag.tag());
+                }
+
+                this.emit_by_name::<()>("query-changed", &[]);
             }
-
-            self_.emit_by_name::<()>("query-changed", &[]);
-        }));
+        ));
 
         imp.tags_box.append(&tag);
         imp.tags.borrow_mut().push(tag);
@@ -208,7 +223,7 @@ impl MusicusSearchEntry {
 
     #[template_callback]
     fn backspace(&self, text: &gtk::Text) {
-        if text.cursor_position() == 0 {
+        if text.position() == 0 {
             let changed = if let Some(tag) = self.imp().tags.borrow_mut().pop() {
                 self.imp().tags_box.remove(&tag);
                 true

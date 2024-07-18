@@ -88,7 +88,10 @@ impl Program {
             .property("description", &*data.description.borrow())
             .property("design", data.design.get())
             .property("prefer-recently-added", data.prefer_recently_added.get())
-            .property("prefer-least-recently-played", data.prefer_least_recently_played.get())
+            .property(
+                "prefer-least-recently-played",
+                data.prefer_least_recently_played.get(),
+            )
             .property("play-full-recordings", data.play_full_recordings.get())
             .build();
 

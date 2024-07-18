@@ -28,24 +28,37 @@ mod imp {
             self.parent_constructed();
 
             let obj = self.obj();
-            obj.connect_parent_notify(clone!(@weak obj => move |_: &super::MusicusActivatableRow| {
-                let previous_parent = obj.imp().previous_parent.borrow_mut().take();
-                let previous_signal_handler_id = obj.imp().previous_signal_handler_id.borrow_mut().take();
-                if let (Some(previous_parent), Some(previous_signal_handler_id)) = (previous_parent, previous_signal_handler_id) {
-                    previous_parent.disconnect(previous_signal_handler_id);
-                }
+            obj.connect_parent_notify(clone!(
+                #[weak]
+                obj,
+                move |_: &super::MusicusActivatableRow| {
+                    let previous_parent = obj.imp().previous_parent.borrow_mut().take();
+                    let previous_signal_handler_id =
+                        obj.imp().previous_signal_handler_id.borrow_mut().take();
+                    if let (Some(previous_parent), Some(previous_signal_handler_id)) =
+                        (previous_parent, previous_signal_handler_id)
+                    {
+                        previous_parent.disconnect(previous_signal_handler_id);
+                    }
 
-                if let Some(parent) = obj.parent().and_downcast::<gtk::ListBox>() {
-                    let signal_handler_id = parent.connect_row_activated(clone!(@weak obj => move |_: &gtk::ListBox, row: &gtk::ListBoxRow| {
-                        if *row == obj {
-                            obj.activate();
-                        }
-                    }));
+                    if let Some(parent) = obj.parent().and_downcast::<gtk::ListBox>() {
+                        let signal_handler_id = parent.connect_row_activated(clone!(
+                            #[weak]
+                            obj,
+                            move |_: &gtk::ListBox, row: &gtk::ListBoxRow| {
+                                if *row == obj {
+                                    obj.activate();
+                                }
+                            }
+                        ));
 
-                    obj.imp().previous_parent.replace(Some(parent));
-                    obj.imp().previous_signal_handler_id.replace(Some(signal_handler_id));
+                        obj.imp().previous_parent.replace(Some(parent));
+                        obj.imp()
+                            .previous_signal_handler_id
+                            .replace(Some(signal_handler_id));
+                    }
                 }
-            }));
+            ));
         }
 
         fn signals() -> &'static [Signal] {

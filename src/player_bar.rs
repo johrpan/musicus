@@ -70,8 +70,7 @@ mod imp {
                 .set_label(&format_time(current_time_ms));
 
             self.remaining_time_label.set_label(&format_time(
-                player
-                    .duration_ms().saturating_sub(current_time_ms),
+                player.duration_ms().saturating_sub(current_time_ms),
             ));
         }
     }
@@ -121,24 +120,38 @@ mod imp {
                 .sync_create()
                 .build();
 
-            let obj = self.obj().clone();
+            let obj = self.obj();
 
-            player.connect_current_index_notify(
-                clone!(@weak obj => move |_| obj.imp().update_item()),
-            );
-            player.playlist().connect_items_changed(
-                clone!(@weak obj => move |_, _, _, _| obj.imp().update_item()),
-            );
+            player.connect_current_index_notify(clone!(
+                #[weak]
+                obj,
+                move |_| obj.imp().update_item()
+            ));
+            player.playlist().connect_items_changed(clone!(
+                #[weak]
+                obj,
+                move |_, _, _, _| obj.imp().update_item()
+            ));
 
-            player
-                .connect_position_ms_notify(clone!(@weak obj => move |_| obj.imp().update_time()));
-            player
-                .connect_duration_ms_notify(clone!(@weak obj => move |_| obj.imp().update_time()));
+            player.connect_position_ms_notify(clone!(
+                #[weak]
+                obj,
+                move |_| obj.imp().update_time()
+            ));
+            player.connect_duration_ms_notify(clone!(
+                #[weak]
+                obj,
+                move |_| obj.imp().update_time()
+            ));
 
             let seeking_controller = gtk::EventControllerLegacy::new();
 
-            seeking_controller.connect_event(
-                clone!(@weak obj => @default-return glib::Propagation::Proceed, move |_, event| {
+            seeking_controller.connect_event(clone!(
+                #[weak]
+                obj,
+                #[upgrade_or]
+                glib::Propagation::Proceed,
+                move |_, event| {
                     if let Some(event) = event.downcast_ref::<gdk::ButtonEvent>() {
                         let imp = obj.imp();
                         if event.button() == gdk::BUTTON_PRIMARY {
@@ -148,23 +161,27 @@ mod imp {
                                 }
                                 gdk::EventType::ButtonRelease => {
                                     let player = obj.player();
-                                    player.seek_to((imp.slider.value() * player.duration_ms() as f64) as u64);
+                                    player.seek_to(
+                                        (imp.slider.value() * player.duration_ms() as f64) as u64,
+                                    );
                                     imp.seeking.set(false);
                                 }
                                 _ => (),
                             }
                         }
-
                     }
 
                     glib::Propagation::Proceed
-                }),
-            );
+                }
+            ));
 
             self.slider.add_controller(seeking_controller);
 
-            self.slider
-                .connect_value_changed(clone!(@weak obj => move |_| obj.imp().update_time()));
+            self.slider.connect_value_changed(clone!(
+                #[weak]
+                obj,
+                move |_| obj.imp().update_time()
+            ));
         }
     }
 

@@ -3,7 +3,7 @@ use std::cell::{OnceCell, RefCell};
 use adw::subclass::{navigation_page::NavigationPageImpl, prelude::*};
 use gtk::{
     gio,
-    glib::{self, clone, Properties},
+    glib::{self, Properties},
     prelude::*,
 };
 
@@ -97,10 +97,10 @@ mod imp {
 
             self.search_entry.set_key_capture_widget(&*self.obj());
 
-            self.search_entry
-                .connect_query_changed(clone!(@weak self as _self => move |entry| {
-                    _self.obj().query(&entry.query());
-                }));
+            let obj = self.obj().to_owned();
+            self.search_entry.connect_query_changed(move |entry| {
+                obj.query(&entry.query());
+            });
 
             self.player
                 .get()
@@ -333,8 +333,11 @@ impl MusicusHomePage {
             }
 
             for recording in &results.recordings {
-                imp.recordings_flow_box
-                    .append(&MusicusRecordingTile::new(recording));
+                imp.recordings_flow_box.append(&MusicusRecordingTile::new(
+                    &self.navigation(),
+                    &self.library(),
+                    recording,
+                ));
             }
 
             for album in &results.albums {

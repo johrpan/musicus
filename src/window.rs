@@ -67,21 +67,31 @@ mod imp {
             self.stack.add_named(&playlist_page, Some("playlist"));
 
             let stack = self.stack.get();
-            playlist_page.connect_close(clone!(@weak player_bar, @weak stack => move |_| {
-                stack.set_visible_child_name("navigation");
-                player_bar.playlist_hidden();
-            }));
+            playlist_page.connect_close(clone!(
+                #[weak]
+                player_bar,
+                #[weak]
+                stack,
+                move |_| {
+                    stack.set_visible_child_name("navigation");
+                    player_bar.playlist_hidden();
+                }
+            ));
 
-            player_bar.connect_show_playlist(
-                clone!(@weak playlist_page, @weak stack => move |_, show| {
+            player_bar.connect_show_playlist(clone!(
+                #[weak]
+                playlist_page,
+                #[weak]
+                stack,
+                move |_, show| {
                     if show {
                         playlist_page.scroll_to_current();
                         stack.set_visible_child_name("playlist");
                     } else {
                         stack.set_visible_child_name("navigation");
                     };
-                }),
-            );
+                }
+            ));
 
             self.player
                 .bind_property("active", &self.player_bar_revealer.get(), "reveal-child")

@@ -137,12 +137,36 @@ mod imp {
             mpris.set_can_set_fullscreen(false);
 
             let obj = self.obj();
-            mpris.connect_raise(clone!(@weak obj => move || obj.emit_by_name::<()>("raise", &[])));
-            mpris.connect_play(clone!(@weak obj => move || obj.play()));
-            mpris.connect_pause(clone!(@weak obj => move || obj.pause()));
-            mpris.connect_play_pause(clone!(@weak obj => move || obj.play_pause()));
-            mpris.connect_previous(clone!(@weak obj => move || obj.previous()));
-            mpris.connect_next(clone!(@weak obj => move || obj.next()));
+            mpris.connect_raise(clone!(
+                #[weak]
+                obj,
+                move || obj.emit_by_name::<()>("raise", &[])
+            ));
+            mpris.connect_play(clone!(
+                #[weak]
+                obj,
+                move || obj.play()
+            ));
+            mpris.connect_pause(clone!(
+                #[weak]
+                obj,
+                move || obj.pause()
+            ));
+            mpris.connect_play_pause(clone!(
+                #[weak]
+                obj,
+                move || obj.play_pause()
+            ));
+            mpris.connect_previous(clone!(
+                #[weak]
+                obj,
+                move || obj.previous()
+            ));
+            mpris.connect_next(clone!(
+                #[weak]
+                obj,
+                move || obj.next()
+            ));
 
             self.mpris.set(mpris).expect("mpris should not be set");
 

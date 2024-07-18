@@ -4,15 +4,15 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-adw = { package = "libadwaita", version = "0.6", features = ["v1_5"] }
+adw = { package = "libadwaita", version = "0.7", features = ["v1_5"] }
 anyhow = "1"
 chrono = "0.4"
 diesel = { version = "2.2", features = ["chrono", "sqlite"] }
 diesel_migrations = "2.2"
 fragile = "2"
 gettext-rs = { version = "0.7", features = ["gettext-system"] }
-gstreamer-play = "0.22"
-gtk = { package = "gtk4", version = "0.8", features = ["v4_12", "blueprint"] }
+gstreamer-play = "0.23"
+gtk = { package = "gtk4", version = "0.9", features = ["v4_12", "blueprint"] }
 lazy_static = "1"
 log = "0.4"
 mpris-player = "0.6"

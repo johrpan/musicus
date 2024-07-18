@@ -1,14 +1,14 @@
-use crate::{
-    db::models::{Composer, Role},
-    editor::role_selector_popover::MusicusRoleSelectorPopover,
-    library::MusicusLibrary,
-};
+use std::cell::{OnceCell, RefCell};
 
 use adw::{prelude::*, subclass::prelude::*};
-use gtk::glib::{self, subclass::Signal, Properties};
+use gtk::glib::{self, clone, subclass::Signal, Properties};
 use once_cell::sync::Lazy;
 
-use std::cell::{OnceCell, RefCell};
+use crate::{
+    db::models::{Composer, Role},
+    editor::{role_editor::MusicusRoleEditor, role_selector_popover::MusicusRoleSelectorPopover},
+    library::MusicusLibrary,
+};
 
 mod imp {
     use super::*;
@@ -17,6 +17,9 @@ mod imp {
     #[properties(wrapper_type = super::MusicusWorkEditorComposerRow)]
     #[template(file = "data/ui/work_editor_composer_row.blp")]
     pub struct MusicusWorkEditorComposerRow {
+        #[property(get, construct_only)]
+        pub navigation: OnceCell<adw::NavigationView>,
+
         #[property(get, construct_only)]
         pub library: OnceCell<MusicusLibrary>,
 
@@ -67,6 +70,24 @@ mod imp {
                 }
             });
 
+            let obj = self.obj().to_owned();
+            role_popover.connect_create(move |_| {
+                let editor = MusicusRoleEditor::new(&obj.navigation(), &obj.library(), None);
+
+                editor.connect_created(clone!(
+                    #[weak]
+                    obj,
+                    move |_, role| {
+                        if let Some(composer) = &mut *obj.imp().composer.borrow_mut() {
+                            obj.imp().role_label.set_label(&role.to_string());
+                            composer.role = role;
+                        };
+                    }
+                ));
+
+                obj.navigation().push(&editor);
+            });
+
             self.role_box.append(&role_popover);
             self.role_popover.set(role_popover).unwrap();
         }
@@ -85,8 +106,15 @@ glib::wrapper! {
 
 #[gtk::template_callbacks]
 impl MusicusWorkEditorComposerRow {
-    pub fn new(library: &MusicusLibrary, composer: Composer) -> Self {
-        let obj: Self = glib::Object::builder().property("library", library).build();
+    pub fn new(
+        navigation: &adw::NavigationView,
+        library: &MusicusLibrary,
+        composer: Composer,
+    ) -> Self {
+        let obj: Self = glib::Object::builder()
+            .property("navigation", navigation)
+            .property("library", library)
+            .build();
         obj.set_composer(composer);
         obj
     }

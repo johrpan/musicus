@@ -100,9 +100,11 @@ impl MusicusPlaylistPage {
     }
 
     pub fn scroll_to_current(&self) {
-        self.imp().playlist.scroll_to(self.player().current_index(), ListScrollFlags::NONE, None);
+        self.imp()
+            .playlist
+            .scroll_to(self.player().current_index(), ListScrollFlags::NONE, None);
     }
-    
+
     #[template_callback]
     fn select_item(&self, index: u32, _: &gtk::ListView) {
         self.player().set_current_index(index);

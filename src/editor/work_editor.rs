@@ -88,9 +88,13 @@ mod imp {
             persons_popover.connect_create(move |_| {
                 let editor = MusicusPersonEditor::new(&obj.navigation(), &obj.library(), None);
 
-                editor.connect_created(clone!(@weak obj => move |_, person| {
-                    obj.add_composer(person);
-                }));
+                editor.connect_created(clone!(
+                    #[weak]
+                    obj,
+                    move |_, person| {
+                        obj.add_composer(person);
+                    }
+                ));
 
                 obj.navigation().push(&editor);
             });
@@ -114,12 +118,21 @@ mod imp {
                         .css_classes(["flat"])
                         .build();
 
-                    remove_button.connect_clicked(
-                        clone!(@weak obj, @weak row, @strong instrument => move |_| {
+                    remove_button.connect_clicked(clone!(
+                        #[weak]
+                        obj,
+                        #[weak]
+                        row,
+                        #[strong]
+                        instrument,
+                        move |_| {
                             obj.imp().instrument_list.remove(&row);
-                            obj.imp().instruments.borrow_mut().retain(|i| *i != instrument);
-                        }),
-                    );
+                            obj.imp()
+                                .instruments
+                                .borrow_mut()
+                                .retain(|i| *i != instrument);
+                        }
+                    ));
 
                     row.add_suffix(&remove_button);
 
@@ -184,12 +197,18 @@ impl MusicusWorkEditor {
             .css_classes(["flat"])
             .build();
 
-        remove_button.connect_clicked(
-            clone!(@weak self as obj, @weak row, @strong part => move |_| {
-                obj.imp().part_list.remove(&row);
-                obj.imp().parts.borrow_mut().retain(|p| *p != part);
-            }),
-        );
+        remove_button.connect_clicked(clone!(
+            #[weak(rename_to = this)]
+            self,
+            #[weak]
+            row,
+            #[strong]
+            part,
+            move |_| {
+                this.imp().part_list.remove(&row);
+                this.imp().parts.borrow_mut().retain(|p| *p != part);
+            }
+        ));
 
         row.add_suffix(&remove_button);
 
@@ -210,12 +229,16 @@ impl MusicusWorkEditor {
     fn add_composer(&self, person: Person) {
         let role = self.library().composer_default_role().unwrap();
         let composer = Composer { person, role };
-        let row = MusicusWorkEditorComposerRow::new(&self.library(), composer);
+        let row = MusicusWorkEditorComposerRow::new(&self.navigation(), &self.library(), composer);
 
-        row.connect_remove(clone!(@weak self as obj => move |row| {
-            obj.imp().composer_list.remove(row);
-            obj.imp().composer_rows.borrow_mut().retain(|c| c != row);
-        }));
+        row.connect_remove(clone!(
+            #[weak(rename_to = this)]
+            self,
+            move |row| {
+                this.imp().composer_list.remove(row);
+                this.imp().composer_rows.borrow_mut().retain(|c| c != row);
+            }
+        ));
 
         self.imp()
             .composer_list
