@@ -1,8 +1,8 @@
 using Gtk 4.0;
 using Adw 1;
 
-template $MusicusWorkEditor: Adw.NavigationPage {
-  title: _("Work");
+template $MusicusRecordingEditor: Adw.NavigationPage {
+  title: _("Recording");
 
   Adw.ToolbarView {
     [top]
@@ -17,7 +17,7 @@ template $MusicusWorkEditor: Adw.NavigationPage {
           margin-end: 12;
 
           Gtk.Label {
-            label: _("Name");
+            label: _("Recording");
             xalign: 0;
             margin-top: 24;
 
@@ -26,12 +26,42 @@ template $MusicusWorkEditor: Adw.NavigationPage {
             ]
           }
 
-          $MusicusTranslationEditor name_editor {
+          Gtk.ListBox {
+            selection-mode: none;
             margin-top: 12;
+
+            styles [
+              "boxed-list"
+            ]
+
+            Adw.ActionRow work_row {
+              title: _("Select work");
+              activatable: true;
+              activated => $select_work() swapped;
+
+              [prefix]
+              Gtk.Box select_work_box {
+                Gtk.Image {
+                  icon-name: "document-edit-symbolic";
+                }
+              }
+            }
+
+            Adw.SpinRow year_row {
+              title: _("Year");
+
+              adjustment: Gtk.Adjustment {
+                lower: 0;
+                upper: 3000;
+                value: 2000;
+                step-increment: 1;
+                page-increment: 10;
+              };
+            }
           }
 
           Gtk.Label {
-            label: _("Composers");
+            label: _("Performers");
             xalign: 0;
             margin-top: 24;
 
@@ -40,7 +70,7 @@ template $MusicusWorkEditor: Adw.NavigationPage {
             ]
           }
 
-          Gtk.ListBox composer_list {
+          Gtk.ListBox performer_list {
             selection-mode: none;
             margin-top: 12;
 
@@ -49,9 +79,9 @@ template $MusicusWorkEditor: Adw.NavigationPage {
             ]
 
             Adw.ActionRow {
-              title: _("Add composer");
+              title: _("Add performer");
               activatable: true;
-              activated => $add_person() swapped;
+              activated => $select_person() swapped;
 
               [prefix]
               Gtk.Box select_person_box {
@@ -63,7 +93,7 @@ template $MusicusWorkEditor: Adw.NavigationPage {
           }
 
           Gtk.Label {
-            label: _("Structure");
+            label: _("Ensembles");
             xalign: 0;
             margin-top: 24;
 
@@ -72,7 +102,7 @@ template $MusicusWorkEditor: Adw.NavigationPage {
             ]
           }
 
-          Gtk.ListBox part_list {
+          Gtk.ListBox ensemble_list {
             selection-mode: none;
             margin-top: 12;
 
@@ -81,43 +111,12 @@ template $MusicusWorkEditor: Adw.NavigationPage {
             ]
 
             Adw.ActionRow {
-              title: _("Add part");
+              title: _("Add ensemble");
               activatable: true;
-              activated => $add_part() swapped;
+              activated => $select_ensemble() swapped;
 
               [prefix]
-              Gtk.Image {
-                icon-name: "list-add-symbolic";
-              }
-            }
-          }
-
-          Gtk.Label {
-            label: _("Instruments");
-            xalign: 0;
-            margin-top: 24;
-
-            styles [
-              "heading"
-            ]
-          }
-
-          Gtk.ListBox instrument_list {
-            selection-mode: none;
-            margin-top: 12;
-            margin-bottom: 24;
-
-            styles [
-              "boxed-list"
-            ]
-
-            Adw.ActionRow {
-              title: _("Add instrument");
-              activatable: true;
-              activated => $add_instrument() swapped;
-
-              [prefix]
-              Gtk.Box select_instrument_box {
+              Gtk.Box select_ensemble_box {
                 Gtk.Image {
                   icon-name: "list-add-symbolic";
                 }
@@ -127,7 +126,7 @@ template $MusicusWorkEditor: Adw.NavigationPage {
 
           Gtk.Button save_button {
             margin-top: 24;
-            label: _("Create work");
+            label: _("Create recording");
             clicked => $save() swapped;
 
             styles [

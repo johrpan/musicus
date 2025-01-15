@@ -48,7 +48,7 @@ mod imp {
 
             let db_path = PathBuf::from(&self.folder.get().unwrap()).join("musicus.db");
             let connection = db::connect(db_path.to_str().unwrap()).unwrap();
-            self.connection.set(Some(connection));
+            self.connection.replace(Some(connection));
         }
     }
 }
@@ -232,7 +232,7 @@ impl MusicusLibrary {
                     .distinct()
                     .load::<tables::Recording>(connection)?
                     .into_iter()
-                    .map(|r| Recording::from_table(r, &&self.folder(), connection))
+                    .map(|r| Recording::from_table(r, connection))
                     .collect::<Result<Vec<Recording>>>()?;
 
                 let albums = albums::table
@@ -293,7 +293,7 @@ impl MusicusLibrary {
                     .distinct()
                     .load::<tables::Recording>(connection)?
                     .into_iter()
-                    .map(|r| Recording::from_table(r, &self.folder(), connection))
+                    .map(|r| Recording::from_table(r, connection))
                     .collect::<Result<Vec<Recording>>>()?;
 
                 let albums = albums::table
@@ -336,7 +336,7 @@ impl MusicusLibrary {
                     .distinct()
                     .load::<tables::Recording>(connection)?
                     .into_iter()
-                    .map(|r| Recording::from_table(r, &self.folder(), connection))
+                    .map(|r| Recording::from_table(r, connection))
                     .collect::<Result<Vec<Recording>>>()?;
 
                 LibraryResults {
@@ -363,7 +363,7 @@ impl MusicusLibrary {
                     .distinct()
                     .load::<tables::Recording>(connection)?
                     .into_iter()
-                    .map(|r| Recording::from_table(r, &self.folder(), connection))
+                    .map(|r| Recording::from_table(r, connection))
                     .collect::<Result<Vec<Recording>>>()?;
 
                 LibraryResults {
@@ -378,7 +378,7 @@ impl MusicusLibrary {
                     .filter(recordings::work_id.eq(&work.work_id))
                     .load::<tables::Recording>(connection)?
                     .into_iter()
-                    .map(|r| Recording::from_table(r, &self.folder(), connection))
+                    .map(|r| Recording::from_table(r, connection))
                     .collect::<Result<Vec<Recording>>>()?;
 
                 LibraryResults {
@@ -479,7 +479,23 @@ impl MusicusLibrary {
             .select(tables::Recording::as_select())
             .first::<tables::Recording>(connection)?;
 
-        Recording::from_table(row, &self.folder(), connection)
+        Recording::from_table(row, connection)
+    }
+
+    pub fn tracks_for_recording(&self, recording_id: &str) -> Result<Vec<Track>> {
+        let mut binding = self.imp().connection.borrow_mut();
+        let connection = &mut *binding.as_mut().unwrap();
+
+        let tracks = tracks::table
+            .order(tracks::recording_index)
+            .filter(tracks::recording_id.eq(&recording_id))
+            .select(tables::Track::as_select())
+            .load::<tables::Track>(connection)?
+            .into_iter()
+            .map(|t| Track::from_table(t, connection))
+            .collect::<Result<Vec<Track>>>()?;
+
+        Ok(tracks)
     }
 
     pub fn track_played(&self, track_id: &str) -> Result<()> {
@@ -572,12 +588,44 @@ impl MusicusLibrary {
         Ok(works)
     }
 
+    pub fn search_ensembles(&self, search: &str) -> Result<Vec<Ensemble>> {
+        let search = format!("%{}%", search);
+        let mut binding = self.imp().connection.borrow_mut();
+        let connection = &mut *binding.as_mut().unwrap();
+
+        let ensembles = ensembles::table
+            .order(ensembles::last_used_at.desc())
+            .left_join(ensemble_persons::table.inner_join(persons::table))
+            .filter(
+                ensembles::name
+                    .like(&search)
+                    .or(persons::name.like(&search)),
+            )
+            .limit(20)
+            .select(ensembles::all_columns)
+            .load::<tables::Ensemble>(connection)?
+            .into_iter()
+            .map(|e| Ensemble::from_table(e, connection))
+            .collect::<Result<Vec<Ensemble>>>()?;
+
+        Ok(ensembles)
+    }
+
     pub fn composer_default_role(&self) -> Result<Role> {
         let mut binding = self.imp().connection.borrow_mut();
         let connection = &mut *binding.as_mut().unwrap();
 
         Ok(roles::table
             .filter(roles::role_id.eq("380d7e09eb2f49c1a90db2ba4acb6ffd"))
+            .first::<Role>(connection)?)
+    }
+
+    pub fn performer_default_role(&self) -> Result<Role> {
+        let mut binding = self.imp().connection.borrow_mut();
+        let connection = &mut *binding.as_mut().unwrap();
+
+        Ok(roles::table
+            .filter(roles::role_id.eq("28ff0aeb11c041a6916d93e9b4884eef"))
             .first::<Role>(connection)?)
     }
 
@@ -621,6 +669,46 @@ impl MusicusLibrary {
         Ok(())
     }
 
+    pub fn create_instrument(&self, name: TranslatedString) -> Result<Instrument> {
+        let mut binding = self.imp().connection.borrow_mut();
+        let connection = &mut *binding.as_mut().unwrap();
+
+        let now = Local::now().naive_local();
+
+        let instrument = Instrument {
+            instrument_id: db::generate_id(),
+            name,
+            created_at: now,
+            edited_at: now,
+            last_used_at: now,
+            last_played_at: None,
+        };
+
+        diesel::insert_into(instruments::table)
+            .values(&instrument)
+            .execute(connection)?;
+
+        Ok(instrument)
+    }
+
+    pub fn update_instrument(&self, id: &str, name: TranslatedString) -> Result<()> {
+        let mut binding = self.imp().connection.borrow_mut();
+        let connection = &mut *binding.as_mut().unwrap();
+
+        let now = Local::now().naive_local();
+
+        diesel::update(instruments::table)
+            .filter(instruments::instrument_id.eq(id))
+            .set((
+                instruments::name.eq(name),
+                instruments::edited_at.eq(now),
+                instruments::last_used_at.eq(now),
+            ))
+            .execute(connection)?;
+
+        Ok(())
+    }
+
     pub fn create_role(&self, name: TranslatedString) -> Result<Role> {
         let mut binding = self.imp().connection.borrow_mut();
         let connection = &mut *binding.as_mut().unwrap();
@@ -658,6 +746,221 @@ impl MusicusLibrary {
             .execute(connection)?;
 
         Ok(())
+    }
+
+    pub fn create_work(
+        &self,
+        name: TranslatedString,
+        parts: Vec<WorkPart>,
+        persons: Vec<Composer>,
+        instruments: Vec<Instrument>,
+    ) -> Result<Work> {
+        let mut binding = self.imp().connection.borrow_mut();
+        let connection = &mut *binding.as_mut().unwrap();
+
+        let work_id = db::generate_id();
+        let now = Local::now().naive_local();
+
+        let work_data = tables::Work {
+            work_id: work_id.clone(),
+            parent_work_id: None,
+            sequence_number: None,
+            name,
+            created_at: now,
+            edited_at: now,
+            last_used_at: now,
+            last_played_at: None,
+        };
+
+        diesel::insert_into(works::table)
+            .values(&work_data)
+            .execute(connection)?;
+
+        for (index, part) in parts.into_iter().enumerate() {
+            let part_data = tables::Work {
+                work_id: part.work_id,
+                parent_work_id: Some(work_id.clone()),
+                sequence_number: Some(index as i32),
+                name: part.name,
+                created_at: now,
+                edited_at: now,
+                last_used_at: now,
+                last_played_at: None,
+            };
+
+            diesel::insert_into(works::table)
+                .values(&part_data)
+                .execute(connection)?;
+        }
+
+        for (index, composer) in persons.into_iter().enumerate() {
+            let composer_data = tables::WorkPerson {
+                work_id: work_id.clone(),
+                person_id: composer.person.person_id,
+                role_id: composer.role.role_id,
+                sequence_number: index as i32,
+            };
+
+            diesel::insert_into(work_persons::table)
+                .values(composer_data)
+                .execute(connection)?;
+        }
+
+        for (index, instrument) in instruments.into_iter().enumerate() {
+            let instrument_data = tables::WorkInstrument {
+                work_id: work_id.clone(),
+                instrument_id: instrument.instrument_id,
+                sequence_number: index as i32,
+            };
+
+            diesel::insert_into(work_instruments::table)
+                .values(instrument_data)
+                .execute(connection)?;
+        }
+
+        let work = Work::from_table(work_data, connection)?;
+
+        Ok(work)
+    }
+
+    pub fn update_work(
+        &self,
+        id: &str,
+        name: TranslatedString,
+        parts: Vec<WorkPart>,
+        persons: Vec<Composer>,
+        instruments: Vec<Instrument>,
+    ) -> Result<()> {
+        let mut binding = self.imp().connection.borrow_mut();
+        let connection = &mut *binding.as_mut().unwrap();
+
+        let now = Local::now().naive_local();
+
+        // TODO: Update work, check which work parts etc exist, update them,
+        // create new work parts, delete and readd composers and instruments.
+        todo!()
+    }
+
+    pub fn create_ensemble(&self, name: TranslatedString) -> Result<Ensemble> {
+        let mut binding = self.imp().connection.borrow_mut();
+        let connection = &mut *binding.as_mut().unwrap();
+
+        let now = Local::now().naive_local();
+
+        let ensemble_data = tables::Ensemble {
+            ensemble_id: db::generate_id(),
+            name,
+            created_at: now,
+            edited_at: now,
+            last_used_at: now,
+            last_played_at: None,
+        };
+
+        // TODO: Add persons.
+
+        diesel::insert_into(ensembles::table)
+            .values(&ensemble_data)
+            .execute(connection)?;
+
+        let ensemble = Ensemble::from_table(ensemble_data, connection)?;
+
+        Ok(ensemble)
+    }
+
+    pub fn update_ensemble(&self, id: &str, name: TranslatedString) -> Result<()> {
+        let mut binding = self.imp().connection.borrow_mut();
+        let connection = &mut *binding.as_mut().unwrap();
+
+        let now = Local::now().naive_local();
+
+        diesel::update(ensembles::table)
+            .filter(ensembles::ensemble_id.eq(id))
+            .set((
+                ensembles::name.eq(name),
+                ensembles::edited_at.eq(now),
+                ensembles::last_used_at.eq(now),
+            ))
+            .execute(connection)?;
+
+        // TODO: Support updating persons.
+
+        Ok(())
+    }
+
+    pub fn create_recording(
+        &self,
+        work: Work,
+        year: Option<i32>,
+        performers: Vec<Performer>,
+        ensembles: Vec<EnsemblePerformer>,
+    ) -> Result<Recording> {
+        let mut binding = self.imp().connection.borrow_mut();
+        let connection = &mut *binding.as_mut().unwrap();
+
+        let recording_id = db::generate_id();
+        let now = Local::now().naive_local();
+
+        let recording_data = tables::Recording {
+            recording_id: recording_id.clone(),
+            work_id: work.work_id.clone(),
+            year,
+            created_at: now,
+            edited_at: now,
+            last_used_at: now,
+            last_played_at: None,
+        };
+
+        diesel::insert_into(recordings::table)
+            .values(&recording_data)
+            .execute(connection)?;
+
+        for (index, performer) in performers.into_iter().enumerate() {
+            let recording_person_data = tables::RecordingPerson {
+                recording_id: recording_id.clone(),
+                person_id: performer.person.person_id,
+                role_id: performer.role.role_id,
+                instrument_id: performer.instrument.map(|i| i.instrument_id),
+                sequence_number: index as i32,
+            };
+
+            diesel::insert_into(recording_persons::table)
+                .values(&recording_person_data)
+                .execute(connection)?;
+        }
+
+        for (index, ensemble) in ensembles.into_iter().enumerate() {
+            let recording_ensemble_data = tables::RecordingEnsemble {
+                recording_id: recording_id.clone(),
+                ensemble_id: ensemble.ensemble.ensemble_id,
+                role_id: ensemble.role.role_id,
+                sequence_number: index as i32,
+            };
+
+            diesel::insert_into(recording_ensembles::table)
+                .values(&recording_ensemble_data)
+                .execute(connection)?;
+        }
+
+        let recording = Recording::from_table(recording_data, connection)?;
+
+        Ok(recording)
+    }
+
+    pub fn update_recording(
+        &self,
+        id: &str,
+        work: Work,
+        year: Option<i32>,
+        performers: Vec<Performer>,
+        ensembles: Vec<EnsemblePerformer>,
+    ) -> Result<()> {
+        let mut binding = self.imp().connection.borrow_mut();
+        let connection = &mut *binding.as_mut().unwrap();
+
+        let now = Local::now().naive_local();
+
+        // TODO: Update recording.
+        todo!()
     }
 }
 

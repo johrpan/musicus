@@ -1,0 +1,93 @@
+using Gtk 4.0;
+using Adw 1;
+
+template $MusicusWorkSelectorPopover: Gtk.Popover {
+  styles [
+    "selector"
+  ]
+
+  Gtk.Stack stack {
+    transition-type: slide_left_right;
+
+    Adw.ToolbarView composer_view {
+      [top]
+      Gtk.SearchEntry composer_search_entry {
+        placeholder-text: _("Search composers…");
+        margin-start: 8;
+        margin-end: 8;
+        margin-top: 8;
+        margin-bottom: 6;
+        search-changed => $composer_search_changed() swapped;
+        activate => $composer_activate() swapped;
+        stop-search => $stop_search() swapped;
+      }
+
+      Gtk.ScrolledWindow composer_scrolled_window {
+        height-request: 200;
+
+        Gtk.ListBox composer_list {
+          styles [
+            "selector-list"
+          ]
+
+          selection-mode: none;
+          activate-on-single-click: true;
+        }
+      }
+    }
+
+    Adw.ToolbarView work_view {
+      [top]
+      Gtk.Box {
+        margin-start: 8;
+        margin-end: 8;
+        margin-top: 8;
+        margin-bottom: 6;
+        orientation: vertical;
+
+        Gtk.CenterBox {
+          [start]
+          Gtk.Button {
+            styles [
+              "flat"
+            ]
+
+            icon-name: "go-previous-symbolic";
+            clicked => $back_button_clicked() swapped;
+          }
+
+          [center]
+          Gtk.Label composer_label {
+            styles [
+              "heading"
+            ]
+
+            ellipsize: end;
+            margin-start: 6;
+          }
+        }
+
+        Gtk.SearchEntry work_search_entry {
+          placeholder-text: _("Search works…");
+          margin-top: 6;
+          search-changed => $work_search_changed() swapped;
+          activate => $work_activate() swapped;
+          stop-search => $stop_search() swapped;
+        }
+      }
+
+      Gtk.ScrolledWindow work_scrolled_window {
+        height-request: 200;
+
+        Gtk.ListBox work_list {
+          styles [
+            "selector-list"
+          ]
+
+          selection-mode: none;
+          activate-on-single-click: true;
+        }
+      }
+    }
+  }
+}

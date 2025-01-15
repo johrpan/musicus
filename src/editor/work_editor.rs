@@ -1,9 +1,20 @@
+use std::cell::{OnceCell, RefCell};
+
+use adw::{prelude::*, subclass::prelude::*};
+use gettextrs::gettext;
+use gtk::glib::{
+    clone, Properties,
+    {self, subclass::Signal},
+};
+use once_cell::sync::Lazy;
+
 use crate::{
     db::{
         self,
         models::{Composer, Instrument, Person, Work, WorkPart},
     },
     editor::{
+        instrument_editor::MusicusInstrumentEditor,
         instrument_selector_popover::MusicusInstrumentSelectorPopover,
         person_editor::MusicusPersonEditor, person_selector_popover::MusicusPersonSelectorPopover,
         translation_editor::MusicusTranslationEditor,
@@ -11,12 +22,6 @@ use crate::{
     },
     library::MusicusLibrary,
 };
-
-use adw::{prelude::*, subclass::prelude::*};
-use gettextrs::gettext;
-use gtk::glib::{self, clone, Properties};
-
-use std::cell::{OnceCell, RefCell};
 
 mod imp {
     use super::*;
@@ -31,10 +36,13 @@ mod imp {
         #[property(get, construct_only)]
         pub library: OnceCell<MusicusLibrary>,
 
+        pub work_id: OnceCell<String>,
+
         // Holding a reference to each composer row is the simplest way to enumerate all
         // results when finishing the process of editing the work. The composer rows
         // handle all state related to the composer.
         pub composer_rows: RefCell<Vec<MusicusWorkEditorComposerRow>>,
+        // TODO: These need to be PartRows!
         pub parts: RefCell<Vec<WorkPart>>,
         pub instruments: RefCell<Vec<Instrument>>,
 
@@ -53,6 +61,8 @@ mod imp {
         pub instrument_list: TemplateChild<gtk::ListBox>,
         #[template_child]
         pub select_instrument_box: TemplateChild<gtk::Box>,
+        #[template_child]
+        pub save_button: TemplateChild<gtk::Button>,
     }
 
     #[glib::object_subclass]
@@ -74,6 +84,16 @@ mod imp {
 
     #[glib::derived_properties]
     impl ObjectImpl for MusicusWorkEditor {
+        fn signals() -> &'static [Signal] {
+            static SIGNALS: Lazy<Vec<Signal>> = Lazy::new(|| {
+                vec![Signal::builder("created")
+                    .param_types([Work::static_type()])
+                    .build()]
+            });
+
+            SIGNALS.as_ref()
+        }
+
         fn constructed(&self) {
             self.parent_constructed();
 
@@ -106,43 +126,24 @@ mod imp {
                 MusicusInstrumentSelectorPopover::new(self.library.get().unwrap());
 
             let obj = self.obj().clone();
-            instruments_popover.connect_instrument_selected(
-                move |_: &MusicusInstrumentSelectorPopover, instrument: Instrument| {
-                    let row = adw::ActionRow::builder()
-                        .title(instrument.to_string())
-                        .build();
+            instruments_popover.connect_instrument_selected(move |_, instrument| {
+                obj.add_instrument_row(instrument);
+            });
 
-                    let remove_button = gtk::Button::builder()
-                        .icon_name("user-trash-symbolic")
-                        .valign(gtk::Align::Center)
-                        .css_classes(["flat"])
-                        .build();
+            let obj = self.obj().clone();
+            instruments_popover.connect_create(move |_| {
+                let editor = MusicusInstrumentEditor::new(&obj.navigation(), &obj.library(), None);
 
-                    remove_button.connect_clicked(clone!(
-                        #[weak]
-                        obj,
-                        #[weak]
-                        row,
-                        #[strong]
-                        instrument,
-                        move |_| {
-                            obj.imp().instrument_list.remove(&row);
-                            obj.imp()
-                                .instruments
-                                .borrow_mut()
-                                .retain(|i| *i != instrument);
-                        }
-                    ));
+                editor.connect_created(clone!(
+                    #[weak]
+                    obj,
+                    move |_, instrument| {
+                        obj.add_instrument_row(instrument);
+                    }
+                ));
 
-                    row.add_suffix(&remove_button);
-
-                    obj.imp()
-                        .instrument_list
-                        .insert(&row, obj.imp().instruments.borrow().len() as i32);
-
-                    obj.imp().instruments.borrow_mut().push(instrument);
-                },
-            );
+                obj.navigation().push(&editor);
+            });
 
             self.select_instrument_box.append(&instruments_popover);
             self.instruments_popover.set(instruments_popover).unwrap();
@@ -170,11 +171,22 @@ impl MusicusWorkEditor {
             .property("library", library)
             .build();
 
-        if let Some(_work) = work {
+        if let Some(work) = work {
+            obj.imp().save_button.set_label(&gettext("Save changes"));
+            obj.imp().work_id.set(work.work_id.clone()).unwrap();
             // TODO: Initialize work data.
         }
 
         obj
+    }
+
+    pub fn connect_created<F: Fn(&Self, Work) + 'static>(&self, f: F) -> glib::SignalHandlerId {
+        self.connect_local("created", true, move |values| {
+            let obj = values[0].get::<Self>().unwrap();
+            let work = values[1].get::<Work>().unwrap();
+            f(&obj, work);
+            None
+        })
     }
 
     #[template_callback]
@@ -245,5 +257,70 @@ impl MusicusWorkEditor {
             .insert(&row, self.imp().composer_rows.borrow().len() as i32);
 
         self.imp().composer_rows.borrow_mut().push(row);
+    }
+
+    fn add_instrument_row(&self, instrument: Instrument) {
+        let row = adw::ActionRow::builder()
+            .title(instrument.to_string())
+            .build();
+
+        let remove_button = gtk::Button::builder()
+            .icon_name("user-trash-symbolic")
+            .valign(gtk::Align::Center)
+            .css_classes(["flat"])
+            .build();
+
+        remove_button.connect_clicked(clone!(
+            #[weak(rename_to = this)]
+            self,
+            #[weak]
+            row,
+            #[strong]
+            instrument,
+            move |_| {
+                this.imp().instrument_list.remove(&row);
+                this.imp()
+                    .instruments
+                    .borrow_mut()
+                    .retain(|i| *i != instrument);
+            }
+        ));
+
+        row.add_suffix(&remove_button);
+
+        self.imp()
+            .instrument_list
+            .insert(&row, self.imp().instruments.borrow().len() as i32);
+
+        self.imp().instruments.borrow_mut().push(instrument);
+    }
+
+    #[template_callback]
+    fn save(&self, _: &gtk::Button) {
+        let library = self.imp().library.get().unwrap();
+
+        let name = self.imp().name_editor.translation();
+        let parts = self.imp().parts.borrow().clone();
+        let composers = self
+            .imp()
+            .composer_rows
+            .borrow()
+            .iter()
+            .map(|c| c.composer())
+            .collect::<Vec<Composer>>();
+        let instruments = self.imp().instruments.borrow().clone();
+
+        if let Some(work_id) = self.imp().work_id.get() {
+            library
+                .update_work(work_id, name, parts, composers, instruments)
+                .unwrap();
+        } else {
+            let work = library
+                .create_work(name, parts, composers, instruments)
+                .unwrap();
+            self.emit_by_name::<()>("created", &[&work]);
+        }
+
+        self.imp().navigation.get().unwrap().pop();
     }
 }

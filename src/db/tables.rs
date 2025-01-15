@@ -32,7 +32,7 @@ pub struct Role {
 }
 
 #[derive(Boxed, Insertable, Queryable, Selectable, Clone, Debug)]
-#[boxed_type(name = "MusicusInstrument")]
+#[boxed_type(name = "MusicusInstrument", nullable)]
 #[diesel(check_for_backend(Sqlite))]
 pub struct Instrument {
     pub instrument_id: String,

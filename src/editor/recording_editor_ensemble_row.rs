@@ -5,7 +5,7 @@ use gtk::glib::{self, clone, subclass::Signal, Properties};
 use once_cell::sync::Lazy;
 
 use crate::{
-    db::models::Composer,
+    db::models::EnsemblePerformer,
     editor::{role_editor::MusicusRoleEditor, role_selector_popover::MusicusRoleSelectorPopover},
     library::MusicusLibrary,
 };
@@ -14,16 +14,16 @@ mod imp {
     use super::*;
 
     #[derive(Properties, Debug, Default, gtk::CompositeTemplate)]
-    #[properties(wrapper_type = super::MusicusWorkEditorComposerRow)]
-    #[template(file = "data/ui/work_editor_composer_row.blp")]
-    pub struct MusicusWorkEditorComposerRow {
+    #[properties(wrapper_type = super::MusicusRecordingEditorEnsembleRow)]
+    #[template(file = "data/ui/recording_editor_ensemble_row.blp")]
+    pub struct MusicusRecordingEditorEnsembleRow {
         #[property(get, construct_only)]
         pub navigation: OnceCell<adw::NavigationView>,
 
         #[property(get, construct_only)]
         pub library: OnceCell<MusicusLibrary>,
 
-        pub composer: RefCell<Option<Composer>>,
+        pub ensemble: RefCell<Option<EnsemblePerformer>>,
         pub role_popover: OnceCell<MusicusRoleSelectorPopover>,
 
         #[template_child]
@@ -33,9 +33,9 @@ mod imp {
     }
 
     #[glib::object_subclass]
-    impl ObjectSubclass for MusicusWorkEditorComposerRow {
-        const NAME: &'static str = "MusicusWorkEditorComposerRow";
-        type Type = super::MusicusWorkEditorComposerRow;
+    impl ObjectSubclass for MusicusRecordingEditorEnsembleRow {
+        const NAME: &'static str = "MusicusRecordingEditorEnsembleRow";
+        type Type = super::MusicusRecordingEditorEnsembleRow;
         type ParentType = adw::ActionRow;
 
         fn class_init(klass: &mut Self::Class) {
@@ -49,7 +49,7 @@ mod imp {
     }
 
     #[glib::derived_properties]
-    impl ObjectImpl for MusicusWorkEditorComposerRow {
+    impl ObjectImpl for MusicusRecordingEditorEnsembleRow {
         fn signals() -> &'static [Signal] {
             static SIGNALS: Lazy<Vec<Signal>> =
                 Lazy::new(|| vec![Signal::builder("remove").build()]);
@@ -64,9 +64,9 @@ mod imp {
 
             let obj = self.obj().to_owned();
             role_popover.connect_role_selected(move |_, role| {
-                if let Some(composer) = &mut *obj.imp().composer.borrow_mut() {
+                if let Some(ensemble) = &mut *obj.imp().ensemble.borrow_mut() {
                     obj.imp().role_label.set_label(&role.to_string());
-                    composer.role = role;
+                    ensemble.role = role;
                 }
             });
 
@@ -78,9 +78,9 @@ mod imp {
                     #[weak]
                     obj,
                     move |_, role| {
-                        if let Some(composer) = &mut *obj.imp().composer.borrow_mut() {
+                        if let Some(ensemble) = &mut *obj.imp().ensemble.borrow_mut() {
                             obj.imp().role_label.set_label(&role.to_string());
-                            composer.role = role;
+                            ensemble.role = role;
                         };
                     }
                 ));
@@ -93,29 +93,29 @@ mod imp {
         }
     }
 
-    impl WidgetImpl for MusicusWorkEditorComposerRow {}
-    impl ListBoxRowImpl for MusicusWorkEditorComposerRow {}
-    impl PreferencesRowImpl for MusicusWorkEditorComposerRow {}
-    impl ActionRowImpl for MusicusWorkEditorComposerRow {}
+    impl WidgetImpl for MusicusRecordingEditorEnsembleRow {}
+    impl ListBoxRowImpl for MusicusRecordingEditorEnsembleRow {}
+    impl PreferencesRowImpl for MusicusRecordingEditorEnsembleRow {}
+    impl ActionRowImpl for MusicusRecordingEditorEnsembleRow {}
 }
 
 glib::wrapper! {
-    pub struct MusicusWorkEditorComposerRow(ObjectSubclass<imp::MusicusWorkEditorComposerRow>)
+    pub struct MusicusRecordingEditorEnsembleRow(ObjectSubclass<imp::MusicusRecordingEditorEnsembleRow>)
         @extends gtk::Widget, gtk::ListBoxRow, adw::PreferencesRow, adw::ActionRow;
 }
 
 #[gtk::template_callbacks]
-impl MusicusWorkEditorComposerRow {
+impl MusicusRecordingEditorEnsembleRow {
     pub fn new(
         navigation: &adw::NavigationView,
         library: &MusicusLibrary,
-        composer: Composer,
+        ensemble: EnsemblePerformer,
     ) -> Self {
         let obj: Self = glib::Object::builder()
             .property("navigation", navigation)
             .property("library", library)
             .build();
-        obj.set_composer(composer);
+        obj.set_ensemble(ensemble);
         obj
     }
 
@@ -127,14 +127,14 @@ impl MusicusWorkEditorComposerRow {
         })
     }
 
-    pub fn composer(&self) -> Composer {
-        self.imp().composer.borrow().to_owned().unwrap()
+    pub fn ensemble(&self) -> EnsemblePerformer {
+        self.imp().ensemble.borrow().to_owned().unwrap()
     }
 
-    fn set_composer(&self, composer: Composer) {
-        self.set_title(&composer.person.to_string());
-        self.imp().role_label.set_label(&composer.role.to_string());
-        self.imp().composer.replace(Some(composer));
+    fn set_ensemble(&self, ensemble: EnsemblePerformer) {
+        self.set_title(&ensemble.ensemble.to_string());
+        self.imp().role_label.set_label(&ensemble.role.to_string());
+        self.imp().ensemble.replace(Some(ensemble));
     }
 
     #[template_callback]

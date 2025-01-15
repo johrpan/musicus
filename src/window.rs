@@ -175,6 +175,6 @@ impl MusicusWindow {
         let navigation = self.imp().navigation_view.get();
         navigation
             .replace(&[MusicusHomePage::new(&navigation, &library, &self.imp().player).into()]);
-        navigation.add(&LibraryManager::new(&library));
+        navigation.add(&LibraryManager::new(&navigation, &library));
     }
 }

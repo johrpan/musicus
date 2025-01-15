@@ -1,5 +1,6 @@
 use std::{
     cell::{Cell, OnceCell, RefCell},
+    path::PathBuf,
     sync::Arc,
 };
 
@@ -236,7 +237,7 @@ impl MusicusPlayer {
     }
 
     pub fn play_recording(&self, recording: &Recording) {
-        let tracks = &recording.tracks;
+        let tracks = &self.library().unwrap().tracks_for_recording(&recording.recording_id).unwrap();
 
         if tracks.is_empty() {
             log::warn!("Ignoring recording without tracks being added to the playlist.");
@@ -254,7 +255,7 @@ impl MusicusPlayer {
                 &recording.work.name.get(),
                 Some(&performances),
                 None,
-                &tracks[0].path,
+                &self.library_path_to_file_path(&tracks[0].path),
                 &tracks[0].track_id,
             ));
         } else {
@@ -282,7 +283,7 @@ impl MusicusPlayer {
                 &recording.work.name.get(),
                 Some(&performances),
                 Some(&track_title(&first_track, 1)),
-                &first_track.path,
+                &self.library_path_to_file_path(&first_track.path),
                 &first_track.track_id,
             ));
 
@@ -294,7 +295,7 @@ impl MusicusPlayer {
                     Some(&performances),
                     // track number = track index + 1 (first track) + 1 (zero based)
                     Some(&track_title(&track, index + 2)),
-                    &track.path,
+                    &self.library_path_to_file_path(&track.path),
                     &track.track_id,
                 ));
             }
@@ -383,6 +384,14 @@ impl MusicusPlayer {
             let recording = library.generate_recording(program).unwrap();
             self.play_recording(&recording);
         }
+    }
+
+    fn library_path_to_file_path(&self, path: &str) -> String {
+        PathBuf::from(self.library().unwrap().folder())
+            .join(path)
+            .to_str()
+            .unwrap()
+            .to_owned()
     }
 }
 

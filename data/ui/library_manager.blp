@@ -8,5 +8,50 @@ template $MusicusLibraryManager : Adw.NavigationPage {
   Adw.ToolbarView {
     [top]
     Adw.HeaderBar {}
+
+    Gtk.Box {
+      orientation: vertical;
+      spacing: 12;
+
+      Gtk.Button {
+        label: _("Add person");
+        clicked => $add_person() swapped;
+      }
+
+      Gtk.Button {
+        label: _("Add role");
+        clicked => $add_role() swapped;
+      }
+
+      Gtk.Button {
+        label: _("Add instrument");
+        clicked => $add_instrument() swapped;
+      }
+
+      Gtk.Button {
+        label: _("Add work");
+        clicked => $add_work() swapped;
+      }
+
+      Gtk.Button {
+        label: _("Add ensemble");
+        clicked => $add_ensemble() swapped;
+      }
+
+      Gtk.Button {
+        label: _("Add recording");
+        clicked => $add_recording() swapped;
+      }
+
+      Gtk.Button {
+        label: _("Add album");
+        clicked => $add_album() swapped;
+      }
+
+      Gtk.Button {
+        label: _("Add medium");
+        clicked => $add_medium() swapped;
+      }
+    }
   }
 }

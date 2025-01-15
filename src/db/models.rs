@@ -1,17 +1,19 @@
 //! This module contains higher-level models combining information from
 //! multiple database tables.
 
-use std::{fmt::Display, path::Path};
+use std::fmt::Display;
 
 use anyhow::Result;
 use diesel::prelude::*;
+use gtk::glib::{self, Boxed};
 
 use super::{schema::*, tables, TranslatedString};
 
 // Re-exports for tables that don't need additional information.
 pub use tables::{Album, Instrument, Person, Role};
 
-#[derive(Clone, Debug)]
+#[derive(Boxed, Clone, Debug)]
+#[boxed_type(name = "MusicusWork")]
 pub struct Work {
     pub work_id: String,
     pub name: TranslatedString,
@@ -36,21 +38,22 @@ pub struct Composer {
     pub role: Role,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Boxed, Clone, Debug)]
+#[boxed_type(name = "MusicusEnsemble")]
 pub struct Ensemble {
     pub ensemble_id: String,
     pub name: TranslatedString,
     pub persons: Vec<(Person, Instrument)>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Boxed, Clone, Debug)]
+#[boxed_type(name = "MusicusRecording")]
 pub struct Recording {
     pub recording_id: String,
     pub work: Work,
     pub year: Option<i32>,
     pub persons: Vec<Performer>,
-    pub ensembles: Vec<Ensemble>,
-    pub tracks: Vec<Track>,
+    pub ensembles: Vec<EnsemblePerformer>,
 }
 
 #[derive(Clone, Debug)]
@@ -58,6 +61,12 @@ pub struct Performer {
     pub person: Person,
     pub role: Role,
     pub instrument: Option<Instrument>,
+}
+
+#[derive(Clone, Debug)]
+pub struct EnsemblePerformer {
+    pub ensemble: Ensemble,
+    pub role: Role,
 }
 
 #[derive(Clone, Debug)]
@@ -229,11 +238,7 @@ impl Display for Ensemble {
 }
 
 impl Recording {
-    pub fn from_table(
-        data: tables::Recording,
-        library_path: &str,
-        connection: &mut SqliteConnection,
-    ) -> Result<Self> {
+    pub fn from_table(data: tables::Recording, connection: &mut SqliteConnection) -> Result<Self> {
         let work = Work::from_table(
             works::table
                 .filter(works::work_id.eq(&data.work_id))
@@ -249,24 +254,15 @@ impl Recording {
             .map(|r| Performer::from_table(r, connection))
             .collect::<Result<Vec<Performer>>>()?;
 
-        let ensembles: Vec<Ensemble> = ensembles::table
+        let ensembles = ensembles::table
             .inner_join(recording_ensembles::table)
             .order(recording_ensembles::sequence_number)
             .filter(recording_ensembles::recording_id.eq(&data.recording_id))
-            .select(tables::Ensemble::as_select())
-            .load::<tables::Ensemble>(connection)?
+            .select(tables::RecordingEnsemble::as_select())
+            .load::<tables::RecordingEnsemble>(connection)?
             .into_iter()
-            .map(|e| Ensemble::from_table(e, connection))
-            .collect::<Result<Vec<Ensemble>>>()?;
-
-        let tracks: Vec<Track> = tracks::table
-            .order(tracks::recording_index)
-            .filter(tracks::recording_id.eq(&data.recording_id))
-            .select(tables::Track::as_select())
-            .load::<tables::Track>(connection)?
-            .into_iter()
-            .map(|t| Track::from_table(t, library_path, connection))
-            .collect::<Result<Vec<Track>>>()?;
+            .map(|e| EnsemblePerformer::from_table(e, connection))
+            .collect::<Result<Vec<EnsemblePerformer>>>()?;
 
         Ok(Self {
             recording_id: data.recording_id,
@@ -274,7 +270,6 @@ impl Recording {
             year: data.year,
             persons,
             ensembles,
-            tracks,
         })
     }
 
@@ -289,7 +284,7 @@ impl Recording {
             &mut self
                 .ensembles
                 .iter()
-                .map(|e| e.name.get().to_string())
+                .map(ToString::to_string)
                 .collect::<Vec<String>>(),
         );
 
@@ -344,12 +339,33 @@ impl Display for Performer {
     }
 }
 
-impl Track {
+impl EnsemblePerformer {
     pub fn from_table(
-        data: tables::Track,
-        library_path: &str,
+        data: tables::RecordingEnsemble,
         connection: &mut SqliteConnection,
     ) -> Result<Self> {
+        let ensemble_data = ensembles::table
+            .filter(ensembles::ensemble_id.eq(&data.ensemble_id))
+            .first::<tables::Ensemble>(connection)?;
+
+        let ensemble = Ensemble::from_table(ensemble_data, connection)?;
+
+        let role: Role = roles::table
+            .filter(roles::role_id.eq(&data.role_id))
+            .first(connection)?;
+
+        Ok(Self { ensemble, role })
+    }
+}
+
+impl Display for EnsemblePerformer {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.ensemble.name.get().fmt(f)
+    }
+}
+
+impl Track {
+    pub fn from_table(data: tables::Track, connection: &mut SqliteConnection) -> Result<Self> {
         let works: Vec<Work> = works::table
             .inner_join(track_works::table)
             .order(track_works::sequence_number)
@@ -362,11 +378,7 @@ impl Track {
 
         Ok(Self {
             track_id: data.track_id,
-            path: Path::new(library_path)
-                .join(&data.path)
-                .to_str()
-                .unwrap()
-                .to_string(),
+            path: data.path,
             works,
         })
     }
