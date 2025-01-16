@@ -1,6 +1,6 @@
-use adw::subclass::prelude::*;
+use adw::{prelude::*, subclass::prelude::*};
 use gettextrs::gettext;
-use gtk::{gio, glib, prelude::*};
+use gtk::{gio, glib};
 
 use crate::{config, MusicusWindow};
 
@@ -73,18 +73,17 @@ impl MusicusApplication {
 
     fn show_about(&self) {
         let window = self.active_window().unwrap();
-        let about = adw::AboutWindow::builder()
-            .transient_for(&window)
+        let about = adw::AboutDialog::builder()
             .application_name(gettext(config::NAME))
             .application_icon(config::APP_ID)
             .developer_name("Elias Projahn")
             .version(config::VERSION)
-            .website("https://code.johrpan.de/johrpan/musicus")
+            .website("https://github.com/johrpan/musicus")
             .developers(vec!["Elias Projahn <elias@johrpan.de>"])
-            .copyright("© 2023 Elias Projahn")
+            .copyright("© 2025 Elias Projahn")
             .license_type(gtk::License::Gpl30)
             .build();
 
-        about.present();
+        about.present(Some(&window));
     }
 }

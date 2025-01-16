@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-adw = { package = "libadwaita", version = "0.7", features = ["v1_5"] }
+adw = { package = "libadwaita", version = "0.7", features = ["v1_6"] }
 anyhow = "1"
 chrono = "0.4"
 diesel = { version = "2.2", features = ["chrono", "sqlite"] }
