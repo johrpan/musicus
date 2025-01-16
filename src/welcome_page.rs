@@ -1,3 +1,5 @@
+use crate::config;
+
 use adw::subclass::{navigation_page::NavigationPageImpl, prelude::*};
 use gettextrs::gettext;
 use gtk::{gio, glib, glib::subclass::Signal, prelude::*};
@@ -8,7 +10,10 @@ mod imp {
 
     #[derive(Debug, Default, gtk::CompositeTemplate)]
     #[template(file = "data/ui/welcome_page.blp")]
-    pub struct MusicusWelcomePage {}
+    pub struct MusicusWelcomePage {
+        #[template_child]
+        pub status_page: TemplateChild<adw::StatusPage>,
+    }
 
     #[glib::object_subclass]
     impl ObjectSubclass for MusicusWelcomePage {
@@ -35,6 +40,11 @@ mod imp {
             });
 
             SIGNALS.as_ref()
+        }
+
+        fn constructed(&self) {
+            self.parent_constructed();
+            self.status_page.set_icon_name(Some(config::APP_ID));
         }
     }
 
