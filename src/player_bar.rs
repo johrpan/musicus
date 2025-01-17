@@ -6,7 +6,7 @@ use gtk::{
     subclass::prelude::*,
 };
 use once_cell::sync::Lazy;
-use std::cell::{Cell, RefCell};
+use std::cell::{Cell, OnceCell};
 
 mod imp {
     use super::*;
@@ -16,7 +16,7 @@ mod imp {
     #[template(file = "data/ui/player_bar.blp")]
     pub struct PlayerBar {
         #[property(get, construct_only)]
-        pub player: RefCell<MusicusPlayer>,
+        pub player: OnceCell<MusicusPlayer>,
 
         pub seeking: Cell<bool>,
 
@@ -42,7 +42,7 @@ mod imp {
 
     impl PlayerBar {
         fn update_item(&self) {
-            if let Some(item) = self.player.borrow().current_item() {
+            if let Some(item) = self.player.get().unwrap().current_item() {
                 self.title_label.set_label(&item.make_title());
 
                 if let Some(subtitle) = item.make_subtitle() {
@@ -55,7 +55,7 @@ mod imp {
         }
 
         fn update_time(&self) {
-            let player = self.player.borrow();
+            let player = self.player.get().unwrap();
 
             let current_time_ms = if self.seeking.get() {
                 (self.slider.value() * player.duration_ms() as f64) as u64
@@ -106,7 +106,7 @@ mod imp {
         fn constructed(&self) {
             self.parent_constructed();
 
-            let player = self.player.borrow();
+            let player = self.player.get().unwrap();
 
             player
                 .bind_property("playing", &self.play_button.get(), "icon-name")

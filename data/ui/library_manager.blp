@@ -1,7 +1,7 @@
 using Gtk 4.0;
 using Adw 1;
 
-template $MusicusLibraryManager : Adw.NavigationPage {
+template $MusicusLibraryManager: Adw.NavigationPage {
   title: _("Music Library");
   tag: "library";
 
@@ -9,48 +9,286 @@ template $MusicusLibraryManager : Adw.NavigationPage {
     [top]
     Adw.HeaderBar {}
 
-    Gtk.Box {
-      orientation: vertical;
-      spacing: 12;
+    Gtk.ScrolledWindow {
+      Adw.Clamp {
+        Gtk.Box {
+          orientation: vertical;
+          margin-bottom: 24;
+          margin-start: 12;
+          margin-end: 12;
 
-      Gtk.Button {
-        label: _("Add person");
-        clicked => $add_person() swapped;
-      }
+          Gtk.Label {
+            label: _("Overview");
+            xalign: 0;
+            margin-top: 24;
 
-      Gtk.Button {
-        label: _("Add role");
-        clicked => $add_role() swapped;
-      }
+            styles [
+              "heading"
+            ]
+          }
 
-      Gtk.Button {
-        label: _("Add instrument");
-        clicked => $add_instrument() swapped;
-      }
+          Gtk.ListBox {
+            selection-mode: none;
+            margin-top: 12;
 
-      Gtk.Button {
-        label: _("Add work");
-        clicked => $add_work() swapped;
-      }
+            styles [
+              "boxed-list-separate"
+            ]
 
-      Gtk.Button {
-        label: _("Add ensemble");
-        clicked => $add_ensemble() swapped;
-      }
+            Adw.ActionRow library_path_row {
+              title: _("Library path");
+              activatable: true;
+              activated => $open_library() swapped;
 
-      Gtk.Button {
-        label: _("Add recording");
-        clicked => $add_recording() swapped;
-      }
+              styles [
+                "property"
+              ]
 
-      Gtk.Button {
-        label: _("Add album");
-        clicked => $add_album() swapped;
-      }
+              [suffix]
+              Gtk.Image {
+                icon-name: "document-edit-symbolic";
+              }
+            }
 
-      Gtk.Button {
-        label: _("Add medium");
-        clicked => $add_medium() swapped;
+            Adw.ButtonRow {
+              title: _("Import from archive");
+              end-icon-name: "go-next-symbolic";
+              activated => $import_archive() swapped;
+            }
+
+            Adw.ButtonRow {
+              title: _("Export to archive");
+              end-icon-name: "go-next-symbolic";
+              activated => $export_archive() swapped;
+            }
+          }
+
+          Gtk.Label {
+            label: _("Contents");
+            xalign: 0;
+            margin-top: 24;
+
+            styles [
+              "heading"
+            ]
+          }
+
+          Gtk.ListBox {
+            selection-mode: none;
+            margin-top: 12;
+
+            styles [
+              "boxed-list"
+            ]
+
+            Adw.ActionRow {
+              title: _("Persons");
+              activatable: true;
+              activated => $show_persons() swapped;
+
+              [suffix]
+              Gtk.Box {
+                spacing: 6;
+
+                Gtk.Label n_persons_label {
+                  label: "0";
+
+                  styles [
+                    "numeric"
+                  ]
+                }
+
+                Gtk.Image {
+                  icon-name: "go-next-symbolic";
+                }
+              }
+            }
+
+            Adw.ActionRow {
+              title: _("Roles");
+              activatable: true;
+              activated => $show_roles() swapped;
+
+              [suffix]
+              Gtk.Box {
+                spacing: 6;
+
+                Gtk.Label n_roles_label {
+                  label: "0";
+
+                  styles [
+                    "numeric"
+                  ]
+                }
+
+                Gtk.Image {
+                  icon-name: "go-next-symbolic";
+                }
+              }
+            }
+
+            Adw.ActionRow {
+              title: _("Instruments");
+              activatable: true;
+              activated => $show_instruments() swapped;
+
+              [suffix]
+              Gtk.Box {
+                spacing: 6;
+
+                Gtk.Label n_instruments_label {
+                  label: "0";
+
+                  styles [
+                    "numeric"
+                  ]
+                }
+
+                Gtk.Image {
+                  icon-name: "go-next-symbolic";
+                }
+              }
+            }
+
+            Adw.ActionRow {
+              title: _("Works");
+              activatable: true;
+              activated => $show_works() swapped;
+
+              [suffix]
+              Gtk.Box {
+                spacing: 6;
+
+                Gtk.Label n_works_label {
+                  label: "0";
+
+                  styles [
+                    "numeric"
+                  ]
+                }
+
+                Gtk.Image {
+                  icon-name: "go-next-symbolic";
+                }
+              }
+            }
+
+            Adw.ActionRow {
+              title: _("Ensembles");
+              activatable: true;
+              activated => $show_ensembles() swapped;
+
+              [suffix]
+              Gtk.Box {
+                spacing: 6;
+
+                Gtk.Label n_ensembles_label {
+                  label: "0";
+
+                  styles [
+                    "numeric"
+                  ]
+                }
+
+                Gtk.Image {
+                  icon-name: "go-next-symbolic";
+                }
+              }
+            }
+
+            Adw.ActionRow {
+              title: _("Recordings");
+              activatable: true;
+              activated => $show_recordings() swapped;
+
+              [suffix]
+              Gtk.Box {
+                spacing: 6;
+
+                Gtk.Label n_recordings_label {
+                  label: "0";
+
+                  styles [
+                    "numeric"
+                  ]
+                }
+
+                Gtk.Image {
+                  icon-name: "go-next-symbolic";
+                }
+              }
+            }
+
+            Adw.ActionRow {
+              title: _("Tracks");
+              activatable: true;
+              activated => $show_tracks() swapped;
+
+              [suffix]
+              Gtk.Box {
+                spacing: 6;
+
+                Gtk.Label n_tracks_label {
+                  label: "0";
+
+                  styles [
+                    "numeric"
+                  ]
+                }
+
+                Gtk.Image {
+                  icon-name: "go-next-symbolic";
+                }
+              }
+            }
+
+            Adw.ActionRow {
+              title: _("Mediums");
+              activatable: true;
+              activated => $show_mediums() swapped;
+
+              [suffix]
+              Gtk.Box {
+                spacing: 6;
+
+                Gtk.Label n_mediums_label {
+                  label: "0";
+
+                  styles [
+                    "numeric"
+                  ]
+                }
+
+                Gtk.Image {
+                  icon-name: "go-next-symbolic";
+                }
+              }
+            }
+
+            Adw.ActionRow {
+              title: _("Albums");
+              activatable: true;
+              activated => $show_albums() swapped;
+
+              [suffix]
+              Gtk.Box {
+                spacing: 6;
+
+                Gtk.Label n_albums_label {
+                  label: "0";
+
+                  styles [
+                    "numeric"
+                  ]
+                }
+
+                Gtk.Image {
+                  icon-name: "go-next-symbolic";
+                }
+              }
+            }
+          }
+        }
       }
     }
   }

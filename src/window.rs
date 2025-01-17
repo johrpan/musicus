@@ -1,13 +1,13 @@
-use std::path::Path;
-
-use adw::subclass::prelude::*;
-use gtk::{gio, glib, glib::clone, prelude::*};
-
 use crate::{
     config, home_page::MusicusHomePage, library::MusicusLibrary, library_manager::LibraryManager,
     player::MusicusPlayer, player_bar::PlayerBar, playlist_page::MusicusPlaylistPage,
     welcome_page::MusicusWelcomePage,
 };
+
+use adw::subclass::prelude::*;
+use gtk::{gio, glib, glib::clone, prelude::*};
+
+use std::{cell::RefCell, path::Path};
 
 mod imp {
     use super::*;
@@ -16,6 +16,7 @@ mod imp {
     #[template(file = "data/ui/window.blp")]
     pub struct MusicusWindow {
         pub player: MusicusPlayer,
+        pub library_manager: RefCell<Option<LibraryManager>>,
 
         #[template_child]
         pub stack: TemplateChild<gtk::Stack>,
@@ -157,7 +158,7 @@ impl MusicusWindow {
     }
 
     #[template_callback]
-    fn set_library_folder(&self, folder: &gio::File) {
+    pub fn set_library_folder(&self, folder: &gio::File) {
         let path = folder.path().unwrap();
 
         let settings = gio::Settings::new(config::APP_ID);
@@ -173,8 +174,16 @@ impl MusicusWindow {
         self.imp().player.set_library(&library);
 
         let navigation = self.imp().navigation_view.get();
+        if let Some(library_manager) = self.imp().library_manager.take() {
+            navigation.remove(&library_manager);
+        }
+
+        let library_manager = LibraryManager::new(&navigation, &library);
+
         navigation
             .replace(&[MusicusHomePage::new(&navigation, &library, &self.imp().player).into()]);
-        navigation.add(&LibraryManager::new(&navigation, &library));
+        navigation.add(&library_manager);
+
+        self.imp().library_manager.replace(Some(library_manager));
     }
 }

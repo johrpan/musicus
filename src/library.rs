@@ -1,8 +1,9 @@
-use std::{
-    cell::{OnceCell, RefCell},
-    path::{Path, PathBuf},
+use crate::{
+    db::{self, models::*, schema::*, tables, TranslatedString},
+    program::Program,
 };
 
+use adw::gtk::{glib, glib::Properties, prelude::*, subclass::prelude::*};
 use anyhow::Result;
 use chrono::prelude::*;
 use diesel::{
@@ -12,11 +13,10 @@ use diesel::{
     sql_types::BigInt,
     QueryDsl, SqliteConnection,
 };
-use gtk::{glib, glib::Properties, prelude::*, subclass::prelude::*};
 
-use crate::{
-    db::{self, models::*, schema::*, tables, TranslatedString},
-    program::Program,
+use std::{
+    cell::{OnceCell, RefCell},
+    path::{Path, PathBuf},
 };
 
 diesel::define_sql_function! {
@@ -537,6 +537,15 @@ impl MusicusLibrary {
         Ok(persons)
     }
 
+    pub fn all_persons(&self) -> Result<Vec<Person>> {
+        let mut binding = self.imp().connection.borrow_mut();
+        let connection = &mut *binding.as_mut().unwrap();
+
+        let persons = persons::table.order(persons::name).load(connection)?;
+
+        Ok(persons)
+    }
+
     pub fn search_roles(&self, search: &str) -> Result<Vec<Role>> {
         let search = format!("%{}%", search);
         let mut binding = self.imp().connection.borrow_mut();
@@ -551,6 +560,15 @@ impl MusicusLibrary {
         Ok(roles)
     }
 
+    pub fn all_roles(&self) -> Result<Vec<Role>> {
+        let mut binding = self.imp().connection.borrow_mut();
+        let connection = &mut *binding.as_mut().unwrap();
+
+        let roles = roles::table.order(roles::name).load(connection)?;
+
+        Ok(roles)
+    }
+
     pub fn search_instruments(&self, search: &str) -> Result<Vec<Instrument>> {
         let search = format!("%{}%", search);
         let mut binding = self.imp().connection.borrow_mut();
@@ -560,6 +578,17 @@ impl MusicusLibrary {
             .order(instruments::last_used_at.desc())
             .filter(instruments::name.like(&search))
             .limit(20)
+            .load(connection)?;
+
+        Ok(instruments)
+    }
+
+    pub fn all_instruments(&self) -> Result<Vec<Instrument>> {
+        let mut binding = self.imp().connection.borrow_mut();
+        let connection = &mut *binding.as_mut().unwrap();
+
+        let instruments = instruments::table
+            .order(instruments::name)
             .load(connection)?;
 
         Ok(instruments)
@@ -580,6 +609,20 @@ impl MusicusLibrary {
             .limit(9)
             .select(works::all_columns)
             .distinct()
+            .load::<tables::Work>(connection)?
+            .into_iter()
+            .map(|w| Work::from_table(w, connection))
+            .collect::<Result<Vec<Work>>>()?;
+
+        Ok(works)
+    }
+
+    pub fn all_works(&self) -> Result<Vec<Work>> {
+        let mut binding = self.imp().connection.borrow_mut();
+        let connection = &mut *binding.as_mut().unwrap();
+
+        let works = works::table
+            .order(works::name)
             .load::<tables::Work>(connection)?
             .into_iter()
             .map(|w| Work::from_table(w, connection))
@@ -609,6 +652,60 @@ impl MusicusLibrary {
             .collect::<Result<Vec<Ensemble>>>()?;
 
         Ok(ensembles)
+    }
+
+    pub fn all_ensembles(&self) -> Result<Vec<Ensemble>> {
+        let mut binding = self.imp().connection.borrow_mut();
+        let connection = &mut *binding.as_mut().unwrap();
+
+        let ensembles = ensembles::table
+            .order(ensembles::name)
+            .load::<tables::Ensemble>(connection)?
+            .into_iter()
+            .map(|e| Ensemble::from_table(e, connection))
+            .collect::<Result<Vec<Ensemble>>>()?;
+
+        Ok(ensembles)
+    }
+
+    pub fn all_recordings(&self) -> Result<Vec<Recording>> {
+        let mut binding = self.imp().connection.borrow_mut();
+        let connection = &mut *binding.as_mut().unwrap();
+
+        let recordings = recordings::table
+            .load::<tables::Recording>(connection)?
+            .into_iter()
+            .map(|e| Recording::from_table(e, connection))
+            .collect::<Result<Vec<Recording>>>()?;
+
+        Ok(recordings)
+    }
+
+    pub fn all_tracks(&self) -> Result<Vec<Track>> {
+        let mut binding = self.imp().connection.borrow_mut();
+        let connection = &mut *binding.as_mut().unwrap();
+
+        let tracks = tracks::table
+            .load::<tables::Track>(connection)?
+            .into_iter()
+            .map(|e| Track::from_table(e, connection))
+            .collect::<Result<Vec<Track>>>()?;
+
+        Ok(tracks)
+    }
+
+    pub fn all_mediums(&self) -> Result<Vec<tables::Medium>> {
+        // TODO
+        Ok(vec![])
+    }
+
+    pub fn all_albums(&self) -> Result<Vec<Album>> {
+        let mut binding = self.imp().connection.borrow_mut();
+        let connection = &mut *binding.as_mut().unwrap();
+
+        let albums = albums::table.load::<Album>(connection)?;
+
+        Ok(albums)
     }
 
     pub fn composer_default_role(&self) -> Result<Role> {

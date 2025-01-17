@@ -1,7 +1,6 @@
 use std::{
     cell::{Cell, OnceCell, RefCell},
     path::PathBuf,
-    sync::Arc,
 };
 
 use fragile::Fragile;
@@ -12,7 +11,6 @@ use gtk::{
     prelude::*,
     subclass::prelude::*,
 };
-use mpris_player::{Metadata, MprisPlayer, PlaybackStatus};
 use once_cell::sync::Lazy;
 
 use crate::{
@@ -48,7 +46,7 @@ mod imp {
 
         pub play: OnceCell<gstreamer_play::Play>,
         pub play_signal_adapter: OnceCell<gstreamer_play::PlaySignalAdapter>,
-        pub mpris: OnceCell<Arc<MprisPlayer>>,
+        pub mpris: OnceCell<mpris_server::Player>,
     }
 
     impl MusicusPlayer {
@@ -75,10 +73,22 @@ mod imp {
                 }
 
                 let item = item.downcast::<PlaylistItem>().unwrap();
-                self.mpris.get().unwrap().set_metadata(Metadata {
-                    artist: Some(vec![item.make_title()]),
-                    title: item.make_subtitle(),
-                    ..Default::default()
+
+                let obj = self.obj().clone();
+                let item_clone = item.clone();
+                glib::spawn_future_local(async move {
+                    obj.imp()
+                        .mpris
+                        .get()
+                        .unwrap()
+                        .set_metadata(
+                            mpris_server::Metadata::builder()
+                                .artist(vec![item_clone.make_title()])
+                                .title(item_clone.make_subtitle().unwrap_or_else(String::new))
+                                .build(),
+                        )
+                        .await
+                        .unwrap();
                 });
 
                 let uri = glib::filename_to_uri(item.path(), None)
@@ -121,55 +131,12 @@ mod imp {
         fn constructed(&self) {
             self.parent_constructed();
 
+            let obj = self.obj().clone();
+            glib::spawn_future_local(async move {
+                obj.init_mpris().await;
+            });
+
             let play = gstreamer_play::Play::new(None::<gstreamer_play::PlayVideoRenderer>);
-
-            let mpris = MprisPlayer::new(
-                config::APP_ID.to_owned(),
-                config::NAME.to_owned(),
-                config::APP_ID.to_owned(),
-            );
-
-            mpris.set_can_raise(true);
-            mpris.set_can_play(true);
-            mpris.set_can_pause(true);
-            mpris.set_can_go_previous(true);
-            mpris.set_can_go_next(true);
-            mpris.set_can_seek(false);
-            mpris.set_can_set_fullscreen(false);
-
-            let obj = self.obj();
-            mpris.connect_raise(clone!(
-                #[weak]
-                obj,
-                move || obj.emit_by_name::<()>("raise", &[])
-            ));
-            mpris.connect_play(clone!(
-                #[weak]
-                obj,
-                move || obj.play()
-            ));
-            mpris.connect_pause(clone!(
-                #[weak]
-                obj,
-                move || obj.pause()
-            ));
-            mpris.connect_play_pause(clone!(
-                #[weak]
-                obj,
-                move || obj.play_pause()
-            ));
-            mpris.connect_previous(clone!(
-                #[weak]
-                obj,
-                move || obj.previous()
-            ));
-            mpris.connect_next(clone!(
-                #[weak]
-                obj,
-                move || obj.next()
-            ));
-
-            self.mpris.set(mpris).expect("mpris should not be set");
 
             let mut config = play.config();
             config.set_position_update_interval(250);
@@ -237,7 +204,11 @@ impl MusicusPlayer {
     }
 
     pub fn play_recording(&self, recording: &Recording) {
-        let tracks = &self.library().unwrap().tracks_for_recording(&recording.recording_id).unwrap();
+        let tracks = &self
+            .library()
+            .unwrap()
+            .tracks_for_recording(&recording.recording_id)
+            .unwrap();
 
         if tracks.is_empty() {
             log::warn!("Ignoring recording without tracks being added to the playlist.");
@@ -330,20 +301,34 @@ impl MusicusPlayer {
         let imp = self.imp();
         imp.play.get().unwrap().play();
         self.set_playing(true);
-        imp.mpris
-            .get()
-            .unwrap()
-            .set_playback_status(PlaybackStatus::Playing);
+
+        let obj = self.clone();
+        glib::spawn_future_local(async move {
+            obj.imp()
+                .mpris
+                .get()
+                .unwrap()
+                .set_playback_status(mpris_server::PlaybackStatus::Playing)
+                .await
+                .unwrap();
+        });
     }
 
     pub fn pause(&self) {
         let imp = self.imp();
         imp.play.get().unwrap().pause();
         self.set_playing(false);
-        imp.mpris
-            .get()
-            .unwrap()
-            .set_playback_status(PlaybackStatus::Paused);
+
+        let obj = self.clone();
+        glib::spawn_future_local(async move {
+            obj.imp()
+                .mpris
+                .get()
+                .unwrap()
+                .set_playback_status(mpris_server::PlaybackStatus::Paused)
+                .await
+                .unwrap();
+        });
     }
 
     pub fn seek_to(&self, time_ms: u64) {
@@ -376,6 +361,62 @@ impl MusicusPlayer {
         if self.current_index() > 0 {
             self.set_current_index(self.current_index() - 1);
         }
+    }
+
+    async fn init_mpris(&self) {
+        let mpris = mpris_server::Player::builder(config::APP_ID)
+            .desktop_entry(config::APP_ID)
+            .can_raise(true)
+            .can_play(true)
+            .can_pause(true)
+            .can_go_previous(true)
+            .can_go_next(true)
+            .build()
+            .await
+            .unwrap();
+
+        let obj = self.clone();
+
+        mpris.connect_raise(clone!(
+            #[weak]
+            obj,
+            move |_| obj.emit_by_name::<()>("raise", &[])
+        ));
+
+        mpris.connect_play(clone!(
+            #[weak]
+            obj,
+            move |_| obj.play()
+        ));
+
+        mpris.connect_pause(clone!(
+            #[weak]
+            obj,
+            move |_| obj.pause()
+        ));
+
+        mpris.connect_play_pause(clone!(
+            #[weak]
+            obj,
+            move |_| obj.play_pause()
+        ));
+
+        mpris.connect_previous(clone!(
+            #[weak]
+            obj,
+            move |_| obj.previous()
+        ));
+
+        mpris.connect_next(clone!(
+            #[weak]
+            obj,
+            move |_| obj.next()
+        ));
+
+        self.imp()
+            .mpris
+            .set(mpris)
+            .expect("mpris should not be set");
     }
 
     fn generate_items(&self, program: &Program) {
