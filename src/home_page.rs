@@ -102,6 +102,11 @@ mod imp {
                 obj.query(&entry.query());
             });
 
+            let obj = self.obj().to_owned();
+            self.library.get().unwrap().connect_changed(move |_| {
+                obj.imp().search_entry.reset();
+            });
+
             self.player
                 .get()
                 .unwrap()

@@ -3,7 +3,11 @@ use crate::{
     program::Program,
 };
 
-use adw::gtk::{glib, glib::Properties, prelude::*, subclass::prelude::*};
+use adw::{
+    glib::{self, subclass::Signal, Properties},
+    prelude::*,
+    subclass::prelude::*,
+};
 use anyhow::Result;
 use chrono::prelude::*;
 use diesel::{
@@ -13,6 +17,7 @@ use diesel::{
     sql_types::BigInt,
     QueryDsl, SqliteConnection,
 };
+use once_cell::sync::Lazy;
 
 use std::{
     cell::{OnceCell, RefCell},
@@ -43,6 +48,13 @@ mod imp {
 
     #[glib::derived_properties]
     impl ObjectImpl for MusicusLibrary {
+        fn signals() -> &'static [Signal] {
+            static SIGNALS: Lazy<Vec<Signal>> =
+                Lazy::new(|| vec![Signal::builder("changed").build()]);
+
+            SIGNALS.as_ref()
+        }
+
         fn constructed(&self) {
             self.parent_constructed();
 
@@ -745,6 +757,8 @@ impl MusicusLibrary {
             .values(&person)
             .execute(connection)?;
 
+        self.changed();
+
         Ok(person)
     }
 
@@ -762,6 +776,8 @@ impl MusicusLibrary {
                 persons::last_used_at.eq(now),
             ))
             .execute(connection)?;
+
+        self.changed();
 
         Ok(())
     }
@@ -785,6 +801,8 @@ impl MusicusLibrary {
             .values(&instrument)
             .execute(connection)?;
 
+        self.changed();
+
         Ok(instrument)
     }
 
@@ -802,6 +820,8 @@ impl MusicusLibrary {
                 instruments::last_used_at.eq(now),
             ))
             .execute(connection)?;
+
+        self.changed();
 
         Ok(())
     }
@@ -824,6 +844,8 @@ impl MusicusLibrary {
             .values(&role)
             .execute(connection)?;
 
+        self.changed();
+
         Ok(role)
     }
 
@@ -842,6 +864,8 @@ impl MusicusLibrary {
             ))
             .execute(connection)?;
 
+        self.changed();
+
         Ok(())
     }
 
@@ -855,7 +879,12 @@ impl MusicusLibrary {
         let mut binding = self.imp().connection.borrow_mut();
         let connection = &mut *binding.as_mut().unwrap();
 
-        self.create_work_priv(connection, name, parts, persons, instruments, None, None)
+        let work =
+            self.create_work_priv(connection, name, parts, persons, instruments, None, None)?;
+
+        self.changed();
+
+        Ok(work)
     }
 
     fn create_work_priv(
@@ -948,7 +977,11 @@ impl MusicusLibrary {
             instruments,
             None,
             None,
-        )
+        )?;
+
+        self.changed();
+
+        Ok(())
     }
 
     fn update_work_priv(
@@ -1074,6 +1107,8 @@ impl MusicusLibrary {
 
         let ensemble = Ensemble::from_table(ensemble_data, connection)?;
 
+        self.changed();
+
         Ok(ensemble)
     }
 
@@ -1093,6 +1128,8 @@ impl MusicusLibrary {
             .execute(connection)?;
 
         // TODO: Support updating persons.
+
+        self.changed();
 
         Ok(())
     }
@@ -1152,6 +1189,8 @@ impl MusicusLibrary {
         }
 
         let recording = Recording::from_table(recording_data, connection)?;
+
+        self.changed();
 
         Ok(recording)
     }
@@ -1214,7 +1253,27 @@ impl MusicusLibrary {
                 .execute(connection)?;
         }
 
+        self.changed();
+
         Ok(())
+    }
+
+    pub fn connect_changed<F: Fn(&Self) + 'static>(&self, f: F) -> glib::SignalHandlerId {
+        self.connect_local("changed", true, move |values| {
+            let obj = values[0].get::<Self>().unwrap();
+            f(&obj);
+            None
+        })
+    }
+
+    fn changed(&self) {
+        let obj = self.clone();
+        // Note: This is a dirty hack to let the calling function return before
+        // signal handlers are called. This is neccessary because RefCells
+        // may still be borrowed otherwise.
+        glib::spawn_future_local(async move {
+            obj.emit_by_name::<()>("changed", &[]);
+        });
     }
 }
 
