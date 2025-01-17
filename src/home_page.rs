@@ -173,6 +173,7 @@ impl MusicusHomePage {
                     &self.navigation(),
                     &self.library(),
                     Some(work),
+                    false,
                 )),
             }
         }

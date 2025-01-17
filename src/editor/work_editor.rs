@@ -1,4 +1,18 @@
-use std::cell::{OnceCell, RefCell};
+use crate::{
+    db::{
+        self,
+        models::{Composer, Instrument, Person, Work},
+    },
+    editor::{
+        instrument_editor::MusicusInstrumentEditor,
+        instrument_selector_popover::MusicusInstrumentSelectorPopover,
+        person_editor::MusicusPersonEditor, person_selector_popover::MusicusPersonSelectorPopover,
+        translation_editor::MusicusTranslationEditor,
+        work_editor_composer_row::MusicusWorkEditorComposerRow,
+        work_editor_part_row::MusicusWorkEditorPartRow,
+    },
+    library::MusicusLibrary,
+};
 
 use adw::{prelude::*, subclass::prelude::*};
 use gettextrs::gettext;
@@ -8,20 +22,7 @@ use gtk::glib::{
 };
 use once_cell::sync::Lazy;
 
-use crate::{
-    db::{
-        self,
-        models::{Composer, Instrument, Person, Work, WorkPart},
-    },
-    editor::{
-        instrument_editor::MusicusInstrumentEditor,
-        instrument_selector_popover::MusicusInstrumentSelectorPopover,
-        person_editor::MusicusPersonEditor, person_selector_popover::MusicusPersonSelectorPopover,
-        translation_editor::MusicusTranslationEditor,
-        work_editor_composer_row::MusicusWorkEditorComposerRow,
-    },
-    library::MusicusLibrary,
-};
+use std::cell::{Cell, OnceCell, RefCell};
 
 mod imp {
     use super::*;
@@ -37,13 +38,14 @@ mod imp {
         pub library: OnceCell<MusicusLibrary>,
 
         pub work_id: OnceCell<String>,
+        pub is_part_editor: Cell<bool>,
 
         // Holding a reference to each composer row is the simplest way to enumerate all
         // results when finishing the process of editing the work. The composer rows
         // handle all state related to the composer.
         pub composer_rows: RefCell<Vec<MusicusWorkEditorComposerRow>>,
-        // TODO: These need to be PartRows!
-        pub parts: RefCell<Vec<WorkPart>>,
+        pub part_rows: RefCell<Vec<MusicusWorkEditorPartRow>>,
+
         pub instruments: RefCell<Vec<Instrument>>,
 
         pub persons_popover: OnceCell<MusicusPersonSelectorPopover>,
@@ -165,16 +167,36 @@ impl MusicusWorkEditor {
         navigation: &adw::NavigationView,
         library: &MusicusLibrary,
         work: Option<&Work>,
+        is_part_editor: bool,
     ) -> Self {
         let obj: Self = glib::Object::builder()
             .property("navigation", navigation)
             .property("library", library)
             .build();
 
+        if is_part_editor {
+            obj.set_title(&gettext("Work part"));
+            obj.imp().save_button.set_label(&gettext("Add work part"));
+            obj.imp().is_part_editor.set(true);
+        }
+
         if let Some(work) = work {
             obj.imp().save_button.set_label(&gettext("Save changes"));
             obj.imp().work_id.set(work.work_id.clone()).unwrap();
-            // TODO: Initialize work data.
+
+            obj.imp().name_editor.set_translation(&work.name);
+
+            for part in &work.parts {
+                obj.add_part_row(part.clone());
+            }
+
+            for composer in &work.persons {
+                obj.add_composer_row(composer.clone());
+            }
+
+            for instrument in &work.instruments {
+                obj.add_instrument_row(instrument.clone());
+            }
         }
 
         obj
@@ -196,41 +218,17 @@ impl MusicusWorkEditor {
 
     #[template_callback]
     fn add_part(&self, _: &adw::ActionRow) {
-        let part = WorkPart {
-            work_id: db::generate_id(),
-            ..Default::default()
-        };
+        let editor = MusicusWorkEditor::new(&self.navigation(), &self.library(), None, true);
 
-        let row = adw::EntryRow::builder().title(gettext("Name")).build();
-
-        let remove_button = gtk::Button::builder()
-            .icon_name("user-trash-symbolic")
-            .valign(gtk::Align::Center)
-            .css_classes(["flat"])
-            .build();
-
-        remove_button.connect_clicked(clone!(
+        editor.connect_created(clone!(
             #[weak(rename_to = this)]
             self,
-            #[weak]
-            row,
-            #[strong]
-            part,
-            move |_| {
-                this.imp().part_list.remove(&row);
-                this.imp().parts.borrow_mut().retain(|p| *p != part);
+            move |_, part| {
+                this.add_part_row(part);
             }
         ));
 
-        row.add_suffix(&remove_button);
-
-        self.imp()
-            .part_list
-            .insert(&row, self.imp().parts.borrow().len() as i32);
-
-        row.grab_focus();
-
-        self.imp().parts.borrow_mut().push(part);
+        self.navigation().push(&editor);
     }
 
     #[template_callback]
@@ -241,6 +239,29 @@ impl MusicusWorkEditor {
     fn add_composer(&self, person: Person) {
         let role = self.library().composer_default_role().unwrap();
         let composer = Composer { person, role };
+        self.add_composer_row(composer);
+    }
+
+    fn add_part_row(&self, part: Work) {
+        let row = MusicusWorkEditorPartRow::new(&self.navigation(), &self.library(), part);
+
+        row.connect_remove(clone!(
+            #[weak(rename_to = this)]
+            self,
+            move |row| {
+                this.imp().part_list.remove(row);
+                this.imp().part_rows.borrow_mut().retain(|p| p != row);
+            }
+        ));
+
+        self.imp()
+            .part_list
+            .insert(&row, self.imp().part_rows.borrow().len() as i32);
+
+        self.imp().part_rows.borrow_mut().push(row);
+    }
+
+    fn add_composer_row(&self, composer: Composer) {
         let row = MusicusWorkEditorComposerRow::new(&self.navigation(), &self.library(), composer);
 
         row.connect_remove(clone!(
@@ -300,7 +321,15 @@ impl MusicusWorkEditor {
         let library = self.imp().library.get().unwrap();
 
         let name = self.imp().name_editor.translation();
-        let parts = self.imp().parts.borrow().clone();
+
+        let parts = self
+            .imp()
+            .part_rows
+            .borrow()
+            .iter()
+            .map(|p| p.part())
+            .collect::<Vec<Work>>();
+
         let composers = self
             .imp()
             .composer_rows
@@ -310,15 +339,34 @@ impl MusicusWorkEditor {
             .collect::<Vec<Composer>>();
         let instruments = self.imp().instruments.borrow().clone();
 
-        if let Some(work_id) = self.imp().work_id.get() {
-            library
-                .update_work(work_id, name, parts, composers, instruments)
-                .unwrap();
+        if self.imp().is_part_editor.get() {
+            let work_id = self
+                .imp()
+                .work_id
+                .get()
+                .map(|w| w.to_string())
+                .unwrap_or_else(db::generate_id);
+
+            let part = Work {
+                work_id,
+                name,
+                parts,
+                persons: composers,
+                instruments,
+            };
+
+            self.emit_by_name::<()>("created", &[&part]);
         } else {
-            let work = library
-                .create_work(name, parts, composers, instruments)
-                .unwrap();
-            self.emit_by_name::<()>("created", &[&work]);
+            if let Some(work_id) = self.imp().work_id.get() {
+                library
+                    .update_work(work_id, name, parts, composers, instruments)
+                    .unwrap();
+            } else {
+                let work = library
+                    .create_work(name, parts, composers, instruments)
+                    .unwrap();
+                self.emit_by_name::<()>("created", &[&work]);
+            }
         }
 
         self.imp().navigation.get().unwrap().pop();

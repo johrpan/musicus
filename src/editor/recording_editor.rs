@@ -102,7 +102,7 @@ mod imp {
 
             let obj = self.obj().clone();
             work_selector_popover.connect_create(move |_| {
-                let editor = MusicusWorkEditor::new(&obj.navigation(), &obj.library(), None);
+                let editor = MusicusWorkEditor::new(&obj.navigation(), &obj.library(), None, false);
 
                 editor.connect_created(clone!(
                     #[weak]
@@ -124,7 +124,7 @@ mod imp {
 
             let obj = self.obj().clone();
             persons_popover.connect_person_selected(move |_, person| {
-                obj.add_performer(person);
+                obj.new_performer(person);
             });
 
             let obj = self.obj().clone();
@@ -135,7 +135,7 @@ mod imp {
                     #[weak]
                     obj,
                     move |_, person| {
-                        obj.add_performer(person);
+                        obj.new_performer(person);
                     }
                 ));
 
@@ -150,7 +150,7 @@ mod imp {
 
             let obj = self.obj().clone();
             ensembles_popover.connect_ensemble_selected(move |_, ensemble| {
-                obj.add_ensemble(ensemble);
+                obj.new_ensemble_performer(ensemble);
             });
 
             let obj = self.obj().clone();
@@ -161,7 +161,7 @@ mod imp {
                     #[weak]
                     obj,
                     move |_, ensemble| {
-                        obj.add_ensemble(ensemble);
+                        obj.new_ensemble_performer(ensemble);
                     }
                 ));
 
@@ -200,7 +200,20 @@ impl MusicusRecordingEditor {
                 .recording_id
                 .set(recording.recording_id.clone())
                 .unwrap();
-            // TODO: Initialize data.
+
+            obj.set_work(recording.work.clone());
+
+            if let Some(year) = recording.year {
+                obj.imp().year_row.set_value(year as f64);
+            }
+
+            for performer in recording.persons.clone() {
+                obj.add_performer_row(performer);
+            }
+
+            for ensemble_performer in recording.ensembles.clone() {
+                obj.add_ensemble_row(ensemble_performer);
+            }
         }
 
         obj
@@ -227,14 +240,17 @@ impl MusicusRecordingEditor {
         self.imp().work.replace(Some(work));
     }
 
-    fn add_performer(&self, person: Person) {
-        let role = self.library().performer_default_role().unwrap();
+    fn new_performer(&self, person: Person) {
         let performer = Performer {
             person,
-            role,
+            role: self.library().performer_default_role().unwrap(),
             instrument: None,
         };
 
+        self.add_performer_row(performer);
+    }
+
+    fn add_performer_row(&self, performer: Performer) {
         let row =
             MusicusRecordingEditorPerformerRow::new(&self.navigation(), &self.library(), performer);
 
@@ -254,12 +270,21 @@ impl MusicusRecordingEditor {
         self.imp().performer_rows.borrow_mut().push(row);
     }
 
-    fn add_ensemble(&self, ensemble: Ensemble) {
-        let role = self.library().performer_default_role().unwrap();
-        let performer = EnsemblePerformer { ensemble, role };
+    fn new_ensemble_performer(&self, ensemble: Ensemble) {
+        let performer = EnsemblePerformer {
+            ensemble,
+            role: self.library().performer_default_role().unwrap(),
+        };
 
-        let row =
-            MusicusRecordingEditorEnsembleRow::new(&self.navigation(), &self.library(), performer);
+        self.add_ensemble_row(performer);
+    }
+
+    fn add_ensemble_row(&self, ensemble_performer: EnsemblePerformer) {
+        let row = MusicusRecordingEditorEnsembleRow::new(
+            &self.navigation(),
+            &self.library(),
+            ensemble_performer,
+        );
 
         row.connect_remove(clone!(
             #[weak(rename_to = this)]

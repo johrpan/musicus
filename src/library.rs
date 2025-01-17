@@ -848,20 +848,33 @@ impl MusicusLibrary {
     pub fn create_work(
         &self,
         name: TranslatedString,
-        parts: Vec<WorkPart>,
+        parts: Vec<Work>,
         persons: Vec<Composer>,
         instruments: Vec<Instrument>,
     ) -> Result<Work> {
         let mut binding = self.imp().connection.borrow_mut();
         let connection = &mut *binding.as_mut().unwrap();
 
+        self.create_work_priv(connection, name, parts, persons, instruments, None, None)
+    }
+
+    fn create_work_priv(
+        &self,
+        connection: &mut SqliteConnection,
+        name: TranslatedString,
+        parts: Vec<Work>,
+        persons: Vec<Composer>,
+        instruments: Vec<Instrument>,
+        parent_work_id: Option<&str>,
+        sequence_number: Option<i32>,
+    ) -> Result<Work> {
         let work_id = db::generate_id();
         let now = Local::now().naive_local();
 
         let work_data = tables::Work {
             work_id: work_id.clone(),
-            parent_work_id: None,
-            sequence_number: None,
+            parent_work_id: parent_work_id.map(|w| w.to_string()),
+            sequence_number: sequence_number,
             name,
             created_at: now,
             edited_at: now,
@@ -874,20 +887,15 @@ impl MusicusLibrary {
             .execute(connection)?;
 
         for (index, part) in parts.into_iter().enumerate() {
-            let part_data = tables::Work {
-                work_id: part.work_id,
-                parent_work_id: Some(work_id.clone()),
-                sequence_number: Some(index as i32),
-                name: part.name,
-                created_at: now,
-                edited_at: now,
-                last_used_at: now,
-                last_played_at: None,
-            };
-
-            diesel::insert_into(works::table)
-                .values(&part_data)
-                .execute(connection)?;
+            self.create_work_priv(
+                connection,
+                part.name,
+                part.parts,
+                part.persons,
+                part.instruments,
+                Some(&work_id),
+                Some(index as i32),
+            )?;
         }
 
         for (index, composer) in persons.into_iter().enumerate() {
@@ -922,20 +930,125 @@ impl MusicusLibrary {
 
     pub fn update_work(
         &self,
-        id: &str,
+        work_id: &str,
         name: TranslatedString,
-        parts: Vec<WorkPart>,
+        parts: Vec<Work>,
         persons: Vec<Composer>,
         instruments: Vec<Instrument>,
     ) -> Result<()> {
         let mut binding = self.imp().connection.borrow_mut();
         let connection = &mut *binding.as_mut().unwrap();
 
+        self.update_work_priv(
+            connection,
+            work_id,
+            name,
+            parts,
+            persons,
+            instruments,
+            None,
+            None,
+        )
+    }
+
+    fn update_work_priv(
+        &self,
+        connection: &mut SqliteConnection,
+        work_id: &str,
+        name: TranslatedString,
+        parts: Vec<Work>,
+        persons: Vec<Composer>,
+        instruments: Vec<Instrument>,
+        parent_work_id: Option<&str>,
+        sequence_number: Option<i32>,
+    ) -> Result<()> {
         let now = Local::now().naive_local();
 
-        // TODO: Update work, check which work parts etc exist, update them,
-        // create new work parts, delete and readd composers and instruments.
-        todo!()
+        diesel::update(works::table)
+            .filter(works::work_id.eq(work_id))
+            .set((
+                works::parent_work_id.eq(parent_work_id),
+                works::sequence_number.eq(sequence_number),
+                works::name.eq(name),
+                works::edited_at.eq(now),
+                works::last_used_at.eq(now),
+            ))
+            .execute(connection)?;
+
+        diesel::delete(works::table)
+            .filter(
+                works::parent_work_id
+                    .eq(work_id)
+                    .and(works::work_id.ne_all(parts.iter().map(|p| p.work_id.clone()))),
+            )
+            .execute(connection)?;
+
+        for (index, part) in parts.into_iter().enumerate() {
+            if works::table
+                .filter(works::work_id.eq(&part.work_id))
+                .first::<tables::Work>(connection)
+                .optional()?
+                .is_some()
+            {
+                self.update_work_priv(
+                    connection,
+                    &part.work_id,
+                    part.name,
+                    part.parts,
+                    part.persons,
+                    part.instruments,
+                    Some(work_id),
+                    Some(index as i32),
+                )?;
+            } else {
+                // Note: The previously used ID is discarded. This should be OK, because
+                // at this point, the part ID should not have been used anywhere.
+                self.create_work_priv(
+                    connection,
+                    part.name,
+                    part.parts,
+                    part.persons,
+                    part.instruments,
+                    Some(work_id),
+                    Some(index as i32),
+                )?;
+            }
+        }
+
+        diesel::delete(work_persons::table)
+            .filter(work_persons::work_id.eq(work_id))
+            .execute(connection)?;
+
+        for (index, composer) in persons.into_iter().enumerate() {
+            let composer_data = tables::WorkPerson {
+                work_id: work_id.to_string(),
+                person_id: composer.person.person_id,
+                role_id: composer.role.role_id,
+                sequence_number: index as i32,
+            };
+
+            diesel::insert_into(work_persons::table)
+                .values(composer_data)
+                .execute(connection)?;
+        }
+
+        diesel::delete(work_instruments::table)
+            .filter(work_instruments::work_id.eq(work_id))
+            .execute(connection)?;
+
+        for (index, instrument) in instruments.into_iter().enumerate() {
+            let instrument_data = tables::WorkInstrument {
+                work_id: work_id.to_string(),
+                instrument_id: instrument.instrument_id,
+                sequence_number: index as i32,
+            };
+
+            diesel::insert_into(work_instruments::table)
+                .values(instrument_data)
+                .execute(connection)?;
+        }
+
+        Ok(())
     }
 
     pub fn create_ensemble(&self, name: TranslatedString) -> Result<Ensemble> {
@@ -1045,7 +1158,7 @@ impl MusicusLibrary {
 
     pub fn update_recording(
         &self,
-        id: &str,
+        recording_id: &str,
         work: Work,
         year: Option<i32>,
         performers: Vec<Performer>,
@@ -1056,8 +1169,52 @@ impl MusicusLibrary {
 
         let now = Local::now().naive_local();
 
-        // TODO: Update recording.
-        todo!()
+        diesel::update(recordings::table)
+            .filter(recordings::recording_id.eq(recording_id))
+            .set((
+                recordings::work_id.eq(work.work_id),
+                recordings::year.eq(year),
+                recordings::edited_at.eq(now),
+                recordings::last_used_at.eq(now),
+            ))
+            .execute(connection)?;
+
+        diesel::delete(recording_persons::table)
+            .filter(recording_persons::recording_id.eq(recording_id))
+            .execute(connection)?;
+
+        for (index, performer) in performers.into_iter().enumerate() {
+            let recording_person_data = tables::RecordingPerson {
+                recording_id: recording_id.to_string(),
+                person_id: performer.person.person_id,
+                role_id: performer.role.role_id,
+                instrument_id: performer.instrument.map(|i| i.instrument_id),
+                sequence_number: index as i32,
+            };
+
+            diesel::insert_into(recording_persons::table)
+                .values(&recording_person_data)
+                .execute(connection)?;
+        }
+
+        diesel::delete(recording_ensembles::table)
+            .filter(recording_ensembles::recording_id.eq(recording_id))
+            .execute(connection)?;
+
+        for (index, ensemble) in ensembles.into_iter().enumerate() {
+            let recording_ensemble_data = tables::RecordingEnsemble {
+                recording_id: recording_id.to_string(),
+                ensemble_id: ensemble.ensemble.ensemble_id,
+                role_id: ensemble.role.role_id,
+                sequence_number: index as i32,
+            };
+
+            diesel::insert_into(recording_ensembles::table)
+                .values(&recording_ensemble_data)
+                .execute(connection)?;
+        }
+
+        Ok(())
     }
 }
 

@@ -17,17 +17,9 @@ pub use tables::{Album, Instrument, Person, Role};
 pub struct Work {
     pub work_id: String,
     pub name: TranslatedString,
-    pub parts: Vec<WorkPart>,
+    pub parts: Vec<Work>,
     pub persons: Vec<Composer>,
     pub instruments: Vec<Instrument>,
-}
-
-// TODO: Handle part composers.
-#[derive(Default, Clone, Debug)]
-pub struct WorkPart {
-    pub work_id: String,
-    pub level: u8,
-    pub name: TranslatedString,
 }
 
 #[derive(Queryable, Selectable, Clone, Debug)]
@@ -122,42 +114,17 @@ impl PartialEq for Composer {
     }
 }
 
-impl Eq for WorkPart {}
-impl PartialEq for WorkPart {
-    fn eq(&self, other: &Self) -> bool {
-        self.work_id == other.work_id
-    }
-}
-
 impl Work {
     pub fn from_table(data: tables::Work, connection: &mut SqliteConnection) -> Result<Self> {
-        fn visit_children(
-            work_id: &str,
-            level: u8,
-            connection: &mut SqliteConnection,
-        ) -> Result<Vec<WorkPart>> {
-            let mut parts = Vec::new();
-
-            let children: Vec<tables::Work> = works::table
-                .filter(works::parent_work_id.eq(work_id))
-                .load(connection)?;
-
-            for child in children {
-                let mut grand_children = visit_children(&child.work_id, level + 1, connection)?;
-
-                parts.push(WorkPart {
-                    work_id: child.work_id,
-                    level,
-                    name: child.name,
-                });
-
-                parts.append(&mut grand_children);
-            }
-
-            Ok(parts)
-        }
-
-        let parts = visit_children(&data.work_id, 0, connection)?;
+        // Note: Because this calls Work::from_table for each part, this recursively
+        // adds all children. It does not check for circularity.
+        let parts = works::table
+            .order(works::sequence_number)
+            .filter(works::parent_work_id.eq(&data.work_id))
+            .load::<tables::Work>(connection)?
+            .into_iter()
+            .map(|w| Work::from_table(w, connection))
+            .collect::<Result<Vec<Work>>>()?;
 
         let persons: Vec<Composer> = persons::table
             .inner_join(work_persons::table.inner_join(roles::table))

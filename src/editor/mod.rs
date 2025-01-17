@@ -15,4 +15,5 @@ pub mod translation_editor;
 pub mod translation_entry;
 pub mod work_editor;
 pub mod work_editor_composer_row;
+pub mod work_editor_part_row;
 pub mod work_selector_popover;
