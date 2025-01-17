@@ -24,7 +24,7 @@ mod imp {
         #[template_child]
         pub name_editor: TemplateChild<MusicusTranslationEditor>,
         #[template_child]
-        pub save_button: TemplateChild<gtk::Button>,
+        pub save_row: TemplateChild<adw::ButtonRow>,
     }
 
     #[glib::object_subclass]
@@ -78,7 +78,7 @@ impl MusicusPersonEditor {
         obj.imp().library.set(library.to_owned()).unwrap();
 
         if let Some(person) = person {
-            obj.imp().save_button.set_label(&gettext("Save changes"));
+            obj.imp().save_row.set_title(&gettext("Save changes"));
             obj.imp().person_id.set(person.person_id.clone()).unwrap();
             obj.imp().name_editor.set_translation(&person.name);
         }

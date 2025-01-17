@@ -119,10 +119,3 @@
   padding: 6px;
   border-radius: 6px;
 }
-
-button.save {
-  min-height: 48px;
-  font-weight: 700;
-  font-size: 11pt;
-  color: var(--accent-color);
-}

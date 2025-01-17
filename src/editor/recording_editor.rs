@@ -58,7 +58,7 @@ mod imp {
         #[template_child]
         pub select_ensemble_box: TemplateChild<gtk::Box>,
         #[template_child]
-        pub save_button: TemplateChild<gtk::Button>,
+        pub save_row: TemplateChild<adw::ButtonRow>,
     }
 
     #[glib::object_subclass]
@@ -195,7 +195,7 @@ impl MusicusRecordingEditor {
             .build();
 
         if let Some(recording) = recording {
-            obj.imp().save_button.set_label(&gettext("Save changes"));
+            obj.imp().save_row.set_title(&gettext("Save changes"));
             obj.imp()
                 .recording_id
                 .set(recording.recording_id.clone())

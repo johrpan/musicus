@@ -64,7 +64,7 @@ mod imp {
         #[template_child]
         pub select_instrument_box: TemplateChild<gtk::Box>,
         #[template_child]
-        pub save_button: TemplateChild<gtk::Button>,
+        pub save_row: TemplateChild<adw::ButtonRow>,
     }
 
     #[glib::object_subclass]
@@ -176,12 +176,12 @@ impl MusicusWorkEditor {
 
         if is_part_editor {
             obj.set_title(&gettext("Work part"));
-            obj.imp().save_button.set_label(&gettext("Add work part"));
+            obj.imp().save_row.set_title(&gettext("Add work part"));
             obj.imp().is_part_editor.set(true);
         }
 
         if let Some(work) = work {
-            obj.imp().save_button.set_label(&gettext("Save changes"));
+            obj.imp().save_row.set_title(&gettext("Save changes"));
             obj.imp().work_id.set(work.work_id.clone()).unwrap();
 
             obj.imp().name_editor.set_translation(&work.name);

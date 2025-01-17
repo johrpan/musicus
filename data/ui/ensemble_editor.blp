@@ -26,15 +26,18 @@ template $MusicusEnsembleEditor: Adw.NavigationPage {
           margin-top: 12;
         }
 
-        Gtk.Button save_button {
+        Gtk.ListBox {
+          selection-mode: none;
           margin-top: 24;
-          label: _("Create ensemble");
-          clicked => $save() swapped;
 
           styles [
-            "card",
-            "save"
+            "boxed-list"
           ]
+
+          Adw.ButtonRow save_row {
+            title: _("Create ensemble");
+            activated => $save() swapped;
+          }
         }
       }
     }

@@ -124,15 +124,18 @@ template $MusicusRecordingEditor: Adw.NavigationPage {
             }
           }
 
-          Gtk.Button save_button {
+          Gtk.ListBox {
+            selection-mode: none;
             margin-top: 24;
-            label: _("Create recording");
-            clicked => $save() swapped;
 
             styles [
-              "card",
-              "save"
+              "boxed-list"
             ]
+
+            Adw.ButtonRow save_row {
+              title: _("Create recording");
+              activated => $save() swapped;
+            }
           }
         }
       }
