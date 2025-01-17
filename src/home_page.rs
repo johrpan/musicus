@@ -11,7 +11,10 @@ use crate::{
     album_tile::MusicusAlbumTile,
     config,
     db::models::*,
-    editor::{person_editor::MusicusPersonEditor, work_editor::MusicusWorkEditor},
+    editor::{
+        ensemble_editor::MusicusEnsembleEditor, person_editor::MusicusPersonEditor,
+        work_editor::MusicusWorkEditor,
+    },
     library::{LibraryQuery, MusicusLibrary},
     player::MusicusPlayer,
     program::Program,
@@ -173,7 +176,13 @@ impl MusicusHomePage {
                         Some(person),
                     ));
                 }
-                Tag::Ensemble(_) => todo!(),
+                Tag::Ensemble(ensemble) => {
+                    self.navigation().push(&MusicusEnsembleEditor::new(
+                        &self.navigation(),
+                        &self.library(),
+                        Some(ensemble),
+                    ));
+                }
                 Tag::Work(work) => self.navigation().push(&MusicusWorkEditor::new(
                     &self.navigation(),
                     &self.library(),
