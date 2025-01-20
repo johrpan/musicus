@@ -10,13 +10,7 @@ use adw::{
 };
 use anyhow::Result;
 use chrono::prelude::*;
-use diesel::{
-    dsl::{exists, sql},
-    prelude::*,
-    sql_query,
-    sql_types::BigInt,
-    QueryDsl, SqliteConnection,
-};
+use diesel::{dsl::exists, prelude::*, QueryDsl, SqliteConnection};
 use once_cell::sync::Lazy;
 
 use std::{
@@ -432,59 +426,9 @@ impl MusicusLibrary {
             query = query.filter(album_recordings::album_id.eq(album_id));
         }
 
-        if program.prefer_recently_added() > 0.0 {
-            let oldest_timestamp = sql_query(
-                "SELECT CAST(STRFTIME('%s', MIN(created_at)) AS INTEGER) AS value FROM recordings",
-            )
-            .get_result::<IntegerValue>(connection)?
-            .value;
-
-            let newest_timestamp = sql_query(
-                "SELECT CAST(STRFTIME('%s', MAX(created_at)) AS INTEGER) AS value FROM recordings",
-            )
-            .get_result::<IntegerValue>(connection)?
-            .value;
-
-            let range = newest_timestamp - oldest_timestamp;
-
-            if range >= 60 {
-                let proportion = program.prefer_recently_added().max(1.0) * 0.9;
-                let cutoff_timestamp =
-                    oldest_timestamp + (proportion * range as f64).floor() as i64;
-
-                query = query.filter(
-                    sql::<BigInt>("CAST(STRFTIME('%s', recordings.created_at) AS INTEGER)")
-                        .ge(cutoff_timestamp)
-                        .or(recordings::last_played_at.is_null()),
-                );
-            }
-        }
-
-        if program.prefer_least_recently_played() > 0.0 {
-            let oldest_timestamp =
-                sql_query("SELECT CAST(STRFTIME('%s', MIN(last_played_at)) AS INTEGER) AS value FROM recordings")
-                    .get_result::<IntegerValue>(connection)?
-                    .value;
-
-            let newest_timestamp =
-                sql_query("SELECT CAST(STRFTIME('%s', MAX(last_played_at)) AS INTEGER) AS value FROM recordings")
-                    .get_result::<IntegerValue>(connection)?
-                    .value;
-
-            let range = newest_timestamp - oldest_timestamp;
-
-            if range >= 60 {
-                let proportion = 1.0 - program.prefer_least_recently_played().max(1.0) * 0.9;
-                let cutoff_timestamp =
-                    oldest_timestamp + (proportion * range as f64).floor() as i64;
-
-                query = query.filter(
-                    sql::<BigInt>("CAST(STRFTIME('%s', recordings.last_played_at) AS INTEGER)")
-                        .le(cutoff_timestamp)
-                        .or(recordings::last_played_at.is_null()),
-                );
-            }
-        }
+        // TODO: Implement weighting.
+        // if program.prefer_recently_added() > 0.0 {}
+        // if program.prefer_least_recently_played() > 0.0 {}
 
         let row = query
             .order(random())
@@ -1315,10 +1259,4 @@ impl LibraryResults {
             && self.recordings.is_empty()
             && self.albums.is_empty()
     }
-}
-
-#[derive(QueryableByName)]
-pub struct IntegerValue {
-    #[diesel(sql_type = diesel::sql_types::BigInt)]
-    pub value: i64,
 }
