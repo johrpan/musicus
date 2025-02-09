@@ -1,7 +1,7 @@
 use crate::{
-    config, home_page::MusicusHomePage, library::MusicusLibrary, library_manager::LibraryManager,
-    player::MusicusPlayer, player_bar::PlayerBar, playlist_page::MusicusPlaylistPage,
-    welcome_page::MusicusWelcomePage,
+    config, editor::tracks_editor::TracksEditor, home_page::MusicusHomePage,
+    library::MusicusLibrary, library_manager::LibraryManager, player::MusicusPlayer,
+    player_bar::PlayerBar, playlist_page::MusicusPlaylistPage, welcome_page::MusicusWelcomePage,
 };
 
 use adw::subclass::prelude::*;
@@ -15,8 +15,8 @@ mod imp {
     #[derive(Debug, Default, gtk::CompositeTemplate)]
     #[template(file = "data/ui/window.blp")]
     pub struct MusicusWindow {
+        pub library: RefCell<Option<MusicusLibrary>>,
         pub player: MusicusPlayer,
-        pub library_manager: RefCell<Option<LibraryManager>>,
 
         #[template_child]
         pub stack: TemplateChild<gtk::Stack>,
@@ -52,14 +52,29 @@ mod imp {
                 self.obj().add_css_class("devel");
             }
 
-            let navigation_view = self.navigation_view.get().to_owned();
-            let library_action = gio::ActionEntry::builder("library")
-                .activate(move |_: &super::MusicusWindow, _, _| {
-                    navigation_view.push_by_tag("library")
+            let obj = self.obj().to_owned();
+            let import_action = gio::ActionEntry::builder("import")
+                .activate(move |_, _, _| {
+                    if let Some(library) = &*obj.imp().library.borrow() {
+                        let editor = TracksEditor::new(&obj.imp().navigation_view, library, None);
+                        obj.imp().navigation_view.push(&editor);
+                    }
                 })
                 .build();
 
-            self.obj().add_action_entries([library_action]);
+            let obj = self.obj().to_owned();
+            let library_action = gio::ActionEntry::builder("library")
+                .activate(move |_, _, _| {
+                    if let Some(library) = &*obj.imp().library.borrow() {
+                        let library_manager =
+                            LibraryManager::new(&obj.imp().navigation_view, library);
+                        obj.imp().navigation_view.push(&library_manager);
+                    }
+                })
+                .build();
+
+            self.obj()
+                .add_action_entries([import_action, library_action]);
 
             let player_bar = PlayerBar::new(&self.player);
             self.player_bar_revealer.set_child(Some(&player_bar));
@@ -174,16 +189,9 @@ impl MusicusWindow {
         self.imp().player.set_library(&library);
 
         let navigation = self.imp().navigation_view.get();
-        if let Some(library_manager) = self.imp().library_manager.take() {
-            navigation.remove(&library_manager);
-        }
-
-        let library_manager = LibraryManager::new(&navigation, &library);
-
         navigation
             .replace(&[MusicusHomePage::new(&navigation, &library, &self.imp().player).into()]);
-        navigation.add(&library_manager);
 
-        self.imp().library_manager.replace(Some(library_manager));
+        self.imp().library.replace(Some(library));
     }
 }

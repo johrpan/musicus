@@ -9,6 +9,7 @@ anyhow = "1"
 chrono = "0.4"
 diesel = { version = "2.2", features = ["chrono", "sqlite"] }
 diesel_migrations = "2.2"
+formatx = "0.2"
 fragile = "2"
 gettext-rs = { version = "0.7", features = ["gettext-system"] }
 gstreamer-play = "0.23"

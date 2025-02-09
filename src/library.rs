@@ -115,7 +115,7 @@ impl MusicusLibrary {
                     .collect::<Result<Vec<Ensemble>>>()?;
 
                 let works: Vec<Work> = works::table
-                    .inner_join(work_persons::table.inner_join(persons::table))
+                    .left_join(work_persons::table.inner_join(persons::table))
                     .filter(works::name.like(&search).or(persons::name.like(&search)))
                     .limit(9)
                     .select(works::all_columns)
@@ -225,7 +225,7 @@ impl MusicusLibrary {
 
                 let recordings = recordings::table
                     .inner_join(
-                        works::table.inner_join(work_persons::table.inner_join(persons::table)),
+                        works::table.left_join(work_persons::table.inner_join(persons::table)),
                     )
                     // .inner_join(recording_persons::table.inner_join(persons::table))
                     .inner_join(recording_ensembles::table)
@@ -287,7 +287,7 @@ impl MusicusLibrary {
 
                 let recordings = recordings::table
                     .inner_join(
-                        works::table.inner_join(work_persons::table.inner_join(persons::table)),
+                        works::table.left_join(work_persons::table.inner_join(persons::table)),
                     )
                     .inner_join(recording_persons::table)
                     .filter(
@@ -400,10 +400,10 @@ impl MusicusLibrary {
         let connection = &mut *binding.as_mut().unwrap();
 
         let mut query = recordings::table
-            .inner_join(works::table.inner_join(work_persons::table))
-            .inner_join(recording_persons::table)
-            .inner_join(recording_ensembles::table)
-            .inner_join(album_recordings::table)
+            .inner_join(works::table.left_join(work_persons::table))
+            .left_join(recording_persons::table)
+            .left_join(recording_ensembles::table)
+            .left_join(album_recordings::table)
             .into_boxed();
 
         if let Some(composer_id) = program.composer_id() {
@@ -556,7 +556,7 @@ impl MusicusLibrary {
         let connection = &mut *binding.as_mut().unwrap();
 
         let works: Vec<Work> = works::table
-            .inner_join(work_persons::table)
+            .left_join(work_persons::table)
             .filter(
                 works::name
                     .like(&search)
@@ -571,6 +571,32 @@ impl MusicusLibrary {
             .collect::<Result<Vec<Work>>>()?;
 
         Ok(works)
+    }
+
+    pub fn search_recordings(&self, work: &Work, search: &str) -> Result<Vec<Recording>> {
+        let search = format!("%{}%", search);
+        let mut binding = self.imp().connection.borrow_mut();
+        let connection = &mut *binding.as_mut().unwrap();
+
+        let recordings = recordings::table
+            .left_join(recording_persons::table.inner_join(persons::table))
+            .left_join(recording_ensembles::table.inner_join(ensembles::table))
+            .filter(
+                recordings::work_id.eq(&work.work_id).and(
+                    persons::name
+                        .like(&search)
+                        .or(ensembles::name.like(&search)),
+                ),
+            )
+            .limit(9)
+            .select(recordings::all_columns)
+            .distinct()
+            .load::<tables::Recording>(connection)?
+            .into_iter()
+            .map(|r| Recording::from_table(r, connection))
+            .collect::<Result<Vec<Recording>>>()?;
+
+        Ok(recordings)
     }
 
     pub fn all_works(&self) -> Result<Vec<Work>> {

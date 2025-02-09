@@ -1,0 +1,98 @@
+using Gtk 4.0;
+using Adw 1;
+
+template $MusicusTracksEditor: Adw.NavigationPage {
+  title: _("Tracks");
+
+  Adw.ToolbarView {
+    [top]
+    Adw.HeaderBar {}
+
+    Gtk.ScrolledWindow {
+      Adw.Clamp {
+        Gtk.Box {
+          orientation: vertical;
+          margin-bottom: 24;
+          margin-start: 12;
+          margin-end: 12;
+
+          Gtk.Label {
+            label: _("Recording");
+            xalign: 0;
+            margin-top: 24;
+
+            styles [
+              "heading"
+            ]
+          }
+
+          Gtk.ListBox {
+            selection-mode: none;
+            margin-top: 12;
+
+            styles [
+              "boxed-list"
+            ]
+
+            Adw.ActionRow recording_row {
+              title: _("Select recording");
+              activatable: true;
+              activated => $select_recording() swapped;
+
+              [prefix]
+              Gtk.Box select_recording_box {
+                Gtk.Image {
+                  icon-name: "document-edit-symbolic";
+                }
+              }
+            }
+          }
+
+          Gtk.Label {
+            label: _("Tracks");
+            xalign: 0;
+            margin-top: 24;
+
+            styles [
+              "heading"
+            ]
+          }
+
+          Gtk.ListBox track_list {
+            selection-mode: none;
+            margin-top: 12;
+
+            styles [
+              "boxed-list"
+            ]
+
+            Adw.ActionRow {
+              title: _("Add files");
+              activatable: true;
+              activated => $add_files() swapped;
+
+              [prefix]
+              Gtk.Image {
+                icon-name: "list-add-symbolic";
+              }
+            }
+          }
+
+          Gtk.ListBox {
+            selection-mode: none;
+            margin-top: 24;
+
+            styles [
+              "boxed-list"
+            ]
+
+            Adw.ButtonRow save_row {
+              title: _("Import tracks");
+              activated => $save() swapped;
+            }
+          }
+        }
+      }
+    }
+  }
+}
