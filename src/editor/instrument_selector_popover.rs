@@ -163,6 +163,8 @@ impl MusicusInstrumentSelectorPopover {
                     .build(),
             );
 
+            row.set_tooltip_text(Some(&instrument.to_string()));
+
             let instrument = instrument.clone();
             let obj = self.clone();
             row.connect_activated(move |_: &MusicusActivatableRow| {

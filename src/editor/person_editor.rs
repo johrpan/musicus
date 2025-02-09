@@ -96,7 +96,7 @@ impl MusicusPersonEditor {
     }
 
     #[template_callback]
-    fn save(&self, _: &gtk::Button) {
+    fn save(&self) {
         let library = self.imp().library.get().unwrap();
         let name = self.imp().name_editor.translation();
 

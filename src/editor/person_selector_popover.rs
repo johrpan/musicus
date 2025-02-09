@@ -158,6 +158,8 @@ impl MusicusPersonSelectorPopover {
                     .build(),
             );
 
+            row.set_tooltip_text(Some(&person.to_string()));
+
             let person = person.clone();
             let obj = self.clone();
             row.connect_activated(move |_: &MusicusActivatableRow| {

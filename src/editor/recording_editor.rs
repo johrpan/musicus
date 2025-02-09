@@ -219,6 +219,18 @@ impl MusicusRecordingEditor {
         obj
     }
 
+    pub fn connect_created<F: Fn(&Self, Recording) + 'static>(
+        &self,
+        f: F,
+    ) -> glib::SignalHandlerId {
+        self.connect_local("created", true, move |values| {
+            let obj = values[0].get::<Self>().unwrap();
+            let recording = values[1].get::<Recording>().unwrap();
+            f(&obj, recording);
+            None
+        })
+    }
+
     #[template_callback]
     fn select_work(&self, _: &adw::ActionRow) {
         self.imp().work_selector_popover.get().unwrap().popup();

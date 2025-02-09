@@ -146,12 +146,7 @@ impl MusicusEnsembleSelectorPopover {
     fn search(&self, search: &str) {
         let imp = self.imp();
 
-        let ensembles = imp
-            .library
-            .get()
-            .unwrap()
-            .search_ensembles(search)
-            .unwrap();
+        let ensembles = imp.library.get().unwrap().search_ensembles(search).unwrap();
 
         imp.list_box.remove_all();
 
@@ -162,6 +157,8 @@ impl MusicusEnsembleSelectorPopover {
                     .halign(gtk::Align::Start)
                     .build(),
             );
+
+            row.set_tooltip_text(Some(&ensemble.to_string()));
 
             let ensemble = ensemble.clone();
             let obj = self.clone();

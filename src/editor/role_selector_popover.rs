@@ -158,6 +158,8 @@ impl MusicusRoleSelectorPopover {
                     .build(),
             );
 
+            row.set_tooltip_text(Some(&role.to_string()));
+
             let role = role.clone();
             let obj = self.clone();
             row.connect_activated(move |_: &MusicusActivatableRow| {

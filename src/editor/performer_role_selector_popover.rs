@@ -212,6 +212,8 @@ impl MusicusPerformerRoleSelectorPopover {
                     .build(),
             );
 
+            row.set_tooltip_text(Some(&role.to_string()));
+
             let role = role.clone();
             let obj = self.clone();
             row.connect_activated(move |_: &MusicusActivatableRow| {
@@ -256,11 +258,13 @@ impl MusicusPerformerRoleSelectorPopover {
         for instrument in &instruments {
             let row = MusicusActivatableRow::new(
                 &gtk::Label::builder()
-                    .label(instrument.name.get())
+                    .label(instrument.to_string())
                     .halign(gtk::Align::Start)
                     .ellipsize(pango::EllipsizeMode::Middle)
                     .build(),
             );
+
+            row.set_tooltip_text(Some(&instrument.to_string()));
 
             let instrument = instrument.clone();
             let obj = self.clone();
