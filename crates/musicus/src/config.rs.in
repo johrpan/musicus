@@ -1,2 +1,0 @@
-pub static VERSION: &str = @VERSION@;
-pub static LOCALEDIR: &str = @LOCALEDIR@;
