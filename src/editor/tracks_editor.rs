@@ -43,6 +43,8 @@ mod imp {
         #[template_child]
         pub select_recording_box: TemplateChild<gtk::Box>,
         #[template_child]
+        pub tracks_label: TemplateChild<gtk::Label>,
+        #[template_child]
         pub track_list: TemplateChild<gtk::ListBox>,
         #[template_child]
         pub save_row: TemplateChild<adw::ButtonRow>,
@@ -189,31 +191,58 @@ impl TracksEditor {
             .recording_row
             .set_subtitle(&recording.performers_string());
 
-        for track in self
+        // Remove previously added track rows. This is not ideal because the user might be under
+        // the impression that changing the recording will allow to transfer tracks to it. But:
+        // What would happen to the old recording's tracks? What would happen with previously
+        // selected work parts?
+        for track_row in self.imp().track_rows.borrow_mut().drain(..) {
+            self.imp().track_list.remove(&track_row);
+        }
+
+        let tracks = self
             .library()
             .tracks_for_recording(&recording.recording_id)
-            .unwrap()
-        {
-            self.add_track_row(TracksEditorTrackData {
-                track_id: Some(track.track_id),
-                path: PathType::Library(track.path),
-                works: track.works,
-            });
+            .unwrap();
+
+        if !tracks.is_empty() {
+            self.imp().save_row.set_title(&gettext("Save changes"));
+
+            for track in tracks {
+                self.add_track_row(
+                    recording.clone(),
+                    TracksEditorTrackData {
+                        track_id: Some(track.track_id),
+                        path: PathType::Library(track.path),
+                        parts: track.works,
+                    },
+                );
+            }
         }
+
+        self.imp().tracks_label.set_sensitive(true);
+        self.imp().track_list.set_sensitive(true);
 
         self.imp().recording.replace(Some(recording));
     }
 
     fn add_file(&self, path: PathBuf) {
-        self.add_track_row(TracksEditorTrackData {
-            track_id: None,
-            path: PathType::System(path),
-            works: Vec::new(),
-        });
+        if let Some(recording) = &*self.imp().recording.borrow() {
+            self.add_track_row(
+                recording.to_owned(),
+                TracksEditorTrackData {
+                    track_id: None,
+                    path: PathType::System(path),
+                    parts: Vec::new(),
+                },
+            );
+        } else {
+            log::warn!("Tried to add track row without recording selected");
+        }
     }
 
-    fn add_track_row(&self, track_data: TracksEditorTrackData) {
-        let track_row = TracksEditorTrackRow::new(&self.navigation(), &self.library(), track_data);
+    fn add_track_row(&self, recording: Recording, track_data: TracksEditorTrackData) {
+        let track_row =
+            TracksEditorTrackRow::new(&self.navigation(), &self.library(), recording, track_data);
 
         track_row.connect_remove(clone!(
             #[weak(rename_to = this)]

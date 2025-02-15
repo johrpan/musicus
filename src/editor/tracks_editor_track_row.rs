@@ -1,4 +1,7 @@
-use crate::{db::models::Work, library::MusicusLibrary};
+use crate::{
+    db::models::{Recording, Work},
+    library::MusicusLibrary,
+};
 
 use adw::{prelude::*, subclass::prelude::*};
 use formatx::formatx;
@@ -23,6 +26,7 @@ mod imp {
         #[property(get, construct_only)]
         pub library: OnceCell<MusicusLibrary>,
 
+        pub recording: OnceCell<Recording>,
         pub track_data: RefCell<TracksEditorTrackData>,
 
         #[template_child]
@@ -71,12 +75,15 @@ impl TracksEditorTrackRow {
     pub fn new(
         navigation: &adw::NavigationView,
         library: &MusicusLibrary,
+        recording: Recording,
         track_data: TracksEditorTrackData,
     ) -> Self {
         let obj: Self = glib::Object::builder()
             .property("navigation", navigation)
             .property("library", library)
             .build();
+
+        obj.set_activatable(!recording.work.parts.is_empty());
 
         obj.set_subtitle(&match &track_data.path {
             PathType::None => String::new(),
@@ -94,8 +101,9 @@ impl TracksEditorTrackRow {
             }
         });
 
-        obj.set_works(&track_data.works);
+        obj.imp().recording.set(recording).unwrap();
         obj.imp().track_data.replace(track_data);
+        obj.update_title();
 
         obj
     }
@@ -122,14 +130,22 @@ impl TracksEditorTrackRow {
         self.emit_by_name::<()>("remove", &[]);
     }
 
-    fn set_works(&self, works: &[Work]) {
-        self.set_title(
-            &works
+    fn update_title(&self) {
+        let parts = &self.imp().track_data.borrow().parts;
+
+        self.set_title(&if parts.is_empty() {
+            if self.imp().recording.get().unwrap().work.parts.is_empty() {
+                gettext("Whole work")
+            } else {
+                gettext("Select parts")
+            }
+        } else {
+            parts
                 .iter()
                 .map(|w| w.name.get())
                 .collect::<Vec<&str>>()
-                .join(", "),
-        );
+                .join(", ")
+        });
     }
 }
 
@@ -137,7 +153,7 @@ impl TracksEditorTrackRow {
 pub struct TracksEditorTrackData {
     pub track_id: Option<String>,
     pub path: PathType,
-    pub works: Vec<Work>,
+    pub parts: Vec<Work>,
 }
 
 #[derive(Clone, Default, Debug)]

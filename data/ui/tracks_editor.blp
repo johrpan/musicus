@@ -48,8 +48,9 @@ template $MusicusTracksEditor: Adw.NavigationPage {
             }
           }
 
-          Gtk.Label {
+          Gtk.Label tracks_label {
             label: _("Tracks");
+            sensitive: false;
             xalign: 0;
             margin-top: 24;
 
@@ -61,6 +62,7 @@ template $MusicusTracksEditor: Adw.NavigationPage {
           Gtk.ListBox track_list {
             selection-mode: none;
             margin-top: 12;
+            sensitive: false;
 
             styles [
               "boxed-list"
