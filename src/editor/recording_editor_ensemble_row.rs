@@ -138,12 +138,12 @@ impl MusicusRecordingEditorEnsembleRow {
     }
 
     #[template_callback]
-    fn open_role_popover(&self, _: &gtk::Button) {
+    fn open_role_popover(&self) {
         self.imp().role_popover.get().unwrap().popup();
     }
 
     #[template_callback]
-    fn remove(&self, _: &gtk::Button) {
+    fn remove(&self) {
         self.emit_by_name::<()>("remove", &[]);
     }
 }

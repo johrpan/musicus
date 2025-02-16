@@ -319,7 +319,7 @@ impl MusicusRecordingEditor {
     }
 
     #[template_callback]
-    fn save(&self, _: &gtk::Button) {
+    fn save(&self) {
         let library = self.imp().library.get().unwrap();
 
         // TODO: No work selected?

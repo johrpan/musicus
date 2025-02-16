@@ -123,7 +123,7 @@ impl MusicusWorkEditorPartRow {
     }
 
     #[template_callback]
-    fn remove(&self, _: &gtk::Button) {
+    fn remove(&self) {
         self.emit_by_name::<()>("remove", &[]);
     }
 }

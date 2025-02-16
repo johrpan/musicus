@@ -217,7 +217,7 @@ impl PlayerBar {
     }
 
     #[template_callback]
-    fn previous(&self, _: &gtk::Button) {
+    fn previous(&self) {
         self.player().previous();
     }
 
@@ -227,12 +227,12 @@ impl PlayerBar {
     }
 
     #[template_callback]
-    fn next(&self, _: &gtk::Button) {
+    fn next(&self) {
         self.player().next();
     }
 
     #[template_callback]
-    fn play_pause(&self, _: &gtk::Button) {
+    fn play_pause(&self) {
         self.player().play_pause();
     }
 }

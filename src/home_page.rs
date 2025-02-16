@@ -161,12 +161,12 @@ impl MusicusHomePage {
     }
 
     #[template_callback]
-    fn back_button_clicked(&self, _: &gtk::Button) {
+    fn back_button_clicked(&self) {
         self.imp().search_entry.reset();
     }
 
     #[template_callback]
-    fn edit_button_clicked(&self, _: &gtk::Button) {
+    fn edit_button_clicked(&self) {
         if let Some(tag) = self.imp().search_entry.tags().first() {
             match tag {
                 Tag::Composer(person) | Tag::Performer(person) => {
@@ -194,9 +194,7 @@ impl MusicusHomePage {
     }
 
     #[template_callback]
-    fn play(&self, _: &gtk::Button) {
-        log::info!("Play button clicked");
-
+    fn play(&self) {
         let program = Program::from_query(self.imp().search_entry.query());
         self.player().set_program(program);
 

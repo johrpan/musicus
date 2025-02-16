@@ -82,13 +82,13 @@ impl MusicusTranslationEntry {
     }
 
     #[template_callback]
-    fn open_lang_popover(&self, _: &gtk::Button) {
+    fn open_lang_popover(&self) {
         self.imp().lang_popover.popup();
         self.imp().lang_entry.grab_focus();
     }
 
     #[template_callback]
-    fn remove(&self, _: &gtk::Button) {
+    fn remove(&self) {
         self.emit_by_name::<()>("remove", &[]);
     }
 }

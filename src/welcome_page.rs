@@ -64,7 +64,7 @@ impl MusicusWelcomePage {
     }
 
     #[template_callback]
-    async fn choose_library_folder(&self, _: &gtk::Button) {
+    async fn choose_library_folder(&self) {
         let dialog = gtk::FileDialog::builder()
             .title(gettext("Select music library folder"))
             .modal(true)

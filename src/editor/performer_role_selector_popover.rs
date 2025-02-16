@@ -172,7 +172,7 @@ impl MusicusPerformerRoleSelectorPopover {
     }
 
     #[template_callback]
-    fn back_button_clicked(&self, _: &gtk::Button) {
+    fn back_button_clicked(&self) {
         self.imp().stack.set_visible_child(&*self.imp().role_view);
         self.imp().role_search_entry.grab_focus();
     }

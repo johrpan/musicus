@@ -219,7 +219,7 @@ impl LibraryManager {
     }
 
     // #[template_callback]
-    // fn add_person(&self, _: &gtk::Button) {
+    // fn add_person(&self) {
     //     self.imp()
     //         .navigation
     //         .get()
@@ -232,7 +232,7 @@ impl LibraryManager {
     // }
 
     // #[template_callback]
-    // fn add_role(&self, _: &gtk::Button) {
+    // fn add_role(&self) {
     //     self.imp()
     //         .navigation
     //         .get()
@@ -245,7 +245,7 @@ impl LibraryManager {
     // }
 
     // #[template_callback]
-    // fn add_instrument(&self, _: &gtk::Button) {
+    // fn add_instrument(&self) {
     //     self.imp()
     //         .navigation
     //         .get()
@@ -258,7 +258,7 @@ impl LibraryManager {
     // }
 
     // #[template_callback]
-    // fn add_work(&self, _: &gtk::Button) {
+    // fn add_work(&self) {
     //     self.imp()
     //         .navigation
     //         .get()
@@ -271,7 +271,7 @@ impl LibraryManager {
     // }
 
     // #[template_callback]
-    // fn add_ensemble(&self, _: &gtk::Button) {
+    // fn add_ensemble(&self) {
     //     self.imp()
     //         .navigation
     //         .get()
@@ -284,7 +284,7 @@ impl LibraryManager {
     // }
 
     // #[template_callback]
-    // fn add_recording(&self, _: &gtk::Button) {
+    // fn add_recording(&self) {
     //     self.imp()
     //         .navigation
     //         .get()
@@ -297,12 +297,12 @@ impl LibraryManager {
     // }
 
     // #[template_callback]
-    // fn add_medium(&self, _: &gtk::Button) {
+    // fn add_medium(&self) {
     //     todo!("Medium import");
     // }
 
     // #[template_callback]
-    // fn add_album(&self, _: &gtk::Button) {
+    // fn add_album(&self) {
     //     todo!("Album editor");
     //     // self.imp()
     //     //     .navigation

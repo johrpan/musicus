@@ -111,7 +111,7 @@ impl MusicusPlaylistPage {
     }
 
     #[template_callback]
-    fn close(&self, _: &gtk::Button) {
+    fn close(&self) {
         self.emit_by_name::<()>("close", &[]);
     }
 }

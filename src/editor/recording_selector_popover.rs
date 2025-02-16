@@ -182,7 +182,7 @@ impl RecordingSelectorPopover {
     }
 
     #[template_callback]
-    fn back_to_composer(&self, _: &gtk::Button) {
+    fn back_to_composer(&self) {
         self.imp()
             .stack
             .set_visible_child(&*self.imp().composer_view);
@@ -204,7 +204,7 @@ impl RecordingSelectorPopover {
     }
 
     #[template_callback]
-    fn back_to_work(&self, _: &gtk::Button) {
+    fn back_to_work(&self) {
         self.imp().stack.set_visible_child(&*self.imp().work_view);
         self.imp().work_search_entry.grab_focus();
     }
