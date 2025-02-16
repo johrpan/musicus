@@ -13,6 +13,7 @@ pub mod recording_selector_popover;
 pub mod role_editor;
 pub mod role_selector_popover;
 pub mod tracks_editor;
+pub mod tracks_editor_parts_popover;
 pub mod tracks_editor_track_row;
 pub mod translation_editor;
 pub mod translation_entry;

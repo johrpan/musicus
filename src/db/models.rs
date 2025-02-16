@@ -149,14 +149,20 @@ impl Work {
         })
     }
 
-    pub fn composers_string(&self) -> String {
+    pub fn composers_string(&self) -> Option<String> {
         // TODO: Include roles except default composer.
-        // TODO: Think about works without composers.
-        self.persons
+        let composers_string = self
+            .persons
             .iter()
             .map(|p| p.person.name.get().to_string())
             .collect::<Vec<String>>()
-            .join(", ")
+            .join(", ");
+
+        if composers_string.is_empty() {
+            None
+        } else {
+            Some(composers_string)
+        }
     }
 }
 
@@ -169,8 +175,11 @@ impl PartialEq for Work {
 
 impl Display for Work {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        // TODO: Handle works without composers.
-        write!(f, "{}: {}", self.composers_string(), self.name)
+        if let Some(composers) = self.composers_string() {
+            write!(f, "{}: {}", composers, self.name)
+        } else {
+            write!(f, "{}", self.name)
+        }
     }
 }
 

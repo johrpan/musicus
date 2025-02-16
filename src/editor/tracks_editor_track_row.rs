@@ -1,5 +1,6 @@
 use crate::{
     db::models::{Recording, Work},
+    editor::tracks_editor_parts_popover::TracksEditorPartsPopover,
     library::MusicusLibrary,
 };
 
@@ -29,8 +30,12 @@ mod imp {
         pub recording: OnceCell<Recording>,
         pub track_data: RefCell<TracksEditorTrackData>,
 
+        pub parts_popover: OnceCell<TracksEditorPartsPopover>,
+
         #[template_child]
         pub select_parts_box: TemplateChild<gtk::Box>,
+        #[template_child]
+        pub reset_button: TemplateChild<gtk::Button>,
     }
 
     #[glib::object_subclass]
@@ -101,9 +106,23 @@ impl TracksEditorTrackRow {
             }
         });
 
+        let parts_popover = TracksEditorPartsPopover::new(recording.work.parts.clone());
+
+        parts_popover.connect_part_selected(clone!(
+            #[weak]
+            obj,
+            move |_, part| {
+                obj.imp().track_data.borrow_mut().parts.push(part);
+                obj.parts_updated();
+            }
+        ));
+
+        obj.imp().select_parts_box.append(&parts_popover);
+        obj.imp().parts_popover.set(parts_popover).unwrap();
+
         obj.imp().recording.set(recording).unwrap();
         obj.imp().track_data.replace(track_data);
-        obj.update_title();
+        obj.parts_updated();
 
         obj
     }
@@ -122,7 +141,13 @@ impl TracksEditorTrackRow {
 
     #[template_callback]
     fn select_parts(&self) {
-        // self.imp().parts_popover.get().unwrap().popup();
+        self.imp().parts_popover.get().unwrap().popup();
+    }
+
+    #[template_callback]
+    fn reset(&self) {
+        self.imp().track_data.borrow_mut().parts.clear();
+        self.parts_updated();
     }
 
     #[template_callback]
@@ -130,8 +155,10 @@ impl TracksEditorTrackRow {
         self.emit_by_name::<()>("remove", &[]);
     }
 
-    fn update_title(&self) {
+    fn parts_updated(&self) {
         let parts = &self.imp().track_data.borrow().parts;
+
+        self.imp().reset_button.set_visible(!parts.is_empty());
 
         self.set_title(&if parts.is_empty() {
             if self.imp().recording.get().unwrap().work.parts.is_empty() {

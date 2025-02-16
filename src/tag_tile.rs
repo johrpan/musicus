@@ -55,8 +55,12 @@ impl MusicusTagTile {
             }
             Tag::Work(work) => {
                 imp.title_label.set_label(work.name.get());
-                imp.subtitle_label.set_label(&work.composers_string());
-                imp.subtitle_label.set_visible(true);
+                if let Some(composers) = work.composers_string() {
+                    imp.subtitle_label.set_label(&composers);
+                    imp.subtitle_label.set_visible(true);
+                } else {
+                    imp.subtitle_label.set_visible(false);
+                }
             }
         }
 

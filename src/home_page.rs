@@ -301,8 +301,12 @@ impl MusicusHomePage {
                 }
                 Tag::Work(work) => {
                     imp.title_label.set_text(&work.name.get());
-                    imp.subtitle_label.set_text(&work.composers_string());
-                    imp.subtitle_label.set_visible(true);
+                    if let Some(composers) = work.composers_string() {
+                        imp.subtitle_label.set_text(&composers);
+                        imp.subtitle_label.set_visible(true);
+                    } else {
+                        imp.subtitle_label.set_visible(false);
+                    }
                 }
             }
 

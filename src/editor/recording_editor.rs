@@ -248,7 +248,11 @@ impl MusicusRecordingEditor {
 
     fn set_work(&self, work: Work) {
         self.imp().work_row.set_title(&work.name.get());
-        self.imp().work_row.set_subtitle(&work.composers_string());
+        self.imp().work_row.set_subtitle(
+            &work
+                .composers_string()
+                .unwrap_or_else(|| gettext("No composers")),
+        );
         self.imp().work.replace(Some(work));
     }
 

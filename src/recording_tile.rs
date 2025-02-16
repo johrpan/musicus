@@ -1,10 +1,11 @@
-use gtk::{gio, glib, prelude::*, subclass::prelude::*};
-use std::cell::OnceCell;
-
 use crate::{
     db::models::Recording, editor::recording_editor::MusicusRecordingEditor,
     library::MusicusLibrary,
 };
+
+use gettextrs::gettext;
+use gtk::{gio, glib, prelude::*, subclass::prelude::*};
+use std::cell::OnceCell;
 
 mod imp {
     use super::*;
@@ -83,8 +84,12 @@ impl MusicusRecordingTile {
         let imp = obj.imp();
 
         imp.work_label.set_label(&recording.work.name.get());
-        imp.composer_label
-            .set_label(&recording.work.composers_string());
+        imp.composer_label.set_label(
+            &recording
+                .work
+                .composers_string()
+                .unwrap_or_else(|| gettext("No composers")),
+        );
         imp.performances_label
             .set_label(&recording.performers_string());
 

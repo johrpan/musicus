@@ -181,12 +181,9 @@ impl TracksEditor {
     }
 
     fn set_recording(&self, recording: Recording) {
-        self.imp().recording_row.set_title(&format!(
-            "{}: {}",
-            recording.work.composers_string(),
-            recording.work.name.get(),
-        ));
-
+        self.imp()
+            .recording_row
+            .set_title(&recording.work.to_string());
         self.imp()
             .recording_row
             .set_subtitle(&recording.performers_string());

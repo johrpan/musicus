@@ -52,7 +52,7 @@ glib::wrapper! {
 impl PlaylistItem {
     pub fn new(
         is_title: bool,
-        composers: Option<&str>,
+        composers: Option<String>,
         work: &str,
         performers: Option<&str>,
         part_title: Option<&str>,

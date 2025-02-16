@@ -79,7 +79,10 @@ impl MusicusEnsembleEditor {
 
         if let Some(ensemble) = ensemble {
             obj.imp().save_row.set_title(&gettext("Save changes"));
-            obj.imp().ensemble_id.set(ensemble.ensemble_id.clone()).unwrap();
+            obj.imp()
+                .ensemble_id
+                .set(ensemble.ensemble_id.clone())
+                .unwrap();
             obj.imp().name_editor.set_translation(&ensemble.name);
         }
 

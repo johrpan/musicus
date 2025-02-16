@@ -222,7 +222,7 @@ impl MusicusPlayer {
         if tracks.len() == 1 {
             items.push(PlaylistItem::new(
                 true,
-                Some(&recording.work.composers_string()),
+                recording.work.composers_string(),
                 &recording.work.name.get(),
                 Some(&performances),
                 None,
@@ -250,7 +250,7 @@ impl MusicusPlayer {
 
             items.push(PlaylistItem::new(
                 true,
-                Some(&recording.work.composers_string()),
+                recording.work.composers_string(),
                 &recording.work.name.get(),
                 Some(&performances),
                 Some(&track_title(&first_track, 1)),
@@ -261,7 +261,7 @@ impl MusicusPlayer {
             for (index, track) in tracks.enumerate() {
                 items.push(PlaylistItem::new(
                     false,
-                    Some(&recording.work.composers_string()),
+                    recording.work.composers_string(),
                     &recording.work.name.get(),
                     Some(&performances),
                     // track number = track index + 1 (first track) + 1 (zero based)

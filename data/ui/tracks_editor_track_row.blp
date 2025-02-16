@@ -13,8 +13,21 @@ template $MusicusTracksEditorTrackRow: Adw.ActionRow {
     }
   }
 
+  Gtk.Button reset_button {
+    icon-name: "edit-clear-symbolic";
+    tooltip-text: _("Clear selected work parts");
+    visible: false;
+    valign: center;
+    clicked => $reset() swapped;
+
+    styles [
+      "flat"
+    ]
+  }
+
   Gtk.Button {
     icon-name: "user-trash-symbolic";
+    tooltip-text: _("Remove this track");
     valign: center;
     clicked => $remove() swapped;
 

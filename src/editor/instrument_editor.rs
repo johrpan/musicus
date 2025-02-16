@@ -79,14 +79,20 @@ impl MusicusInstrumentEditor {
 
         if let Some(instrument) = instrument {
             obj.imp().save_row.set_title(&gettext("Save changes"));
-            obj.imp().instrument_id.set(instrument.instrument_id.clone()).unwrap();
+            obj.imp()
+                .instrument_id
+                .set(instrument.instrument_id.clone())
+                .unwrap();
             obj.imp().name_editor.set_translation(&instrument.name);
         }
 
         obj
     }
 
-    pub fn connect_created<F: Fn(&Self, Instrument) + 'static>(&self, f: F) -> glib::SignalHandlerId {
+    pub fn connect_created<F: Fn(&Self, Instrument) + 'static>(
+        &self,
+        f: F,
+    ) -> glib::SignalHandlerId {
         self.connect_local("created", true, move |values| {
             let obj = values[0].get::<Self>().unwrap();
             let instrument = values[1].get::<Instrument>().unwrap();
