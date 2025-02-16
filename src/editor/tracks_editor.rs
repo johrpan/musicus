@@ -1,6 +1,6 @@
-use super::tracks_editor_track_row::{PathType, TracksEditorTrackData};
+use super::tracks_editor_track_row::{TrackLocation, TracksEditorTrackData};
 use crate::{
-    db::models::{Recording, Work},
+    db::models::{Recording, Track, Work},
     editor::{
         recording_editor::MusicusRecordingEditor,
         recording_selector_popover::RecordingSelectorPopover,
@@ -37,6 +37,7 @@ mod imp {
         pub recording: RefCell<Option<Recording>>,
         pub recordings_popover: OnceCell<RecordingSelectorPopover>,
         pub track_rows: RefCell<Vec<TracksEditorTrackRow>>,
+        pub removed_tracks: RefCell<Vec<Track>>,
 
         #[template_child]
         pub recording_row: TemplateChild<adw::ActionRow>,
@@ -196,6 +197,9 @@ impl TracksEditor {
             self.imp().track_list.remove(&track_row);
         }
 
+        // Forget previously removed tracks (see above).
+        self.imp().removed_tracks.borrow_mut().clear();
+
         let tracks = self
             .library()
             .tracks_for_recording(&recording.recording_id)
@@ -208,8 +212,7 @@ impl TracksEditor {
                 self.add_track_row(
                     recording.clone(),
                     TracksEditorTrackData {
-                        track_id: Some(track.track_id),
-                        path: PathType::Library(track.path),
+                        location: TrackLocation::Library(track.clone()),
                         parts: track.works,
                     },
                 );
@@ -246,8 +249,7 @@ impl TracksEditor {
             self.add_track_row(
                 recording.to_owned(),
                 TracksEditorTrackData {
-                    track_id: None,
-                    path: PathType::System(path),
+                    location: TrackLocation::System(path),
                     parts: next_part,
                 },
             );
@@ -264,6 +266,10 @@ impl TracksEditor {
             #[weak(rename_to = this)]
             self,
             move |row| {
+                if let TrackLocation::Library(track) = row.track_data().location {
+                    this.imp().removed_tracks.borrow_mut().push(track);
+                }
+
                 this.imp().track_list.remove(row);
                 this.imp().track_rows.borrow_mut().retain(|p| p != row);
             }
@@ -278,7 +284,39 @@ impl TracksEditor {
 
     #[template_callback]
     fn save(&self) {
-        // TODO
+        for track in self.imp().removed_tracks.borrow_mut().drain(..) {
+            self.library().delete_track(&track).unwrap();
+        }
+
+        for (index, track_row) in self.imp().track_rows.borrow_mut().drain(..).enumerate() {
+            let track_data = track_row.track_data();
+
+            match track_data.location {
+                TrackLocation::Undefined => {
+                    log::error!("Failed to save track: Undefined track location.");
+                }
+                TrackLocation::Library(track) => self
+                    .library()
+                    .update_track(&track.track_id, index as i32, track_data.parts)
+                    .unwrap(),
+                TrackLocation::System(path) => {
+                    if let Some(recording) = &*self.imp().recording.borrow() {
+                        self.library()
+                            .import_track(
+                                &path,
+                                &recording.recording_id,
+                                index as i32,
+                                track_data.parts,
+                            )
+                            .unwrap();
+                    } else {
+                        log::error!("Failed to save track: No recording set.");
+                    }
+                }
+            }
+
+            self.imp().track_list.remove(&track_row);
+        }
 
         self.navigation().pop();
     }

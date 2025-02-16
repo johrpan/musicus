@@ -8,13 +8,15 @@ use adw::{
     prelude::*,
     subclass::prelude::*,
 };
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use chrono::prelude::*;
 use diesel::{dsl::exists, prelude::*, QueryDsl, SqliteConnection};
 use once_cell::sync::Lazy;
 
 use std::{
     cell::{OnceCell, RefCell},
+    ffi::OsString,
+    fs,
     path::{Path, PathBuf},
 };
 
@@ -1228,6 +1230,130 @@ impl MusicusLibrary {
         }
 
         self.changed();
+
+        Ok(())
+    }
+
+    /// Import a track into the music library.
+    // TODO: Support mediums, think about albums.
+    pub fn import_track(
+        &self,
+        path: impl AsRef<Path>,
+        recording_id: &str,
+        recording_index: i32,
+        works: Vec<Work>,
+    ) -> Result<()> {
+        let mut binding = self.imp().connection.borrow_mut();
+        let connection = &mut *binding.as_mut().unwrap();
+
+        let track_id = db::generate_id();
+        let now = Local::now().naive_local();
+
+        // TODO: Human interpretable filenames?
+        let mut filename = OsString::from(recording_id);
+        filename.push("_");
+        filename.push(OsString::from(format!("{recording_index:02}")));
+        if let Some(extension) = path.as_ref().extension() {
+            filename.push(".");
+            filename.push(extension);
+        };
+
+        let mut to_path = PathBuf::from(self.folder());
+        to_path.push(&filename);
+        let library_path = filename
+            .into_string()
+            .or(Err(anyhow!("Filename contains invalid Unicode.")))?;
+
+        fs::copy(path, to_path)?;
+
+        let track_data = tables::Track {
+            track_id: track_id.clone(),
+            recording_id: recording_id.to_owned(),
+            recording_index,
+            medium_id: None,
+            medium_index: None,
+            path: library_path,
+            created_at: now,
+            edited_at: now,
+            last_used_at: now,
+            last_played_at: None,
+        };
+
+        diesel::insert_into(tracks::table)
+            .values(&track_data)
+            .execute(connection)?;
+
+        for (index, work) in works.into_iter().enumerate() {
+            let track_work_data = tables::TrackWork {
+                track_id: track_id.clone(),
+                work_id: work.work_id,
+                sequence_number: index as i32,
+            };
+
+            diesel::insert_into(track_works::table)
+                .values(&track_work_data)
+                .execute(connection)?;
+        }
+
+        Ok(())
+    }
+
+    // TODO: Support mediums, think about albums.
+    pub fn delete_track(&self, track: &Track) -> Result<()> {
+        let mut binding = self.imp().connection.borrow_mut();
+        let connection = &mut *binding.as_mut().unwrap();
+
+        diesel::delete(track_works::table)
+            .filter(track_works::track_id.eq(&track.track_id))
+            .execute(connection)?;
+
+        diesel::delete(tracks::table)
+            .filter(tracks::track_id.eq(&track.track_id))
+            .execute(connection)?;
+
+        let mut path = PathBuf::from(self.folder());
+        path.push(&track.path);
+        fs::remove_file(path)?;
+
+        Ok(())
+    }
+
+    // TODO: Support mediums, think about albums.
+    pub fn update_track(
+        &self,
+        track_id: &str,
+        recording_index: i32,
+        works: Vec<Work>,
+    ) -> Result<()> {
+        let mut binding = self.imp().connection.borrow_mut();
+        let connection = &mut *binding.as_mut().unwrap();
+
+        let now = Local::now().naive_local();
+
+        diesel::update(tracks::table)
+            .filter(tracks::track_id.eq(track_id.to_owned()))
+            .set((
+                tracks::recording_index.eq(recording_index),
+                tracks::edited_at.eq(now),
+                tracks::last_used_at.eq(now),
+            ))
+            .execute(connection)?;
+
+        diesel::delete(track_works::table)
+            .filter(track_works::track_id.eq(track_id))
+            .execute(connection)?;
+
+        for (index, work) in works.into_iter().enumerate() {
+            let track_work_data = tables::TrackWork {
+                track_id: track_id.to_owned(),
+                work_id: work.work_id,
+                sequence_number: index as i32,
+            };
+
+            diesel::insert_into(track_works::table)
+                .values(&track_work_data)
+                .execute(connection)?;
+        }
 
         Ok(())
     }

@@ -1,5 +1,5 @@
 use crate::{
-    db::models::{Recording, Work},
+    db::models::{Recording, Track, Work},
     editor::tracks_editor_parts_popover::TracksEditorPartsPopover,
     library::MusicusLibrary,
 };
@@ -90,10 +90,10 @@ impl TracksEditorTrackRow {
 
         obj.set_activatable(!recording.work.parts.is_empty());
 
-        obj.set_subtitle(&match &track_data.path {
-            PathType::None => String::new(),
-            PathType::Library(path) => path.to_owned(),
-            PathType::System(path) => {
+        obj.set_subtitle(&match &track_data.location {
+            TrackLocation::Undefined => String::new(),
+            TrackLocation::Library(track) => track.path.clone(),
+            TrackLocation::System(path) => {
                 let format_string = gettext("Import from {}");
                 let file_name = path.file_name().unwrap().to_str().unwrap();
                 match formatx!(&format_string, file_name) {
@@ -178,15 +178,14 @@ impl TracksEditorTrackRow {
 
 #[derive(Clone, Default, Debug)]
 pub struct TracksEditorTrackData {
-    pub track_id: Option<String>,
-    pub path: PathType,
+    pub location: TrackLocation,
     pub parts: Vec<Work>,
 }
 
 #[derive(Clone, Default, Debug)]
-pub enum PathType {
+pub enum TrackLocation {
     #[default]
-    None,
-    Library(String),
+    Undefined,
+    Library(Track),
     System(PathBuf),
 }
