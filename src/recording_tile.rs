@@ -8,6 +8,8 @@ use gtk::{gio, glib, prelude::*, subclass::prelude::*};
 use std::cell::OnceCell;
 
 mod imp {
+    use crate::editor::tracks_editor::TracksEditor;
+
     use super::*;
 
     #[derive(Debug, Default, gtk::CompositeTemplate)]
@@ -45,7 +47,7 @@ mod imp {
             self.parent_constructed();
 
             let obj = self.obj().to_owned();
-            let edit_action = gio::ActionEntry::builder("edit")
+            let edit_recording_action = gio::ActionEntry::builder("edit-recording")
                 .activate(move |_, _, _| {
                     obj.imp()
                         .navigation
@@ -59,8 +61,19 @@ mod imp {
                 })
                 .build();
 
+            let obj = self.obj().to_owned();
+            let edit_tracks_action = gio::ActionEntry::builder("edit-tracks")
+                .activate(move |_, _, _| {
+                    obj.imp().navigation.get().unwrap().push(&TracksEditor::new(
+                        obj.imp().navigation.get().unwrap(),
+                        obj.imp().library.get().unwrap(),
+                        Some(obj.imp().recording.get().unwrap().clone()),
+                    ));
+                })
+                .build();
+
             let actions = gio::SimpleActionGroup::new();
-            actions.add_action_entries([edit_action]);
+            actions.add_action_entries([edit_recording_action, edit_tracks_action]);
             self.obj().insert_action_group("recording", Some(&actions));
         }
     }
