@@ -1,6 +1,6 @@
 use super::tracks_editor_track_row::{PathType, TracksEditorTrackData};
 use crate::{
-    db::models::Recording,
+    db::models::{Recording, Work},
     editor::{
         recording_editor::MusicusRecordingEditor,
         recording_selector_popover::RecordingSelectorPopover,
@@ -224,12 +224,31 @@ impl TracksEditor {
 
     fn add_file(&self, path: PathBuf) {
         if let Some(recording) = &*self.imp().recording.borrow() {
+            let parts_taken = {
+                self.imp()
+                    .track_rows
+                    .borrow()
+                    .iter()
+                    .map(|t| t.track_data().parts.clone())
+                    .flatten()
+                    .collect::<Vec<Work>>()
+            };
+
+            let next_part = recording
+                .work
+                .parts
+                .iter()
+                .find(|p| !parts_taken.contains(p))
+                .into_iter()
+                .cloned()
+                .collect::<Vec<Work>>();
+
             self.add_track_row(
                 recording.to_owned(),
                 TracksEditorTrackData {
                     track_id: None,
                     path: PathType::System(path),
-                    parts: Vec::new(),
+                    parts: next_part,
                 },
             );
         } else {
