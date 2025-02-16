@@ -116,7 +116,11 @@ impl MusicusLibrary {
 
                 let works: Vec<Work> = works::table
                     .left_join(work_persons::table.inner_join(persons::table))
-                    .filter(works::name.like(&search).or(persons::name.like(&search)))
+                    .filter(
+                        works::parent_work_id
+                            .is_null()
+                            .and(works::name.like(&search).or(persons::name.like(&search))),
+                    )
                     .limit(9)
                     .select(works::all_columns)
                     .distinct()
