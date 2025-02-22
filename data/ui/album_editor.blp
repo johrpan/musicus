@@ -1,0 +1,78 @@
+using Gtk 4.0;
+using Adw 1;
+
+template $MusicusAlbumEditor: Adw.NavigationPage {
+  title: _("Album");
+
+  Adw.ToolbarView {
+    [top]
+    Adw.HeaderBar header_bar {}
+
+    Adw.Clamp {
+      Gtk.Box {
+        orientation: vertical;
+
+        Gtk.Label {
+          label: _("Name");
+          xalign: 0;
+          margin-top: 24;
+
+          styles [
+            "heading"
+          ]
+        }
+
+        $MusicusTranslationEditor name_editor {
+          margin-top: 12;
+        }
+
+        Gtk.Label {
+          label: _("Recordings");
+          xalign: 0;
+          margin-top: 24;
+
+          styles [
+            "heading"
+          ]
+        }
+
+        Gtk.ListBox recordings_list {
+          selection-mode: none;
+          margin-top: 12;
+          margin-bottom: 24;
+
+          styles [
+            "boxed-list"
+          ]
+
+          Adw.ActionRow {
+            title: _("Add recording");
+            activatable: true;
+            activated => $select_recording() swapped;
+
+            [prefix]
+            Gtk.Box select_recording_box {
+              Gtk.Image {
+                icon-name: "list-add-symbolic";
+              }
+            }
+          }
+        }
+
+        Gtk.ListBox {
+          selection-mode: none;
+          margin-top: 24;
+
+          styles [
+            "boxed-list"
+          ]
+
+          Adw.ButtonRow save_row {
+            title: _("Create album");
+            activated => $save() swapped;
+          }
+        }
+      }
+    }
+  }
+}

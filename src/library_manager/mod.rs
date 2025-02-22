@@ -1,3 +1,5 @@
+pub mod albums_page;
+
 use crate::{
     db::{
         models::{Album, Ensemble, Instrument, Person, Recording, Role, Track, Work},
@@ -8,6 +10,7 @@ use crate::{
 };
 
 use adw::{prelude::*, subclass::prelude::*};
+use albums_page::AlbumsPage;
 use gettextrs::gettext;
 use gtk::glib;
 
@@ -103,7 +106,7 @@ impl LibraryManager {
     }
 
     #[template_callback]
-    async fn open_library(&self, _: &adw::ActionRow) {
+    async fn open_library(&self) {
         let dialog = gtk::FileDialog::builder()
             .title(gettext("Select music library folder"))
             .modal(true)
@@ -127,37 +130,41 @@ impl LibraryManager {
     }
 
     #[template_callback]
-    fn import_archive(&self, _: &adw::ButtonRow) {}
+    fn import_archive(&self) {}
 
     #[template_callback]
-    fn export_archive(&self, _: &adw::ButtonRow) {}
+    fn export_archive(&self) {}
 
     #[template_callback]
-    fn show_persons(&self, _: &adw::ActionRow) {}
+    fn show_persons(&self) {}
 
     #[template_callback]
-    fn show_roles(&self, _: &adw::ActionRow) {}
+    fn show_roles(&self) {}
 
     #[template_callback]
-    fn show_instruments(&self, _: &adw::ActionRow) {}
+    fn show_instruments(&self) {}
 
     #[template_callback]
-    fn show_works(&self, _: &adw::ActionRow) {}
+    fn show_works(&self) {}
 
     #[template_callback]
-    fn show_ensembles(&self, _: &adw::ActionRow) {}
+    fn show_ensembles(&self) {}
 
     #[template_callback]
-    fn show_recordings(&self, _: &adw::ActionRow) {}
+    fn show_recordings(&self) {}
 
     #[template_callback]
-    fn show_tracks(&self, _: &adw::ActionRow) {}
+    fn show_tracks(&self) {}
 
     #[template_callback]
-    fn show_mediums(&self, _: &adw::ActionRow) {}
+    fn show_mediums(&self) {}
 
     #[template_callback]
-    fn show_albums(&self, _: &adw::ActionRow) {}
+    fn show_albums(&self) {
+        let navigation = self.imp().navigation.get().unwrap();
+        let library = self.imp().library.get().unwrap();
+        navigation.push(&AlbumsPage::new(navigation, library));
+    }
 
     // TODO: Make this async.
     fn update(&self) {
@@ -217,101 +224,4 @@ impl LibraryManager {
             .set_label(&albums.len().to_string());
         self.imp().albums.replace(albums);
     }
-
-    // #[template_callback]
-    // fn add_person(&self) {
-    //     self.imp()
-    //         .navigation
-    //         .get()
-    //         .unwrap()
-    //         .push(&MusicusPersonEditor::new(
-    //             &self.imp().navigation.get().unwrap(),
-    //             &self.imp().library.get().unwrap(),
-    //             None,
-    //         ));
-    // }
-
-    // #[template_callback]
-    // fn add_role(&self) {
-    //     self.imp()
-    //         .navigation
-    //         .get()
-    //         .unwrap()
-    //         .push(&MusicusRoleEditor::new(
-    //             &self.imp().navigation.get().unwrap(),
-    //             &self.imp().library.get().unwrap(),
-    //             None,
-    //         ));
-    // }
-
-    // #[template_callback]
-    // fn add_instrument(&self) {
-    //     self.imp()
-    //         .navigation
-    //         .get()
-    //         .unwrap()
-    //         .push(&MusicusInstrumentEditor::new(
-    //             &self.imp().navigation.get().unwrap(),
-    //             &self.imp().library.get().unwrap(),
-    //             None,
-    //         ));
-    // }
-
-    // #[template_callback]
-    // fn add_work(&self) {
-    //     self.imp()
-    //         .navigation
-    //         .get()
-    //         .unwrap()
-    //         .push(&MusicusWorkEditor::new(
-    //             &self.imp().navigation.get().unwrap(),
-    //             &self.imp().library.get().unwrap(),
-    //             None,
-    //         ));
-    // }
-
-    // #[template_callback]
-    // fn add_ensemble(&self) {
-    //     self.imp()
-    //         .navigation
-    //         .get()
-    //         .unwrap()
-    //         .push(&MusicusEnsembleEditor::new(
-    //             &self.imp().navigation.get().unwrap(),
-    //             &self.imp().library.get().unwrap(),
-    //             None,
-    //         ));
-    // }
-
-    // #[template_callback]
-    // fn add_recording(&self) {
-    //     self.imp()
-    //         .navigation
-    //         .get()
-    //         .unwrap()
-    //         .push(&MusicusRecordingEditor::new(
-    //             &self.imp().navigation.get().unwrap(),
-    //             &self.imp().library.get().unwrap(),
-    //             None,
-    //         ));
-    // }
-
-    // #[template_callback]
-    // fn add_medium(&self) {
-    //     todo!("Medium import");
-    // }
-
-    // #[template_callback]
-    // fn add_album(&self) {
-    //     todo!("Album editor");
-    //     // self.imp()
-    //     //     .navigation
-    //     //     .get()
-    //     //     .unwrap()
-    //     //     .push(&MusicusAlbumEditor::new(
-    //     //         &self.imp().navigation.get().unwrap(),
-    //     //         &self.imp().library.get().unwrap(),
-    //     //         None,
-    //     //     ));
-    // }
 }

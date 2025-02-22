@@ -131,10 +131,13 @@ impl MusicusLibrary {
                     .map(|w| Work::from_table(w, connection))
                     .collect::<Result<Vec<Work>>>()?;
 
-                let albums: Vec<Album> = albums::table
+                let albums = albums::table
                     .filter(albums::name.like(&search))
                     .limit(9)
-                    .load(connection)?;
+                    .load::<tables::Album>(connection)?
+                    .into_iter()
+                    .map(|a| Album::from_table(a, connection))
+                    .collect::<Result<Vec<Album>>>()?;
 
                 LibraryResults {
                     composers,
@@ -259,7 +262,10 @@ impl MusicusLibrary {
                     )
                     .select(albums::all_columns)
                     .distinct()
-                    .load(connection)?;
+                    .load::<tables::Album>(connection)?
+                    .into_iter()
+                    .map(|a| Album::from_table(a, connection))
+                    .collect::<Result<Vec<Album>>>()?;
 
                 LibraryResults {
                     composers,
@@ -320,7 +326,10 @@ impl MusicusLibrary {
                     )
                     .select(albums::all_columns)
                     .distinct()
-                    .load(connection)?;
+                    .load::<tables::Album>(connection)?
+                    .into_iter()
+                    .map(|a| Album::from_table(a, connection))
+                    .collect::<Result<Vec<Album>>>()?;
 
                 LibraryResults {
                     composers,
@@ -691,7 +700,11 @@ impl MusicusLibrary {
         let mut binding = self.imp().connection.borrow_mut();
         let connection = &mut *binding.as_mut().unwrap();
 
-        let albums = albums::table.load::<Album>(connection)?;
+        let albums = albums::table
+            .load::<tables::Album>(connection)?
+            .into_iter()
+            .map(|a| Album::from_table(a, connection))
+            .collect::<Result<Vec<Album>>>()?;
 
         Ok(albums)
     }
@@ -1234,8 +1247,92 @@ impl MusicusLibrary {
         Ok(())
     }
 
+    pub fn create_album(
+        &self,
+        name: TranslatedString,
+        recordings: Vec<Recording>,
+    ) -> Result<Album> {
+        let mut binding = self.imp().connection.borrow_mut();
+        let connection = &mut *binding.as_mut().unwrap();
+
+        let album_id = db::generate_id();
+        let now = Local::now().naive_local();
+
+        let album_data = tables::Album {
+            album_id: album_id.clone(),
+            name,
+            created_at: now,
+            edited_at: now,
+            last_used_at: now,
+            last_played_at: None,
+        };
+
+        diesel::insert_into(albums::table)
+            .values(&album_data)
+            .execute(connection)?;
+
+        for (index, recording) in recordings.into_iter().enumerate() {
+            let album_recording_data = tables::AlbumRecording {
+                album_id: album_id.clone(),
+                recording_id: recording.recording_id,
+                sequence_number: index as i32,
+            };
+
+            diesel::insert_into(album_recordings::table)
+                .values(&album_recording_data)
+                .execute(connection)?;
+        }
+
+        let album = Album::from_table(album_data, connection)?;
+
+        self.changed();
+
+        Ok(album)
+    }
+
+    pub fn update_album(
+        &self,
+        album_id: &str,
+        name: TranslatedString,
+        recordings: Vec<Recording>,
+    ) -> Result<()> {
+        let mut binding = self.imp().connection.borrow_mut();
+        let connection = &mut *binding.as_mut().unwrap();
+
+        let now = Local::now().naive_local();
+
+        diesel::update(albums::table)
+            .filter(albums::album_id.eq(album_id))
+            .set((
+                albums::name.eq(name),
+                albums::edited_at.eq(now),
+                albums::last_used_at.eq(now),
+            ))
+            .execute(connection)?;
+
+        diesel::delete(album_recordings::table)
+            .filter(album_recordings::album_id.eq(album_id))
+            .execute(connection)?;
+
+        for (index, recording) in recordings.into_iter().enumerate() {
+            let album_recording_data = tables::AlbumRecording {
+                album_id: album_id.to_owned(),
+                recording_id: recording.recording_id,
+                sequence_number: index as i32,
+            };
+
+            diesel::insert_into(album_recordings::table)
+                .values(&album_recording_data)
+                .execute(connection)?;
+        }
+
+        self.changed();
+
+        Ok(())
+    }
+
     /// Import a track into the music library.
-    // TODO: Support mediums, think about albums.
+    // TODO: Support mediums.
     pub fn import_track(
         &self,
         path: impl AsRef<Path>,

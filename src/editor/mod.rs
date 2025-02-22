@@ -1,4 +1,5 @@
 pub mod activatable_row;
+pub mod album_editor;
 pub mod ensemble_editor;
 pub mod ensemble_selector_popover;
 pub mod instrument_editor;

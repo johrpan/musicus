@@ -1,0 +1,42 @@
+using Gtk 4.0;
+using Adw 1;
+
+template $MusicusLibraryManagerAlbumsPage: Adw.NavigationPage {
+  title: _("Albums");
+
+  Adw.ToolbarView {
+    [top]
+    Gtk.Box {
+      orientation: vertical;
+
+      Adw.HeaderBar {
+        [end]
+        Gtk.Button {
+          icon-name: "list-add-symbolic";
+          clicked => $create() swapped;
+        }
+      }
+
+      Adw.Clamp {
+        Gtk.SearchEntry search_entry {
+          placeholder-text: _("Search albums…");
+          search-changed => $search_changed() swapped;
+        }
+      }
+    }
+
+    Gtk.ScrolledWindow {
+      Adw.Clamp {
+        Gtk.ListBox list {
+          selection-mode: none;
+          margin-top: 12;
+          valign: start;
+
+          styles [
+            "boxed-list"
+          ]
+        }
+      }
+    }
+  }
+}

@@ -10,7 +10,7 @@ use gtk::glib::{self, Boxed};
 use super::{schema::*, tables, TranslatedString};
 
 // Re-exports for tables that don't need additional information.
-pub use tables::{Album, Instrument, Person, Role};
+pub use tables::{Instrument, Person, Role};
 
 #[derive(Boxed, Clone, Debug)]
 #[boxed_type(name = "MusicusWork")]
@@ -66,6 +66,14 @@ pub struct Track {
     pub track_id: String,
     pub path: String,
     pub works: Vec<Work>,
+}
+
+#[derive(Boxed, Clone, Debug)]
+#[boxed_type(name = "MusicusAlbum")]
+pub struct Album {
+    pub album_id: String,
+    pub name: TranslatedString,
+    pub recordings: Vec<Recording>,
 }
 
 impl Eq for Person {}
@@ -268,6 +276,13 @@ impl Recording {
     }
 }
 
+impl Eq for Recording {}
+impl PartialEq for Recording {
+    fn eq(&self, other: &Self) -> bool {
+        self.recording_id == other.recording_id
+    }
+}
+
 impl Display for Recording {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}; {}", self.work, self.performers_string())
@@ -360,9 +375,35 @@ impl Track {
     }
 }
 
+impl Album {
+    pub fn from_table(data: tables::Album, connection: &mut SqliteConnection) -> Result<Self> {
+        let recordings: Vec<Recording> = recordings::table
+            .inner_join(album_recordings::table)
+            .order(album_recordings::sequence_number)
+            .filter(album_recordings::album_id.eq(&data.album_id))
+            .select(tables::Recording::as_select())
+            .load(connection)?
+            .into_iter()
+            .map(|r| Recording::from_table(r, connection))
+            .collect::<Result<Vec<Recording>>>()?;
+
+        Ok(Self {
+            album_id: data.album_id,
+            name: data.name,
+            recordings,
+        })
+    }
+}
+
 impl Eq for Album {}
 impl PartialEq for Album {
     fn eq(&self, other: &Self) -> bool {
         self.album_id == other.album_id
+    }
+}
+
+impl Display for Album {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.name)
     }
 }
