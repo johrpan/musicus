@@ -40,19 +40,22 @@ template $MusicusWorkEditor: Adw.NavigationPage {
             ]
           }
 
-          Gtk.ListBox composer_list {
-            selection-mode: none;
-            margin-top: 12;
+          Gtk.Box composers_box {
+            Gtk.ListBox composer_list {
+              selection-mode: none;
+              margin-top: 12;
+              hexpand: true;
 
-            styles [
-              "boxed-list",
-            ]
+              styles [
+                "boxed-list",
+              ]
 
-            Adw.ButtonRow {
-              title: _("Add _composer");
-              start-icon-name: "list-add-symbolic";
-              use-underline: true;
-              activated => $add_person() swapped;
+              Adw.ButtonRow {
+                title: _("Add _composer");
+                start-icon-name: "list-add-symbolic";
+                use-underline: true;
+                activated => $add_person() swapped;
+              }
             }
           }
 
@@ -92,20 +95,22 @@ template $MusicusWorkEditor: Adw.NavigationPage {
             ]
           }
 
-          Gtk.ListBox instrument_list {
-            selection-mode: none;
-            margin-top: 12;
-            margin-bottom: 24;
+          Gtk.Box instruments_box {
+            Gtk.ListBox instrument_list {
+              selection-mode: none;
+              margin-top: 12;
+              hexpand: true;
 
-            styles [
-              "boxed-list",
-            ]
+              styles [
+                "boxed-list",
+              ]
 
-            Adw.ButtonRow {
-              title: _("Add _instrument");
-              start-icon-name: "list-add-symbolic";
-              use-underline: true;
-              activated => $add_instrument() swapped;
+              Adw.ButtonRow {
+                title: _("Add _instrument");
+                start-icon-name: "list-add-symbolic";
+                use-underline: true;
+                activated => $add_instrument() swapped;
+              }
             }
           }
 

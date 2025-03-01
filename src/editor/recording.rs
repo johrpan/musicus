@@ -49,13 +49,13 @@ mod imp {
         #[template_child]
         pub year_row: TemplateChild<adw::SpinRow>,
         #[template_child]
+        pub performers_box: TemplateChild<gtk::Box>,
+        #[template_child]
         pub performer_list: TemplateChild<gtk::ListBox>,
         #[template_child]
-        pub select_person_box: TemplateChild<gtk::Box>,
+        pub ensembles_box: TemplateChild<gtk::Box>,
         #[template_child]
         pub ensemble_list: TemplateChild<gtk::ListBox>,
-        #[template_child]
-        pub select_ensemble_box: TemplateChild<gtk::Box>,
         #[template_child]
         pub save_row: TemplateChild<adw::ButtonRow>,
     }
@@ -140,7 +140,7 @@ mod imp {
                 obj.navigation().push(&editor);
             });
 
-            self.select_person_box.append(&persons_popover);
+            self.performers_box.append(&persons_popover);
             self.persons_popover.set(persons_popover).unwrap();
 
             let ensembles_popover = EnsembleSelectorPopover::new(self.library.get().unwrap());
@@ -165,7 +165,7 @@ mod imp {
                 obj.navigation().push(&editor);
             });
 
-            self.select_ensemble_box.append(&ensembles_popover);
+            self.ensembles_box.append(&ensembles_popover);
             self.ensembles_popover.set(ensembles_popover).unwrap();
         }
     }

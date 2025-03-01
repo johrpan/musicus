@@ -72,19 +72,22 @@ template $MusicusRecordingEditor: Adw.NavigationPage {
             ]
           }
 
-          Gtk.ListBox performer_list {
-            selection-mode: none;
-            margin-top: 12;
+          Gtk.Box performers_box {
+            Gtk.ListBox performer_list {
+              selection-mode: none;
+              margin-top: 12;
+              hexpand: true;
 
-            styles [
-              "boxed-list",
-            ]
+              styles [
+                "boxed-list",
+              ]
 
-            Adw.ButtonRow {
-              title: _("Add _performer");
-              start-icon-name: "list-add-symbolic";
-              use-underline: true;
-              activated => $select_person() swapped;
+              Adw.ButtonRow {
+                title: _("Add _performer");
+                start-icon-name: "list-add-symbolic";
+                use-underline: true;
+                activated => $select_person() swapped;
+              }
             }
           }
 
@@ -98,19 +101,22 @@ template $MusicusRecordingEditor: Adw.NavigationPage {
             ]
           }
 
-          Gtk.ListBox ensemble_list {
-            selection-mode: none;
-            margin-top: 12;
+          Gtk.Box ensembles_box {
+            Gtk.ListBox ensemble_list {
+              selection-mode: none;
+              margin-top: 12;
+              hexpand: true;
 
-            styles [
-              "boxed-list",
-            ]
+              styles [
+                "boxed-list",
+              ]
 
-            Adw.ButtonRow {
-              title: _("Add _ensemble");
-              use-underline: true;
-              start-icon-name: "list-add-symbolic";
-              activated => $select_ensemble() swapped;
+              Adw.ButtonRow {
+                title: _("Add _ensemble");
+                use-underline: true;
+                start-icon-name: "list-add-symbolic";
+                activated => $select_ensemble() swapped;
+              }
             }
           }
 

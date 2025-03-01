@@ -50,15 +50,15 @@ mod imp {
         #[template_child]
         pub name_editor: TemplateChild<TranslationEditor>,
         #[template_child]
-        pub composer_list: TemplateChild<gtk::ListBox>,
+        pub composers_box: TemplateChild<gtk::Box>,
         #[template_child]
-        pub select_person_box: TemplateChild<gtk::Box>,
+        pub composer_list: TemplateChild<gtk::ListBox>,
         #[template_child]
         pub part_list: TemplateChild<gtk::ListBox>,
         #[template_child]
-        pub instrument_list: TemplateChild<gtk::ListBox>,
+        pub instruments_box: TemplateChild<gtk::Box>,
         #[template_child]
-        pub select_instrument_box: TemplateChild<gtk::Box>,
+        pub instrument_list: TemplateChild<gtk::ListBox>,
         #[template_child]
         pub save_row: TemplateChild<adw::ButtonRow>,
     }
@@ -117,7 +117,7 @@ mod imp {
                 obj.navigation().push(&editor);
             });
 
-            self.select_person_box.append(&persons_popover);
+            self.composers_box.append(&persons_popover);
             self.persons_popover.set(persons_popover).unwrap();
 
             let instruments_popover = InstrumentSelectorPopover::new(self.library.get().unwrap());
@@ -142,7 +142,7 @@ mod imp {
                 obj.navigation().push(&editor);
             });
 
-            self.select_instrument_box.append(&instruments_popover);
+            self.instruments_box.append(&instruments_popover);
             self.instruments_popover.set(instruments_popover).unwrap();
         }
     }

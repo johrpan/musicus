@@ -32,9 +32,9 @@ mod imp {
         #[template_child]
         pub name_editor: TemplateChild<TranslationEditor>,
         #[template_child]
-        pub recordings_list: TemplateChild<gtk::ListBox>,
+        pub recordings_box: TemplateChild<gtk::Box>,
         #[template_child]
-        pub select_recording_box: TemplateChild<gtk::Box>,
+        pub recordings_list: TemplateChild<gtk::ListBox>,
         #[template_child]
         pub save_row: TemplateChild<adw::ButtonRow>,
     }
@@ -93,7 +93,7 @@ mod imp {
                 obj.navigation().push(&editor);
             });
 
-            self.select_recording_box.append(&recordings_popover);
+            self.recordings_box.append(&recordings_popover);
             self.recordings_popover.set(recordings_popover).unwrap();
         }
     }

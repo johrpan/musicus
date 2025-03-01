@@ -18,7 +18,7 @@ template $MusicusAlbumEditor: Adw.NavigationPage {
           margin-top: 24;
 
           styles [
-            "heading"
+            "heading",
           ]
         }
 
@@ -32,24 +32,27 @@ template $MusicusAlbumEditor: Adw.NavigationPage {
           margin-top: 24;
 
           styles [
-            "heading"
+            "heading",
           ]
         }
 
-        Gtk.ListBox recordings_list {
-          selection-mode: none;
-          margin-top: 12;
-          margin-bottom: 24;
+        Gtk.Box recordings_box {
+          Gtk.ListBox recordings_list {
+            selection-mode: none;
+            margin-top: 12;
+            margin-bottom: 24;
+            hexpand: true;
 
-          styles [
-            "boxed-list"
-          ]
+            styles [
+              "boxed-list",
+            ]
 
-          Adw.ButtonRow {
-            title: _("Add _recording");
-            start-icon-name: "list-add-symbolic";
-            use-underline: true;
-            activated => $select_recording() swapped;
+            Adw.ButtonRow {
+              title: _("Add _recording");
+              start-icon-name: "list-add-symbolic";
+              use-underline: true;
+              activated => $select_recording() swapped;
+            }
           }
         }
 
@@ -58,7 +61,7 @@ template $MusicusAlbumEditor: Adw.NavigationPage {
           margin-top: 24;
 
           styles [
-            "boxed-list"
+            "boxed-list",
           ]
 
           Adw.ButtonRow save_row {
