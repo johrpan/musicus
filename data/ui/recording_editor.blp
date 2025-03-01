@@ -35,7 +35,8 @@ template $MusicusRecordingEditor: Adw.NavigationPage {
             ]
 
             Adw.ActionRow work_row {
-              title: _("Select work");
+              title: _("Select _work");
+              use-underline: true;
               activatable: true;
               activated => $select_work() swapped;
 
@@ -48,7 +49,8 @@ template $MusicusRecordingEditor: Adw.NavigationPage {
             }
 
             Adw.SpinRow year_row {
-              title: _("Year");
+              title: _("_Year");
+              use-underline: true;
 
               adjustment: Gtk.Adjustment {
                 lower: 0;
@@ -79,7 +81,8 @@ template $MusicusRecordingEditor: Adw.NavigationPage {
             ]
 
             Adw.ActionRow {
-              title: _("Add performer");
+              title: _("Add _performer");
+              use-underline: true;
               activatable: true;
               activated => $select_person() swapped;
 
@@ -111,7 +114,8 @@ template $MusicusRecordingEditor: Adw.NavigationPage {
             ]
 
             Adw.ActionRow {
-              title: _("Add ensemble");
+              title: _("Add _ensemble");
+              use-underline: true;
               activatable: true;
               activated => $select_ensemble() swapped;
 
@@ -133,7 +137,8 @@ template $MusicusRecordingEditor: Adw.NavigationPage {
             ]
 
             Adw.ButtonRow save_row {
-              title: _("Create recording");
+              title: _("_Create recording");
+              use-underline: true;
               activated => $save() swapped;
             }
           }

@@ -17,7 +17,9 @@ template $MusicusTracksEditor: Adw.NavigationPage {
           margin-end: 12;
 
           Gtk.Label {
-            label: _("Recording");
+            label: _("_Recording");
+            use-underline: true;
+            mnemonic-widget: recording_row;
             xalign: 0;
             margin-top: 24;
 
@@ -69,7 +71,8 @@ template $MusicusTracksEditor: Adw.NavigationPage {
             ]
 
             Adw.ActionRow {
-              title: _("Add files");
+              title: _("Add _files");
+              use-underline: true;
               activatable: true;
               activated => $add_files() swapped;
 
@@ -89,7 +92,8 @@ template $MusicusTracksEditor: Adw.NavigationPage {
             ]
 
             Adw.ButtonRow save_row {
-              title: _("Import tracks");
+              title: _("_Import tracks");
+              use-underline: true;
               activated => $save() swapped;
             }
           }

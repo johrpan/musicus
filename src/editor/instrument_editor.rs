@@ -78,7 +78,7 @@ impl MusicusInstrumentEditor {
         obj.imp().library.set(library.to_owned()).unwrap();
 
         if let Some(instrument) = instrument {
-            obj.imp().save_row.set_title(&gettext("Save changes"));
+            obj.imp().save_row.set_title(&gettext("_Save changes"));
             obj.imp()
                 .instrument_id
                 .set(instrument.instrument_id.clone())

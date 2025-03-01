@@ -135,7 +135,7 @@ impl TracksEditor {
             .build();
 
         if let Some(recording) = recording {
-            obj.imp().save_row.set_title(&gettext("Save changes"));
+            obj.imp().save_row.set_title(&gettext("_Save changes"));
             obj.set_recording(recording);
         }
 
@@ -206,7 +206,7 @@ impl TracksEditor {
             .unwrap();
 
         if !tracks.is_empty() {
-            self.imp().save_row.set_title(&gettext("Save changes"));
+            self.imp().save_row.set_title(&gettext("_Save changes"));
 
             for track in tracks {
                 self.add_track_row(

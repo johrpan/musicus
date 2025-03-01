@@ -35,7 +35,8 @@ template $MusicusInstrumentEditor: Adw.NavigationPage {
           ]
 
           Adw.ButtonRow save_row {
-            title: _("Create instrument");
+            title: _("_Create instrument");
+            use-underline: true;
             activated => $save() swapped;
           }
         }

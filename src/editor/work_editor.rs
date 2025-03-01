@@ -181,7 +181,7 @@ impl MusicusWorkEditor {
         }
 
         if let Some(work) = work {
-            obj.imp().save_row.set_title(&gettext("Save changes"));
+            obj.imp().save_row.set_title(&gettext("_Save changes"));
             obj.imp().work_id.set(work.work_id.clone()).unwrap();
 
             obj.imp().name_editor.set_translation(&work.name);

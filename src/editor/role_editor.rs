@@ -76,7 +76,7 @@ impl MusicusRoleEditor {
         obj.imp().library.set(library.to_owned()).unwrap();
 
         if let Some(role) = role {
-            obj.imp().save_row.set_title(&gettext("Save changes"));
+            obj.imp().save_row.set_title(&gettext("_Save changes"));
             obj.imp().role_id.set(role.role_id.clone()).unwrap();
             obj.imp().name_editor.set_translation(&role.name);
         }

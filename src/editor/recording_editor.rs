@@ -195,7 +195,7 @@ impl MusicusRecordingEditor {
             .build();
 
         if let Some(recording) = recording {
-            obj.imp().save_row.set_title(&gettext("Save changes"));
+            obj.imp().save_row.set_title(&gettext("_Save changes"));
             obj.imp()
                 .recording_id
                 .set(recording.recording_id.clone())

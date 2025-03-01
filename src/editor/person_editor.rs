@@ -78,7 +78,7 @@ impl MusicusPersonEditor {
         obj.imp().library.set(library.to_owned()).unwrap();
 
         if let Some(person) = person {
-            obj.imp().save_row.set_title(&gettext("Save changes"));
+            obj.imp().save_row.set_title(&gettext("_Save changes"));
             obj.imp().person_id.set(person.person_id.clone()).unwrap();
             obj.imp().name_editor.set_translation(&person.name);
         }

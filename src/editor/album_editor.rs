@@ -126,7 +126,7 @@ impl AlbumEditor {
             .build();
 
         if let Some(album) = album {
-            obj.imp().save_row.set_title(&gettext("Save changes"));
+            obj.imp().save_row.set_title(&gettext("_Save changes"));
             obj.imp().album_id.set(album.album_id.clone()).unwrap();
             obj.imp().name_editor.set_translation(&album.name);
 

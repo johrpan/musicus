@@ -49,7 +49,8 @@ template $MusicusWorkEditor: Adw.NavigationPage {
             ]
 
             Adw.ActionRow {
-              title: _("Add composer");
+              title: _("Add _composer");
+              use-underline: true;
               activatable: true;
               activated => $add_person() swapped;
 
@@ -81,7 +82,8 @@ template $MusicusWorkEditor: Adw.NavigationPage {
             ]
 
             Adw.ActionRow {
-              title: _("Add part");
+              title: _("Add _part");
+              use-underline: true;
               activatable: true;
               activated => $add_part() swapped;
 
@@ -112,7 +114,8 @@ template $MusicusWorkEditor: Adw.NavigationPage {
             ]
 
             Adw.ActionRow {
-              title: _("Add instrument");
+              title: _("Add _instrument");
+              use-underline: true;
               activatable: true;
               activated => $add_instrument() swapped;
 
@@ -134,7 +137,8 @@ template $MusicusWorkEditor: Adw.NavigationPage {
             ]
 
             Adw.ButtonRow save_row {
-              title: _("Create work");
+              title: _("_Create work");
+              use-underline: true;
               activated => $save() swapped;
             }
           }

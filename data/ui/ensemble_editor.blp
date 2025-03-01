@@ -35,7 +35,8 @@ template $MusicusEnsembleEditor: Adw.NavigationPage {
           ]
 
           Adw.ButtonRow save_row {
-            title: _("Create ensemble");
+            title: _("_Create ensemble");
+            use-underline: true;
             activated => $save() swapped;
           }
         }

@@ -46,7 +46,8 @@ template $MusicusAlbumEditor: Adw.NavigationPage {
           ]
 
           Adw.ActionRow {
-            title: _("Add recording");
+            title: _("Add _recording");
+            use-underline: true;
             activatable: true;
             activated => $select_recording() swapped;
 
@@ -68,7 +69,8 @@ template $MusicusAlbumEditor: Adw.NavigationPage {
           ]
 
           Adw.ButtonRow save_row {
-            title: _("Create album");
+            title: _("_Create album");
+            use-underline: true;
             activated => $save() swapped;
           }
         }

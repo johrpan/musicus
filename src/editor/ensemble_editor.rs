@@ -78,7 +78,7 @@ impl MusicusEnsembleEditor {
         obj.imp().library.set(library.to_owned()).unwrap();
 
         if let Some(ensemble) = ensemble {
-            obj.imp().save_row.set_title(&gettext("Save changes"));
+            obj.imp().save_row.set_title(&gettext("_Save changes"));
             obj.imp()
                 .ensemble_id
                 .set(ensemble.ensemble_id.clone())
