@@ -211,6 +211,7 @@ impl SearchEntry {
                 Tag::Composer(person) => query.composer = Some(person),
                 Tag::Performer(person) => query.performer = Some(person),
                 Tag::Ensemble(ensemble) => query.ensemble = Some(ensemble),
+                Tag::Instrument(instrument) => query.instrument = Some(instrument),
                 Tag::Work(work) => query.work = Some(work),
             }
         }

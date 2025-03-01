@@ -169,6 +169,26 @@ template $MusicusHomePage: Adw.NavigationPage {
                     "heading"
                   ]
 
+                  visible: bind instruments_flow_box.visible;
+                  halign: start;
+                  label: _("Instruments");
+                }
+
+                Gtk.FlowBox instruments_flow_box {
+                  margin-top: 12;
+                  margin-bottom: 24;
+                  column-spacing: 12;
+                  row-spacing: 12;
+                  homogeneous: true;
+                  selection-mode: none;
+                  child-activated => $tile_selected() swapped;
+                }
+
+                Gtk.Label {
+                  styles [
+                    "heading"
+                  ]
+
                   visible: bind works_flow_box.visible;
                   halign: start;
                   label: _("Works");

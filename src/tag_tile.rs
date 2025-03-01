@@ -55,6 +55,9 @@ impl TagTile {
             Tag::Ensemble(ensemble) => {
                 imp.title_label.set_label(ensemble.name.get());
             }
+            Tag::Instrument(instrument) => {
+                imp.title_label.set_label(instrument.name.get());
+            }
             Tag::Work(work) => {
                 imp.title_label.set_label(work.name.get());
                 if let Some(composers) = work.composers_string() {

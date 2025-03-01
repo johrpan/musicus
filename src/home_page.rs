@@ -11,7 +11,10 @@ use crate::{
     album_tile::AlbumTile,
     config,
     db::models::*,
-    editor::{ensemble::EnsembleEditor, person::PersonEditor, work::WorkEditor},
+    editor::{
+        ensemble::EnsembleEditor, instrument::InstrumentEditor, person::PersonEditor,
+        work::WorkEditor,
+    },
     library::{Library, LibraryQuery},
     player::Player,
     program::Program,
@@ -42,6 +45,7 @@ mod imp {
         pub composers: RefCell<Vec<Person>>,
         pub performers: RefCell<Vec<Person>>,
         pub ensembles: RefCell<Vec<Ensemble>>,
+        pub instruments: RefCell<Vec<Instrument>>,
         pub works: RefCell<Vec<Work>>,
         pub recordings: RefCell<Vec<Recording>>,
         pub albums: RefCell<Vec<Album>>,
@@ -64,6 +68,8 @@ mod imp {
         pub performers_flow_box: TemplateChild<gtk::FlowBox>,
         #[template_child]
         pub ensembles_flow_box: TemplateChild<gtk::FlowBox>,
+        #[template_child]
+        pub instruments_flow_box: TemplateChild<gtk::FlowBox>,
         #[template_child]
         pub works_flow_box: TemplateChild<gtk::FlowBox>,
         #[template_child]
@@ -176,6 +182,11 @@ impl HomePage {
                         Some(ensemble),
                     ));
                 }
+                Tag::Instrument(instrument) => self.navigation().push(&InstrumentEditor::new(
+                    &self.navigation(),
+                    &self.library(),
+                    Some(instrument),
+                )),
                 Tag::Work(work) => self.navigation().push(&WorkEditor::new(
                     &self.navigation(),
                     &self.library(),
@@ -203,11 +214,12 @@ impl HomePage {
                 self.player().set_program(program);
             }
         } else {
-            let (composer, performer, ensemble, work, recording, album) = {
+            let (composer, performer, ensemble, instrument, work, recording, album) = {
                 (
                     imp.composers.borrow().first().cloned(),
                     imp.performers.borrow().first().cloned(),
                     imp.ensembles.borrow().first().cloned(),
+                    imp.instruments.borrow().first().cloned(),
                     imp.works.borrow().first().cloned(),
                     imp.recordings.borrow().first().cloned(),
                     imp.albums.borrow().first().cloned(),
@@ -220,6 +232,8 @@ impl HomePage {
                 search_entry.add_tag(Tag::Performer(person));
             } else if let Some(ensemble) = ensemble {
                 search_entry.add_tag(Tag::Ensemble(ensemble));
+            } else if let Some(instrument) = instrument {
+                search_entry.add_tag(Tag::Instrument(instrument));
             } else if let Some(work) = work {
                 search_entry.add_tag(Tag::Work(work));
             } else if let Some(recording) = recording {
@@ -266,6 +280,7 @@ impl HomePage {
             &imp.composers_flow_box,
             &imp.performers_flow_box,
             &imp.ensembles_flow_box,
+            &imp.instruments_flow_box,
             &imp.works_flow_box,
             &imp.recordings_flow_box,
             &imp.albums_flow_box,
@@ -285,6 +300,10 @@ impl HomePage {
                 }
                 Tag::Ensemble(ensemble) => {
                     imp.title_label.set_text(&ensemble.name.get());
+                    imp.subtitle_label.set_visible(false);
+                }
+                Tag::Instrument(instrument) => {
+                    imp.title_label.set_text(&instrument.name.get());
                     imp.subtitle_label.set_visible(false);
                 }
                 Tag::Work(work) => {
@@ -314,6 +333,8 @@ impl HomePage {
                 .set_visible(!results.performers.is_empty());
             imp.ensembles_flow_box
                 .set_visible(!results.ensembles.is_empty());
+            imp.instruments_flow_box
+                .set_visible(!results.instruments.is_empty());
             imp.works_flow_box.set_visible(!results.works.is_empty());
             imp.recordings_flow_box
                 .set_visible(!results.recordings.is_empty());
@@ -332,6 +353,11 @@ impl HomePage {
             for ensemble in &results.ensembles {
                 imp.ensembles_flow_box
                     .append(&TagTile::new(Tag::Ensemble(ensemble.clone())));
+            }
+
+            for instrument in &results.instruments {
+                imp.instruments_flow_box
+                    .append(&TagTile::new(Tag::Instrument(instrument.clone())));
             }
 
             for work in &results.works {
@@ -354,6 +380,7 @@ impl HomePage {
             imp.composers.replace(results.composers);
             imp.performers.replace(results.performers);
             imp.ensembles.replace(results.ensembles);
+            imp.instruments.replace(results.instruments);
             imp.works.replace(results.works);
             imp.recordings.replace(results.recordings);
             imp.albums.replace(results.albums);

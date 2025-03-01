@@ -3,7 +3,7 @@ use std::cell::OnceCell;
 use adw::{glib, glib::subclass::Signal, prelude::*, subclass::prelude::*};
 use once_cell::sync::Lazy;
 
-use crate::db::models::{Ensemble, Person, Work};
+use crate::db::models::{Ensemble, Instrument, Person, Work};
 
 mod imp {
     use super::*;
@@ -55,13 +55,16 @@ impl SearchTag {
     pub fn new(tag: Tag) -> Self {
         let obj: SearchTag = glib::Object::new();
 
-        obj.imp().label.set_label(match &tag {
+        let label = match &tag {
             Tag::Composer(person) => person.name.get(),
             Tag::Performer(person) => person.name.get(),
             Tag::Ensemble(ensemble) => ensemble.name.get(),
+            Tag::Instrument(instrument) => instrument.name.get(),
             Tag::Work(work) => work.name.get(),
-        });
+        };
 
+        obj.imp().label.set_label(label);
+        obj.set_tooltip_text(Some(label));
         obj.imp().tag.set(tag).unwrap();
 
         obj
@@ -90,5 +93,6 @@ pub enum Tag {
     Composer(Person),
     Performer(Person),
     Ensemble(Ensemble),
+    Instrument(Instrument),
     Work(Work),
 }

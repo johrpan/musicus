@@ -78,317 +78,356 @@ impl Library {
         let connection = &mut *binding.as_mut().unwrap();
 
         Ok(match query {
-            LibraryQuery {
-                composer: None,
-                performer: None,
-                ensemble: None,
-                work: None,
-                ..
-            } => {
-                let composers: Vec<Person> = persons::table
-                    .filter(
-                        exists(
-                            work_persons::table
-                                .filter(work_persons::person_id.eq(persons::person_id)),
-                        )
-                        .and(persons::name.like(&search)),
-                    )
-                    .limit(9)
-                    .load(connection)?;
-
-                let performers: Vec<Person> = persons::table
-                    .filter(
-                        exists(
-                            recording_persons::table
-                                .filter(recording_persons::person_id.eq(persons::person_id)),
-                        )
-                        .and(persons::name.like(&search)),
-                    )
-                    .limit(9)
-                    .load(connection)?;
-
-                // TODO: Search ensemble persons as well.
-                let ensembles: Vec<Ensemble> = ensembles::table
-                    .filter(ensembles::name.like(&search))
-                    .limit(9)
-                    .load::<tables::Ensemble>(connection)?
-                    .into_iter()
-                    .map(|e| Ensemble::from_table(e, connection))
-                    .collect::<Result<Vec<Ensemble>>>()?;
-
-                let works: Vec<Work> = works::table
-                    .left_join(work_persons::table.inner_join(persons::table))
-                    .filter(
-                        works::parent_work_id
-                            .is_null()
-                            .and(works::name.like(&search).or(persons::name.like(&search))),
-                    )
-                    .limit(9)
-                    .select(works::all_columns)
-                    .distinct()
-                    .load::<tables::Work>(connection)?
-                    .into_iter()
-                    .map(|w| Work::from_table(w, connection))
-                    .collect::<Result<Vec<Work>>>()?;
-
-                let albums = albums::table
-                    .filter(albums::name.like(&search))
-                    .limit(9)
-                    .load::<tables::Album>(connection)?
-                    .into_iter()
-                    .map(|a| Album::from_table(a, connection))
-                    .collect::<Result<Vec<Album>>>()?;
-
-                LibraryResults {
-                    composers,
-                    performers,
-                    ensembles,
-                    works,
-                    albums,
-                    ..Default::default()
-                }
-            }
-            LibraryQuery {
-                composer: Some(composer),
-                performer: None,
-                ensemble: None,
-                work: None,
-                ..
-            } => {
-                let performers: Vec<Person> = persons::table
-                    .inner_join(recording_persons::table.inner_join(
-                        recordings::table.inner_join(works::table.inner_join(work_persons::table)),
-                    ))
-                    .filter(
-                        work_persons::person_id
-                            .eq(&composer.person_id)
-                            .and(persons::name.like(&search)),
-                    )
-                    .limit(9)
-                    .select(persons::all_columns)
-                    .distinct()
-                    .load(connection)?;
-
-                let ensembles: Vec<Ensemble> = ensembles::table
-                    .inner_join(recording_ensembles::table.inner_join(
-                        recordings::table.inner_join(works::table.inner_join(work_persons::table)),
-                    ))
-                    .filter(
-                        work_persons::person_id
-                            .eq(&composer.person_id)
-                            .and(ensembles::name.like(&search)),
-                    )
-                    .limit(9)
-                    .select(ensembles::all_columns)
-                    .distinct()
-                    .load::<tables::Ensemble>(connection)?
-                    .into_iter()
-                    .map(|e| Ensemble::from_table(e, connection))
-                    .collect::<Result<Vec<Ensemble>>>()?;
-
-                let works: Vec<Work> = works::table
-                    .inner_join(work_persons::table)
-                    .filter(
-                        work_persons::person_id
-                            .eq(&composer.person_id)
-                            .and(works::name.like(&search)),
-                    )
-                    .limit(9)
-                    .select(works::all_columns)
-                    .distinct()
-                    .load::<tables::Work>(connection)?
-                    .into_iter()
-                    .map(|w| Work::from_table(w, connection))
-                    .collect::<Result<Vec<Work>>>()?;
-
-                LibraryResults {
-                    performers,
-                    ensembles,
-                    works,
-                    ..Default::default()
-                }
-            }
-            LibraryQuery {
-                composer: None,
-                performer: None,
-                ensemble: Some(ensemble),
-                work: None,
-                ..
-            } => {
-                let composers: Vec<Person> =
-                    persons::table
-                        .inner_join(work_persons::table.inner_join(
-                            works::table.inner_join(
-                                recordings::table.inner_join(recording_ensembles::table),
+            LibraryQuery { work: None, .. } => {
+                let composers = if query.composer.is_none() {
+                    let mut statement = persons::table
+                        .inner_join(
+                            work_persons::table.inner_join(
+                                works::table
+                                    .inner_join(
+                                        recordings::table
+                                            .left_join(recording_ensembles::table.inner_join(
+                                                ensembles::table.left_join(ensemble_persons::table),
+                                            ))
+                                            .left_join(recording_persons::table),
+                                    )
+                                    .left_join(work_instruments::table),
                             ),
-                        ))
-                        .filter(
-                            recording_ensembles::ensemble_id
-                                .eq(&ensemble.ensemble_id)
-                                .and(persons::name.like(&search)),
                         )
+                        .filter(persons::name.like(&search))
+                        .into_boxed();
+
+                    if let Some(person) = &query.performer {
+                        statement = statement.filter(
+                            recording_persons::person_id
+                                .eq(&person.person_id)
+                                .or(ensemble_persons::person_id.eq(&person.person_id)),
+                        );
+                    }
+
+                    if let Some(ensemble) = &query.ensemble {
+                        statement = statement
+                            .filter(recording_ensembles::ensemble_id.eq(&ensemble.ensemble_id));
+                    }
+
+                    if let Some(instrument) = &query.instrument {
+                        statement = statement.filter(
+                            work_instruments::instrument_id
+                                .eq(&instrument.instrument_id)
+                                .or(recording_persons::instrument_id.eq(&instrument.instrument_id)),
+                        );
+                    }
+
+                    statement
                         .limit(9)
                         .select(persons::all_columns)
                         .distinct()
-                        .load(connection)?;
+                        .load::<Person>(connection)?
+                } else {
+                    Vec::new()
+                };
 
-                let recordings = recordings::table
+                let performers = if query.performer.is_none() {
+                    let mut statement = persons::table
+                        .inner_join(
+                            recording_persons::table.inner_join(
+                                recordings::table
+                                    .inner_join(
+                                        works::table
+                                            .left_join(work_persons::table)
+                                            .left_join(work_instruments::table),
+                                    )
+                                    .left_join(recording_ensembles::table),
+                            ),
+                        )
+                        .filter(persons::name.like(&search))
+                        .into_boxed();
+
+                    if let Some(person) = &query.composer {
+                        statement = statement.filter(work_persons::person_id.eq(&person.person_id));
+                    }
+
+                    if let Some(ensemble) = &query.ensemble {
+                        statement = statement
+                            .filter(recording_ensembles::ensemble_id.eq(&ensemble.ensemble_id));
+                    }
+
+                    if let Some(instrument) = &query.instrument {
+                        statement = statement.filter(
+                            work_instruments::instrument_id
+                                .eq(&instrument.instrument_id)
+                                .or(recording_persons::instrument_id.eq(&instrument.instrument_id)),
+                        );
+                    }
+
+                    statement
+                        .limit(9)
+                        .select(persons::all_columns)
+                        .distinct()
+                        .load::<Person>(connection)?
+                } else {
+                    Vec::new()
+                };
+
+                let ensembles = if query.ensemble.is_none() {
+                    let mut statement = ensembles::table
+                        .inner_join(
+                            recording_ensembles::table.inner_join(
+                                recordings::table
+                                    .inner_join(
+                                        works::table
+                                            .left_join(work_persons::table)
+                                            .left_join(work_instruments::table),
+                                    )
+                                    .left_join(recording_persons::table),
+                            ),
+                        )
+                        .left_join(ensemble_persons::table.inner_join(persons::table))
+                        .filter(
+                            ensembles::name
+                                .like(&search)
+                                .or(persons::name.like(&search)),
+                        )
+                        .into_boxed();
+
+                    if let Some(person) = &query.composer {
+                        statement = statement.filter(work_persons::person_id.eq(&person.person_id));
+                    }
+
+                    if let Some(person) = &query.performer {
+                        statement = statement.filter(
+                            recording_persons::person_id
+                                .eq(&person.person_id)
+                                .or(ensemble_persons::person_id.eq(&person.person_id)),
+                        );
+                    }
+
+                    if let Some(instrument) = &query.instrument {
+                        statement = statement.filter(
+                            work_instruments::instrument_id
+                                .eq(&instrument.instrument_id)
+                                .or(ensemble_persons::instrument_id.eq(&instrument.instrument_id)),
+                        );
+                    }
+
+                    statement
+                        .limit(9)
+                        .select(ensembles::all_columns)
+                        .distinct()
+                        .load::<tables::Ensemble>(connection)?
+                        .into_iter()
+                        .map(|e| Ensemble::from_table(e, connection))
+                        .collect::<Result<Vec<Ensemble>>>()?
+                } else {
+                    Vec::new()
+                };
+
+                let instruments = if query.instrument.is_none() {
+                    let mut statement = instruments::table
+                        .left_join(
+                            work_instruments::table
+                                .inner_join(works::table.left_join(work_persons::table)),
+                        )
+                        .left_join(recording_persons::table)
+                        .left_join(ensemble_persons::table)
+                        .filter(instruments::name.like(&search))
+                        .into_boxed();
+
+                    if let Some(person) = &query.composer {
+                        statement = statement.filter(work_persons::person_id.eq(&person.person_id));
+                    }
+
+                    if let Some(person) = &query.performer {
+                        statement = statement.filter(
+                            recording_persons::person_id
+                                .eq(&person.person_id)
+                                .or(ensemble_persons::person_id.eq(&person.person_id)),
+                        );
+                    }
+
+                    if let Some(ensemble) = &query.ensemble {
+                        statement = statement
+                            .filter(ensemble_persons::ensemble_id.eq(&ensemble.ensemble_id));
+                    }
+
+                    statement
+                        .limit(9)
+                        .select(instruments::all_columns)
+                        .distinct()
+                        .load::<Instrument>(connection)?
+                } else {
+                    Vec::new()
+                };
+
+                let works = if query.work.is_none() {
+                    let mut statement = works::table
+                        .left_join(work_persons::table)
+                        .inner_join(
+                            recordings::table
+                                .left_join(recording_persons::table)
+                                .left_join(recording_ensembles::table.left_join(
+                                    ensembles::table.inner_join(ensemble_persons::table),
+                                )),
+                        )
+                        .left_join(work_instruments::table)
+                        .filter(works::name.like(&search))
+                        .into_boxed();
+
+                    if let Some(person) = &query.composer {
+                        statement = statement.filter(work_persons::person_id.eq(&person.person_id));
+                    }
+
+                    if let Some(person) = &query.performer {
+                        statement = statement.filter(
+                            recording_persons::person_id
+                                .eq(&person.person_id)
+                                .or(ensemble_persons::person_id.eq(&person.person_id)),
+                        );
+                    }
+
+                    if let Some(instrument) = &query.instrument {
+                        statement = statement.filter(
+                            work_instruments::instrument_id
+                                .eq(&instrument.instrument_id)
+                                .or(recording_persons::instrument_id.eq(&instrument.instrument_id))
+                                .or(ensemble_persons::instrument_id.eq(&instrument.instrument_id)),
+                        );
+                    }
+
+                    if let Some(ensemble) = &query.ensemble {
+                        statement = statement
+                            .filter(recording_ensembles::ensemble_id.eq(&ensemble.ensemble_id));
+                    }
+
+                    statement
+                        .limit(9)
+                        .select(works::all_columns)
+                        .distinct()
+                        .load::<tables::Work>(connection)?
+                        .into_iter()
+                        .map(|w| Work::from_table(w, connection))
+                        .collect::<Result<Vec<Work>>>()?
+                } else {
+                    Vec::new()
+                };
+
+                // Only search recordings in special cases. Works will always be searched and
+                // directly lead to recordings. The special case of a work in the query is already
+                // handled in another branch of the top-level match expression.
+                let recordings = if query.performer.is_some() || query.ensemble.is_some() {
+                    let mut statement = recordings::table
+                        .inner_join(
+                            works::table
+                                .left_join(work_persons::table)
+                                .left_join(work_instruments::table),
+                        )
+                        .left_join(recording_persons::table)
+                        .left_join(
+                            recording_ensembles::table
+                                .inner_join(ensembles::table.left_join(ensemble_persons::table)),
+                        )
+                        .filter(works::name.like(&search))
+                        .into_boxed();
+
+                    if let Some(person) = &query.composer {
+                        statement = statement.filter(work_persons::person_id.eq(&person.person_id));
+                    }
+
+                    if let Some(person) = &query.performer {
+                        statement = statement.filter(
+                            recording_persons::person_id
+                                .eq(&person.person_id)
+                                .or(ensemble_persons::person_id.eq(&person.person_id)),
+                        );
+                    }
+
+                    if let Some(instrument) = &query.instrument {
+                        statement = statement.filter(
+                            work_instruments::instrument_id
+                                .eq(&instrument.instrument_id)
+                                .or(recording_persons::instrument_id.eq(&instrument.instrument_id))
+                                .or(ensemble_persons::instrument_id.eq(&instrument.instrument_id)),
+                        );
+                    }
+
+                    if let Some(ensemble) = &query.ensemble {
+                        statement = statement
+                            .filter(recording_ensembles::ensemble_id.eq(&ensemble.ensemble_id));
+                    }
+
+                    statement
+                        .limit(9)
+                        .select(recordings::all_columns)
+                        .distinct()
+                        .load::<tables::Recording>(connection)?
+                        .into_iter()
+                        .map(|r| Recording::from_table(r, connection))
+                        .collect::<Result<Vec<Recording>>>()?
+                } else {
+                    Vec::new()
+                };
+
+                let mut statement = albums::table
                     .inner_join(
-                        works::table.left_join(work_persons::table.inner_join(persons::table)),
+                        album_recordings::table.inner_join(
+                            recordings::table
+                                .inner_join(
+                                    works::table
+                                        .left_join(work_persons::table)
+                                        .left_join(work_instruments::table),
+                                )
+                                .left_join(recording_persons::table)
+                                .left_join(recording_ensembles::table.inner_join(
+                                    ensembles::table.left_join(ensemble_persons::table),
+                                )),
+                        ),
                     )
-                    // .inner_join(recording_persons::table.inner_join(persons::table))
-                    .inner_join(recording_ensembles::table)
-                    .filter(
-                        recording_ensembles::ensemble_id
-                            .eq(&ensemble.ensemble_id)
-                            .and(works::name.like(&search).or(persons::name.like(&search))),
-                    )
-                    .select(recordings::all_columns)
-                    .distinct()
-                    .load::<tables::Recording>(connection)?
-                    .into_iter()
-                    .map(|r| Recording::from_table(r, connection))
-                    .collect::<Result<Vec<Recording>>>()?;
+                    .filter(albums::name.like(&search))
+                    .into_boxed();
 
-                let albums = albums::table
-                    .inner_join(
-                        album_recordings::table
-                            .inner_join(recordings::table.inner_join(recording_ensembles::table)),
-                    )
-                    .filter(
-                        recording_ensembles::ensemble_id
-                            .eq(&ensemble.ensemble_id)
-                            .and(albums::name.like(&search)),
-                    )
-                    .select(albums::all_columns)
-                    .distinct()
-                    .load::<tables::Album>(connection)?
-                    .into_iter()
-                    .map(|a| Album::from_table(a, connection))
-                    .collect::<Result<Vec<Album>>>()?;
-
-                LibraryResults {
-                    composers,
-                    recordings,
-                    albums,
-                    ..Default::default()
+                if let Some(person) = &query.composer {
+                    statement = statement.filter(work_persons::person_id.eq(&person.person_id));
                 }
-            }
-            LibraryQuery {
-                composer: None,
-                performer: Some(performer),
-                work: None,
-                ..
-            } => {
-                let composers: Vec<Person> = persons::table
-                    .inner_join(
-                        work_persons::table
-                            .inner_join(works::table.inner_join(
-                                recordings::table.inner_join(recording_persons::table),
-                            )),
-                    )
-                    .filter(
+
+                if let Some(person) = &query.performer {
+                    statement = statement.filter(
                         recording_persons::person_id
-                            .eq(&performer.person_id)
-                            .and(persons::name.like(&search)),
-                    )
+                            .eq(&person.person_id)
+                            .or(ensemble_persons::person_id.eq(&person.person_id)),
+                    );
+                }
+
+                if let Some(instrument) = &query.instrument {
+                    statement = statement.filter(
+                        work_instruments::instrument_id
+                            .eq(&instrument.instrument_id)
+                            .or(recording_persons::instrument_id.eq(&instrument.instrument_id))
+                            .or(ensemble_persons::instrument_id.eq(&instrument.instrument_id)),
+                    );
+                }
+
+                if let Some(ensemble) = &query.ensemble {
+                    statement = statement
+                        .filter(recording_ensembles::ensemble_id.eq(&ensemble.ensemble_id));
+                }
+
+                let albums = statement
                     .limit(9)
-                    .select(persons::all_columns)
-                    .distinct()
-                    .load(connection)?;
-
-                let recordings = recordings::table
-                    .inner_join(
-                        works::table.left_join(work_persons::table.inner_join(persons::table)),
-                    )
-                    .inner_join(recording_persons::table)
-                    .filter(
-                        recording_persons::person_id
-                            .eq(&performer.person_id)
-                            .and(works::name.like(&search).or(persons::name.like(&search))),
-                    )
-                    .select(recordings::all_columns)
-                    .distinct()
-                    .load::<tables::Recording>(connection)?
-                    .into_iter()
-                    .map(|r| Recording::from_table(r, connection))
-                    .collect::<Result<Vec<Recording>>>()?;
-
-                let albums = albums::table
-                    .inner_join(
-                        album_recordings::table
-                            .inner_join(recordings::table.inner_join(recording_persons::table)),
-                    )
-                    .filter(
-                        recording_persons::person_id
-                            .eq(&performer.person_id)
-                            .and(albums::name.like(&search)),
-                    )
                     .select(albums::all_columns)
                     .distinct()
                     .load::<tables::Album>(connection)?
                     .into_iter()
-                    .map(|a| Album::from_table(a, connection))
+                    .map(|r| Album::from_table(r, connection))
                     .collect::<Result<Vec<Album>>>()?;
 
                 LibraryResults {
                     composers,
+                    performers,
+                    ensembles,
+                    instruments,
+                    works,
                     recordings,
                     albums,
-                    ..Default::default()
-                }
-            }
-            LibraryQuery {
-                composer: Some(composer),
-                ensemble: Some(ensemble),
-                work: None,
-                ..
-            } => {
-                let recordings = recordings::table
-                    .inner_join(works::table.inner_join(work_persons::table))
-                    .inner_join(recording_ensembles::table)
-                    .filter(
-                        work_persons::person_id
-                            .eq(&composer.person_id)
-                            .and(recording_ensembles::ensemble_id.eq(&ensemble.ensemble_id))
-                            .and(works::name.like(search)),
-                    )
-                    .select(recordings::all_columns)
-                    .distinct()
-                    .load::<tables::Recording>(connection)?
-                    .into_iter()
-                    .map(|r| Recording::from_table(r, connection))
-                    .collect::<Result<Vec<Recording>>>()?;
-
-                LibraryResults {
-                    recordings,
-                    ..Default::default()
-                }
-            }
-            LibraryQuery {
-                composer: Some(composer),
-                performer: Some(performer),
-                work: None,
-                ..
-            } => {
-                let recordings = recordings::table
-                    .inner_join(works::table.inner_join(work_persons::table))
-                    .inner_join(recording_persons::table)
-                    .filter(
-                        work_persons::person_id
-                            .eq(&composer.person_id)
-                            .and(recording_persons::person_id.eq(&performer.person_id))
-                            .and(works::name.like(search)),
-                    )
-                    .select(recordings::all_columns)
-                    .distinct()
-                    .load::<tables::Recording>(connection)?
-                    .into_iter()
-                    .map(|r| Recording::from_table(r, connection))
-                    .collect::<Result<Vec<Recording>>>()?;
-
-                LibraryResults {
-                    recordings,
                     ..Default::default()
                 }
             }
@@ -414,30 +453,57 @@ impl Library {
         let mut binding = self.imp().connection.borrow_mut();
         let connection = &mut *binding.as_mut().unwrap();
 
+        let composer_id = program.composer_id();
+        let performer_id = program.performer_id();
+        let ensemble_id = program.ensemble_id();
+        let instrument_id = program.instrument_id();
+        let work_id = program.work_id();
+        let album_id = program.album_id();
+
         let mut query = recordings::table
-            .inner_join(works::table.left_join(work_persons::table))
+            .inner_join(
+                works::table
+                    .left_join(work_persons::table)
+                    .left_join(work_instruments::table),
+            )
             .left_join(recording_persons::table)
-            .left_join(recording_ensembles::table)
+            .left_join(
+                recording_ensembles::table
+                    .left_join(ensembles::table.inner_join(ensemble_persons::table)),
+            )
             .left_join(album_recordings::table)
             .into_boxed();
 
-        if let Some(composer_id) = program.composer_id() {
+        if let Some(composer_id) = &composer_id {
             query = query.filter(work_persons::person_id.eq(composer_id));
         }
 
-        if let Some(performer_id) = program.performer_id() {
-            query = query.filter(recording_persons::person_id.eq(performer_id));
+        if let Some(performer_id) = &performer_id {
+            query = query.filter(
+                recording_persons::person_id
+                    .eq(performer_id)
+                    .or(ensemble_persons::person_id.eq(performer_id)),
+            );
         }
 
-        if let Some(ensemble_id) = program.ensemble_id() {
+        if let Some(ensemble_id) = &ensemble_id {
             query = query.filter(recording_ensembles::ensemble_id.eq(ensemble_id));
         }
 
-        if let Some(work_id) = program.work_id() {
+        if let Some(instrument_id) = &instrument_id {
+            query = query.filter(
+                work_instruments::instrument_id
+                    .eq(instrument_id)
+                    .or(recording_persons::instrument_id.eq(instrument_id))
+                    .or(ensemble_persons::instrument_id.eq(instrument_id)),
+            );
+        }
+
+        if let Some(work_id) = &work_id {
             query = query.filter(recordings::work_id.eq(work_id));
         }
 
-        if let Some(album_id) = program.album_id() {
+        if let Some(album_id) = &album_id {
             query = query.filter(album_recordings::album_id.eq(album_id));
         }
 
@@ -448,6 +514,7 @@ impl Library {
         let row = query
             .order(random())
             .select(tables::Recording::as_select())
+            .distinct()
             .first::<tables::Recording>(connection)?;
 
         Recording::from_table(row, connection)
@@ -1479,6 +1546,7 @@ pub struct LibraryQuery {
     pub composer: Option<Person>,
     pub performer: Option<Person>,
     pub ensemble: Option<Ensemble>,
+    pub instrument: Option<Instrument>,
     pub work: Option<Work>,
     pub search: String,
 }
@@ -1488,6 +1556,7 @@ impl LibraryQuery {
         self.composer.is_none()
             && self.performer.is_none()
             && self.ensemble.is_none()
+            && self.instrument.is_none()
             && self.work.is_none()
             && self.search.is_empty()
     }
@@ -1498,6 +1567,7 @@ pub struct LibraryResults {
     pub composers: Vec<Person>,
     pub performers: Vec<Person>,
     pub ensembles: Vec<Ensemble>,
+    pub instruments: Vec<Instrument>,
     pub works: Vec<Work>,
     pub recordings: Vec<Recording>,
     pub albums: Vec<Album>,
@@ -1508,6 +1578,7 @@ impl LibraryResults {
         self.composers.is_empty()
             && self.performers.is_empty()
             && self.ensembles.is_empty()
+            && self.instruments.is_empty()
             && self.works.is_empty()
             && self.recordings.is_empty()
             && self.albums.is_empty()
