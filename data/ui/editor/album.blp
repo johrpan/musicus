@@ -8,66 +8,71 @@ template $MusicusAlbumEditor: Adw.NavigationPage {
     [top]
     Adw.HeaderBar header_bar {}
 
-    Adw.Clamp {
-      Gtk.Box {
-        orientation: vertical;
+    Gtk.ScrolledWindow {
+      Adw.Clamp {
+        Gtk.Box {
+          orientation: vertical;
+          margin-bottom: 24;
+          margin-start: 12;
+          margin-end: 12;
 
-        Gtk.Label {
-          label: _("Name");
-          xalign: 0;
-          margin-top: 24;
+          Gtk.Label {
+            label: _("Name");
+            xalign: 0;
+            margin-top: 24;
 
-          styles [
-            "heading",
-          ]
-        }
+            styles [
+              "heading",
+            ]
+          }
 
-        $MusicusTranslationEditor name_editor {
-          margin-top: 12;
-        }
-
-        Gtk.Label {
-          label: _("Recordings");
-          xalign: 0;
-          margin-top: 24;
-
-          styles [
-            "heading",
-          ]
-        }
-
-        Gtk.Box recordings_box {
-          Gtk.ListBox recordings_list {
-            selection-mode: none;
+          $MusicusTranslationEditor name_editor {
             margin-top: 12;
-            margin-bottom: 24;
-            hexpand: true;
+          }
+
+          Gtk.Label {
+            label: _("Recordings");
+            xalign: 0;
+            margin-top: 24;
+
+            styles [
+              "heading",
+            ]
+          }
+
+          Gtk.Box recordings_box {
+            Gtk.ListBox recordings_list {
+              selection-mode: none;
+              margin-top: 12;
+              margin-bottom: 24;
+              hexpand: true;
+
+              styles [
+                "boxed-list",
+              ]
+
+              Adw.ButtonRow {
+                title: _("Add _recording");
+                start-icon-name: "list-add-symbolic";
+                use-underline: true;
+                activated => $select_recording() swapped;
+              }
+            }
+          }
+
+          Gtk.ListBox {
+            selection-mode: none;
+            margin-top: 24;
 
             styles [
               "boxed-list",
             ]
 
-            Adw.ButtonRow {
-              title: _("Add _recording");
-              start-icon-name: "list-add-symbolic";
+            Adw.ButtonRow save_row {
+              title: _("_Create album");
               use-underline: true;
-              activated => $select_recording() swapped;
+              activated => $save() swapped;
             }
-          }
-        }
-
-        Gtk.ListBox {
-          selection-mode: none;
-          margin-top: 24;
-
-          styles [
-            "boxed-list",
-          ]
-
-          Adw.ButtonRow save_row {
-            title: _("_Create album");
-            use-underline: true;
-            activated => $save() swapped;
           }
         }
       }
