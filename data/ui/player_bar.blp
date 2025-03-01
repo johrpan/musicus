@@ -1,7 +1,6 @@
 using Gtk 4.0;
 
-template $MusicusPlayerBar : Gtk.Box {
-  styles ["playerbar"]
+template $MusicusPlayerBar: Gtk.Box {
   orientation: vertical;
   margin-start: 6;
   margin-end: 6;
@@ -9,9 +8,13 @@ template $MusicusPlayerBar : Gtk.Box {
   margin-bottom: 12;
   spacing: 6;
 
+  styles [
+    "playerbar",
+  ]
+
   Gtk.Box {
     spacing: 6;
-    
+
     Gtk.Box {
       valign: center;
       hexpand: true;
@@ -19,37 +22,64 @@ template $MusicusPlayerBar : Gtk.Box {
       orientation: vertical;
 
       Gtk.Label title_label {
-        styles ["title"]
-        halign: start;
         ellipsize: end;
+        wrap: true;
+        natural-wrap-mode: none;
+        lines: 2;
+        xalign: 0.0;
+        halign: start;
+
+        styles [
+          "title",
+        ]
       }
 
       Gtk.Label subtitle_label {
-        styles ["subtitle", "dim-label"]
-        halign: start;
         ellipsize: end;
+        wrap: true;
+        natural-wrap-mode: none;
+        lines: 2;
+        xalign: 0.0;
+        halign: start;
+
+        styles [
+          "subtitle",
+          "dim-label",
+        ]
       }
     }
 
     Gtk.Button back_button {
-      styles ["circular", "flat"]
-      valign: center;
       icon-name: "media-skip-backward-symbolic";
+      valign: center;
       clicked => $previous() swapped;
+
+      styles [
+        "circular",
+        "flat",
+      ]
     }
 
     Gtk.ToggleButton playlist_button {
-      styles ["flat", "circular"]
-      valign: center;
       icon-name: "playlist-symbolic";
+      valign: center;
       clicked => $show_playlist() swapped;
+
+      styles [
+        "flat",
+        "circular",
+      ]
     }
 
     Gtk.Button forward_button {
-      styles ["circular", "flat"]
       valign: center;
       icon-name: "media-skip-forward-symbolic";
       clicked => $next() swapped;
+
+      styles [
+        "circular",
+        "flat",
+      ]
     }
   }
 
@@ -57,21 +87,31 @@ template $MusicusPlayerBar : Gtk.Box {
     spacing: 6;
 
     Gtk.Button play_button {
-      styles ["circular", "flat"]
       valign: center;
       icon-name: "media-playback-start-symbolic";
       clicked => $play_pause() swapped;
+
+      styles [
+        "circular",
+        "flat",
+      ]
     }
 
     Gtk.Label current_time_label {
-      styles ["caption", "numeric"]
-      valign: center;
       label: "00:00";
+      tooltip-text: _("Elapsed time");
+      valign: center;
+
+      styles [
+        "caption",
+        "numeric",
+      ]
     }
 
     Gtk.Scale slider {
       valign: center;
       hexpand: true;
+
       adjustment: Gtk.Adjustment {
         lower: 0;
         upper: 1;
@@ -81,9 +121,14 @@ template $MusicusPlayerBar : Gtk.Box {
     }
 
     Gtk.Label remaining_time_label {
-      styles ["caption", "numeric"]
-      valign: center;
       label: "01:00";
+      tooltip-text: _("Remaining time");
+      valign: center;
+
+      styles [
+        "caption",
+        "numeric",
+      ]
     }
   }
 }

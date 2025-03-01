@@ -20,7 +20,6 @@ template $MusicusPlaylistTile : Gtk.Box {
     orientation: vertical;
     
     Gtk.Label composers_label {
-      styles ["title-4"]
       xalign: 0.0;
       wrap: true;
       visible: false;
@@ -28,7 +27,7 @@ template $MusicusPlaylistTile : Gtk.Box {
     }
 
     Gtk.Label work_label {
-      styles ["title-2"]
+      styles ["title-4"]
       xalign: 0.0;
       wrap: true;
       visible: false;
@@ -37,6 +36,7 @@ template $MusicusPlaylistTile : Gtk.Box {
     }
 
     Gtk.Label performances_label {
+      styles ["caption"]
       xalign: 0.0;
       wrap: true;
       visible: false;
