@@ -1,12 +1,15 @@
 use std::cell::{OnceCell, RefCell};
 
 use adw::{prelude::*, subclass::prelude::*};
-use gtk::glib::{self, clone, subclass::Signal, Properties};
+use gtk::{
+    gdk,
+    glib::{self, clone, subclass::Signal, Properties},
+};
 use once_cell::sync::Lazy;
 
 use crate::{
     db::models::Performer, editor::role::RoleEditor, library::Library,
-    selector::performer_role::PerformerRoleSelectorPopover,
+    selector::performer_role::PerformerRoleSelectorPopover, util::drag_widget::DragWidget,
 };
 
 mod imp {
@@ -51,14 +54,58 @@ mod imp {
     #[glib::derived_properties]
     impl ObjectImpl for RecordingEditorPerformerRow {
         fn signals() -> &'static [Signal] {
-            static SIGNALS: Lazy<Vec<Signal>> =
-                Lazy::new(|| vec![Signal::builder("remove").build()]);
+            static SIGNALS: Lazy<Vec<Signal>> = Lazy::new(|| {
+                vec![
+                    Signal::builder("remove").build(),
+                    Signal::builder("move")
+                        .param_types([super::RecordingEditorPerformerRow::static_type()])
+                        .build(),
+                ]
+            });
 
             SIGNALS.as_ref()
         }
 
         fn constructed(&self) {
             self.parent_constructed();
+
+            let drag_source = gtk::DragSource::builder()
+                .actions(gdk::DragAction::MOVE)
+                .content(&gdk::ContentProvider::for_value(&self.obj().to_value()))
+                .build();
+
+            drag_source.connect_drag_begin(clone!(
+                #[weak(rename_to = obj)]
+                self.obj(),
+                move |_, drag| {
+                    let icon = gtk::DragIcon::for_drag(drag);
+                    icon.set_child(Some(&DragWidget::new(&obj)));
+                }
+            ));
+
+            self.obj().add_controller(drag_source);
+
+            let drop_target = gtk::DropTarget::builder()
+                .actions(gdk::DragAction::MOVE)
+                .build();
+            drop_target.set_types(&[Self::Type::static_type()]);
+
+            drop_target.connect_drop(clone!(
+                #[weak(rename_to = obj)]
+                self.obj(),
+                #[upgrade_or]
+                false,
+                move |_, value, _, _| {
+                    if let Ok(row) = value.get::<Self::Type>() {
+                        obj.emit_by_name::<()>("move", &[&row]);
+                        true
+                    } else {
+                        false
+                    }
+                }
+            ));
+
+            self.obj().add_controller(drop_target);
 
             let role_popover = PerformerRoleSelectorPopover::new(self.library.get().unwrap());
 
@@ -140,6 +187,15 @@ impl RecordingEditorPerformerRow {
             .build();
         obj.set_performer(performer);
         obj
+    }
+
+    pub fn connect_move<F: Fn(&Self, Self) + 'static>(&self, f: F) -> glib::SignalHandlerId {
+        self.connect_local("move", true, move |values| {
+            let obj = values[0].get::<Self>().unwrap();
+            let source = values[1].get::<Self>().unwrap();
+            f(&obj, source);
+            None
+        })
     }
 
     pub fn connect_remove<F: Fn(&Self) + 'static>(&self, f: F) -> glib::SignalHandlerId {

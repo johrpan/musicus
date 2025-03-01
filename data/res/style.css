@@ -119,3 +119,17 @@
   padding: 6px;
   border-radius: 6px;
 }
+
+.drag-handle {
+  color: color-mix(in srgb, var(--window-fg-color) 40%, transparent);
+}
+
+.drag-handle:backdrop {
+  color: color-mix(in srgb, var(--window-fg-color) 40%, transparent);
+}
+
+dragwidget {
+  background-color: var(--card-bg-color);
+  color: var(--card-fg-color);
+  border: 1px solid rgba(0, 0, 6, 0.07);
+}

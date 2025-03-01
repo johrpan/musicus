@@ -1,9 +1,12 @@
+mod recording_row;
+
 use std::cell::{OnceCell, RefCell};
 
 use adw::{prelude::*, subclass::prelude::*};
 use gettextrs::gettext;
 use gtk::glib::{self, clone, subclass::Signal, Properties};
 use once_cell::sync::Lazy;
+use recording_row::RecordingRow;
 
 use crate::{
     db::models::{Album, Recording},
@@ -25,7 +28,7 @@ mod imp {
         pub library: OnceCell<Library>,
 
         pub album_id: OnceCell<String>,
-        pub recordings: RefCell<Vec<Recording>>,
+        pub recording_rows: RefCell<Vec<RecordingRow>>,
 
         pub recordings_popover: OnceCell<RecordingSelectorPopover>,
 
@@ -143,40 +146,36 @@ impl AlbumEditor {
     }
 
     fn add_recording(&self, recording: Recording) {
-        let row = adw::ActionRow::builder()
-            .title(recording.work.to_string())
-            .subtitle(recording.performers_string())
-            .build();
+        let row = RecordingRow::new(recording);
 
-        let remove_button = gtk::Button::builder()
-            .icon_name("user-trash-symbolic")
-            .valign(gtk::Align::Center)
-            .css_classes(["flat"])
-            .build();
-
-        remove_button.connect_clicked(clone!(
+        row.connect_move(clone!(
             #[weak(rename_to = this)]
             self,
-            #[weak]
-            row,
-            #[strong]
-            recording,
-            move |_| {
-                this.imp().recordings_list.remove(&row);
-                this.imp()
-                    .recordings
-                    .borrow_mut()
-                    .retain(|r| *r != recording);
+            move |target, source| {
+                let mut recording_rows = this.imp().recording_rows.borrow_mut();
+                if let Some(index) = recording_rows.iter().position(|p| p == target) {
+                    this.imp().recordings_list.remove(&source);
+                    recording_rows.retain(|p| p != &source);
+                    this.imp().recordings_list.insert(&source, index as i32);
+                    recording_rows.insert(index, source);
+                }
             }
         ));
 
-        row.add_suffix(&remove_button);
+        row.connect_remove(clone!(
+            #[weak(rename_to = this)]
+            self,
+            move |row| {
+                this.imp().recordings_list.remove(row);
+                this.imp().recording_rows.borrow_mut().retain(|p| p != row);
+            }
+        ));
 
         self.imp()
             .recordings_list
-            .insert(&row, self.imp().recordings.borrow().len() as i32);
+            .insert(&row, self.imp().recording_rows.borrow().len() as i32);
 
-        self.imp().recordings.borrow_mut().push(recording);
+        self.imp().recording_rows.borrow_mut().push(row);
     }
 
     #[template_callback]
@@ -184,7 +183,13 @@ impl AlbumEditor {
         let library = self.imp().library.get().unwrap();
 
         let name = self.imp().name_editor.translation();
-        let recordings = self.imp().recordings.borrow().clone();
+        let recordings = self
+            .imp()
+            .recording_rows
+            .borrow()
+            .iter()
+            .map(|r| r.recording())
+            .collect::<Vec<Recording>>();
 
         if let Some(album_id) = self.imp().album_id.get() {
             library.update_album(album_id, name, recordings).unwrap();

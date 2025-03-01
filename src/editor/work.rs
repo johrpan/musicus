@@ -1,4 +1,5 @@
 mod composer_row;
+mod instrument_row;
 mod part_row;
 
 use std::cell::{Cell, OnceCell, RefCell};
@@ -19,6 +20,7 @@ use crate::{
     library::Library,
     selector::{instrument::InstrumentSelectorPopover, person::PersonSelectorPopover},
 };
+use instrument_row::InstrumentRow;
 
 mod imp {
     use super::*;
@@ -41,8 +43,7 @@ mod imp {
         // handle all state related to the composer.
         pub composer_rows: RefCell<Vec<WorkEditorComposerRow>>,
         pub part_rows: RefCell<Vec<WorkEditorPartRow>>,
-
-        pub instruments: RefCell<Vec<Instrument>>,
+        pub instrument_rows: RefCell<Vec<InstrumentRow>>,
 
         pub persons_popover: OnceCell<PersonSelectorPopover>,
         pub instruments_popover: OnceCell<InstrumentSelectorPopover>,
@@ -240,6 +241,20 @@ impl WorkEditor {
     fn add_part_row(&self, part: Work) {
         let row = WorkEditorPartRow::new(&self.navigation(), &self.library(), part);
 
+        row.connect_move(clone!(
+            #[weak(rename_to = this)]
+            self,
+            move |target, source| {
+                let mut part_rows = this.imp().part_rows.borrow_mut();
+                if let Some(index) = part_rows.iter().position(|p| p == target) {
+                    this.imp().part_list.remove(&source);
+                    part_rows.retain(|p| p != &source);
+                    this.imp().part_list.insert(&source, index as i32);
+                    part_rows.insert(index, source);
+                }
+            }
+        ));
+
         row.connect_remove(clone!(
             #[weak(rename_to = this)]
             self,
@@ -259,6 +274,20 @@ impl WorkEditor {
     fn add_composer_row(&self, composer: Composer) {
         let row = WorkEditorComposerRow::new(&self.navigation(), &self.library(), composer);
 
+        row.connect_move(clone!(
+            #[weak(rename_to = this)]
+            self,
+            move |target, source| {
+                let mut composer_rows = this.imp().composer_rows.borrow_mut();
+                if let Some(index) = composer_rows.iter().position(|p| p == target) {
+                    this.imp().composer_list.remove(&source);
+                    composer_rows.retain(|p| p != &source);
+                    this.imp().composer_list.insert(&source, index as i32);
+                    composer_rows.insert(index, source);
+                }
+            }
+        ));
+
         row.connect_remove(clone!(
             #[weak(rename_to = this)]
             self,
@@ -276,39 +305,36 @@ impl WorkEditor {
     }
 
     fn add_instrument_row(&self, instrument: Instrument) {
-        let row = adw::ActionRow::builder()
-            .title(instrument.to_string())
-            .build();
+        let row = InstrumentRow::new(instrument);
 
-        let remove_button = gtk::Button::builder()
-            .icon_name("user-trash-symbolic")
-            .valign(gtk::Align::Center)
-            .css_classes(["flat"])
-            .build();
-
-        remove_button.connect_clicked(clone!(
+        row.connect_move(clone!(
             #[weak(rename_to = this)]
             self,
-            #[weak]
-            row,
-            #[strong]
-            instrument,
-            move |_| {
-                this.imp().instrument_list.remove(&row);
-                this.imp()
-                    .instruments
-                    .borrow_mut()
-                    .retain(|i| *i != instrument);
+            move |target, source| {
+                let mut instrument_rows = this.imp().instrument_rows.borrow_mut();
+                if let Some(index) = instrument_rows.iter().position(|p| p == target) {
+                    this.imp().instrument_list.remove(&source);
+                    instrument_rows.retain(|p| p != &source);
+                    this.imp().instrument_list.insert(&source, index as i32);
+                    instrument_rows.insert(index, source);
+                }
             }
         ));
 
-        row.add_suffix(&remove_button);
+        row.connect_remove(clone!(
+            #[weak(rename_to = this)]
+            self,
+            move |row| {
+                this.imp().instrument_list.remove(row);
+                this.imp().instrument_rows.borrow_mut().retain(|p| p != row);
+            }
+        ));
 
         self.imp()
             .instrument_list
-            .insert(&row, self.imp().instruments.borrow().len() as i32);
+            .insert(&row, self.imp().instrument_rows.borrow().len() as i32);
 
-        self.imp().instruments.borrow_mut().push(instrument);
+        self.imp().instrument_rows.borrow_mut().push(row);
     }
 
     #[template_callback]
@@ -332,7 +358,14 @@ impl WorkEditor {
             .iter()
             .map(|c| c.composer())
             .collect::<Vec<Composer>>();
-        let instruments = self.imp().instruments.borrow().clone();
+
+        let instruments = self
+            .imp()
+            .instrument_rows
+            .borrow()
+            .iter()
+            .map(|r| r.instrument())
+            .collect::<Vec<Instrument>>();
 
         if self.imp().is_part_editor.get() {
             let work_id = self

@@ -266,6 +266,20 @@ impl RecordingEditor {
     fn add_performer_row(&self, performer: Performer) {
         let row = RecordingEditorPerformerRow::new(&self.navigation(), &self.library(), performer);
 
+        row.connect_move(clone!(
+            #[weak(rename_to = this)]
+            self,
+            move |target, source| {
+                let mut performer_rows = this.imp().performer_rows.borrow_mut();
+                if let Some(index) = performer_rows.iter().position(|p| p == target) {
+                    this.imp().performer_list.remove(&source);
+                    performer_rows.retain(|p| p != &source);
+                    this.imp().performer_list.insert(&source, index as i32);
+                    performer_rows.insert(index, source);
+                }
+            }
+        ));
+
         row.connect_remove(clone!(
             #[weak(rename_to = this)]
             self,
@@ -297,6 +311,20 @@ impl RecordingEditor {
             &self.library(),
             ensemble_performer,
         );
+
+        row.connect_move(clone!(
+            #[weak(rename_to = this)]
+            self,
+            move |target, source| {
+                let mut ensemble_rows = this.imp().ensemble_rows.borrow_mut();
+                if let Some(index) = ensemble_rows.iter().position(|p| p == target) {
+                    this.imp().ensemble_list.remove(&source);
+                    ensemble_rows.retain(|p| p != &source);
+                    this.imp().ensemble_list.insert(&source, index as i32);
+                    ensemble_rows.insert(index, source);
+                }
+            }
+        ));
 
         row.connect_remove(clone!(
             #[weak(rename_to = this)]

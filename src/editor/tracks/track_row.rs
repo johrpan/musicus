@@ -6,13 +6,17 @@ use std::{
 use adw::{prelude::*, subclass::prelude::*};
 use formatx::formatx;
 use gettextrs::gettext;
-use gtk::glib::{self, clone, subclass::Signal, Properties};
+use gtk::{
+    gdk,
+    glib::{self, clone, subclass::Signal, Properties},
+};
 use once_cell::sync::Lazy;
 
 use super::parts_popover::TracksEditorPartsPopover;
 use crate::{
     db::models::{Recording, Track, Work},
     library::Library,
+    util::drag_widget::DragWidget,
 };
 
 mod imp {
@@ -34,6 +38,8 @@ mod imp {
 
         #[template_child]
         pub select_parts_box: TemplateChild<gtk::Box>,
+        #[template_child]
+        pub edit_image: TemplateChild<gtk::Image>,
         #[template_child]
         pub reset_button: TemplateChild<gtk::Button>,
     }
@@ -57,10 +63,58 @@ mod imp {
     #[glib::derived_properties]
     impl ObjectImpl for TracksEditorTrackRow {
         fn signals() -> &'static [Signal] {
-            static SIGNALS: Lazy<Vec<Signal>> =
-                Lazy::new(|| vec![Signal::builder("remove").build()]);
+            static SIGNALS: Lazy<Vec<Signal>> = Lazy::new(|| {
+                vec![
+                    Signal::builder("remove").build(),
+                    Signal::builder("move")
+                        .param_types([super::TracksEditorTrackRow::static_type()])
+                        .build(),
+                ]
+            });
 
             SIGNALS.as_ref()
+        }
+
+        fn constructed(&self) {
+            self.parent_constructed();
+
+            let drag_source = gtk::DragSource::builder()
+                .actions(gdk::DragAction::MOVE)
+                .content(&gdk::ContentProvider::for_value(&self.obj().to_value()))
+                .build();
+
+            drag_source.connect_drag_begin(clone!(
+                #[weak(rename_to = obj)]
+                self.obj(),
+                move |_, drag| {
+                    let icon = gtk::DragIcon::for_drag(drag);
+                    icon.set_child(Some(&DragWidget::new(&obj)));
+                }
+            ));
+
+            self.obj().add_controller(drag_source);
+
+            let drop_target = gtk::DropTarget::builder()
+                .actions(gdk::DragAction::MOVE)
+                .build();
+            drop_target.set_types(&[Self::Type::static_type()]);
+
+            drop_target.connect_drop(clone!(
+                #[weak(rename_to = obj)]
+                self.obj(),
+                #[upgrade_or]
+                false,
+                move |_, value, _, _| {
+                    if let Ok(row) = value.get::<Self::Type>() {
+                        obj.emit_by_name::<()>("move", &[&row]);
+                        true
+                    } else {
+                        false
+                    }
+                }
+            ));
+
+            self.obj().add_controller(drop_target);
         }
     }
 
@@ -89,6 +143,9 @@ impl TracksEditorTrackRow {
             .build();
 
         obj.set_activatable(!recording.work.parts.is_empty());
+        obj.imp()
+            .edit_image
+            .set_visible(!recording.work.parts.is_empty());
 
         obj.set_subtitle(&match &track_data.location {
             TrackLocation::Undefined => String::new(),
@@ -125,6 +182,15 @@ impl TracksEditorTrackRow {
         obj.parts_updated();
 
         obj
+    }
+
+    pub fn connect_move<F: Fn(&Self, Self) + 'static>(&self, f: F) -> glib::SignalHandlerId {
+        self.connect_local("move", true, move |values| {
+            let obj = values[0].get::<Self>().unwrap();
+            let source = values[1].get::<Self>().unwrap();
+            f(&obj, source);
+            None
+        })
     }
 
     pub fn connect_remove<F: Fn(&Self) + 'static>(&self, f: F) -> glib::SignalHandlerId {

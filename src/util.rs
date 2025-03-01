@@ -1,3 +1,6 @@
+pub mod activatable_row;
+pub mod drag_widget;
+
 use gtk::glib;
 use lazy_static::lazy_static;
 

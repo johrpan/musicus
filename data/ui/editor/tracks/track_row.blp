@@ -9,8 +9,16 @@ template $MusicusTracksEditorTrackRow: Adw.ActionRow {
   [prefix]
   Gtk.Box select_parts_box {
     Gtk.Image {
-      icon-name: "document-edit-symbolic";
+      icon-name: "list-drag-handle-symbolic";
+
+      styles [
+        "drag-handle",
+      ]
     }
+  }
+
+  Gtk.Image edit_image {
+    icon-name: "document-edit-symbolic";
   }
 
   Gtk.Button reset_button {
@@ -21,7 +29,7 @@ template $MusicusTracksEditorTrackRow: Adw.ActionRow {
     clicked => $reset() swapped;
 
     styles [
-      "flat"
+      "flat",
     ]
   }
 
@@ -32,7 +40,7 @@ template $MusicusTracksEditorTrackRow: Adw.ActionRow {
     clicked => $remove() swapped;
 
     styles [
-      "flat"
+      "flat",
     ]
   }
 }

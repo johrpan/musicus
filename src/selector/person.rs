@@ -8,7 +8,7 @@ use gtk::{
 };
 use once_cell::sync::Lazy;
 
-use crate::{activatable_row::ActivatableRow, db::models::Person, library::Library};
+use crate::{db::models::Person, library::Library, util::activatable_row::ActivatableRow};
 
 mod imp {
     use super::*;

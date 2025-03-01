@@ -2,6 +2,15 @@ using Gtk 4.0;
 using Adw 1;
 
 template $MusicusRecordingEditorEnsembleRow: Adw.ActionRow {
+  [prefix]
+  Gtk.Image {
+    icon-name: "list-drag-handle-symbolic";
+
+    styles [
+      "drag-handle",
+    ]
+  }
+  
   Gtk.Button {
     icon-name: "user-trash-symbolic";
     valign: center;

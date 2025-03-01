@@ -1,4 +1,3 @@
-mod activatable_row;
 mod album_tile;
 mod application;
 mod config;

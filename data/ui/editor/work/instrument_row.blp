@@ -1,10 +1,7 @@
 using Gtk 4.0;
 using Adw 1;
 
-template $MusicusWorkEditorPartRow: Adw.ActionRow {
-  activatable: true;
-  activated => $edit() swapped;
-
+template $MusicusWorkEditorInstrumentRow: Adw.ActionRow {
   [prefix]
   Gtk.Image {
     icon-name: "list-drag-handle-symbolic";
@@ -12,10 +9,6 @@ template $MusicusWorkEditorPartRow: Adw.ActionRow {
     styles [
       "drag-handle",
     ]
-  }
-
-  Gtk.Image {
-    icon-name: "document-edit-symbolic";
   }
 
   Gtk.Button {

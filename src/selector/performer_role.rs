@@ -10,9 +10,9 @@ use gtk::{
 use once_cell::sync::Lazy;
 
 use crate::{
-    activatable_row::ActivatableRow,
     db::models::{Instrument, Role},
     library::Library,
+    util::activatable_row::ActivatableRow,
 };
 
 mod imp {

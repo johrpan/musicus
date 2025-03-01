@@ -268,6 +268,20 @@ impl TracksEditor {
         let track_row =
             TracksEditorTrackRow::new(&self.navigation(), &self.library(), recording, track_data);
 
+        track_row.connect_move(clone!(
+            #[weak(rename_to = this)]
+            self,
+            move |target, source| {
+                let mut track_rows = this.imp().track_rows.borrow_mut();
+                if let Some(index) = track_rows.iter().position(|p| p == target) {
+                    this.imp().track_list.remove(&source);
+                    track_rows.retain(|p| p != &source);
+                    this.imp().track_list.insert(&source, index as i32);
+                    track_rows.insert(index, source);
+                }
+            }
+        ));
+
         track_row.connect_remove(clone!(
             #[weak(rename_to = this)]
             self,

@@ -1,36 +1,27 @@
-use std::cell::{OnceCell, RefCell};
+use std::cell::OnceCell;
 
 use adw::{prelude::*, subclass::prelude::*};
 use gtk::{
     gdk,
-    glib::{self, clone, subclass::Signal, Properties},
+    glib::{self, clone, subclass::Signal},
 };
 use once_cell::sync::Lazy;
 
-use crate::{
-    db::models::Work, editor::work::WorkEditor, library::Library, util::drag_widget::DragWidget,
-};
+use crate::{db::models::Instrument, util::drag_widget::DragWidget};
 
 mod imp {
     use super::*;
 
-    #[derive(Properties, Debug, Default, gtk::CompositeTemplate)]
-    #[properties(wrapper_type = super::WorkEditorPartRow)]
-    #[template(file = "data/ui/editor/work/part_row.blp")]
-    pub struct WorkEditorPartRow {
-        #[property(get, construct_only)]
-        pub navigation: OnceCell<adw::NavigationView>,
-
-        #[property(get, construct_only)]
-        pub library: OnceCell<Library>,
-
-        pub part: RefCell<Option<Work>>,
+    #[derive(Debug, Default, gtk::CompositeTemplate)]
+    #[template(file = "data/ui/editor/work/instrument_row.blp")]
+    pub struct InstrumentRow {
+        pub instrument: OnceCell<Instrument>,
     }
 
     #[glib::object_subclass]
-    impl ObjectSubclass for WorkEditorPartRow {
-        const NAME: &'static str = "MusicusWorkEditorPartRow";
-        type Type = super::WorkEditorPartRow;
+    impl ObjectSubclass for InstrumentRow {
+        const NAME: &'static str = "MusicusWorkEditorInstrumentRow";
+        type Type = super::InstrumentRow;
         type ParentType = adw::ActionRow;
 
         fn class_init(klass: &mut Self::Class) {
@@ -43,14 +34,13 @@ mod imp {
         }
     }
 
-    #[glib::derived_properties]
-    impl ObjectImpl for WorkEditorPartRow {
+    impl ObjectImpl for InstrumentRow {
         fn signals() -> &'static [Signal] {
             static SIGNALS: Lazy<Vec<Signal>> = Lazy::new(|| {
                 vec![
                     Signal::builder("remove").build(),
                     Signal::builder("move")
-                        .param_types([super::WorkEditorPartRow::static_type()])
+                        .param_types([super::InstrumentRow::static_type()])
                         .build(),
                 ]
             });
@@ -101,25 +91,23 @@ mod imp {
         }
     }
 
-    impl WidgetImpl for WorkEditorPartRow {}
-    impl ListBoxRowImpl for WorkEditorPartRow {}
-    impl PreferencesRowImpl for WorkEditorPartRow {}
-    impl ActionRowImpl for WorkEditorPartRow {}
+    impl WidgetImpl for InstrumentRow {}
+    impl ListBoxRowImpl for InstrumentRow {}
+    impl PreferencesRowImpl for InstrumentRow {}
+    impl ActionRowImpl for InstrumentRow {}
 }
 
 glib::wrapper! {
-    pub struct WorkEditorPartRow(ObjectSubclass<imp::WorkEditorPartRow>)
+    pub struct InstrumentRow(ObjectSubclass<imp::InstrumentRow>)
         @extends gtk::Widget, gtk::ListBoxRow, adw::PreferencesRow, adw::ActionRow;
 }
 
 #[gtk::template_callbacks]
-impl WorkEditorPartRow {
-    pub fn new(navigation: &adw::NavigationView, library: &Library, part: Work) -> Self {
-        let obj: Self = glib::Object::builder()
-            .property("navigation", navigation)
-            .property("library", library)
-            .build();
-        obj.set_part(part);
+impl InstrumentRow {
+    pub fn new(instrument: Instrument) -> Self {
+        let obj: Self = glib::Object::new();
+        obj.set_title(&instrument.to_string());
+        obj.imp().instrument.set(instrument).unwrap();
         obj
     }
 
@@ -140,47 +128,8 @@ impl WorkEditorPartRow {
         })
     }
 
-    pub fn part(&self) -> Work {
-        self.imp().part.borrow().to_owned().unwrap()
-    }
-
-    fn set_part(&self, part: Work) {
-        self.set_title(&part.name.get());
-
-        if !part.parts.is_empty() {
-            self.set_subtitle(
-                &part
-                    .parts
-                    .iter()
-                    .map(|p| p.name.get())
-                    .collect::<Vec<&str>>()
-                    .join("\n"),
-            );
-        } else {
-            self.set_subtitle("");
-        }
-
-        self.imp().part.replace(Some(part));
-    }
-
-    #[template_callback]
-    fn edit(&self) {
-        let editor = WorkEditor::new(
-            &self.navigation(),
-            &self.library(),
-            self.imp().part.borrow().as_ref(),
-            true,
-        );
-
-        editor.connect_created(clone!(
-            #[weak(rename_to = this)]
-            self,
-            move |_, part| {
-                this.set_part(part);
-            }
-        ));
-
-        self.navigation().push(&editor);
+    pub fn instrument(&self) -> Instrument {
+        self.imp().instrument.get().unwrap().clone()
     }
 
     #[template_callback]
