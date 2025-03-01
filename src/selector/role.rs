@@ -1,4 +1,4 @@
-use crate::{db::models::Person, library::MusicusLibrary};
+use std::cell::{OnceCell, RefCell};
 
 use gettextrs::gettext;
 use gtk::{
@@ -8,21 +8,19 @@ use gtk::{
 };
 use once_cell::sync::Lazy;
 
-use std::cell::{OnceCell, RefCell};
-
-use super::activatable_row::MusicusActivatableRow;
+use crate::{activatable_row::ActivatableRow, db::models::Role, library::Library};
 
 mod imp {
     use super::*;
 
     #[derive(Debug, Default, gtk::CompositeTemplate, Properties)]
-    #[properties(wrapper_type = super::MusicusPersonSelectorPopover)]
-    #[template(file = "data/ui/person_selector_popover.blp")]
-    pub struct MusicusPersonSelectorPopover {
+    #[properties(wrapper_type = super::RoleSelectorPopover)]
+    #[template(file = "data/ui/selector/role.blp")]
+    pub struct RoleSelectorPopover {
         #[property(get, construct_only)]
-        pub library: OnceCell<MusicusLibrary>,
+        pub library: OnceCell<Library>,
 
-        pub persons: RefCell<Vec<Person>>,
+        pub roles: RefCell<Vec<Role>>,
 
         #[template_child]
         pub search_entry: TemplateChild<gtk::SearchEntry>,
@@ -33,9 +31,9 @@ mod imp {
     }
 
     #[glib::object_subclass]
-    impl ObjectSubclass for MusicusPersonSelectorPopover {
-        const NAME: &'static str = "MusicusPersonSelectorPopover";
-        type Type = super::MusicusPersonSelectorPopover;
+    impl ObjectSubclass for RoleSelectorPopover {
+        const NAME: &'static str = "MusicusRoleSelectorPopover";
+        type Type = super::RoleSelectorPopover;
         type ParentType = gtk::Popover;
 
         fn class_init(klass: &mut Self::Class) {
@@ -49,18 +47,17 @@ mod imp {
     }
 
     #[glib::derived_properties]
-    impl ObjectImpl for MusicusPersonSelectorPopover {
+    impl ObjectImpl for RoleSelectorPopover {
         fn constructed(&self) {
             self.parent_constructed();
 
-            self.obj()
-                .connect_visible_notify(|obj: &super::MusicusPersonSelectorPopover| {
-                    if obj.is_visible() {
-                        obj.imp().search_entry.set_text("");
-                        obj.imp().search_entry.grab_focus();
-                        obj.imp().scrolled_window.vadjustment().set_value(0.0);
-                    }
-                });
+            self.obj().connect_visible_notify(|obj| {
+                if obj.is_visible() {
+                    obj.imp().search_entry.set_text("");
+                    obj.imp().search_entry.grab_focus();
+                    obj.imp().scrolled_window.vadjustment().set_value(0.0);
+                }
+            });
 
             self.obj().search("");
         }
@@ -68,8 +65,8 @@ mod imp {
         fn signals() -> &'static [Signal] {
             static SIGNALS: Lazy<Vec<Signal>> = Lazy::new(|| {
                 vec![
-                    Signal::builder("person-selected")
-                        .param_types([Person::static_type()])
+                    Signal::builder("role-selected")
+                        .param_types([Role::static_type()])
                         .build(),
                     Signal::builder("create").build(),
                 ]
@@ -79,7 +76,7 @@ mod imp {
         }
     }
 
-    impl WidgetImpl for MusicusPersonSelectorPopover {
+    impl WidgetImpl for RoleSelectorPopover {
         // TODO: Fix focus.
         fn focus(&self, direction_type: gtk::DirectionType) -> bool {
             if direction_type == gtk::DirectionType::Down {
@@ -90,28 +87,28 @@ mod imp {
         }
     }
 
-    impl PopoverImpl for MusicusPersonSelectorPopover {}
+    impl PopoverImpl for RoleSelectorPopover {}
 }
 
 glib::wrapper! {
-    pub struct MusicusPersonSelectorPopover(ObjectSubclass<imp::MusicusPersonSelectorPopover>)
+    pub struct RoleSelectorPopover(ObjectSubclass<imp::RoleSelectorPopover>)
         @extends gtk::Widget, gtk::Popover;
 }
 
 #[gtk::template_callbacks]
-impl MusicusPersonSelectorPopover {
-    pub fn new(library: &MusicusLibrary) -> Self {
+impl RoleSelectorPopover {
+    pub fn new(library: &Library) -> Self {
         glib::Object::builder().property("library", library).build()
     }
 
-    pub fn connect_person_selected<F: Fn(&Self, Person) + 'static>(
+    pub fn connect_role_selected<F: Fn(&Self, Role) + 'static>(
         &self,
         f: F,
     ) -> glib::SignalHandlerId {
-        self.connect_local("person-selected", true, move |values| {
+        self.connect_local("role-selected", true, move |values| {
             let obj = values[0].get::<Self>().unwrap();
-            let person = values[1].get::<Person>().unwrap();
-            f(&obj, person);
+            let role = values[1].get::<Role>().unwrap();
+            f(&obj, role);
             None
         })
     }
@@ -131,8 +128,8 @@ impl MusicusPersonSelectorPopover {
 
     #[template_callback]
     fn activate(&self, _: &gtk::SearchEntry) {
-        if let Some(person) = self.imp().persons.borrow().first() {
-            self.select(person.clone());
+        if let Some(role) = self.imp().roles.borrow().first() {
+            self.select(role.clone());
         } else {
             self.create();
         }
@@ -146,24 +143,24 @@ impl MusicusPersonSelectorPopover {
     fn search(&self, search: &str) {
         let imp = self.imp();
 
-        let persons = imp.library.get().unwrap().search_persons(search).unwrap();
+        let roles = imp.library.get().unwrap().search_roles(search).unwrap();
 
         imp.list_box.remove_all();
 
-        for person in &persons {
-            let row = MusicusActivatableRow::new(
+        for role in &roles {
+            let row = ActivatableRow::new(
                 &gtk::Label::builder()
-                    .label(person.to_string())
+                    .label(role.to_string())
                     .halign(gtk::Align::Start)
                     .build(),
             );
 
-            row.set_tooltip_text(Some(&person.to_string()));
+            row.set_tooltip_text(Some(&role.to_string()));
 
-            let person = person.clone();
+            let role = role.clone();
             let obj = self.clone();
-            row.connect_activated(move |_: &MusicusActivatableRow| {
-                obj.select(person.clone());
+            row.connect_activated(move |_: &ActivatableRow| {
+                obj.select(role.clone());
             });
 
             imp.list_box.append(&row);
@@ -173,24 +170,24 @@ impl MusicusPersonSelectorPopover {
         create_box.append(&gtk::Image::builder().icon_name("list-add-symbolic").build());
         create_box.append(
             &gtk::Label::builder()
-                .label(gettext("Create new person"))
+                .label(gettext("Create new role"))
                 .halign(gtk::Align::Start)
                 .build(),
         );
 
-        let create_row = MusicusActivatableRow::new(&create_box);
+        let create_row = ActivatableRow::new(&create_box);
         let obj = self.clone();
-        create_row.connect_activated(move |_: &MusicusActivatableRow| {
+        create_row.connect_activated(move |_: &ActivatableRow| {
             obj.create();
         });
 
         imp.list_box.append(&create_row);
 
-        imp.persons.replace(persons);
+        imp.roles.replace(roles);
     }
 
-    fn select(&self, person: Person) {
-        self.emit_by_name::<()>("person-selected", &[&person]);
+    fn select(&self, role: Role) {
+        self.emit_by_name::<()>("role-selected", &[&role]);
         self.popdown();
     }
 

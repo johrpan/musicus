@@ -1,34 +1,28 @@
-use crate::{
-    db::models::{Album, Recording},
-    editor::{
-        recording_editor::MusicusRecordingEditor,
-        recording_selector_popover::RecordingSelectorPopover,
-        translation_editor::MusicusTranslationEditor,
-    },
-    library::MusicusLibrary,
-};
+use std::cell::{OnceCell, RefCell};
 
 use adw::{prelude::*, subclass::prelude::*};
 use gettextrs::gettext;
-use gtk::glib::{
-    clone, Properties,
-    {self, subclass::Signal},
-};
+use gtk::glib::{self, clone, subclass::Signal, Properties};
 use once_cell::sync::Lazy;
 
-use std::cell::{OnceCell, RefCell};
+use crate::{
+    db::models::{Album, Recording},
+    editor::{recording::RecordingEditor, translation::TranslationEditor},
+    library::Library,
+    selector::recording::RecordingSelectorPopover,
+};
 
 mod imp {
     use super::*;
 
     #[derive(Debug, Default, gtk::CompositeTemplate, Properties)]
     #[properties(wrapper_type = super::AlbumEditor)]
-    #[template(file = "data/ui/album_editor.blp")]
+    #[template(file = "data/ui/editor/album.blp")]
     pub struct AlbumEditor {
         #[property(get, construct_only)]
         pub navigation: OnceCell<adw::NavigationView>,
         #[property(get, construct_only)]
-        pub library: OnceCell<MusicusLibrary>,
+        pub library: OnceCell<Library>,
 
         pub album_id: OnceCell<String>,
         pub recordings: RefCell<Vec<Recording>>,
@@ -36,7 +30,7 @@ mod imp {
         pub recordings_popover: OnceCell<RecordingSelectorPopover>,
 
         #[template_child]
-        pub name_editor: TemplateChild<MusicusTranslationEditor>,
+        pub name_editor: TemplateChild<TranslationEditor>,
         #[template_child]
         pub recordings_list: TemplateChild<gtk::ListBox>,
         #[template_child]
@@ -52,7 +46,7 @@ mod imp {
         type ParentType = adw::NavigationPage;
 
         fn class_init(klass: &mut Self::Class) {
-            MusicusTranslationEditor::static_type();
+            TranslationEditor::static_type();
             klass.bind_template();
             klass.bind_template_instance_callbacks();
         }
@@ -86,7 +80,7 @@ mod imp {
 
             let obj = self.obj().clone();
             recordings_popover.connect_create(move |_| {
-                let editor = MusicusRecordingEditor::new(&obj.navigation(), &obj.library(), None);
+                let editor = RecordingEditor::new(&obj.navigation(), &obj.library(), None);
 
                 editor.connect_created(clone!(
                     #[weak]
@@ -115,11 +109,7 @@ glib::wrapper! {
 
 #[gtk::template_callbacks]
 impl AlbumEditor {
-    pub fn new(
-        navigation: &adw::NavigationView,
-        library: &MusicusLibrary,
-        album: Option<&Album>,
-    ) -> Self {
+    pub fn new(navigation: &adw::NavigationView, library: &Library, album: Option<&Album>) -> Self {
         let obj: Self = glib::Object::builder()
             .property("navigation", navigation)
             .property("library", library)

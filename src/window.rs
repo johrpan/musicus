@@ -1,22 +1,22 @@
-use crate::{
-    config, editor::tracks_editor::TracksEditor, home_page::MusicusHomePage,
-    library::MusicusLibrary, library_manager::LibraryManager, player::MusicusPlayer,
-    player_bar::PlayerBar, playlist_page::MusicusPlaylistPage, welcome_page::MusicusWelcomePage,
-};
+use std::{cell::RefCell, path::Path};
 
 use adw::subclass::prelude::*;
 use gtk::{gio, glib, glib::clone, prelude::*};
 
-use std::{cell::RefCell, path::Path};
+use crate::{
+    config, editor::tracks::TracksEditor, home_page::HomePage, library::Library,
+    library_manager::LibraryManager, player::Player, player_bar::PlayerBar,
+    playlist_page::PlaylistPage, welcome_page::WelcomePage,
+};
 
 mod imp {
     use super::*;
 
     #[derive(Debug, Default, gtk::CompositeTemplate)]
     #[template(file = "data/ui/window.blp")]
-    pub struct MusicusWindow {
-        pub library: RefCell<Option<MusicusLibrary>>,
-        pub player: MusicusPlayer,
+    pub struct Window {
+        pub library: RefCell<Option<Library>>,
+        pub player: Player,
 
         #[template_child]
         pub stack: TemplateChild<gtk::Stack>,
@@ -27,13 +27,13 @@ mod imp {
     }
 
     #[glib::object_subclass]
-    impl ObjectSubclass for MusicusWindow {
+    impl ObjectSubclass for Window {
         const NAME: &'static str = "MusicusWindow";
-        type Type = super::MusicusWindow;
+        type Type = super::Window;
         type ParentType = adw::ApplicationWindow;
 
         fn class_init(klass: &mut Self::Class) {
-            MusicusWelcomePage::static_type();
+            WelcomePage::static_type();
             klass.bind_template();
             klass.bind_template_instance_callbacks();
         }
@@ -43,7 +43,7 @@ mod imp {
         }
     }
 
-    impl ObjectImpl for MusicusWindow {
+    impl ObjectImpl for Window {
         fn constructed(&self) {
             self.parent_constructed();
             self.obj().load_window_state();
@@ -79,7 +79,7 @@ mod imp {
             let player_bar = PlayerBar::new(&self.player);
             self.player_bar_revealer.set_child(Some(&player_bar));
 
-            let playlist_page = MusicusPlaylistPage::new(&self.player);
+            let playlist_page = PlaylistPage::new(&self.player);
             self.stack.add_named(&playlist_page, Some("playlist"));
 
             let stack = self.stack.get();
@@ -125,9 +125,9 @@ mod imp {
         }
     }
 
-    impl WidgetImpl for MusicusWindow {}
+    impl WidgetImpl for Window {}
 
-    impl WindowImpl for MusicusWindow {
+    impl WindowImpl for Window {
         fn close_request(&self) -> glib::signal::Propagation {
             if let Err(err) = self.obj().save_window_state() {
                 log::warn!("Failed to save window state: {err}");
@@ -137,18 +137,18 @@ mod imp {
         }
     }
 
-    impl ApplicationWindowImpl for MusicusWindow {}
-    impl AdwApplicationWindowImpl for MusicusWindow {}
+    impl ApplicationWindowImpl for Window {}
+    impl AdwApplicationWindowImpl for Window {}
 }
 
 glib::wrapper! {
-    pub struct MusicusWindow(ObjectSubclass<imp::MusicusWindow>)
+    pub struct Window(ObjectSubclass<imp::Window>)
         @extends gtk::Widget, gtk::Window, gtk::ApplicationWindow, adw::ApplicationWindow,
         @implements gio::ActionGroup, gio::ActionMap;
 }
 
 #[gtk::template_callbacks]
-impl MusicusWindow {
+impl Window {
     pub fn new<P: IsA<gtk::Application>>(application: &P) -> Self {
         glib::Object::builder()
             .property("application", application)
@@ -185,12 +185,11 @@ impl MusicusWindow {
     }
 
     fn load_library(&self, path: impl AsRef<Path>) {
-        let library = MusicusLibrary::new(path);
+        let library = Library::new(path);
         self.imp().player.set_library(&library);
 
         let navigation = self.imp().navigation_view.get();
-        navigation
-            .replace(&[MusicusHomePage::new(&navigation, &library, &self.imp().player).into()]);
+        navigation.replace(&[HomePage::new(&navigation, &library, &self.imp().player).into()]);
 
         self.imp().library.replace(Some(library));
     }

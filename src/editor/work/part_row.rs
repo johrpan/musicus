@@ -1,32 +1,32 @@
-use crate::{db::models::Work, editor::work_editor::MusicusWorkEditor, library::MusicusLibrary};
+use std::cell::{OnceCell, RefCell};
 
 use adw::{prelude::*, subclass::prelude::*};
 use gtk::glib::{self, clone, subclass::Signal, Properties};
 use once_cell::sync::Lazy;
 
-use std::cell::{OnceCell, RefCell};
+use crate::{db::models::Work, editor::work::WorkEditor, library::Library};
 
 mod imp {
 
     use super::*;
 
     #[derive(Properties, Debug, Default, gtk::CompositeTemplate)]
-    #[properties(wrapper_type = super::MusicusWorkEditorPartRow)]
-    #[template(file = "data/ui/work_editor_part_row.blp")]
-    pub struct MusicusWorkEditorPartRow {
+    #[properties(wrapper_type = super::WorkEditorPartRow)]
+    #[template(file = "data/ui/editor/work/part_row.blp")]
+    pub struct WorkEditorPartRow {
         #[property(get, construct_only)]
         pub navigation: OnceCell<adw::NavigationView>,
 
         #[property(get, construct_only)]
-        pub library: OnceCell<MusicusLibrary>,
+        pub library: OnceCell<Library>,
 
         pub part: RefCell<Option<Work>>,
     }
 
     #[glib::object_subclass]
-    impl ObjectSubclass for MusicusWorkEditorPartRow {
+    impl ObjectSubclass for WorkEditorPartRow {
         const NAME: &'static str = "MusicusWorkEditorPartRow";
-        type Type = super::MusicusWorkEditorPartRow;
+        type Type = super::WorkEditorPartRow;
         type ParentType = adw::ActionRow;
 
         fn class_init(klass: &mut Self::Class) {
@@ -40,7 +40,7 @@ mod imp {
     }
 
     #[glib::derived_properties]
-    impl ObjectImpl for MusicusWorkEditorPartRow {
+    impl ObjectImpl for WorkEditorPartRow {
         fn signals() -> &'static [Signal] {
             static SIGNALS: Lazy<Vec<Signal>> =
                 Lazy::new(|| vec![Signal::builder("remove").build()]);
@@ -49,20 +49,20 @@ mod imp {
         }
     }
 
-    impl WidgetImpl for MusicusWorkEditorPartRow {}
-    impl ListBoxRowImpl for MusicusWorkEditorPartRow {}
-    impl PreferencesRowImpl for MusicusWorkEditorPartRow {}
-    impl ActionRowImpl for MusicusWorkEditorPartRow {}
+    impl WidgetImpl for WorkEditorPartRow {}
+    impl ListBoxRowImpl for WorkEditorPartRow {}
+    impl PreferencesRowImpl for WorkEditorPartRow {}
+    impl ActionRowImpl for WorkEditorPartRow {}
 }
 
 glib::wrapper! {
-    pub struct MusicusWorkEditorPartRow(ObjectSubclass<imp::MusicusWorkEditorPartRow>)
+    pub struct WorkEditorPartRow(ObjectSubclass<imp::WorkEditorPartRow>)
         @extends gtk::Widget, gtk::ListBoxRow, adw::PreferencesRow, adw::ActionRow;
 }
 
 #[gtk::template_callbacks]
-impl MusicusWorkEditorPartRow {
-    pub fn new(navigation: &adw::NavigationView, library: &MusicusLibrary, part: Work) -> Self {
+impl WorkEditorPartRow {
+    pub fn new(navigation: &adw::NavigationView, library: &Library, part: Work) -> Self {
         let obj: Self = glib::Object::builder()
             .property("navigation", navigation)
             .property("library", library)
@@ -104,7 +104,7 @@ impl MusicusWorkEditorPartRow {
 
     #[template_callback]
     fn edit(&self) {
-        let editor = MusicusWorkEditor::new(
+        let editor = WorkEditor::new(
             &self.navigation(),
             &self.library(),
             self.imp().part.borrow().as_ref(),

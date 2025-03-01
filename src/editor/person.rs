@@ -5,36 +5,33 @@ use gettextrs::gettext;
 use gtk::glib::{self, subclass::Signal};
 use once_cell::sync::Lazy;
 
-use crate::{
-    db::models::Ensemble, editor::translation_editor::MusicusTranslationEditor,
-    library::MusicusLibrary,
-};
+use crate::{db::models::Person, editor::translation::TranslationEditor, library::Library};
 
 mod imp {
 
     use super::*;
 
     #[derive(Debug, Default, gtk::CompositeTemplate)]
-    #[template(file = "data/ui/ensemble_editor.blp")]
-    pub struct MusicusEnsembleEditor {
+    #[template(file = "data/ui/editor/person.blp")]
+    pub struct PersonEditor {
         pub navigation: OnceCell<adw::NavigationView>,
-        pub library: OnceCell<MusicusLibrary>,
-        pub ensemble_id: OnceCell<String>,
+        pub library: OnceCell<Library>,
+        pub person_id: OnceCell<String>,
 
         #[template_child]
-        pub name_editor: TemplateChild<MusicusTranslationEditor>,
+        pub name_editor: TemplateChild<TranslationEditor>,
         #[template_child]
         pub save_row: TemplateChild<adw::ButtonRow>,
     }
 
     #[glib::object_subclass]
-    impl ObjectSubclass for MusicusEnsembleEditor {
-        const NAME: &'static str = "MusicusEnsembleEditor";
-        type Type = super::MusicusEnsembleEditor;
+    impl ObjectSubclass for PersonEditor {
+        const NAME: &'static str = "MusicusPersonEditor";
+        type Type = super::PersonEditor;
         type ParentType = adw::NavigationPage;
 
         fn class_init(klass: &mut Self::Class) {
-            MusicusTranslationEditor::static_type();
+            TranslationEditor::static_type();
             klass.bind_template();
             klass.bind_template_instance_callbacks();
         }
@@ -44,11 +41,11 @@ mod imp {
         }
     }
 
-    impl ObjectImpl for MusicusEnsembleEditor {
+    impl ObjectImpl for PersonEditor {
         fn signals() -> &'static [Signal] {
             static SIGNALS: Lazy<Vec<Signal>> = Lazy::new(|| {
                 vec![Signal::builder("created")
-                    .param_types([Ensemble::static_type()])
+                    .param_types([Person::static_type()])
                     .build()]
             });
 
@@ -56,44 +53,41 @@ mod imp {
         }
     }
 
-    impl WidgetImpl for MusicusEnsembleEditor {}
-    impl NavigationPageImpl for MusicusEnsembleEditor {}
+    impl WidgetImpl for PersonEditor {}
+    impl NavigationPageImpl for PersonEditor {}
 }
 
 glib::wrapper! {
-    pub struct MusicusEnsembleEditor(ObjectSubclass<imp::MusicusEnsembleEditor>)
+    pub struct PersonEditor(ObjectSubclass<imp::PersonEditor>)
         @extends gtk::Widget, adw::NavigationPage;
 }
 
 #[gtk::template_callbacks]
-impl MusicusEnsembleEditor {
+impl PersonEditor {
     pub fn new(
         navigation: &adw::NavigationView,
-        library: &MusicusLibrary,
-        ensemble: Option<&Ensemble>,
+        library: &Library,
+        person: Option<&Person>,
     ) -> Self {
         let obj: Self = glib::Object::new();
 
         obj.imp().navigation.set(navigation.to_owned()).unwrap();
         obj.imp().library.set(library.to_owned()).unwrap();
 
-        if let Some(ensemble) = ensemble {
+        if let Some(person) = person {
             obj.imp().save_row.set_title(&gettext("_Save changes"));
-            obj.imp()
-                .ensemble_id
-                .set(ensemble.ensemble_id.clone())
-                .unwrap();
-            obj.imp().name_editor.set_translation(&ensemble.name);
+            obj.imp().person_id.set(person.person_id.clone()).unwrap();
+            obj.imp().name_editor.set_translation(&person.name);
         }
 
         obj
     }
 
-    pub fn connect_created<F: Fn(&Self, Ensemble) + 'static>(&self, f: F) -> glib::SignalHandlerId {
+    pub fn connect_created<F: Fn(&Self, Person) + 'static>(&self, f: F) -> glib::SignalHandlerId {
         self.connect_local("created", true, move |values| {
             let obj = values[0].get::<Self>().unwrap();
-            let ensemble = values[1].get::<Ensemble>().unwrap();
-            f(&obj, ensemble);
+            let person = values[1].get::<Person>().unwrap();
+            f(&obj, person);
             None
         })
     }
@@ -103,11 +97,11 @@ impl MusicusEnsembleEditor {
         let library = self.imp().library.get().unwrap();
         let name = self.imp().name_editor.translation();
 
-        if let Some(ensemble_id) = self.imp().ensemble_id.get() {
-            library.update_ensemble(ensemble_id, name).unwrap();
+        if let Some(person_id) = self.imp().person_id.get() {
+            library.update_person(person_id, name).unwrap();
         } else {
-            let ensemble = library.create_ensemble(name).unwrap();
-            self.emit_by_name::<()>("created", &[&ensemble]);
+            let person = library.create_person(name).unwrap();
+            self.emit_by_name::<()>("created", &[&person]);
         }
 
         self.imp().navigation.get().unwrap().pop();

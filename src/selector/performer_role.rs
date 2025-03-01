@@ -1,7 +1,4 @@
-use crate::{
-    db::models::{Instrument, Role},
-    library::MusicusLibrary,
-};
+use std::cell::{OnceCell, RefCell};
 
 use gettextrs::gettext;
 use gtk::{
@@ -12,19 +9,21 @@ use gtk::{
 };
 use once_cell::sync::Lazy;
 
-use std::cell::{OnceCell, RefCell};
-
-use super::activatable_row::MusicusActivatableRow;
+use crate::{
+    activatable_row::ActivatableRow,
+    db::models::{Instrument, Role},
+    library::Library,
+};
 
 mod imp {
     use super::*;
 
     #[derive(Debug, Default, gtk::CompositeTemplate, Properties)]
-    #[properties(wrapper_type = super::MusicusPerformerRoleSelectorPopover)]
-    #[template(file = "data/ui/performer_role_selector_popover.blp")]
-    pub struct MusicusPerformerRoleSelectorPopover {
+    #[properties(wrapper_type = super::PerformerRoleSelectorPopover)]
+    #[template(file = "data/ui/selector/performer_role.blp")]
+    pub struct PerformerRoleSelectorPopover {
         #[property(get, construct_only)]
-        pub library: OnceCell<MusicusLibrary>,
+        pub library: OnceCell<Library>,
 
         pub roles: RefCell<Vec<Role>>,
         pub instruments: RefCell<Vec<Instrument>>,
@@ -50,9 +49,9 @@ mod imp {
     }
 
     #[glib::object_subclass]
-    impl ObjectSubclass for MusicusPerformerRoleSelectorPopover {
+    impl ObjectSubclass for PerformerRoleSelectorPopover {
         const NAME: &'static str = "MusicusPerformerRoleSelectorPopover";
-        type Type = super::MusicusPerformerRoleSelectorPopover;
+        type Type = super::PerformerRoleSelectorPopover;
         type ParentType = gtk::Popover;
 
         fn class_init(klass: &mut Self::Class) {
@@ -66,20 +65,18 @@ mod imp {
     }
 
     #[glib::derived_properties]
-    impl ObjectImpl for MusicusPerformerRoleSelectorPopover {
+    impl ObjectImpl for PerformerRoleSelectorPopover {
         fn constructed(&self) {
             self.parent_constructed();
 
-            self.obj().connect_visible_notify(
-                |obj: &super::MusicusPerformerRoleSelectorPopover| {
-                    if obj.is_visible() {
-                        obj.imp().stack.set_visible_child(&*obj.imp().role_view);
-                        obj.imp().role_search_entry.set_text("");
-                        obj.imp().role_search_entry.grab_focus();
-                        obj.imp().role_scrolled_window.vadjustment().set_value(0.0);
-                    }
-                },
-            );
+            self.obj().connect_visible_notify(|obj| {
+                if obj.is_visible() {
+                    obj.imp().stack.set_visible_child(&*obj.imp().role_view);
+                    obj.imp().role_search_entry.set_text("");
+                    obj.imp().role_search_entry.grab_focus();
+                    obj.imp().role_scrolled_window.vadjustment().set_value(0.0);
+                }
+            });
 
             self.obj().search_roles("");
         }
@@ -99,7 +96,7 @@ mod imp {
         }
     }
 
-    impl WidgetImpl for MusicusPerformerRoleSelectorPopover {
+    impl WidgetImpl for PerformerRoleSelectorPopover {
         // TODO: Fix focus.
         fn focus(&self, direction_type: gtk::DirectionType) -> bool {
             if direction_type == gtk::DirectionType::Down {
@@ -114,17 +111,17 @@ mod imp {
         }
     }
 
-    impl PopoverImpl for MusicusPerformerRoleSelectorPopover {}
+    impl PopoverImpl for PerformerRoleSelectorPopover {}
 }
 
 glib::wrapper! {
-    pub struct MusicusPerformerRoleSelectorPopover(ObjectSubclass<imp::MusicusPerformerRoleSelectorPopover>)
+    pub struct PerformerRoleSelectorPopover(ObjectSubclass<imp::PerformerRoleSelectorPopover>)
         @extends gtk::Widget, gtk::Popover;
 }
 
 #[gtk::template_callbacks]
-impl MusicusPerformerRoleSelectorPopover {
-    pub fn new(library: &MusicusLibrary) -> Self {
+impl PerformerRoleSelectorPopover {
+    pub fn new(library: &Library) -> Self {
         glib::Object::builder().property("library", library).build()
     }
 
@@ -204,7 +201,7 @@ impl MusicusPerformerRoleSelectorPopover {
         imp.role_list.remove_all();
 
         for role in &roles {
-            let row = MusicusActivatableRow::new(
+            let row = ActivatableRow::new(
                 &gtk::Label::builder()
                     .label(role.to_string())
                     .halign(gtk::Align::Start)
@@ -216,7 +213,7 @@ impl MusicusPerformerRoleSelectorPopover {
 
             let role = role.clone();
             let obj = self.clone();
-            row.connect_activated(move |_: &MusicusActivatableRow| {
+            row.connect_activated(move |_: &ActivatableRow| {
                 obj.select_role(role.clone());
             });
 
@@ -232,9 +229,9 @@ impl MusicusPerformerRoleSelectorPopover {
                 .build(),
         );
 
-        let create_row = MusicusActivatableRow::new(&create_box);
+        let create_row = ActivatableRow::new(&create_box);
         let obj = self.clone();
-        create_row.connect_activated(move |_: &MusicusActivatableRow| {
+        create_row.connect_activated(move |_: &ActivatableRow| {
             obj.create_role();
         });
 
@@ -256,7 +253,7 @@ impl MusicusPerformerRoleSelectorPopover {
         imp.instrument_list.remove_all();
 
         for instrument in &instruments {
-            let row = MusicusActivatableRow::new(
+            let row = ActivatableRow::new(
                 &gtk::Label::builder()
                     .label(instrument.to_string())
                     .halign(gtk::Align::Start)
@@ -268,7 +265,7 @@ impl MusicusPerformerRoleSelectorPopover {
 
             let instrument = instrument.clone();
             let obj = self.clone();
-            row.connect_activated(move |_: &MusicusActivatableRow| {
+            row.connect_activated(move |_: &ActivatableRow| {
                 obj.select_instrument(instrument.clone());
             });
 
@@ -284,9 +281,9 @@ impl MusicusPerformerRoleSelectorPopover {
                 .build(),
         );
 
-        let create_row = MusicusActivatableRow::new(&create_box);
+        let create_row = ActivatableRow::new(&create_box);
         let obj = self.clone();
-        create_row.connect_activated(move |_: &MusicusActivatableRow| {
+        create_row.connect_activated(move |_: &ActivatableRow| {
             obj.create_instrument();
         });
 

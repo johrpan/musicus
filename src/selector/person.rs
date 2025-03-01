@@ -1,4 +1,4 @@
-use crate::{db::models::Ensemble, library::MusicusLibrary};
+use std::cell::{OnceCell, RefCell};
 
 use gettextrs::gettext;
 use gtk::{
@@ -8,21 +8,19 @@ use gtk::{
 };
 use once_cell::sync::Lazy;
 
-use std::cell::{OnceCell, RefCell};
-
-use super::activatable_row::MusicusActivatableRow;
+use crate::{activatable_row::ActivatableRow, db::models::Person, library::Library};
 
 mod imp {
     use super::*;
 
     #[derive(Debug, Default, gtk::CompositeTemplate, Properties)]
-    #[properties(wrapper_type = super::MusicusEnsembleSelectorPopover)]
-    #[template(file = "data/ui/ensemble_selector_popover.blp")]
-    pub struct MusicusEnsembleSelectorPopover {
+    #[properties(wrapper_type = super::PersonSelectorPopover)]
+    #[template(file = "data/ui/selector/person.blp")]
+    pub struct PersonSelectorPopover {
         #[property(get, construct_only)]
-        pub library: OnceCell<MusicusLibrary>,
+        pub library: OnceCell<Library>,
 
-        pub ensembles: RefCell<Vec<Ensemble>>,
+        pub persons: RefCell<Vec<Person>>,
 
         #[template_child]
         pub search_entry: TemplateChild<gtk::SearchEntry>,
@@ -33,9 +31,9 @@ mod imp {
     }
 
     #[glib::object_subclass]
-    impl ObjectSubclass for MusicusEnsembleSelectorPopover {
-        const NAME: &'static str = "MusicusEnsembleSelectorPopover";
-        type Type = super::MusicusEnsembleSelectorPopover;
+    impl ObjectSubclass for PersonSelectorPopover {
+        const NAME: &'static str = "MusicusPersonSelectorPopover";
+        type Type = super::PersonSelectorPopover;
         type ParentType = gtk::Popover;
 
         fn class_init(klass: &mut Self::Class) {
@@ -49,18 +47,17 @@ mod imp {
     }
 
     #[glib::derived_properties]
-    impl ObjectImpl for MusicusEnsembleSelectorPopover {
+    impl ObjectImpl for PersonSelectorPopover {
         fn constructed(&self) {
             self.parent_constructed();
 
-            self.obj()
-                .connect_visible_notify(|obj: &super::MusicusEnsembleSelectorPopover| {
-                    if obj.is_visible() {
-                        obj.imp().search_entry.set_text("");
-                        obj.imp().search_entry.grab_focus();
-                        obj.imp().scrolled_window.vadjustment().set_value(0.0);
-                    }
-                });
+            self.obj().connect_visible_notify(|obj| {
+                if obj.is_visible() {
+                    obj.imp().search_entry.set_text("");
+                    obj.imp().search_entry.grab_focus();
+                    obj.imp().scrolled_window.vadjustment().set_value(0.0);
+                }
+            });
 
             self.obj().search("");
         }
@@ -68,8 +65,8 @@ mod imp {
         fn signals() -> &'static [Signal] {
             static SIGNALS: Lazy<Vec<Signal>> = Lazy::new(|| {
                 vec![
-                    Signal::builder("ensemble-selected")
-                        .param_types([Ensemble::static_type()])
+                    Signal::builder("person-selected")
+                        .param_types([Person::static_type()])
                         .build(),
                     Signal::builder("create").build(),
                 ]
@@ -79,7 +76,7 @@ mod imp {
         }
     }
 
-    impl WidgetImpl for MusicusEnsembleSelectorPopover {
+    impl WidgetImpl for PersonSelectorPopover {
         // TODO: Fix focus.
         fn focus(&self, direction_type: gtk::DirectionType) -> bool {
             if direction_type == gtk::DirectionType::Down {
@@ -90,28 +87,28 @@ mod imp {
         }
     }
 
-    impl PopoverImpl for MusicusEnsembleSelectorPopover {}
+    impl PopoverImpl for PersonSelectorPopover {}
 }
 
 glib::wrapper! {
-    pub struct MusicusEnsembleSelectorPopover(ObjectSubclass<imp::MusicusEnsembleSelectorPopover>)
+    pub struct PersonSelectorPopover(ObjectSubclass<imp::PersonSelectorPopover>)
         @extends gtk::Widget, gtk::Popover;
 }
 
 #[gtk::template_callbacks]
-impl MusicusEnsembleSelectorPopover {
-    pub fn new(library: &MusicusLibrary) -> Self {
+impl PersonSelectorPopover {
+    pub fn new(library: &Library) -> Self {
         glib::Object::builder().property("library", library).build()
     }
 
-    pub fn connect_ensemble_selected<F: Fn(&Self, Ensemble) + 'static>(
+    pub fn connect_person_selected<F: Fn(&Self, Person) + 'static>(
         &self,
         f: F,
     ) -> glib::SignalHandlerId {
-        self.connect_local("ensemble-selected", true, move |values| {
+        self.connect_local("person-selected", true, move |values| {
             let obj = values[0].get::<Self>().unwrap();
-            let ensemble = values[1].get::<Ensemble>().unwrap();
-            f(&obj, ensemble);
+            let person = values[1].get::<Person>().unwrap();
+            f(&obj, person);
             None
         })
     }
@@ -131,8 +128,8 @@ impl MusicusEnsembleSelectorPopover {
 
     #[template_callback]
     fn activate(&self, _: &gtk::SearchEntry) {
-        if let Some(ensemble) = self.imp().ensembles.borrow().first() {
-            self.select(ensemble.clone());
+        if let Some(person) = self.imp().persons.borrow().first() {
+            self.select(person.clone());
         } else {
             self.create();
         }
@@ -146,24 +143,24 @@ impl MusicusEnsembleSelectorPopover {
     fn search(&self, search: &str) {
         let imp = self.imp();
 
-        let ensembles = imp.library.get().unwrap().search_ensembles(search).unwrap();
+        let persons = imp.library.get().unwrap().search_persons(search).unwrap();
 
         imp.list_box.remove_all();
 
-        for ensemble in &ensembles {
-            let row = MusicusActivatableRow::new(
+        for person in &persons {
+            let row = ActivatableRow::new(
                 &gtk::Label::builder()
-                    .label(ensemble.to_string())
+                    .label(person.to_string())
                     .halign(gtk::Align::Start)
                     .build(),
             );
 
-            row.set_tooltip_text(Some(&ensemble.to_string()));
+            row.set_tooltip_text(Some(&person.to_string()));
 
-            let ensemble = ensemble.clone();
+            let person = person.clone();
             let obj = self.clone();
-            row.connect_activated(move |_: &MusicusActivatableRow| {
-                obj.select(ensemble.clone());
+            row.connect_activated(move |_: &ActivatableRow| {
+                obj.select(person.clone());
             });
 
             imp.list_box.append(&row);
@@ -173,24 +170,24 @@ impl MusicusEnsembleSelectorPopover {
         create_box.append(&gtk::Image::builder().icon_name("list-add-symbolic").build());
         create_box.append(
             &gtk::Label::builder()
-                .label(gettext("Create new ensemble"))
+                .label(gettext("Create new person"))
                 .halign(gtk::Align::Start)
                 .build(),
         );
 
-        let create_row = MusicusActivatableRow::new(&create_box);
+        let create_row = ActivatableRow::new(&create_box);
         let obj = self.clone();
-        create_row.connect_activated(move |_: &MusicusActivatableRow| {
+        create_row.connect_activated(move |_: &ActivatableRow| {
             obj.create();
         });
 
         imp.list_box.append(&create_row);
 
-        imp.ensembles.replace(ensembles);
+        imp.persons.replace(persons);
     }
 
-    fn select(&self, ensemble: Ensemble) {
-        self.emit_by_name::<()>("ensemble-selected", &[&ensemble]);
+    fn select(&self, person: Person) {
+        self.emit_by_name::<()>("person-selected", &[&person]);
         self.popdown();
     }
 

@@ -1,10 +1,10 @@
-use crate::{db::models::Album, editor::album_editor::AlbumEditor, library::MusicusLibrary};
+use std::cell::{OnceCell, RefCell};
 
 use adw::{prelude::*, subclass::prelude::*};
 use gettextrs::gettext;
 use gtk::glib::{self, clone};
 
-use std::cell::{OnceCell, RefCell};
+use crate::{db::models::Album, editor::album::AlbumEditor, library::Library};
 
 mod imp {
     use super::*;
@@ -13,7 +13,7 @@ mod imp {
     #[template(file = "data/ui/library_manager_albums_page.blp")]
     pub struct AlbumsPage {
         pub navigation: OnceCell<adw::NavigationView>,
-        pub library: OnceCell<MusicusLibrary>,
+        pub library: OnceCell<Library>,
         pub albums: RefCell<Vec<Album>>,
         pub albums_filtered: RefCell<Vec<Album>>,
 
@@ -57,7 +57,7 @@ glib::wrapper! {
 
 #[gtk::template_callbacks]
 impl AlbumsPage {
-    pub fn new(navigation: &adw::NavigationView, library: &MusicusLibrary) -> Self {
+    pub fn new(navigation: &adw::NavigationView, library: &Library) -> Self {
         let obj: Self = glib::Object::new();
         let imp = obj.imp();
 

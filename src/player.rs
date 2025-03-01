@@ -16,7 +16,7 @@ use once_cell::sync::Lazy;
 use crate::{
     config,
     db::models::{Recording, Track},
-    library::MusicusLibrary,
+    library::Library,
     playlist_item::PlaylistItem,
     program::Program,
 };
@@ -25,10 +25,10 @@ mod imp {
     use super::*;
 
     #[derive(Properties, Debug, Default)]
-    #[properties(wrapper_type = super::MusicusPlayer)]
-    pub struct MusicusPlayer {
+    #[properties(wrapper_type = super::Player)]
+    pub struct Player {
         #[property(get, set)]
-        pub library: RefCell<Option<MusicusLibrary>>,
+        pub library: RefCell<Option<Library>>,
         #[property(get, set)]
         pub active: Cell<bool>,
         #[property(get, set)]
@@ -49,7 +49,7 @@ mod imp {
         pub mpris: OnceCell<mpris_server::Player>,
     }
 
-    impl MusicusPlayer {
+    impl Player {
         pub fn set_program(&self, program: &Program) {
             self.program.replace(Some(program.to_owned()));
 
@@ -114,13 +114,13 @@ mod imp {
     }
 
     #[glib::object_subclass]
-    impl ObjectSubclass for MusicusPlayer {
+    impl ObjectSubclass for Player {
         const NAME: &'static str = "MusicusPlayer";
-        type Type = super::MusicusPlayer;
+        type Type = super::Player;
     }
 
     #[glib::derived_properties]
-    impl ObjectImpl for MusicusPlayer {
+    impl ObjectImpl for Player {
         fn signals() -> &'static [Signal] {
             static SIGNALS: Lazy<Vec<Signal>> =
                 Lazy::new(|| vec![Signal::builder("raise").build()]);
@@ -180,10 +180,10 @@ mod imp {
 }
 
 glib::wrapper! {
-    pub struct MusicusPlayer(ObjectSubclass<imp::MusicusPlayer>);
+    pub struct Player(ObjectSubclass<imp::Player>);
 }
 
-impl MusicusPlayer {
+impl Player {
     pub fn new() -> Self {
         glib::Object::builder()
             .property("active", false)
@@ -436,7 +436,7 @@ impl MusicusPlayer {
     }
 }
 
-impl Default for MusicusPlayer {
+impl Default for Player {
     fn default() -> Self {
         Self::new()
     }

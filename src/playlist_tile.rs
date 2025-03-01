@@ -1,6 +1,8 @@
-use crate::playlist_item::PlaylistItem;
-use gtk::{glib, prelude::*, subclass::prelude::*};
 use std::cell::RefCell;
+
+use gtk::{glib, prelude::*, subclass::prelude::*};
+
+use crate::playlist_item::PlaylistItem;
 
 mod imp {
     use super::*;

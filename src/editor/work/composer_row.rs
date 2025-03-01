@@ -5,26 +5,25 @@ use gtk::glib::{self, clone, subclass::Signal, Properties};
 use once_cell::sync::Lazy;
 
 use crate::{
-    db::models::Composer,
-    editor::{role_editor::MusicusRoleEditor, role_selector_popover::MusicusRoleSelectorPopover},
-    library::MusicusLibrary,
+    db::models::Composer, editor::role::RoleEditor, library::Library,
+    selector::role::RoleSelectorPopover,
 };
 
 mod imp {
     use super::*;
 
     #[derive(Properties, Debug, Default, gtk::CompositeTemplate)]
-    #[properties(wrapper_type = super::MusicusWorkEditorComposerRow)]
-    #[template(file = "data/ui/work_editor_composer_row.blp")]
-    pub struct MusicusWorkEditorComposerRow {
+    #[properties(wrapper_type = super::WorkEditorComposerRow)]
+    #[template(file = "data/ui/editor/work/composer_row.blp")]
+    pub struct WorkEditorComposerRow {
         #[property(get, construct_only)]
         pub navigation: OnceCell<adw::NavigationView>,
 
         #[property(get, construct_only)]
-        pub library: OnceCell<MusicusLibrary>,
+        pub library: OnceCell<Library>,
 
         pub composer: RefCell<Option<Composer>>,
-        pub role_popover: OnceCell<MusicusRoleSelectorPopover>,
+        pub role_popover: OnceCell<RoleSelectorPopover>,
 
         #[template_child]
         pub role_label: TemplateChild<gtk::Label>,
@@ -33,9 +32,9 @@ mod imp {
     }
 
     #[glib::object_subclass]
-    impl ObjectSubclass for MusicusWorkEditorComposerRow {
+    impl ObjectSubclass for WorkEditorComposerRow {
         const NAME: &'static str = "MusicusWorkEditorComposerRow";
-        type Type = super::MusicusWorkEditorComposerRow;
+        type Type = super::WorkEditorComposerRow;
         type ParentType = adw::ActionRow;
 
         fn class_init(klass: &mut Self::Class) {
@@ -49,7 +48,7 @@ mod imp {
     }
 
     #[glib::derived_properties]
-    impl ObjectImpl for MusicusWorkEditorComposerRow {
+    impl ObjectImpl for WorkEditorComposerRow {
         fn signals() -> &'static [Signal] {
             static SIGNALS: Lazy<Vec<Signal>> =
                 Lazy::new(|| vec![Signal::builder("remove").build()]);
@@ -60,7 +59,7 @@ mod imp {
         fn constructed(&self) {
             self.parent_constructed();
 
-            let role_popover = MusicusRoleSelectorPopover::new(self.library.get().unwrap());
+            let role_popover = RoleSelectorPopover::new(self.library.get().unwrap());
 
             let obj = self.obj().to_owned();
             role_popover.connect_role_selected(move |_, role| {
@@ -72,7 +71,7 @@ mod imp {
 
             let obj = self.obj().to_owned();
             role_popover.connect_create(move |_| {
-                let editor = MusicusRoleEditor::new(&obj.navigation(), &obj.library(), None);
+                let editor = RoleEditor::new(&obj.navigation(), &obj.library(), None);
 
                 editor.connect_created(clone!(
                     #[weak]
@@ -93,24 +92,20 @@ mod imp {
         }
     }
 
-    impl WidgetImpl for MusicusWorkEditorComposerRow {}
-    impl ListBoxRowImpl for MusicusWorkEditorComposerRow {}
-    impl PreferencesRowImpl for MusicusWorkEditorComposerRow {}
-    impl ActionRowImpl for MusicusWorkEditorComposerRow {}
+    impl WidgetImpl for WorkEditorComposerRow {}
+    impl ListBoxRowImpl for WorkEditorComposerRow {}
+    impl PreferencesRowImpl for WorkEditorComposerRow {}
+    impl ActionRowImpl for WorkEditorComposerRow {}
 }
 
 glib::wrapper! {
-    pub struct MusicusWorkEditorComposerRow(ObjectSubclass<imp::MusicusWorkEditorComposerRow>)
+    pub struct WorkEditorComposerRow(ObjectSubclass<imp::WorkEditorComposerRow>)
         @extends gtk::Widget, gtk::ListBoxRow, adw::PreferencesRow, adw::ActionRow;
 }
 
 #[gtk::template_callbacks]
-impl MusicusWorkEditorComposerRow {
-    pub fn new(
-        navigation: &adw::NavigationView,
-        library: &MusicusLibrary,
-        composer: Composer,
-    ) -> Self {
+impl WorkEditorComposerRow {
+    pub fn new(navigation: &adw::NavigationView, library: &Library, composer: Composer) -> Self {
         let obj: Self = glib::Object::builder()
             .property("navigation", navigation)
             .property("library", library)

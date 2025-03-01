@@ -2,22 +2,22 @@ use adw::{prelude::*, subclass::prelude::*};
 use gettextrs::gettext;
 use gtk::{gio, glib};
 
-use crate::{config, MusicusWindow};
+use crate::{config, Window};
 
 mod imp {
     use super::*;
 
     #[derive(Debug, Default)]
-    pub struct MusicusApplication {}
+    pub struct Application {}
 
     #[glib::object_subclass]
-    impl ObjectSubclass for MusicusApplication {
+    impl ObjectSubclass for Application {
         const NAME: &'static str = "MusicusApplication";
-        type Type = super::MusicusApplication;
+        type Type = super::Application;
         type ParentType = adw::Application;
     }
 
-    impl ObjectImpl for MusicusApplication {
+    impl ObjectImpl for Application {
         fn constructed(&self) {
             self.parent_constructed();
             let obj = self.obj();
@@ -26,14 +26,14 @@ mod imp {
         }
     }
 
-    impl ApplicationImpl for MusicusApplication {
+    impl ApplicationImpl for Application {
         fn activate(&self) {
             let application = self.obj();
 
             let window = if let Some(window) = application.active_window() {
                 window
             } else {
-                let window = MusicusWindow::new(&*application);
+                let window = Window::new(&*application);
                 window.upcast()
             };
 
@@ -41,17 +41,17 @@ mod imp {
         }
     }
 
-    impl GtkApplicationImpl for MusicusApplication {}
-    impl AdwApplicationImpl for MusicusApplication {}
+    impl GtkApplicationImpl for Application {}
+    impl AdwApplicationImpl for Application {}
 }
 
 glib::wrapper! {
-    pub struct MusicusApplication(ObjectSubclass<imp::MusicusApplication>)
+    pub struct Application(ObjectSubclass<imp::Application>)
         @extends gio::Application, gtk::Application, adw::Application,
         @implements gio::ActionGroup, gio::ActionMap;
 }
 
-impl MusicusApplication {
+impl Application {
     pub fn new() -> Self {
         glib::Object::builder()
             .property("application-id", config::APP_ID)

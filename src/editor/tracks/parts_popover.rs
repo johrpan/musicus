@@ -1,5 +1,4 @@
-use super::activatable_row::MusicusActivatableRow;
-use crate::db::models::Work;
+use std::cell::{OnceCell, RefCell};
 
 use gtk::{
     glib::{self, subclass::Signal},
@@ -8,13 +7,13 @@ use gtk::{
 };
 use once_cell::sync::Lazy;
 
-use std::cell::{OnceCell, RefCell};
+use crate::{activatable_row::ActivatableRow, db::models::Work};
 
 mod imp {
     use super::*;
 
     #[derive(Debug, Default, gtk::CompositeTemplate)]
-    #[template(file = "data/ui/tracks_editor_parts_popover.blp")]
+    #[template(file = "data/ui/editor/tracks/parts_popover.blp")]
     pub struct TracksEditorPartsPopover {
         pub parts: OnceCell<Vec<Work>>,
         pub parts_filtered: RefCell<Vec<Work>>,
@@ -47,14 +46,13 @@ mod imp {
         fn constructed(&self) {
             self.parent_constructed();
 
-            self.obj()
-                .connect_visible_notify(|obj: &super::TracksEditorPartsPopover| {
-                    if obj.is_visible() {
-                        obj.imp().search_entry.set_text("");
-                        obj.imp().search_entry.grab_focus();
-                        obj.imp().scrolled_window.vadjustment().set_value(0.0);
-                    }
-                });
+            self.obj().connect_visible_notify(|obj| {
+                if obj.is_visible() {
+                    obj.imp().search_entry.set_text("");
+                    obj.imp().search_entry.grab_focus();
+                    obj.imp().scrolled_window.vadjustment().set_value(0.0);
+                }
+            });
         }
 
         fn signals() -> &'static [Signal] {
@@ -143,7 +141,7 @@ impl TracksEditorPartsPopover {
         imp.list_box.remove_all();
 
         for part in &parts_filtered {
-            let row = MusicusActivatableRow::new(
+            let row = ActivatableRow::new(
                 &gtk::Label::builder()
                     .label(part.to_string())
                     .halign(gtk::Align::Start)
@@ -154,7 +152,7 @@ impl TracksEditorPartsPopover {
 
             let part = part.clone();
             let obj = self.clone();
-            row.connect_activated(move |_: &MusicusActivatableRow| {
+            row.connect_activated(move |_: &ActivatableRow| {
                 obj.select(part.clone());
             });
 

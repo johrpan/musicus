@@ -1,12 +1,9 @@
 pub mod albums_page;
 
-use crate::{
-    db::{
-        models::{Album, Ensemble, Instrument, Person, Recording, Role, Track, Work},
-        tables::Medium,
-    },
-    library::MusicusLibrary,
-    window::MusicusWindow,
+use std::{
+    cell::{OnceCell, RefCell},
+    ffi::OsStr,
+    path::Path,
 };
 
 use adw::{prelude::*, subclass::prelude::*};
@@ -14,10 +11,13 @@ use albums_page::AlbumsPage;
 use gettextrs::gettext;
 use gtk::glib;
 
-use std::{
-    cell::{OnceCell, RefCell},
-    ffi::OsStr,
-    path::Path,
+use crate::{
+    db::{
+        models::{Album, Ensemble, Instrument, Person, Recording, Role, Track, Work},
+        tables::Medium,
+    },
+    library::Library,
+    window::Window,
 };
 
 mod imp {
@@ -27,7 +27,7 @@ mod imp {
     #[template(file = "data/ui/library_manager.blp")]
     pub struct LibraryManager {
         pub navigation: OnceCell<adw::NavigationView>,
-        pub library: OnceCell<MusicusLibrary>,
+        pub library: OnceCell<Library>,
 
         pub persons: RefCell<Vec<Person>>,
         pub roles: RefCell<Vec<Role>>,
@@ -95,7 +95,7 @@ glib::wrapper! {
 
 #[gtk::template_callbacks]
 impl LibraryManager {
-    pub fn new(navigation: &adw::NavigationView, library: &MusicusLibrary) -> Self {
+    pub fn new(navigation: &adw::NavigationView, library: &Library) -> Self {
         let obj: Self = glib::Object::new();
         let imp = obj.imp();
 
@@ -116,7 +116,7 @@ impl LibraryManager {
         let window = root
             .as_ref()
             .and_then(|r| r.downcast_ref::<gtk::Window>())
-            .and_then(|w| w.downcast_ref::<MusicusWindow>())
+            .and_then(|w| w.downcast_ref::<Window>())
             .unwrap();
 
         match dialog.select_folder_future(Some(window)).await {

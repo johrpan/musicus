@@ -12,9 +12,9 @@ mod imp {
     use super::*;
 
     #[derive(Properties, Debug, Default, gtk::CompositeTemplate)]
-    #[properties(wrapper_type = super::MusicusProgramTile)]
+    #[properties(wrapper_type = super::ProgramTile)]
     #[template(file = "data/ui/program_tile.blp")]
-    pub struct MusicusProgramTile {
+    pub struct ProgramTile {
         #[property(get, construct_only)]
         pub program: OnceCell<Program>,
 
@@ -27,9 +27,9 @@ mod imp {
     }
 
     #[glib::object_subclass]
-    impl ObjectSubclass for MusicusProgramTile {
+    impl ObjectSubclass for ProgramTile {
         const NAME: &'static str = "MusicusProgramTile";
-        type Type = super::MusicusProgramTile;
+        type Type = super::ProgramTile;
         type ParentType = gtk::FlowBoxChild;
 
         fn class_init(klass: &mut Self::Class) {
@@ -42,18 +42,18 @@ mod imp {
     }
 
     #[glib::derived_properties]
-    impl ObjectImpl for MusicusProgramTile {}
+    impl ObjectImpl for ProgramTile {}
 
-    impl WidgetImpl for MusicusProgramTile {}
-    impl FlowBoxChildImpl for MusicusProgramTile {}
+    impl WidgetImpl for ProgramTile {}
+    impl FlowBoxChildImpl for ProgramTile {}
 }
 
 glib::wrapper! {
-    pub struct MusicusProgramTile(ObjectSubclass<imp::MusicusProgramTile>)
+    pub struct ProgramTile(ObjectSubclass<imp::ProgramTile>)
         @extends gtk::Widget, gtk::FlowBoxChild;
 }
 
-impl MusicusProgramTile {
+impl ProgramTile {
     pub fn new(program: Program) -> Self {
         let obj: Self = glib::Object::builder()
             .property("program", &program)

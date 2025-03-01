@@ -1,8 +1,9 @@
-use gtk::{glib, glib::Properties, prelude::*, subclass::prelude::*};
 use std::{
     cell::{Cell, OnceCell},
     path::{Path, PathBuf},
 };
+
+use gtk::{glib, glib::Properties, prelude::*, subclass::prelude::*};
 
 mod imp {
     use super::*;

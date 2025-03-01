@@ -5,31 +5,26 @@ use gtk::glib::{self, clone, subclass::Signal, Properties};
 use once_cell::sync::Lazy;
 
 use crate::{
-    db::models::Performer,
-    editor::{
-        performer_role_selector_popover::MusicusPerformerRoleSelectorPopover,
-        role_editor::MusicusRoleEditor,
-    },
-    library::MusicusLibrary,
+    db::models::Performer, editor::role::RoleEditor, library::Library,
+    selector::performer_role::PerformerRoleSelectorPopover,
 };
 
 mod imp {
-    use crate::editor::instrument_editor::MusicusInstrumentEditor;
-
     use super::*;
+    use crate::editor::instrument::InstrumentEditor;
 
     #[derive(Properties, Debug, Default, gtk::CompositeTemplate)]
-    #[properties(wrapper_type = super::MusicusRecordingEditorPerformerRow)]
-    #[template(file = "data/ui/recording_editor_performer_row.blp")]
-    pub struct MusicusRecordingEditorPerformerRow {
+    #[properties(wrapper_type = super::RecordingEditorPerformerRow)]
+    #[template(file = "data/ui/editor/recording/performer_row.blp")]
+    pub struct RecordingEditorPerformerRow {
         #[property(get, construct_only)]
         pub navigation: OnceCell<adw::NavigationView>,
 
         #[property(get, construct_only)]
-        pub library: OnceCell<MusicusLibrary>,
+        pub library: OnceCell<Library>,
 
         pub performer: RefCell<Option<Performer>>,
-        pub role_popover: OnceCell<MusicusPerformerRoleSelectorPopover>,
+        pub role_popover: OnceCell<PerformerRoleSelectorPopover>,
 
         #[template_child]
         pub role_label: TemplateChild<gtk::Label>,
@@ -38,9 +33,9 @@ mod imp {
     }
 
     #[glib::object_subclass]
-    impl ObjectSubclass for MusicusRecordingEditorPerformerRow {
+    impl ObjectSubclass for RecordingEditorPerformerRow {
         const NAME: &'static str = "MusicusRecordingEditorPerformerRow";
-        type Type = super::MusicusRecordingEditorPerformerRow;
+        type Type = super::RecordingEditorPerformerRow;
         type ParentType = adw::ActionRow;
 
         fn class_init(klass: &mut Self::Class) {
@@ -54,7 +49,7 @@ mod imp {
     }
 
     #[glib::derived_properties]
-    impl ObjectImpl for MusicusRecordingEditorPerformerRow {
+    impl ObjectImpl for RecordingEditorPerformerRow {
         fn signals() -> &'static [Signal] {
             static SIGNALS: Lazy<Vec<Signal>> =
                 Lazy::new(|| vec![Signal::builder("remove").build()]);
@@ -65,8 +60,7 @@ mod imp {
         fn constructed(&self) {
             self.parent_constructed();
 
-            let role_popover =
-                MusicusPerformerRoleSelectorPopover::new(self.library.get().unwrap());
+            let role_popover = PerformerRoleSelectorPopover::new(self.library.get().unwrap());
 
             let obj = self.obj().to_owned();
             role_popover.connect_selected(move |_, role, instrument| {
@@ -85,7 +79,7 @@ mod imp {
 
             let obj = self.obj().to_owned();
             role_popover.connect_create_role(move |_| {
-                let editor = MusicusRoleEditor::new(&obj.navigation(), &obj.library(), None);
+                let editor = RoleEditor::new(&obj.navigation(), &obj.library(), None);
 
                 editor.connect_created(clone!(
                     #[weak]
@@ -104,7 +98,7 @@ mod imp {
 
             let obj = self.obj().to_owned();
             role_popover.connect_create_instrument(move |_| {
-                let editor = MusicusInstrumentEditor::new(&obj.navigation(), &obj.library(), None);
+                let editor = InstrumentEditor::new(&obj.navigation(), &obj.library(), None);
 
                 editor.connect_created(clone!(
                     #[weak]
@@ -126,24 +120,20 @@ mod imp {
         }
     }
 
-    impl WidgetImpl for MusicusRecordingEditorPerformerRow {}
-    impl ListBoxRowImpl for MusicusRecordingEditorPerformerRow {}
-    impl PreferencesRowImpl for MusicusRecordingEditorPerformerRow {}
-    impl ActionRowImpl for MusicusRecordingEditorPerformerRow {}
+    impl WidgetImpl for RecordingEditorPerformerRow {}
+    impl ListBoxRowImpl for RecordingEditorPerformerRow {}
+    impl PreferencesRowImpl for RecordingEditorPerformerRow {}
+    impl ActionRowImpl for RecordingEditorPerformerRow {}
 }
 
 glib::wrapper! {
-    pub struct MusicusRecordingEditorPerformerRow(ObjectSubclass<imp::MusicusRecordingEditorPerformerRow>)
+    pub struct RecordingEditorPerformerRow(ObjectSubclass<imp::RecordingEditorPerformerRow>)
         @extends gtk::Widget, gtk::ListBoxRow, adw::PreferencesRow, adw::ActionRow;
 }
 
 #[gtk::template_callbacks]
-impl MusicusRecordingEditorPerformerRow {
-    pub fn new(
-        navigation: &adw::NavigationView,
-        library: &MusicusLibrary,
-        performer: Performer,
-    ) -> Self {
+impl RecordingEditorPerformerRow {
+    pub fn new(navigation: &adw::NavigationView, library: &Library, performer: Performer) -> Self {
         let obj: Self = glib::Object::builder()
             .property("navigation", navigation)
             .property("library", library)

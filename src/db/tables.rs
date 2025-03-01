@@ -2,8 +2,7 @@
 //! tables in the database schema.
 
 use chrono::NaiveDateTime;
-use diesel::prelude::*;
-use diesel::sqlite::Sqlite;
+use diesel::{prelude::*, sqlite::Sqlite};
 use gtk::glib::{self, Boxed};
 
 use super::{schema::*, TranslatedString};

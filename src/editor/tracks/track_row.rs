@@ -1,7 +1,6 @@
-use crate::{
-    db::models::{Recording, Track, Work},
-    editor::tracks_editor_parts_popover::TracksEditorPartsPopover,
-    library::MusicusLibrary,
+use std::{
+    cell::{OnceCell, RefCell},
+    path::PathBuf,
 };
 
 use adw::{prelude::*, subclass::prelude::*};
@@ -10,9 +9,10 @@ use gettextrs::gettext;
 use gtk::glib::{self, clone, subclass::Signal, Properties};
 use once_cell::sync::Lazy;
 
-use std::{
-    cell::{OnceCell, RefCell},
-    path::PathBuf,
+use super::parts_popover::TracksEditorPartsPopover;
+use crate::{
+    db::models::{Recording, Track, Work},
+    library::Library,
 };
 
 mod imp {
@@ -20,12 +20,12 @@ mod imp {
 
     #[derive(Properties, Debug, Default, gtk::CompositeTemplate)]
     #[properties(wrapper_type = super::TracksEditorTrackRow)]
-    #[template(file = "data/ui/tracks_editor_track_row.blp")]
+    #[template(file = "data/ui/editor/tracks/track_row.blp")]
     pub struct TracksEditorTrackRow {
         #[property(get, construct_only)]
         pub navigation: OnceCell<adw::NavigationView>,
         #[property(get, construct_only)]
-        pub library: OnceCell<MusicusLibrary>,
+        pub library: OnceCell<Library>,
 
         pub recording: OnceCell<Recording>,
         pub track_data: RefCell<TracksEditorTrackData>,
@@ -79,7 +79,7 @@ glib::wrapper! {
 impl TracksEditorTrackRow {
     pub fn new(
         navigation: &adw::NavigationView,
-        library: &MusicusLibrary,
+        library: &Library,
         recording: Recording,
         track_data: TracksEditorTrackData,
     ) -> Self {

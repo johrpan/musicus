@@ -1,12 +1,9 @@
-use super::tracks_editor_track_row::{TrackLocation, TracksEditorTrackData};
-use crate::{
-    db::models::{Recording, Track, Work},
-    editor::{
-        recording_editor::MusicusRecordingEditor,
-        recording_selector_popover::RecordingSelectorPopover,
-        tracks_editor_track_row::TracksEditorTrackRow,
-    },
-    library::MusicusLibrary,
+mod parts_popover;
+mod track_row;
+
+use std::{
+    cell::{OnceCell, RefCell},
+    path::PathBuf,
 };
 
 use adw::{prelude::*, subclass::prelude::*};
@@ -16,10 +13,13 @@ use gtk::{
     glib::{self, clone, subclass::Signal, Properties},
 };
 use once_cell::sync::Lazy;
+use track_row::{TrackLocation, TracksEditorTrackData, TracksEditorTrackRow};
 
-use std::{
-    cell::{OnceCell, RefCell},
-    path::PathBuf,
+use crate::{
+    db::models::{Recording, Track, Work},
+    editor::recording::RecordingEditor,
+    library::Library,
+    selector::recording::RecordingSelectorPopover,
 };
 
 mod imp {
@@ -27,12 +27,12 @@ mod imp {
 
     #[derive(Debug, Default, gtk::CompositeTemplate, Properties)]
     #[properties(wrapper_type = super::TracksEditor)]
-    #[template(file = "data/ui/tracks_editor.blp")]
+    #[template(file = "data/ui/editor/tracks.blp")]
     pub struct TracksEditor {
         #[property(get, construct_only)]
         pub navigation: OnceCell<adw::NavigationView>,
         #[property(get, construct_only)]
-        pub library: OnceCell<MusicusLibrary>,
+        pub library: OnceCell<Library>,
 
         pub recording: RefCell<Option<Recording>>,
         pub recordings_popover: OnceCell<RecordingSelectorPopover>,
@@ -91,11 +91,8 @@ mod imp {
 
             let obj = self.obj().clone();
             recordings_popover.connect_create(move |_| {
-                let editor = MusicusRecordingEditor::new(
-                    obj.imp().navigation.get().unwrap(),
-                    &obj.library(),
-                    None,
-                );
+                let editor =
+                    RecordingEditor::new(obj.imp().navigation.get().unwrap(), &obj.library(), None);
 
                 editor.connect_created(clone!(
                     #[weak]
@@ -135,7 +132,7 @@ glib::wrapper! {
 impl TracksEditor {
     pub fn new(
         navigation: &adw::NavigationView,
-        library: &MusicusLibrary,
+        library: &Library,
         recording: Option<Recording>,
     ) -> Self {
         let obj: Self = glib::Object::builder()

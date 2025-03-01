@@ -1,13 +1,15 @@
-use crate::search_tag::Tag;
-use gtk::{glib, prelude::*, subclass::prelude::*};
 use std::cell::OnceCell;
+
+use gtk::{glib, prelude::*, subclass::prelude::*};
+
+use crate::search_tag::Tag;
 
 mod imp {
     use super::*;
 
     #[derive(Debug, Default, gtk::CompositeTemplate)]
     #[template(file = "data/ui/tag_tile.blp")]
-    pub struct MusicusTagTile {
+    pub struct TagTile {
         #[template_child]
         pub title_label: TemplateChild<gtk::Label>,
         #[template_child]
@@ -17,9 +19,9 @@ mod imp {
     }
 
     #[glib::object_subclass]
-    impl ObjectSubclass for MusicusTagTile {
+    impl ObjectSubclass for TagTile {
         const NAME: &'static str = "MusicusTagTile";
-        type Type = super::MusicusTagTile;
+        type Type = super::TagTile;
         type ParentType = gtk::FlowBoxChild;
 
         fn class_init(klass: &mut Self::Class) {
@@ -31,17 +33,17 @@ mod imp {
         }
     }
 
-    impl ObjectImpl for MusicusTagTile {}
-    impl WidgetImpl for MusicusTagTile {}
-    impl FlowBoxChildImpl for MusicusTagTile {}
+    impl ObjectImpl for TagTile {}
+    impl WidgetImpl for TagTile {}
+    impl FlowBoxChildImpl for TagTile {}
 }
 
 glib::wrapper! {
-    pub struct MusicusTagTile(ObjectSubclass<imp::MusicusTagTile>)
+    pub struct TagTile(ObjectSubclass<imp::TagTile>)
         @extends gtk::Widget, gtk::FlowBoxChild;
 }
 
-impl MusicusTagTile {
+impl TagTile {
     pub fn new(tag: Tag) -> Self {
         let obj: Self = glib::Object::new();
         let imp = obj.imp();

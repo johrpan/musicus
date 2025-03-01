@@ -1,6 +1,7 @@
+use std::cell::OnceCell;
+
 use adw::{glib, glib::subclass::Signal, prelude::*, subclass::prelude::*};
 use once_cell::sync::Lazy;
-use std::cell::OnceCell;
 
 use crate::db::models::{Ensemble, Person, Work};
 
@@ -9,16 +10,16 @@ mod imp {
 
     #[derive(Debug, Default, gtk::CompositeTemplate)]
     #[template(file = "data/ui/search_tag.blp")]
-    pub struct MusicusSearchTag {
+    pub struct SearchTag {
         #[template_child]
         pub label: TemplateChild<gtk::Label>,
         pub tag: OnceCell<Tag>,
     }
 
     #[glib::object_subclass]
-    impl ObjectSubclass for MusicusSearchTag {
+    impl ObjectSubclass for SearchTag {
         const NAME: &'static str = "MusicusSearchTag";
-        type Type = super::MusicusSearchTag;
+        type Type = super::SearchTag;
         type ParentType = gtk::Box;
 
         fn class_init(klass: &mut Self::Class) {
@@ -31,7 +32,7 @@ mod imp {
         }
     }
 
-    impl ObjectImpl for MusicusSearchTag {
+    impl ObjectImpl for SearchTag {
         fn signals() -> &'static [Signal] {
             static SIGNALS: Lazy<Vec<Signal>> =
                 Lazy::new(|| vec![Signal::builder("remove").build()]);
@@ -40,19 +41,19 @@ mod imp {
         }
     }
 
-    impl WidgetImpl for MusicusSearchTag {}
-    impl BoxImpl for MusicusSearchTag {}
+    impl WidgetImpl for SearchTag {}
+    impl BoxImpl for SearchTag {}
 }
 
 glib::wrapper! {
-    pub struct MusicusSearchTag(ObjectSubclass<imp::MusicusSearchTag>)
+    pub struct SearchTag(ObjectSubclass<imp::SearchTag>)
         @extends gtk::Widget;
 }
 
 #[gtk::template_callbacks]
-impl MusicusSearchTag {
+impl SearchTag {
     pub fn new(tag: Tag) -> Self {
-        let obj: MusicusSearchTag = glib::Object::new();
+        let obj: SearchTag = glib::Object::new();
 
         obj.imp().label.set_label(match &tag {
             Tag::Composer(person) => person.name.get(),

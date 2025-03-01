@@ -1,4 +1,5 @@
-use crate::player::MusicusPlayer;
+use std::cell::{Cell, OnceCell};
+
 use gtk::{
     gdk,
     glib::{self, clone, subclass::Signal, Properties},
@@ -6,7 +7,8 @@ use gtk::{
     subclass::prelude::*,
 };
 use once_cell::sync::Lazy;
-use std::cell::{Cell, OnceCell};
+
+use crate::player::Player;
 
 mod imp {
     use super::*;
@@ -16,7 +18,7 @@ mod imp {
     #[template(file = "data/ui/player_bar.blp")]
     pub struct PlayerBar {
         #[property(get, construct_only)]
-        pub player: OnceCell<MusicusPlayer>,
+        pub player: OnceCell<Player>,
 
         pub seeking: Cell<bool>,
 
@@ -196,7 +198,7 @@ glib::wrapper! {
 
 #[gtk::template_callbacks]
 impl PlayerBar {
-    pub fn new(player: &MusicusPlayer) -> Self {
+    pub fn new(player: &Player) -> Self {
         glib::Object::builder().property("player", player).build()
     }
 

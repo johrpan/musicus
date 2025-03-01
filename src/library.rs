@@ -1,6 +1,8 @@
-use crate::{
-    db::{self, models::*, schema::*, tables, TranslatedString},
-    program::Program,
+use std::{
+    cell::{OnceCell, RefCell},
+    ffi::OsString,
+    fs,
+    path::{Path, PathBuf},
 };
 
 use adw::{
@@ -13,11 +15,9 @@ use chrono::prelude::*;
 use diesel::{dsl::exists, prelude::*, QueryDsl, SqliteConnection};
 use once_cell::sync::Lazy;
 
-use std::{
-    cell::{OnceCell, RefCell},
-    ffi::OsString,
-    fs,
-    path::{Path, PathBuf},
+use crate::{
+    db::{self, models::*, schema::*, tables, TranslatedString},
+    program::Program,
 };
 
 diesel::define_sql_function! {
@@ -29,21 +29,21 @@ mod imp {
     use super::*;
 
     #[derive(Properties, Default)]
-    #[properties(wrapper_type = super::MusicusLibrary)]
-    pub struct MusicusLibrary {
+    #[properties(wrapper_type = super::Library)]
+    pub struct Library {
         #[property(get, construct_only)]
         pub folder: OnceCell<String>,
         pub connection: RefCell<Option<SqliteConnection>>,
     }
 
     #[glib::object_subclass]
-    impl ObjectSubclass for MusicusLibrary {
+    impl ObjectSubclass for Library {
         const NAME: &'static str = "MusicusLibrary";
-        type Type = super::MusicusLibrary;
+        type Type = super::Library;
     }
 
     #[glib::derived_properties]
-    impl ObjectImpl for MusicusLibrary {
+    impl ObjectImpl for Library {
         fn signals() -> &'static [Signal] {
             static SIGNALS: Lazy<Vec<Signal>> =
                 Lazy::new(|| vec![Signal::builder("changed").build()]);
@@ -62,10 +62,10 @@ mod imp {
 }
 
 glib::wrapper! {
-    pub struct MusicusLibrary(ObjectSubclass<imp::MusicusLibrary>);
+    pub struct Library(ObjectSubclass<imp::Library>);
 }
 
-impl MusicusLibrary {
+impl Library {
     pub fn new(path: impl AsRef<Path>) -> Self {
         glib::Object::builder()
             .property("folder", path.as_ref().to_str().unwrap())

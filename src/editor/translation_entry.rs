@@ -6,8 +6,8 @@ mod imp {
     use super::*;
 
     #[derive(Debug, Default, gtk::CompositeTemplate)]
-    #[template(file = "data/ui/translation_entry.blp")]
-    pub struct MusicusTranslationEntry {
+    #[template(file = "data/ui/editor/translation_entry.blp")]
+    pub struct TranslationEntry {
         #[template_child]
         pub lang_popover: TemplateChild<gtk::Popover>,
         #[template_child]
@@ -15,9 +15,9 @@ mod imp {
     }
 
     #[glib::object_subclass]
-    impl ObjectSubclass for MusicusTranslationEntry {
+    impl ObjectSubclass for TranslationEntry {
         const NAME: &'static str = "MusicusTranslationEntry";
-        type Type = super::MusicusTranslationEntry;
+        type Type = super::TranslationEntry;
         type ParentType = adw::EntryRow;
 
         fn class_init(klass: &mut Self::Class) {
@@ -30,7 +30,7 @@ mod imp {
         }
     }
 
-    impl ObjectImpl for MusicusTranslationEntry {
+    impl ObjectImpl for TranslationEntry {
         fn signals() -> &'static [Signal] {
             static SIGNALS: Lazy<Vec<Signal>> =
                 Lazy::new(|| vec![Signal::builder("remove").build()]);
@@ -43,21 +43,21 @@ mod imp {
         }
     }
 
-    impl WidgetImpl for MusicusTranslationEntry {}
-    impl ListBoxRowImpl for MusicusTranslationEntry {}
-    impl PreferencesRowImpl for MusicusTranslationEntry {}
-    impl EntryRowImpl for MusicusTranslationEntry {}
-    impl EditableImpl for MusicusTranslationEntry {}
+    impl WidgetImpl for TranslationEntry {}
+    impl ListBoxRowImpl for TranslationEntry {}
+    impl PreferencesRowImpl for TranslationEntry {}
+    impl EntryRowImpl for TranslationEntry {}
+    impl EditableImpl for TranslationEntry {}
 }
 
 glib::wrapper! {
-    pub struct MusicusTranslationEntry(ObjectSubclass<imp::MusicusTranslationEntry>)
+    pub struct TranslationEntry(ObjectSubclass<imp::TranslationEntry>)
         @extends gtk::Widget, gtk::ListBoxRow, adw::PreferencesRow, adw::EntryRow,
         @implements gtk::Editable;
 }
 
 #[gtk::template_callbacks]
-impl MusicusTranslationEntry {
+impl TranslationEntry {
     pub fn new(lang: &str, translation: &str) -> Self {
         let obj: Self = glib::Object::new();
         obj.set_text(translation);

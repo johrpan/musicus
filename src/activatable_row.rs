@@ -1,3 +1,5 @@
+use std::cell::RefCell;
+
 use gtk::{
     glib::{self, clone, subclass::Signal},
     prelude::*,
@@ -5,25 +7,23 @@ use gtk::{
 };
 use once_cell::sync::Lazy;
 
-use std::cell::RefCell;
-
 mod imp {
     use super::*;
 
     #[derive(Default)]
-    pub struct MusicusActivatableRow {
+    pub struct ActivatableRow {
         pub previous_parent: RefCell<Option<gtk::ListBox>>,
         pub previous_signal_handler_id: RefCell<Option<glib::SignalHandlerId>>,
     }
 
     #[glib::object_subclass]
-    impl ObjectSubclass for MusicusActivatableRow {
+    impl ObjectSubclass for ActivatableRow {
         const NAME: &'static str = "MusicusActivatableRow";
-        type Type = super::MusicusActivatableRow;
+        type Type = super::ActivatableRow;
         type ParentType = gtk::ListBoxRow;
     }
 
-    impl ObjectImpl for MusicusActivatableRow {
+    impl ObjectImpl for ActivatableRow {
         fn constructed(&self) {
             self.parent_constructed();
 
@@ -31,7 +31,7 @@ mod imp {
             obj.connect_parent_notify(clone!(
                 #[weak]
                 obj,
-                move |_: &super::MusicusActivatableRow| {
+                move |_: &super::ActivatableRow| {
                     let previous_parent = obj.imp().previous_parent.borrow_mut().take();
                     let previous_signal_handler_id =
                         obj.imp().previous_signal_handler_id.borrow_mut().take();
@@ -69,9 +69,9 @@ mod imp {
         }
     }
 
-    impl WidgetImpl for MusicusActivatableRow {}
+    impl WidgetImpl for ActivatableRow {}
 
-    impl ListBoxRowImpl for MusicusActivatableRow {
+    impl ListBoxRowImpl for ActivatableRow {
         fn activate(&self) {
             self.obj().emit_by_name::<()>("activated", &[]);
         }
@@ -81,11 +81,11 @@ mod imp {
 glib::wrapper! {
     /// A simple helper widget for connecting a signal handler to a single [`gtk::ListBoxRow`] for
     /// handling activation.
-    pub struct MusicusActivatableRow(ObjectSubclass<imp::MusicusActivatableRow>)
+    pub struct ActivatableRow(ObjectSubclass<imp::ActivatableRow>)
         @extends gtk::Widget, gtk::ListBoxRow;
 }
 
-impl MusicusActivatableRow {
+impl ActivatableRow {
     pub fn new<W>(child: &W) -> Self
     where
         W: IsA<gtk::Widget>,

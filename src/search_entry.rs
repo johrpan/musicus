@@ -1,21 +1,23 @@
-use crate::{
-    library::LibraryQuery,
-    search_tag::{MusicusSearchTag, Tag},
-};
+use std::{cell::RefCell, time::Duration};
+
 use adw::{prelude::*, subclass::prelude::*};
 use gtk::{
     gdk, gio,
     glib::{self, clone, subclass::Signal, Propagation},
 };
 use once_cell::sync::Lazy;
-use std::{cell::RefCell, time::Duration};
+
+use crate::{
+    library::LibraryQuery,
+    search_tag::{SearchTag, Tag},
+};
 
 mod imp {
     use super::*;
 
     #[derive(Debug, Default, gtk::CompositeTemplate)]
     #[template(file = "data/ui/search_entry.blp")]
-    pub struct MusicusSearchEntry {
+    pub struct SearchEntry {
         #[template_child]
         pub tags_box: TemplateChild<gtk::Box>,
         #[template_child]
@@ -23,14 +25,14 @@ mod imp {
         #[template_child]
         pub clear_icon: TemplateChild<gtk::Image>,
 
-        pub tags: RefCell<Vec<MusicusSearchTag>>,
+        pub tags: RefCell<Vec<SearchTag>>,
         pub query_changed: RefCell<Option<gio::Cancellable>>,
     }
 
     #[glib::object_subclass]
-    impl ObjectSubclass for MusicusSearchEntry {
+    impl ObjectSubclass for SearchEntry {
         const NAME: &'static str = "MusicusSearchEntry";
-        type Type = super::MusicusSearchEntry;
+        type Type = super::SearchEntry;
         type ParentType = gtk::Box;
 
         fn class_init(klass: &mut Self::Class) {
@@ -45,8 +47,8 @@ mod imp {
                         gdk::ModifierType::empty(),
                     ))
                     .action(&gtk::CallbackAction::new(|widget, _| match widget
-                        .downcast_ref::<super::MusicusSearchEntry>(
-                    ) {
+                        .downcast_ref::<super::SearchEntry>()
+                    {
                         Some(obj) => {
                             obj.reset();
                             Propagation::Stop
@@ -62,7 +64,7 @@ mod imp {
         }
     }
 
-    impl ObjectImpl for MusicusSearchEntry {
+    impl ObjectImpl for SearchEntry {
         fn constructed(&self) {
             let controller = gtk::GestureClick::new();
 
@@ -90,22 +92,22 @@ mod imp {
         }
     }
 
-    impl WidgetImpl for MusicusSearchEntry {
+    impl WidgetImpl for SearchEntry {
         fn grab_focus(&self) -> bool {
             self.text.grab_focus_without_selecting()
         }
     }
 
-    impl BoxImpl for MusicusSearchEntry {}
+    impl BoxImpl for SearchEntry {}
 }
 
 glib::wrapper! {
-    pub struct MusicusSearchEntry(ObjectSubclass<imp::MusicusSearchEntry>)
+    pub struct SearchEntry(ObjectSubclass<imp::SearchEntry>)
         @extends gtk::Widget;
 }
 
 #[gtk::template_callbacks]
-impl MusicusSearchEntry {
+impl SearchEntry {
     pub fn new() -> Self {
         glib::Object::new()
     }
@@ -166,7 +168,7 @@ impl MusicusSearchEntry {
         imp.clear_icon.set_visible(true);
         imp.text.set_text("");
 
-        let tag = MusicusSearchTag::new(tag);
+        let tag = SearchTag::new(tag);
 
         tag.connect_remove(clone!(
             #[weak(rename_to = this)]

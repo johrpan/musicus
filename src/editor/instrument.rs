@@ -5,36 +5,33 @@ use gettextrs::gettext;
 use gtk::glib::{self, subclass::Signal};
 use once_cell::sync::Lazy;
 
-use crate::{
-    db::models::Instrument, editor::translation_editor::MusicusTranslationEditor,
-    library::MusicusLibrary,
-};
+use crate::{db::models::Instrument, editor::translation::TranslationEditor, library::Library};
 
 mod imp {
 
     use super::*;
 
     #[derive(Debug, Default, gtk::CompositeTemplate)]
-    #[template(file = "data/ui/instrument_editor.blp")]
-    pub struct MusicusInstrumentEditor {
+    #[template(file = "data/ui/editor/instrument.blp")]
+    pub struct InstrumentEditor {
         pub navigation: OnceCell<adw::NavigationView>,
-        pub library: OnceCell<MusicusLibrary>,
+        pub library: OnceCell<Library>,
         pub instrument_id: OnceCell<String>,
 
         #[template_child]
-        pub name_editor: TemplateChild<MusicusTranslationEditor>,
+        pub name_editor: TemplateChild<TranslationEditor>,
         #[template_child]
         pub save_row: TemplateChild<adw::ButtonRow>,
     }
 
     #[glib::object_subclass]
-    impl ObjectSubclass for MusicusInstrumentEditor {
+    impl ObjectSubclass for InstrumentEditor {
         const NAME: &'static str = "MusicusInstrumentEditor";
-        type Type = super::MusicusInstrumentEditor;
+        type Type = super::InstrumentEditor;
         type ParentType = adw::NavigationPage;
 
         fn class_init(klass: &mut Self::Class) {
-            MusicusTranslationEditor::static_type();
+            TranslationEditor::static_type();
             klass.bind_template();
             klass.bind_template_instance_callbacks();
         }
@@ -44,7 +41,7 @@ mod imp {
         }
     }
 
-    impl ObjectImpl for MusicusInstrumentEditor {
+    impl ObjectImpl for InstrumentEditor {
         fn signals() -> &'static [Signal] {
             static SIGNALS: Lazy<Vec<Signal>> = Lazy::new(|| {
                 vec![Signal::builder("created")
@@ -56,20 +53,20 @@ mod imp {
         }
     }
 
-    impl WidgetImpl for MusicusInstrumentEditor {}
-    impl NavigationPageImpl for MusicusInstrumentEditor {}
+    impl WidgetImpl for InstrumentEditor {}
+    impl NavigationPageImpl for InstrumentEditor {}
 }
 
 glib::wrapper! {
-    pub struct MusicusInstrumentEditor(ObjectSubclass<imp::MusicusInstrumentEditor>)
+    pub struct InstrumentEditor(ObjectSubclass<imp::InstrumentEditor>)
         @extends gtk::Widget, adw::NavigationPage;
 }
 
 #[gtk::template_callbacks]
-impl MusicusInstrumentEditor {
+impl InstrumentEditor {
     pub fn new(
         navigation: &adw::NavigationView,
-        library: &MusicusLibrary,
+        library: &Library,
         instrument: Option<&Instrument>,
     ) -> Self {
         let obj: Self = glib::Object::new();

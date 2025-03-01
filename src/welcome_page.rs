@@ -1,24 +1,24 @@
-use crate::config;
-
 use adw::subclass::{navigation_page::NavigationPageImpl, prelude::*};
 use gettextrs::gettext;
 use gtk::{gio, glib, glib::subclass::Signal, prelude::*};
 use once_cell::sync::Lazy;
+
+use crate::config;
 
 mod imp {
     use super::*;
 
     #[derive(Debug, Default, gtk::CompositeTemplate)]
     #[template(file = "data/ui/welcome_page.blp")]
-    pub struct MusicusWelcomePage {
+    pub struct WelcomePage {
         #[template_child]
         pub status_page: TemplateChild<adw::StatusPage>,
     }
 
     #[glib::object_subclass]
-    impl ObjectSubclass for MusicusWelcomePage {
+    impl ObjectSubclass for WelcomePage {
         const NAME: &'static str = "MusicusWelcomePage";
-        type Type = super::MusicusWelcomePage;
+        type Type = super::WelcomePage;
         type ParentType = adw::NavigationPage;
 
         fn class_init(klass: &mut Self::Class) {
@@ -31,7 +31,7 @@ mod imp {
         }
     }
 
-    impl ObjectImpl for MusicusWelcomePage {
+    impl ObjectImpl for WelcomePage {
         fn signals() -> &'static [Signal] {
             static SIGNALS: Lazy<Vec<Signal>> = Lazy::new(|| {
                 vec![Signal::builder("folder-selected")
@@ -48,17 +48,17 @@ mod imp {
         }
     }
 
-    impl WidgetImpl for MusicusWelcomePage {}
-    impl NavigationPageImpl for MusicusWelcomePage {}
+    impl WidgetImpl for WelcomePage {}
+    impl NavigationPageImpl for WelcomePage {}
 }
 
 glib::wrapper! {
-    pub struct MusicusWelcomePage(ObjectSubclass<imp::MusicusWelcomePage>)
+    pub struct WelcomePage(ObjectSubclass<imp::WelcomePage>)
         @extends gtk::Widget, adw::NavigationPage;
 }
 
 #[gtk::template_callbacks]
-impl MusicusWelcomePage {
+impl WelcomePage {
     pub fn new() -> Self {
         glib::Object::new()
     }

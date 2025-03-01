@@ -6,11 +6,10 @@ use std::fmt::Display;
 use anyhow::Result;
 use diesel::prelude::*;
 use gtk::glib::{self, Boxed};
-
-use super::{schema::*, tables, TranslatedString};
-
 // Re-exports for tables that don't need additional information.
 pub use tables::{Instrument, Person, Role};
+
+use super::{schema::*, tables, TranslatedString};
 
 #[derive(Boxed, Clone, Debug)]
 #[boxed_type(name = "MusicusWork")]

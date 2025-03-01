@@ -1,41 +1,37 @@
+mod composer_row;
+mod part_row;
+
+use std::cell::{Cell, OnceCell, RefCell};
+
+use adw::{prelude::*, subclass::prelude::*};
+use composer_row::WorkEditorComposerRow;
+use gettextrs::gettext;
+use gtk::glib::{self, clone, subclass::Signal, Properties};
+use once_cell::sync::Lazy;
+use part_row::WorkEditorPartRow;
+
 use crate::{
     db::{
         self,
         models::{Composer, Instrument, Person, Work},
     },
-    editor::{
-        instrument_editor::MusicusInstrumentEditor,
-        instrument_selector_popover::MusicusInstrumentSelectorPopover,
-        person_editor::MusicusPersonEditor, person_selector_popover::MusicusPersonSelectorPopover,
-        translation_editor::MusicusTranslationEditor,
-        work_editor_composer_row::MusicusWorkEditorComposerRow,
-        work_editor_part_row::MusicusWorkEditorPartRow,
-    },
-    library::MusicusLibrary,
+    editor::{instrument::InstrumentEditor, person::PersonEditor, translation::TranslationEditor},
+    library::Library,
+    selector::{instrument::InstrumentSelectorPopover, person::PersonSelectorPopover},
 };
-
-use adw::{prelude::*, subclass::prelude::*};
-use gettextrs::gettext;
-use gtk::glib::{
-    clone, Properties,
-    {self, subclass::Signal},
-};
-use once_cell::sync::Lazy;
-
-use std::cell::{Cell, OnceCell, RefCell};
 
 mod imp {
     use super::*;
 
     #[derive(Debug, Default, gtk::CompositeTemplate, Properties)]
-    #[properties(wrapper_type = super::MusicusWorkEditor)]
-    #[template(file = "data/ui/work_editor.blp")]
-    pub struct MusicusWorkEditor {
+    #[properties(wrapper_type = super::WorkEditor)]
+    #[template(file = "data/ui/editor/work.blp")]
+    pub struct WorkEditor {
         #[property(get, construct_only)]
         pub navigation: OnceCell<adw::NavigationView>,
 
         #[property(get, construct_only)]
-        pub library: OnceCell<MusicusLibrary>,
+        pub library: OnceCell<Library>,
 
         pub work_id: OnceCell<String>,
         pub is_part_editor: Cell<bool>,
@@ -43,16 +39,16 @@ mod imp {
         // Holding a reference to each composer row is the simplest way to enumerate all
         // results when finishing the process of editing the work. The composer rows
         // handle all state related to the composer.
-        pub composer_rows: RefCell<Vec<MusicusWorkEditorComposerRow>>,
-        pub part_rows: RefCell<Vec<MusicusWorkEditorPartRow>>,
+        pub composer_rows: RefCell<Vec<WorkEditorComposerRow>>,
+        pub part_rows: RefCell<Vec<WorkEditorPartRow>>,
 
         pub instruments: RefCell<Vec<Instrument>>,
 
-        pub persons_popover: OnceCell<MusicusPersonSelectorPopover>,
-        pub instruments_popover: OnceCell<MusicusInstrumentSelectorPopover>,
+        pub persons_popover: OnceCell<PersonSelectorPopover>,
+        pub instruments_popover: OnceCell<InstrumentSelectorPopover>,
 
         #[template_child]
-        pub name_editor: TemplateChild<MusicusTranslationEditor>,
+        pub name_editor: TemplateChild<TranslationEditor>,
         #[template_child]
         pub composer_list: TemplateChild<gtk::ListBox>,
         #[template_child]
@@ -68,13 +64,13 @@ mod imp {
     }
 
     #[glib::object_subclass]
-    impl ObjectSubclass for MusicusWorkEditor {
+    impl ObjectSubclass for WorkEditor {
         const NAME: &'static str = "MusicusWorkEditor";
-        type Type = super::MusicusWorkEditor;
+        type Type = super::WorkEditor;
         type ParentType = adw::NavigationPage;
 
         fn class_init(klass: &mut Self::Class) {
-            MusicusTranslationEditor::static_type();
+            TranslationEditor::static_type();
             klass.bind_template();
             klass.bind_template_instance_callbacks();
         }
@@ -85,7 +81,7 @@ mod imp {
     }
 
     #[glib::derived_properties]
-    impl ObjectImpl for MusicusWorkEditor {
+    impl ObjectImpl for WorkEditor {
         fn signals() -> &'static [Signal] {
             static SIGNALS: Lazy<Vec<Signal>> = Lazy::new(|| {
                 vec![Signal::builder("created")
@@ -99,7 +95,7 @@ mod imp {
         fn constructed(&self) {
             self.parent_constructed();
 
-            let persons_popover = MusicusPersonSelectorPopover::new(self.library.get().unwrap());
+            let persons_popover = PersonSelectorPopover::new(self.library.get().unwrap());
 
             let obj = self.obj().clone();
             persons_popover.connect_person_selected(move |_, person| {
@@ -108,7 +104,7 @@ mod imp {
 
             let obj = self.obj().clone();
             persons_popover.connect_create(move |_| {
-                let editor = MusicusPersonEditor::new(&obj.navigation(), &obj.library(), None);
+                let editor = PersonEditor::new(&obj.navigation(), &obj.library(), None);
 
                 editor.connect_created(clone!(
                     #[weak]
@@ -124,8 +120,7 @@ mod imp {
             self.select_person_box.append(&persons_popover);
             self.persons_popover.set(persons_popover).unwrap();
 
-            let instruments_popover =
-                MusicusInstrumentSelectorPopover::new(self.library.get().unwrap());
+            let instruments_popover = InstrumentSelectorPopover::new(self.library.get().unwrap());
 
             let obj = self.obj().clone();
             instruments_popover.connect_instrument_selected(move |_, instrument| {
@@ -134,7 +129,7 @@ mod imp {
 
             let obj = self.obj().clone();
             instruments_popover.connect_create(move |_| {
-                let editor = MusicusInstrumentEditor::new(&obj.navigation(), &obj.library(), None);
+                let editor = InstrumentEditor::new(&obj.navigation(), &obj.library(), None);
 
                 editor.connect_created(clone!(
                     #[weak]
@@ -152,20 +147,20 @@ mod imp {
         }
     }
 
-    impl WidgetImpl for MusicusWorkEditor {}
-    impl NavigationPageImpl for MusicusWorkEditor {}
+    impl WidgetImpl for WorkEditor {}
+    impl NavigationPageImpl for WorkEditor {}
 }
 
 glib::wrapper! {
-    pub struct MusicusWorkEditor(ObjectSubclass<imp::MusicusWorkEditor>)
+    pub struct WorkEditor(ObjectSubclass<imp::WorkEditor>)
         @extends gtk::Widget, adw::NavigationPage;
 }
 
 #[gtk::template_callbacks]
-impl MusicusWorkEditor {
+impl WorkEditor {
     pub fn new(
         navigation: &adw::NavigationView,
-        library: &MusicusLibrary,
+        library: &Library,
         work: Option<&Work>,
         is_part_editor: bool,
     ) -> Self {
@@ -218,7 +213,7 @@ impl MusicusWorkEditor {
 
     #[template_callback]
     fn add_part(&self) {
-        let editor = MusicusWorkEditor::new(&self.navigation(), &self.library(), None, true);
+        let editor = WorkEditor::new(&self.navigation(), &self.library(), None, true);
 
         editor.connect_created(clone!(
             #[weak(rename_to = this)]
@@ -243,7 +238,7 @@ impl MusicusWorkEditor {
     }
 
     fn add_part_row(&self, part: Work) {
-        let row = MusicusWorkEditorPartRow::new(&self.navigation(), &self.library(), part);
+        let row = WorkEditorPartRow::new(&self.navigation(), &self.library(), part);
 
         row.connect_remove(clone!(
             #[weak(rename_to = this)]
@@ -262,7 +257,7 @@ impl MusicusWorkEditor {
     }
 
     fn add_composer_row(&self, composer: Composer) {
-        let row = MusicusWorkEditorComposerRow::new(&self.navigation(), &self.library(), composer);
+        let row = WorkEditorComposerRow::new(&self.navigation(), &self.library(), composer);
 
         row.connect_remove(clone!(
             #[weak(rename_to = this)]

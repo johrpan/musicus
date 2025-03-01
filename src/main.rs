@@ -1,3 +1,4 @@
+mod activatable_row;
 mod album_tile;
 mod application;
 mod config;
@@ -16,15 +17,17 @@ mod program_tile;
 mod recording_tile;
 mod search_entry;
 mod search_tag;
+mod selector;
 mod tag_tile;
 mod util;
 mod welcome_page;
 mod window;
 
-use self::{application::MusicusApplication, window::MusicusWindow};
 use gettextrs::LocaleCategory;
 use gstreamer_play::gst;
 use gtk::{gio, glib, prelude::*};
+
+use self::{application::Application, window::Window};
 
 fn main() -> glib::ExitCode {
     tracing_subscriber::fmt::init();
@@ -48,5 +51,5 @@ fn main() -> glib::ExitCode {
         .expect("Could not load resources"),
     );
 
-    MusicusApplication::new().run()
+    Application::new().run()
 }

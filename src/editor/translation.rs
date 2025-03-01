@@ -1,31 +1,28 @@
-use std::cell::RefCell;
-use std::collections::HashMap;
+use std::{cell::RefCell, collections::HashMap};
 
 use adw::{prelude::*, subclass::prelude::*};
 use gtk::glib;
 
-use crate::db::TranslatedString;
-use crate::editor::translation_entry::MusicusTranslationEntry;
-use crate::util;
+use crate::{db::TranslatedString, editor::translation_entry::TranslationEntry, util};
 
 mod imp {
     use super::*;
 
     #[derive(Debug, Default, gtk::CompositeTemplate)]
-    #[template(file = "data/ui/translation_editor.blp")]
-    pub struct MusicusTranslationEditor {
+    #[template(file = "data/ui/editor/translation.blp")]
+    pub struct TranslationEditor {
         #[template_child]
         pub list_box: TemplateChild<gtk::ListBox>,
         #[template_child]
         pub entry_row: TemplateChild<adw::EntryRow>,
 
-        pub translation_entries: RefCell<Vec<MusicusTranslationEntry>>,
+        pub translation_entries: RefCell<Vec<TranslationEntry>>,
     }
 
     #[glib::object_subclass]
-    impl ObjectSubclass for MusicusTranslationEditor {
+    impl ObjectSubclass for TranslationEditor {
         const NAME: &'static str = "MusicusTranslationEditor";
-        type Type = super::MusicusTranslationEditor;
+        type Type = super::TranslationEditor;
         type ParentType = adw::Bin;
 
         fn class_init(klass: &mut Self::Class) {
@@ -38,23 +35,23 @@ mod imp {
         }
     }
 
-    impl ObjectImpl for MusicusTranslationEditor {
+    impl ObjectImpl for TranslationEditor {
         fn constructed(&self) {
             self.parent_constructed();
         }
     }
 
-    impl WidgetImpl for MusicusTranslationEditor {}
-    impl BinImpl for MusicusTranslationEditor {}
+    impl WidgetImpl for TranslationEditor {}
+    impl BinImpl for TranslationEditor {}
 }
 
 glib::wrapper! {
-    pub struct MusicusTranslationEditor(ObjectSubclass<imp::MusicusTranslationEditor>)
+    pub struct TranslationEditor(ObjectSubclass<imp::TranslationEditor>)
         @extends gtk::Widget, adw::PreferencesGroup;
 }
 
 #[gtk::template_callbacks]
-impl MusicusTranslationEditor {
+impl TranslationEditor {
     pub fn new() -> Self {
         glib::Object::new()
     }
@@ -89,7 +86,7 @@ impl MusicusTranslationEditor {
     }
 
     fn add_entry(&self, lang: &str, translation: &str) {
-        let entry = MusicusTranslationEntry::new(lang, translation);
+        let entry = TranslationEntry::new(lang, translation);
 
         let obj = self.clone();
         entry.connect_remove(move |entry| {

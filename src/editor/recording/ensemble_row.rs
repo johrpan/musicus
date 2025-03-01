@@ -5,26 +5,25 @@ use gtk::glib::{self, clone, subclass::Signal, Properties};
 use once_cell::sync::Lazy;
 
 use crate::{
-    db::models::EnsemblePerformer,
-    editor::{role_editor::MusicusRoleEditor, role_selector_popover::MusicusRoleSelectorPopover},
-    library::MusicusLibrary,
+    db::models::EnsemblePerformer, editor::role::RoleEditor, library::Library,
+    selector::role::RoleSelectorPopover,
 };
 
 mod imp {
     use super::*;
 
     #[derive(Properties, Debug, Default, gtk::CompositeTemplate)]
-    #[properties(wrapper_type = super::MusicusRecordingEditorEnsembleRow)]
-    #[template(file = "data/ui/recording_editor_ensemble_row.blp")]
-    pub struct MusicusRecordingEditorEnsembleRow {
+    #[properties(wrapper_type = super::RecordingEditorEnsembleRow)]
+    #[template(file = "data/ui/editor/recording/ensemble_row.blp")]
+    pub struct RecordingEditorEnsembleRow {
         #[property(get, construct_only)]
         pub navigation: OnceCell<adw::NavigationView>,
 
         #[property(get, construct_only)]
-        pub library: OnceCell<MusicusLibrary>,
+        pub library: OnceCell<Library>,
 
         pub ensemble: RefCell<Option<EnsemblePerformer>>,
-        pub role_popover: OnceCell<MusicusRoleSelectorPopover>,
+        pub role_popover: OnceCell<RoleSelectorPopover>,
 
         #[template_child]
         pub role_label: TemplateChild<gtk::Label>,
@@ -33,9 +32,9 @@ mod imp {
     }
 
     #[glib::object_subclass]
-    impl ObjectSubclass for MusicusRecordingEditorEnsembleRow {
+    impl ObjectSubclass for RecordingEditorEnsembleRow {
         const NAME: &'static str = "MusicusRecordingEditorEnsembleRow";
-        type Type = super::MusicusRecordingEditorEnsembleRow;
+        type Type = super::RecordingEditorEnsembleRow;
         type ParentType = adw::ActionRow;
 
         fn class_init(klass: &mut Self::Class) {
@@ -49,7 +48,7 @@ mod imp {
     }
 
     #[glib::derived_properties]
-    impl ObjectImpl for MusicusRecordingEditorEnsembleRow {
+    impl ObjectImpl for RecordingEditorEnsembleRow {
         fn signals() -> &'static [Signal] {
             static SIGNALS: Lazy<Vec<Signal>> =
                 Lazy::new(|| vec![Signal::builder("remove").build()]);
@@ -60,7 +59,7 @@ mod imp {
         fn constructed(&self) {
             self.parent_constructed();
 
-            let role_popover = MusicusRoleSelectorPopover::new(self.library.get().unwrap());
+            let role_popover = RoleSelectorPopover::new(self.library.get().unwrap());
 
             let obj = self.obj().to_owned();
             role_popover.connect_role_selected(move |_, role| {
@@ -72,7 +71,7 @@ mod imp {
 
             let obj = self.obj().to_owned();
             role_popover.connect_create(move |_| {
-                let editor = MusicusRoleEditor::new(&obj.navigation(), &obj.library(), None);
+                let editor = RoleEditor::new(&obj.navigation(), &obj.library(), None);
 
                 editor.connect_created(clone!(
                     #[weak]
@@ -93,22 +92,22 @@ mod imp {
         }
     }
 
-    impl WidgetImpl for MusicusRecordingEditorEnsembleRow {}
-    impl ListBoxRowImpl for MusicusRecordingEditorEnsembleRow {}
-    impl PreferencesRowImpl for MusicusRecordingEditorEnsembleRow {}
-    impl ActionRowImpl for MusicusRecordingEditorEnsembleRow {}
+    impl WidgetImpl for RecordingEditorEnsembleRow {}
+    impl ListBoxRowImpl for RecordingEditorEnsembleRow {}
+    impl PreferencesRowImpl for RecordingEditorEnsembleRow {}
+    impl ActionRowImpl for RecordingEditorEnsembleRow {}
 }
 
 glib::wrapper! {
-    pub struct MusicusRecordingEditorEnsembleRow(ObjectSubclass<imp::MusicusRecordingEditorEnsembleRow>)
+    pub struct RecordingEditorEnsembleRow(ObjectSubclass<imp::RecordingEditorEnsembleRow>)
         @extends gtk::Widget, gtk::ListBoxRow, adw::PreferencesRow, adw::ActionRow;
 }
 
 #[gtk::template_callbacks]
-impl MusicusRecordingEditorEnsembleRow {
+impl RecordingEditorEnsembleRow {
     pub fn new(
         navigation: &adw::NavigationView,
-        library: &MusicusLibrary,
+        library: &Library,
         ensemble: EnsemblePerformer,
     ) -> Self {
         let obj: Self = glib::Object::builder()

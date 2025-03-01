@@ -1,47 +1,46 @@
+mod ensemble_row;
+mod performer_row;
+
 use std::cell::{OnceCell, RefCell};
 
 use adw::{prelude::*, subclass::prelude::*};
+use ensemble_row::RecordingEditorEnsembleRow;
 use gettextrs::gettext;
 use gtk::glib::{self, clone, subclass::Signal, Properties};
 use once_cell::sync::Lazy;
+use performer_row::RecordingEditorPerformerRow;
 
 use crate::{
     db::models::{Ensemble, EnsemblePerformer, Performer, Person, Recording, Work},
-    editor::{
-        ensemble_editor::MusicusEnsembleEditor,
-        ensemble_selector_popover::MusicusEnsembleSelectorPopover,
-        person_editor::MusicusPersonEditor, person_selector_popover::MusicusPersonSelectorPopover,
-        recording_editor_ensemble_row::MusicusRecordingEditorEnsembleRow,
-        recording_editor_performer_row::MusicusRecordingEditorPerformerRow,
-        work_selector_popover::MusicusWorkSelectorPopover,
+    editor::{ensemble::EnsembleEditor, person::PersonEditor, work::WorkEditor},
+    library::Library,
+    selector::{
+        ensemble::EnsembleSelectorPopover, person::PersonSelectorPopover, work::WorkSelectorPopover,
     },
-    library::MusicusLibrary,
 };
 
 mod imp {
-    use crate::editor::work_editor::MusicusWorkEditor;
-
     use super::*;
 
     #[derive(Debug, Default, gtk::CompositeTemplate, Properties)]
-    #[properties(wrapper_type = super::MusicusRecordingEditor)]
-    #[template(file = "data/ui/recording_editor.blp")]
-    pub struct MusicusRecordingEditor {
+    #[properties(wrapper_type = super::RecordingEditor)]
+    #[template(file = "data/ui/editor/recording.blp")]
+    pub struct RecordingEditor {
         #[property(get, construct_only)]
         pub navigation: OnceCell<adw::NavigationView>,
 
         #[property(get, construct_only)]
-        pub library: OnceCell<MusicusLibrary>,
+        pub library: OnceCell<Library>,
 
         pub recording_id: OnceCell<String>,
 
         pub work: RefCell<Option<Work>>,
-        pub performer_rows: RefCell<Vec<MusicusRecordingEditorPerformerRow>>,
-        pub ensemble_rows: RefCell<Vec<MusicusRecordingEditorEnsembleRow>>,
+        pub performer_rows: RefCell<Vec<RecordingEditorPerformerRow>>,
+        pub ensemble_rows: RefCell<Vec<RecordingEditorEnsembleRow>>,
 
-        pub work_selector_popover: OnceCell<MusicusWorkSelectorPopover>,
-        pub persons_popover: OnceCell<MusicusPersonSelectorPopover>,
-        pub ensembles_popover: OnceCell<MusicusEnsembleSelectorPopover>,
+        pub work_selector_popover: OnceCell<WorkSelectorPopover>,
+        pub persons_popover: OnceCell<PersonSelectorPopover>,
+        pub ensembles_popover: OnceCell<EnsembleSelectorPopover>,
 
         #[template_child]
         pub work_row: TemplateChild<adw::ActionRow>,
@@ -62,9 +61,9 @@ mod imp {
     }
 
     #[glib::object_subclass]
-    impl ObjectSubclass for MusicusRecordingEditor {
+    impl ObjectSubclass for RecordingEditor {
         const NAME: &'static str = "MusicusRecordingEditor";
-        type Type = super::MusicusRecordingEditor;
+        type Type = super::RecordingEditor;
         type ParentType = adw::NavigationPage;
 
         fn class_init(klass: &mut Self::Class) {
@@ -78,7 +77,7 @@ mod imp {
     }
 
     #[glib::derived_properties]
-    impl ObjectImpl for MusicusRecordingEditor {
+    impl ObjectImpl for RecordingEditor {
         fn signals() -> &'static [Signal] {
             static SIGNALS: Lazy<Vec<Signal>> = Lazy::new(|| {
                 vec![Signal::builder("created")
@@ -92,8 +91,7 @@ mod imp {
         fn constructed(&self) {
             self.parent_constructed();
 
-            let work_selector_popover =
-                MusicusWorkSelectorPopover::new(self.library.get().unwrap());
+            let work_selector_popover = WorkSelectorPopover::new(self.library.get().unwrap());
 
             let obj = self.obj().clone();
             work_selector_popover.connect_selected(move |_, work| {
@@ -102,7 +100,7 @@ mod imp {
 
             let obj = self.obj().clone();
             work_selector_popover.connect_create(move |_| {
-                let editor = MusicusWorkEditor::new(&obj.navigation(), &obj.library(), None, false);
+                let editor = WorkEditor::new(&obj.navigation(), &obj.library(), None, false);
 
                 editor.connect_created(clone!(
                     #[weak]
@@ -120,7 +118,7 @@ mod imp {
                 .set(work_selector_popover)
                 .unwrap();
 
-            let persons_popover = MusicusPersonSelectorPopover::new(self.library.get().unwrap());
+            let persons_popover = PersonSelectorPopover::new(self.library.get().unwrap());
 
             let obj = self.obj().clone();
             persons_popover.connect_person_selected(move |_, person| {
@@ -129,7 +127,7 @@ mod imp {
 
             let obj = self.obj().clone();
             persons_popover.connect_create(move |_| {
-                let editor = MusicusPersonEditor::new(&obj.navigation(), &obj.library(), None);
+                let editor = PersonEditor::new(&obj.navigation(), &obj.library(), None);
 
                 editor.connect_created(clone!(
                     #[weak]
@@ -145,8 +143,7 @@ mod imp {
             self.select_person_box.append(&persons_popover);
             self.persons_popover.set(persons_popover).unwrap();
 
-            let ensembles_popover =
-                MusicusEnsembleSelectorPopover::new(self.library.get().unwrap());
+            let ensembles_popover = EnsembleSelectorPopover::new(self.library.get().unwrap());
 
             let obj = self.obj().clone();
             ensembles_popover.connect_ensemble_selected(move |_, ensemble| {
@@ -155,7 +152,7 @@ mod imp {
 
             let obj = self.obj().clone();
             ensembles_popover.connect_create(move |_| {
-                let editor = MusicusEnsembleEditor::new(&obj.navigation(), &obj.library(), None);
+                let editor = EnsembleEditor::new(&obj.navigation(), &obj.library(), None);
 
                 editor.connect_created(clone!(
                     #[weak]
@@ -173,20 +170,20 @@ mod imp {
         }
     }
 
-    impl WidgetImpl for MusicusRecordingEditor {}
-    impl NavigationPageImpl for MusicusRecordingEditor {}
+    impl WidgetImpl for RecordingEditor {}
+    impl NavigationPageImpl for RecordingEditor {}
 }
 
 glib::wrapper! {
-    pub struct MusicusRecordingEditor(ObjectSubclass<imp::MusicusRecordingEditor>)
+    pub struct RecordingEditor(ObjectSubclass<imp::RecordingEditor>)
         @extends gtk::Widget, adw::NavigationPage;
 }
 
 #[gtk::template_callbacks]
-impl MusicusRecordingEditor {
+impl RecordingEditor {
     pub fn new(
         navigation: &adw::NavigationView,
-        library: &MusicusLibrary,
+        library: &Library,
         recording: Option<&Recording>,
     ) -> Self {
         let obj: Self = glib::Object::builder()
@@ -267,8 +264,7 @@ impl MusicusRecordingEditor {
     }
 
     fn add_performer_row(&self, performer: Performer) {
-        let row =
-            MusicusRecordingEditorPerformerRow::new(&self.navigation(), &self.library(), performer);
+        let row = RecordingEditorPerformerRow::new(&self.navigation(), &self.library(), performer);
 
         row.connect_remove(clone!(
             #[weak(rename_to = this)]
@@ -296,7 +292,7 @@ impl MusicusRecordingEditor {
     }
 
     fn add_ensemble_row(&self, ensemble_performer: EnsemblePerformer) {
-        let row = MusicusRecordingEditorEnsembleRow::new(
+        let row = RecordingEditorEnsembleRow::new(
             &self.navigation(),
             &self.library(),
             ensemble_performer,

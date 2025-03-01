@@ -1,29 +1,35 @@
-use crate::{player::MusicusPlayer, playlist_tile::PlaylistTile};
-use adw::subclass::prelude::*;
-use gtk::{glib, glib::subclass::Signal, glib::Properties, prelude::*, ListScrollFlags};
-use once_cell::sync::Lazy;
 use std::cell::OnceCell;
 
+use adw::subclass::prelude::*;
+use gtk::{
+    glib,
+    glib::{subclass::Signal, Properties},
+    prelude::*,
+    ListScrollFlags,
+};
+use once_cell::sync::Lazy;
+
+use crate::{player::Player, playlist_tile::PlaylistTile};
+
 mod imp {
+    use super::*;
     use crate::playlist_item::PlaylistItem;
 
-    use super::*;
-
     #[derive(Properties, Debug, Default, gtk::CompositeTemplate)]
-    #[properties(wrapper_type = super::MusicusPlaylistPage)]
+    #[properties(wrapper_type = super::PlaylistPage)]
     #[template(file = "data/ui/playlist_page.blp")]
-    pub struct MusicusPlaylistPage {
+    pub struct PlaylistPage {
         #[property(get, construct_only)]
-        pub player: OnceCell<MusicusPlayer>,
+        pub player: OnceCell<Player>,
 
         #[template_child]
         pub playlist: TemplateChild<gtk::ListView>,
     }
 
     #[glib::object_subclass]
-    impl ObjectSubclass for MusicusPlaylistPage {
+    impl ObjectSubclass for PlaylistPage {
         const NAME: &'static str = "MusicusPlaylistPage";
-        type Type = super::MusicusPlaylistPage;
+        type Type = super::PlaylistPage;
         type ParentType = adw::Bin;
 
         fn class_init(klass: &mut Self::Class) {
@@ -37,7 +43,7 @@ mod imp {
     }
 
     #[glib::derived_properties]
-    impl ObjectImpl for MusicusPlaylistPage {
+    impl ObjectImpl for PlaylistPage {
         fn signals() -> &'static [Signal] {
             static SIGNALS: Lazy<Vec<Signal>> =
                 Lazy::new(|| vec![Signal::builder("close").build()]);
@@ -76,18 +82,18 @@ mod imp {
         }
     }
 
-    impl WidgetImpl for MusicusPlaylistPage {}
-    impl BinImpl for MusicusPlaylistPage {}
+    impl WidgetImpl for PlaylistPage {}
+    impl BinImpl for PlaylistPage {}
 }
 
 glib::wrapper! {
-    pub struct MusicusPlaylistPage(ObjectSubclass<imp::MusicusPlaylistPage>)
+    pub struct PlaylistPage(ObjectSubclass<imp::PlaylistPage>)
         @extends gtk::Widget, adw::Bin;
 }
 
 #[gtk::template_callbacks]
-impl MusicusPlaylistPage {
-    pub fn new(player: &MusicusPlayer) -> Self {
+impl PlaylistPage {
+    pub fn new(player: &Player) -> Self {
         glib::Object::builder().property("player", player).build()
     }
 

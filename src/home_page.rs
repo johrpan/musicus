@@ -8,38 +8,35 @@ use gtk::{
 };
 
 use crate::{
-    album_tile::MusicusAlbumTile,
+    album_tile::AlbumTile,
     config,
     db::models::*,
-    editor::{
-        ensemble_editor::MusicusEnsembleEditor, person_editor::MusicusPersonEditor,
-        work_editor::MusicusWorkEditor,
-    },
-    library::{LibraryQuery, MusicusLibrary},
-    player::MusicusPlayer,
+    editor::{ensemble::EnsembleEditor, person::PersonEditor, work::WorkEditor},
+    library::{Library, LibraryQuery},
+    player::Player,
     program::Program,
-    program_tile::MusicusProgramTile,
-    recording_tile::MusicusRecordingTile,
-    search_entry::MusicusSearchEntry,
+    program_tile::ProgramTile,
+    recording_tile::RecordingTile,
+    search_entry::SearchEntry,
     search_tag::Tag,
-    tag_tile::MusicusTagTile,
+    tag_tile::TagTile,
 };
 
 mod imp {
     use super::*;
 
     #[derive(Properties, Debug, Default, gtk::CompositeTemplate)]
-    #[properties(wrapper_type = super::MusicusHomePage)]
+    #[properties(wrapper_type = super::HomePage)]
     #[template(file = "data/ui/home_page.blp")]
-    pub struct MusicusHomePage {
+    pub struct HomePage {
         #[property(get, construct_only)]
         pub navigation: OnceCell<adw::NavigationView>,
 
         #[property(get, construct_only)]
-        pub library: OnceCell<MusicusLibrary>,
+        pub library: OnceCell<Library>,
 
         #[property(get, construct_only)]
-        pub player: OnceCell<MusicusPlayer>,
+        pub player: OnceCell<Player>,
 
         pub programs: RefCell<Vec<Program>>,
         pub composers: RefCell<Vec<Person>>,
@@ -50,7 +47,7 @@ mod imp {
         pub albums: RefCell<Vec<Album>>,
 
         #[template_child]
-        pub search_entry: TemplateChild<MusicusSearchEntry>,
+        pub search_entry: TemplateChild<SearchEntry>,
         #[template_child]
         pub stack: TemplateChild<gtk::Stack>,
         #[template_child]
@@ -78,9 +75,9 @@ mod imp {
     }
 
     #[glib::object_subclass]
-    impl ObjectSubclass for MusicusHomePage {
+    impl ObjectSubclass for HomePage {
         const NAME: &'static str = "MusicusHomePage";
-        type Type = super::MusicusHomePage;
+        type Type = super::HomePage;
         type ParentType = adw::NavigationPage;
 
         fn class_init(klass: &mut Self::Class) {
@@ -94,7 +91,7 @@ mod imp {
     }
 
     #[glib::derived_properties]
-    impl ObjectImpl for MusicusHomePage {
+    impl ObjectImpl for HomePage {
         fn constructed(&self) {
             self.parent_constructed();
 
@@ -128,7 +125,7 @@ mod imp {
 
             for program in &programs {
                 self.programs_flow_box
-                    .append(&MusicusProgramTile::new(program.to_owned()));
+                    .append(&ProgramTile::new(program.to_owned()));
             }
 
             self.programs.replace(programs);
@@ -137,22 +134,18 @@ mod imp {
         }
     }
 
-    impl WidgetImpl for MusicusHomePage {}
-    impl NavigationPageImpl for MusicusHomePage {}
+    impl WidgetImpl for HomePage {}
+    impl NavigationPageImpl for HomePage {}
 }
 
 glib::wrapper! {
-    pub struct MusicusHomePage(ObjectSubclass<imp::MusicusHomePage>)
+    pub struct HomePage(ObjectSubclass<imp::HomePage>)
         @extends gtk::Widget, adw::NavigationPage;
 }
 
 #[gtk::template_callbacks]
-impl MusicusHomePage {
-    pub fn new(
-        navigation: &adw::NavigationView,
-        library: &MusicusLibrary,
-        player: &MusicusPlayer,
-    ) -> Self {
+impl HomePage {
+    pub fn new(navigation: &adw::NavigationView, library: &Library, player: &Player) -> Self {
         glib::Object::builder()
             .property("navigation", navigation)
             .property("library", library)
@@ -170,20 +163,20 @@ impl MusicusHomePage {
         if let Some(tag) = self.imp().search_entry.tags().first() {
             match tag {
                 Tag::Composer(person) | Tag::Performer(person) => {
-                    self.navigation().push(&MusicusPersonEditor::new(
+                    self.navigation().push(&PersonEditor::new(
                         &self.navigation(),
                         &self.library(),
                         Some(person),
                     ));
                 }
                 Tag::Ensemble(ensemble) => {
-                    self.navigation().push(&MusicusEnsembleEditor::new(
+                    self.navigation().push(&EnsembleEditor::new(
                         &self.navigation(),
                         &self.library(),
                         Some(ensemble),
                     ));
                 }
-                Tag::Work(work) => self.navigation().push(&MusicusWorkEditor::new(
+                Tag::Work(work) => self.navigation().push(&WorkEditor::new(
                     &self.navigation(),
                     &self.library(),
                     Some(work),
@@ -202,7 +195,7 @@ impl MusicusHomePage {
     }
 
     #[template_callback]
-    fn select(&self, search_entry: &MusicusSearchEntry) {
+    fn select(&self, search_entry: &SearchEntry) {
         let imp = self.imp();
 
         if imp.programs_flow_box.is_visible() {
@@ -240,28 +233,25 @@ impl MusicusHomePage {
     #[template_callback]
     fn program_selected(&self, tile: &gtk::FlowBoxChild, _: &gtk::FlowBox) {
         self.player()
-            .set_program(tile.downcast_ref::<MusicusProgramTile>().unwrap().program());
+            .set_program(tile.downcast_ref::<ProgramTile>().unwrap().program());
     }
 
     #[template_callback]
     fn tile_selected(&self, tile: &gtk::FlowBoxChild, _: &gtk::FlowBox) {
         self.imp()
             .search_entry
-            .add_tag(tile.downcast_ref::<MusicusTagTile>().unwrap().tag().clone())
+            .add_tag(tile.downcast_ref::<TagTile>().unwrap().tag().clone())
     }
 
     #[template_callback]
     fn recording_selected(&self, tile: &gtk::FlowBoxChild, _: &gtk::FlowBox) {
-        self.player().play_recording(
-            tile.downcast_ref::<MusicusRecordingTile>()
-                .unwrap()
-                .recording(),
-        );
+        self.player()
+            .play_recording(tile.downcast_ref::<RecordingTile>().unwrap().recording());
     }
 
     #[template_callback]
     fn album_selected(&self, tile: &gtk::FlowBoxChild, _: &gtk::FlowBox) {
-        self.show_album(tile.downcast_ref::<MusicusAlbumTile>().unwrap().album());
+        self.show_album(tile.downcast_ref::<AlbumTile>().unwrap().album());
     }
 
     fn show_album(&self, _album: &Album) {
@@ -331,26 +321,26 @@ impl MusicusHomePage {
 
             for composer in &results.composers {
                 imp.composers_flow_box
-                    .append(&MusicusTagTile::new(Tag::Composer(composer.clone())));
+                    .append(&TagTile::new(Tag::Composer(composer.clone())));
             }
 
             for performer in &results.performers {
                 imp.performers_flow_box
-                    .append(&MusicusTagTile::new(Tag::Performer(performer.clone())));
+                    .append(&TagTile::new(Tag::Performer(performer.clone())));
             }
 
             for ensemble in &results.ensembles {
                 imp.ensembles_flow_box
-                    .append(&MusicusTagTile::new(Tag::Ensemble(ensemble.clone())));
+                    .append(&TagTile::new(Tag::Ensemble(ensemble.clone())));
             }
 
             for work in &results.works {
                 imp.works_flow_box
-                    .append(&MusicusTagTile::new(Tag::Work(work.clone())));
+                    .append(&TagTile::new(Tag::Work(work.clone())));
             }
 
             for recording in &results.recordings {
-                imp.recordings_flow_box.append(&MusicusRecordingTile::new(
+                imp.recordings_flow_box.append(&RecordingTile::new(
                     &self.navigation(),
                     &self.library(),
                     recording,
@@ -358,7 +348,7 @@ impl MusicusHomePage {
             }
 
             for album in &results.albums {
-                imp.albums_flow_box.append(&MusicusAlbumTile::new(album));
+                imp.albums_flow_box.append(&AlbumTile::new(album));
             }
 
             imp.composers.replace(results.composers);

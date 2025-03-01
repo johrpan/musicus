@@ -1,5 +1,6 @@
-use gtk::{glib, subclass::prelude::*};
 use std::cell::OnceCell;
+
+use gtk::{glib, subclass::prelude::*};
 
 use crate::db::models::Album;
 
@@ -8,7 +9,7 @@ mod imp {
 
     #[derive(Debug, Default, gtk::CompositeTemplate)]
     #[template(file = "data/ui/album_tile.blp")]
-    pub struct MusicusAlbumTile {
+    pub struct AlbumTile {
         pub album: OnceCell<Album>,
 
         #[template_child]
@@ -16,9 +17,9 @@ mod imp {
     }
 
     #[glib::object_subclass]
-    impl ObjectSubclass for MusicusAlbumTile {
+    impl ObjectSubclass for AlbumTile {
         const NAME: &'static str = "MusicusAlbumTile";
-        type Type = super::MusicusAlbumTile;
+        type Type = super::AlbumTile;
         type ParentType = gtk::FlowBoxChild;
 
         fn class_init(klass: &mut Self::Class) {
@@ -30,17 +31,17 @@ mod imp {
         }
     }
 
-    impl ObjectImpl for MusicusAlbumTile {}
-    impl WidgetImpl for MusicusAlbumTile {}
-    impl FlowBoxChildImpl for MusicusAlbumTile {}
+    impl ObjectImpl for AlbumTile {}
+    impl WidgetImpl for AlbumTile {}
+    impl FlowBoxChildImpl for AlbumTile {}
 }
 
 glib::wrapper! {
-    pub struct MusicusAlbumTile(ObjectSubclass<imp::MusicusAlbumTile>)
+    pub struct AlbumTile(ObjectSubclass<imp::AlbumTile>)
         @extends gtk::Widget, gtk::FlowBoxChild;
 }
 
-impl MusicusAlbumTile {
+impl AlbumTile {
     pub fn new(album: &Album) -> Self {
         let obj: Self = glib::Object::new();
 

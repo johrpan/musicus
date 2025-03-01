@@ -1,20 +1,17 @@
-use crate::{
-    db::models::Recording, editor::recording_editor::MusicusRecordingEditor,
-    library::MusicusLibrary,
-};
+use std::cell::OnceCell;
 
 use gettextrs::gettext;
 use gtk::{gio, glib, prelude::*, subclass::prelude::*};
-use std::cell::OnceCell;
+
+use crate::{db::models::Recording, editor::recording::RecordingEditor, library::Library};
 
 mod imp {
-    use crate::editor::tracks_editor::TracksEditor;
-
     use super::*;
+    use crate::editor::tracks::TracksEditor;
 
     #[derive(Debug, Default, gtk::CompositeTemplate)]
     #[template(file = "data/ui/recording_tile.blp")]
-    pub struct MusicusRecordingTile {
+    pub struct RecordingTile {
         #[template_child]
         pub composer_label: TemplateChild<gtk::Label>,
         #[template_child]
@@ -23,14 +20,14 @@ mod imp {
         pub performances_label: TemplateChild<gtk::Label>,
 
         pub navigation: OnceCell<adw::NavigationView>,
-        pub library: OnceCell<MusicusLibrary>,
+        pub library: OnceCell<Library>,
         pub recording: OnceCell<Recording>,
     }
 
     #[glib::object_subclass]
-    impl ObjectSubclass for MusicusRecordingTile {
+    impl ObjectSubclass for RecordingTile {
         const NAME: &'static str = "MusicusRecordingTile";
-        type Type = super::MusicusRecordingTile;
+        type Type = super::RecordingTile;
         type ParentType = gtk::FlowBoxChild;
 
         fn class_init(klass: &mut Self::Class) {
@@ -42,7 +39,7 @@ mod imp {
         }
     }
 
-    impl ObjectImpl for MusicusRecordingTile {
+    impl ObjectImpl for RecordingTile {
         fn constructed(&self) {
             self.parent_constructed();
 
@@ -53,7 +50,7 @@ mod imp {
                         .navigation
                         .get()
                         .unwrap()
-                        .push(&MusicusRecordingEditor::new(
+                        .push(&RecordingEditor::new(
                             obj.imp().navigation.get().unwrap(),
                             obj.imp().library.get().unwrap(),
                             Some(&obj.imp().recording.get().unwrap()),
@@ -78,21 +75,17 @@ mod imp {
         }
     }
 
-    impl WidgetImpl for MusicusRecordingTile {}
-    impl FlowBoxChildImpl for MusicusRecordingTile {}
+    impl WidgetImpl for RecordingTile {}
+    impl FlowBoxChildImpl for RecordingTile {}
 }
 
 glib::wrapper! {
-    pub struct MusicusRecordingTile(ObjectSubclass<imp::MusicusRecordingTile>)
+    pub struct RecordingTile(ObjectSubclass<imp::RecordingTile>)
         @extends gtk::Widget, gtk::FlowBoxChild;
 }
 
-impl MusicusRecordingTile {
-    pub fn new(
-        navigation: &adw::NavigationView,
-        library: &MusicusLibrary,
-        recording: &Recording,
-    ) -> Self {
+impl RecordingTile {
+    pub fn new(navigation: &adw::NavigationView, library: &Library, recording: &Recording) -> Self {
         let obj: Self = glib::Object::new();
         let imp = obj.imp();
 
