@@ -70,16 +70,11 @@ template $MusicusTracksEditor: Adw.NavigationPage {
               "boxed-list"
             ]
 
-            Adw.ActionRow {
+            Adw.ButtonRow {
               title: _("Add _files");
+              start-icon-name: "list-add-symbolic";
               use-underline: true;
-              activatable: true;
               activated => $add_files() swapped;
-
-              [prefix]
-              Gtk.Image {
-                icon-name: "list-add-symbolic";
-              }
             }
           }
 

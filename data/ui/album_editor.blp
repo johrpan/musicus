@@ -45,18 +45,11 @@ template $MusicusAlbumEditor: Adw.NavigationPage {
             "boxed-list"
           ]
 
-          Adw.ActionRow {
+          Adw.ButtonRow {
             title: _("Add _recording");
+            start-icon-name: "list-add-symbolic";
             use-underline: true;
-            activatable: true;
             activated => $select_recording() swapped;
-
-            [prefix]
-            Gtk.Box select_recording_box {
-              Gtk.Image {
-                icon-name: "list-add-symbolic";
-              }
-            }
           }
         }
 

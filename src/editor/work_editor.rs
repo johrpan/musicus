@@ -212,12 +212,12 @@ impl MusicusWorkEditor {
     }
 
     #[template_callback]
-    fn add_person(&self, _: &adw::ActionRow) {
+    fn add_person(&self) {
         self.imp().persons_popover.get().unwrap().popup();
     }
 
     #[template_callback]
-    fn add_part(&self, _: &adw::ActionRow) {
+    fn add_part(&self) {
         let editor = MusicusWorkEditor::new(&self.navigation(), &self.library(), None, true);
 
         editor.connect_created(clone!(
@@ -232,7 +232,7 @@ impl MusicusWorkEditor {
     }
 
     #[template_callback]
-    fn add_instrument(&self, _: &adw::ActionRow) {
+    fn add_instrument(&self) {
         self.imp().instruments_popover.get().unwrap().popup();
     }
 

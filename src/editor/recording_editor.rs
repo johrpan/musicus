@@ -232,17 +232,17 @@ impl MusicusRecordingEditor {
     }
 
     #[template_callback]
-    fn select_work(&self, _: &adw::ActionRow) {
+    fn select_work(&self) {
         self.imp().work_selector_popover.get().unwrap().popup();
     }
 
     #[template_callback]
-    fn select_person(&self, _: &adw::ActionRow) {
+    fn select_person(&self) {
         self.imp().persons_popover.get().unwrap().popup();
     }
 
     #[template_callback]
-    fn select_ensemble(&self, _: &adw::ActionRow) {
+    fn select_ensemble(&self) {
         self.imp().ensembles_popover.get().unwrap().popup();
     }
 

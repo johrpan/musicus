@@ -22,7 +22,7 @@ template $MusicusWorkEditor: Adw.NavigationPage {
             margin-top: 24;
 
             styles [
-              "heading"
+              "heading",
             ]
           }
 
@@ -36,7 +36,7 @@ template $MusicusWorkEditor: Adw.NavigationPage {
             margin-top: 24;
 
             styles [
-              "heading"
+              "heading",
             ]
           }
 
@@ -45,21 +45,14 @@ template $MusicusWorkEditor: Adw.NavigationPage {
             margin-top: 12;
 
             styles [
-              "boxed-list"
+              "boxed-list",
             ]
 
-            Adw.ActionRow {
+            Adw.ButtonRow {
               title: _("Add _composer");
+              start-icon-name: "list-add-symbolic";
               use-underline: true;
-              activatable: true;
               activated => $add_person() swapped;
-
-              [prefix]
-              Gtk.Box select_person_box {
-                Gtk.Image {
-                  icon-name: "list-add-symbolic";
-                }
-              }
             }
           }
 
@@ -69,7 +62,7 @@ template $MusicusWorkEditor: Adw.NavigationPage {
             margin-top: 24;
 
             styles [
-              "heading"
+              "heading",
             ]
           }
 
@@ -78,19 +71,14 @@ template $MusicusWorkEditor: Adw.NavigationPage {
             margin-top: 12;
 
             styles [
-              "boxed-list"
+              "boxed-list",
             ]
 
-            Adw.ActionRow {
+            Adw.ButtonRow {
               title: _("Add _part");
+              start-icon-name: "list-add-symbolic";
               use-underline: true;
-              activatable: true;
               activated => $add_part() swapped;
-
-              [prefix]
-              Gtk.Image {
-                icon-name: "list-add-symbolic";
-              }
             }
           }
 
@@ -100,7 +88,7 @@ template $MusicusWorkEditor: Adw.NavigationPage {
             margin-top: 24;
 
             styles [
-              "heading"
+              "heading",
             ]
           }
 
@@ -110,21 +98,14 @@ template $MusicusWorkEditor: Adw.NavigationPage {
             margin-bottom: 24;
 
             styles [
-              "boxed-list"
+              "boxed-list",
             ]
 
-            Adw.ActionRow {
+            Adw.ButtonRow {
               title: _("Add _instrument");
+              start-icon-name: "list-add-symbolic";
               use-underline: true;
-              activatable: true;
               activated => $add_instrument() swapped;
-
-              [prefix]
-              Gtk.Box select_instrument_box {
-                Gtk.Image {
-                  icon-name: "list-add-symbolic";
-                }
-              }
             }
           }
 
@@ -133,7 +114,7 @@ template $MusicusWorkEditor: Adw.NavigationPage {
             margin-top: 24;
 
             styles [
-              "boxed-list"
+              "boxed-list",
             ]
 
             Adw.ButtonRow save_row {

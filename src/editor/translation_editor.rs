@@ -72,7 +72,7 @@ impl MusicusTranslationEditor {
     }
 
     #[template_callback]
-    fn add_translation(&self, _: &adw::ActionRow) {
+    fn add_translation(&self) {
         self.add_entry(&util::LANG, &self.imp().entry_row.text());
     }
 

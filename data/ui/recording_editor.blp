@@ -22,7 +22,7 @@ template $MusicusRecordingEditor: Adw.NavigationPage {
             margin-top: 24;
 
             styles [
-              "heading"
+              "heading",
             ]
           }
 
@@ -31,7 +31,7 @@ template $MusicusRecordingEditor: Adw.NavigationPage {
             margin-top: 12;
 
             styles [
-              "boxed-list"
+              "boxed-list",
             ]
 
             Adw.ActionRow work_row {
@@ -68,7 +68,7 @@ template $MusicusRecordingEditor: Adw.NavigationPage {
             margin-top: 24;
 
             styles [
-              "heading"
+              "heading",
             ]
           }
 
@@ -77,21 +77,14 @@ template $MusicusRecordingEditor: Adw.NavigationPage {
             margin-top: 12;
 
             styles [
-              "boxed-list"
+              "boxed-list",
             ]
 
-            Adw.ActionRow {
+            Adw.ButtonRow {
               title: _("Add _performer");
+              start-icon-name: "list-add-symbolic";
               use-underline: true;
-              activatable: true;
               activated => $select_person() swapped;
-
-              [prefix]
-              Gtk.Box select_person_box {
-                Gtk.Image {
-                  icon-name: "list-add-symbolic";
-                }
-              }
             }
           }
 
@@ -101,7 +94,7 @@ template $MusicusRecordingEditor: Adw.NavigationPage {
             margin-top: 24;
 
             styles [
-              "heading"
+              "heading",
             ]
           }
 
@@ -110,21 +103,14 @@ template $MusicusRecordingEditor: Adw.NavigationPage {
             margin-top: 12;
 
             styles [
-              "boxed-list"
+              "boxed-list",
             ]
 
-            Adw.ActionRow {
+            Adw.ButtonRow {
               title: _("Add _ensemble");
               use-underline: true;
-              activatable: true;
+              start-icon-name: "list-add-symbolic";
               activated => $select_ensemble() swapped;
-
-              [prefix]
-              Gtk.Box select_ensemble_box {
-                Gtk.Image {
-                  icon-name: "list-add-symbolic";
-                }
-              }
             }
           }
 
@@ -133,7 +119,7 @@ template $MusicusRecordingEditor: Adw.NavigationPage {
             margin-top: 24;
 
             styles [
-              "boxed-list"
+              "boxed-list",
             ]
 
             Adw.ButtonRow save_row {
