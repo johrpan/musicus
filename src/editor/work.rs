@@ -172,7 +172,7 @@ impl WorkEditor {
 
         if is_part_editor {
             obj.set_title(&gettext("Work part"));
-            obj.imp().save_row.set_title(&gettext("Add work part"));
+            obj.imp().save_row.set_title(&gettext("Add _work part"));
             obj.imp().is_part_editor.set(true);
         }
 
