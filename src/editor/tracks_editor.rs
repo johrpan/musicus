@@ -114,7 +114,16 @@ mod imp {
     }
 
     impl WidgetImpl for TracksEditor {}
-    impl NavigationPageImpl for TracksEditor {}
+
+    impl NavigationPageImpl for TracksEditor {
+        fn shown(&self) {
+            self.parent_shown();
+
+            if self.recording.borrow().is_none() {
+                self.obj().select_recording();
+            }
+        }
+    }
 }
 
 glib::wrapper! {
@@ -143,12 +152,12 @@ impl TracksEditor {
     }
 
     #[template_callback]
-    fn select_recording(&self, _: &adw::ActionRow) {
+    fn select_recording(&self) {
         self.imp().recordings_popover.get().unwrap().popup();
     }
 
     #[template_callback]
-    async fn add_files(&self, _: &adw::ActionRow) {
+    async fn add_files(&self) {
         let dialog = gtk::FileDialog::builder()
             .title(gettext("Select audio files"))
             .modal(true)
