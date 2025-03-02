@@ -1,0 +1,90 @@
+using Gtk 4.0;
+using Adw 1;
+
+template $MusicusAlbumPage: Adw.NavigationPage {
+  title: _("Album");
+
+  Adw.ToolbarView {
+    [top]
+    Adw.HeaderBar {
+      show-title: false;
+    }
+
+    Gtk.ScrolledWindow {
+      Adw.Clamp {
+        Gtk.Box {
+          orientation: vertical;
+          margin-bottom: 24;
+          margin-start: 12;
+          margin-end: 12;
+
+          Gtk.Box {
+            spacing: 12;
+            margin-top: 24;
+
+            Gtk.Box {
+              orientation: vertical;
+              hexpand: true;
+
+              Gtk.Label title_label {
+                wrap: true;
+                xalign: 0.0;
+
+                styles [
+                  "title-1",
+                ]
+              }
+
+              Gtk.Label subtitle_label {
+                wrap: true;
+                xalign: 0.0;
+              }
+            }
+
+            Gtk.Button {
+              icon-name: "document-edit-symbolic";
+              valign: center;
+              clicked => $edit_button_clicked() swapped;
+
+              styles [
+                "flat",
+              ]
+            }
+
+            Gtk.Button {
+              icon-name: "media-playback-start-symbolic";
+              label: _("_Play album");
+              use-underline: true;
+              valign: center;
+              clicked => $play_button_clicked() swapped;
+
+              styles [
+                "pill",
+                "suggested-action",
+              ]
+            }
+          }
+
+          Gtk.Label {
+            label: _("Recordings");
+            xalign: 0;
+            margin-top: 24;
+
+            styles [
+              "heading",
+            ]
+          }
+
+          Gtk.FlowBox recordings_flow_box {
+            margin-top: 12;
+            column-spacing: 12;
+            row-spacing: 12;
+            homogeneous: true;
+            selection-mode: none;
+            child-activated => $recording_selected() swapped;
+          }
+        }
+      }
+    }
+  }
+}

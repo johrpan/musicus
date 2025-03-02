@@ -1,98 +1,91 @@
 using Gtk 4.0;
 using Adw 1;
 
-template $MusicusHomePage: Adw.NavigationPage {
+template $MusicusSearchPage: Adw.NavigationPage {
   title: _("Musicus");
-  tag: "home";
 
-  Gtk.Overlay {
-    Adw.ToolbarView {
-      [top]
-      Adw.HeaderBar header_bar {
-        [end]
-        MenuButton {
-          icon-name: "open-menu-symbolic";
-          menu-model: primary_menu;
-        }
+  Adw.ToolbarView {
+    [top]
+    Adw.HeaderBar header_bar {
+      [end]
+      MenuButton {
+        icon-name: "open-menu-symbolic";
+        menu-model: primary_menu;
       }
+    }
 
-      [top]
+    Gtk.ScrolledWindow scrolled_window {
       Adw.Clamp {
         maximum-size: 1000;
         tightening-threshold: 600;
 
         Gtk.Box {
           orientation: vertical;
-
-          $MusicusSearchEntry search_entry {
-            activate => $select() swapped;
-          }
+          margin-bottom: 24;
+          margin-start: 12;
+          margin-end: 12;
 
           Gtk.Box header_box {
             visible: false;
             spacing: 12;
-            margin-start: 12;
-            margin-end: 12;
             margin-top: 24;
-            margin-bottom: 12;
-
-            Gtk.Button {
-              styles [
-                "flat"
-              ]
-
-              valign: center;
-              icon-name: "go-previous-symbolic";
-              clicked => $back_button_clicked() swapped;
-            }
 
             Gtk.Box {
               orientation: vertical;
               hexpand: true;
 
               Gtk.Label title_label {
-                styles [
-                  "title-1"
-                ]
-
+                wrap: true;
                 xalign: 0.0;
+
+                styles [
+                  "title-1",
+                ]
               }
 
               Gtk.Label subtitle_label {
+                wrap: true;
                 xalign: 0.0;
               }
             }
 
             Gtk.Button {
-              styles [
-                "flat"
-              ]
-
-              valign: center;
               icon-name: "document-edit-symbolic";
+              valign: center;
               clicked => $edit_button_clicked() swapped;
+
+              styles [
+                "flat",
+              ]
+            }
+
+            Gtk.Button {
+              icon-name: "media-playback-start-symbolic";
+              label: _("_Play");
+              use-underline: true;
+              valign: center;
+              clicked => $play_button_clicked() swapped;
+
+              styles [
+                "pill",
+                "suggested-action",
+              ]
             }
           }
-        }
-      }
 
-      Gtk.Stack stack {
-        Gtk.StackPage {
-          name: "results";
+          Gtk.SearchEntry search_entry {
+            placeholder-text: _("Enter composers, performers, works…");
+            margin-top: 24;
+            activate => $select() swapped;
+          }
 
-          child: Gtk.ScrolledWindow {
-            hscrollbar-policy: never;
+          Gtk.Stack stack {
+            Gtk.StackPage {
+              name: "results";
 
-            Adw.Clamp {
-              maximum-size: 1000;
-              tightening-threshold: 600;
-
-              Gtk.Box {
+              child: Gtk.Box {
                 orientation: vertical;
-                margin-start: 12;
-                margin-end: 12;
                 margin-top: 24;
-                margin-bottom: 68;
 
                 Gtk.FlowBox programs_flow_box {
                   margin-top: 12;
@@ -106,7 +99,7 @@ template $MusicusHomePage: Adw.NavigationPage {
 
                 Gtk.Label {
                   styles [
-                    "heading"
+                    "heading",
                   ]
 
                   visible: bind composers_flow_box.visible;
@@ -126,7 +119,7 @@ template $MusicusHomePage: Adw.NavigationPage {
 
                 Gtk.Label {
                   styles [
-                    "heading"
+                    "heading",
                   ]
 
                   visible: bind performers_flow_box.visible;
@@ -146,7 +139,7 @@ template $MusicusHomePage: Adw.NavigationPage {
 
                 Gtk.Label {
                   styles [
-                    "heading"
+                    "heading",
                   ]
 
                   visible: bind ensembles_flow_box.visible;
@@ -166,7 +159,7 @@ template $MusicusHomePage: Adw.NavigationPage {
 
                 Gtk.Label {
                   styles [
-                    "heading"
+                    "heading",
                   ]
 
                   visible: bind instruments_flow_box.visible;
@@ -186,7 +179,7 @@ template $MusicusHomePage: Adw.NavigationPage {
 
                 Gtk.Label {
                   styles [
-                    "heading"
+                    "heading",
                   ]
 
                   visible: bind works_flow_box.visible;
@@ -206,7 +199,7 @@ template $MusicusHomePage: Adw.NavigationPage {
 
                 Gtk.Label {
                   styles [
-                    "heading"
+                    "heading",
                   ]
 
                   visible: bind recordings_flow_box.visible;
@@ -226,7 +219,7 @@ template $MusicusHomePage: Adw.NavigationPage {
 
                 Gtk.Label {
                   styles [
-                    "heading"
+                    "heading",
                   ]
 
                   visible: bind albums_flow_box.visible;
@@ -243,36 +236,21 @@ template $MusicusHomePage: Adw.NavigationPage {
                   selection-mode: none;
                   child-activated => $album_selected() swapped;
                 }
-              }
+              };
             }
-          };
-        }
 
-        Gtk.StackPage {
-          name: "empty";
+            Gtk.StackPage {
+              name: "empty";
 
-          child: Adw.StatusPage {
-            icon-name: "system-search-symbolic";
-            title: _("Nothing Found");
-            description: _("Try a different search.");
-          };
+              child: Adw.StatusPage {
+                icon-name: "system-search-symbolic";
+                title: _("Nothing Found");
+                description: _("Try a different search.");
+              };
+            }
+          }
         }
       }
-    }
-
-    [overlay]
-    Gtk.Button play_button {
-      styles [
-        "pill",
-        "suggested-action"
-      ]
-
-      halign: end;
-      valign: end;
-      margin-end: 24;
-      margin-bottom: 24;
-      label: _("Play music");
-      clicked => $play() swapped;
     }
   }
 }

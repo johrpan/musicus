@@ -203,7 +203,7 @@ impl Player {
         })
     }
 
-    pub fn play_recording(&self, recording: &Recording) {
+    pub fn recording_to_playlist(&self, recording: &Recording) -> Vec<PlaylistItem> {
         let tracks = &self
             .library()
             .unwrap()
@@ -211,8 +211,8 @@ impl Player {
             .unwrap();
 
         if tracks.is_empty() {
-            log::warn!("Ignoring recording without tracks being added to the playlist.");
-            return;
+            log::warn!("Recording without tracks: {}.", &recording.recording_id);
+            return Vec::new();
         }
 
         let performances = recording.performers_string();
@@ -272,19 +272,34 @@ impl Player {
             }
         }
 
-        self.append(items);
+        items
     }
 
-    pub fn append(&self, tracks: Vec<PlaylistItem>) {
+    pub fn append(&self, items: Vec<PlaylistItem>) {
         let playlist = self.playlist();
 
-        for track in tracks {
-            playlist.append(&track);
+        for item in items {
+            playlist.append(&item);
         }
 
         if !self.active() && playlist.n_items() > 0 {
             self.set_active(true);
             self.set_current_index(0);
+            self.play();
+        }
+    }
+
+    pub fn append_and_play(&self, items: Vec<PlaylistItem>) {
+        let playlist = self.playlist();
+        let first_index = playlist.n_items();
+
+        for item in items {
+            playlist.append(&item);
+        }
+
+        if playlist.n_items() > first_index {
+            self.set_active(true);
+            self.set_current_index(first_index);
             self.play();
         }
     }
@@ -423,7 +438,8 @@ impl Player {
         if let Some(library) = self.library() {
             // TODO: if program.play_full_recordings() {
             let recording = library.generate_recording(program).unwrap();
-            self.play_recording(&recording);
+            let playlist = self.recording_to_playlist(&recording);
+            self.append(playlist);
         }
     }
 

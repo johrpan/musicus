@@ -72,8 +72,8 @@ impl Library {
             .build()
     }
 
-    pub fn query(&self, query: &LibraryQuery) -> Result<LibraryResults> {
-        let search = format!("%{}%", query.search);
+    pub fn search(&self, query: &LibraryQuery, search: &str) -> Result<LibraryResults> {
+        let search = format!("%{}%", search);
         let mut binding = self.imp().connection.borrow_mut();
         let connection = &mut *binding.as_mut().unwrap();
 
@@ -1541,14 +1541,13 @@ impl Library {
     }
 }
 
-#[derive(Default, Debug)]
+#[derive(Clone, Default, Debug)]
 pub struct LibraryQuery {
     pub composer: Option<Person>,
     pub performer: Option<Person>,
     pub ensemble: Option<Ensemble>,
     pub instrument: Option<Instrument>,
     pub work: Option<Work>,
-    pub search: String,
 }
 
 impl LibraryQuery {
@@ -1558,7 +1557,6 @@ impl LibraryQuery {
             && self.ensemble.is_none()
             && self.instrument.is_none()
             && self.work.is_none()
-            && self.search.is_empty()
     }
 }
 

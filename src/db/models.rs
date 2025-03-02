@@ -1,7 +1,7 @@
 //! This module contains higher-level models combining information from
 //! multiple database tables.
 
-use std::fmt::Display;
+use std::{collections::HashSet, fmt::Display};
 
 use anyhow::Result;
 use diesel::prelude::*;
@@ -391,6 +391,27 @@ impl Album {
             name: data.name,
             recordings,
         })
+    }
+
+    pub fn performers_string(&self) -> String {
+        let mut performers = HashSet::new();
+        let mut ensembles = HashSet::new();
+
+        for recording in &self.recordings {
+            for performer in &recording.persons {
+                performers.insert(performer.to_string());
+            }
+
+            for ensemble in &recording.ensembles {
+                ensembles.insert(ensemble.to_string());
+            }
+        }
+
+        performers
+            .into_iter()
+            .chain(ensembles)
+            .collect::<Vec<String>>()
+            .join(", ")
     }
 }
 

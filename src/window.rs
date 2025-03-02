@@ -4,9 +4,15 @@ use adw::subclass::prelude::*;
 use gtk::{gio, glib, glib::clone, prelude::*};
 
 use crate::{
-    config, editor::tracks::TracksEditor, home_page::HomePage, library::Library,
-    library_manager::LibraryManager, player::Player, player_bar::PlayerBar,
-    playlist_page::PlaylistPage, welcome_page::WelcomePage,
+    config,
+    editor::tracks::TracksEditor,
+    library::{Library, LibraryQuery},
+    library_manager::LibraryManager,
+    player::Player,
+    player_bar::PlayerBar,
+    playlist_page::PlaylistPage,
+    search_page::SearchPage,
+    welcome_page::WelcomePage,
 };
 
 mod imp {
@@ -189,7 +195,13 @@ impl Window {
         self.imp().player.set_library(&library);
 
         let navigation = self.imp().navigation_view.get();
-        navigation.replace(&[HomePage::new(&navigation, &library, &self.imp().player).into()]);
+        navigation.replace(&[SearchPage::new(
+            &navigation,
+            &library,
+            &self.imp().player,
+            LibraryQuery::default(),
+        )
+        .into()]);
 
         self.imp().library.replace(Some(library));
     }
