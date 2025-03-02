@@ -3,7 +3,9 @@ use std::cell::OnceCell;
 use gettextrs::gettext;
 use gtk::{gio, glib, prelude::*, subclass::prelude::*};
 
-use crate::{db::models::Recording, editor::recording::RecordingEditor, library::Library};
+use crate::{
+    db::models::Recording, editor::recording::RecordingEditor, library::Library, player::Player,
+};
 
 mod imp {
     use super::*;
@@ -21,6 +23,7 @@ mod imp {
 
         pub navigation: OnceCell<adw::NavigationView>,
         pub library: OnceCell<Library>,
+        pub player: OnceCell<Player>,
         pub recording: OnceCell<Recording>,
     }
 
@@ -42,6 +45,17 @@ mod imp {
     impl ObjectImpl for RecordingTile {
         fn constructed(&self) {
             self.parent_constructed();
+
+            let obj = self.obj().to_owned();
+            let append_action = gio::ActionEntry::builder("add-to-playlist")
+                .activate(move |_, _, _| {
+                    let player = obj.imp().player.get().unwrap();
+                    let playlist = player.recording_to_playlist(obj.imp().recording.get().unwrap());
+                    if let Err(err) = player.append(playlist) {
+                        log::error!("Failed to add recording to playlist: {err}");
+                    }
+                })
+                .build();
 
             let obj = self.obj().to_owned();
             let edit_recording_action = gio::ActionEntry::builder("edit-recording")
@@ -70,7 +84,7 @@ mod imp {
                 .build();
 
             let actions = gio::SimpleActionGroup::new();
-            actions.add_action_entries([edit_recording_action, edit_tracks_action]);
+            actions.add_action_entries([append_action, edit_recording_action, edit_tracks_action]);
             self.obj().insert_action_group("recording", Some(&actions));
         }
     }
@@ -85,7 +99,12 @@ glib::wrapper! {
 }
 
 impl RecordingTile {
-    pub fn new(navigation: &adw::NavigationView, library: &Library, recording: &Recording) -> Self {
+    pub fn new(
+        navigation: &adw::NavigationView,
+        library: &Library,
+        player: &Player,
+        recording: &Recording,
+    ) -> Self {
         let obj: Self = glib::Object::new();
         let imp = obj.imp();
 
@@ -101,6 +120,7 @@ impl RecordingTile {
 
         imp.navigation.set(navigation.to_owned()).unwrap();
         imp.library.set(library.to_owned()).unwrap();
+        imp.player.set(player.to_owned()).unwrap();
         imp.recording.set(recording.to_owned()).unwrap();
 
         obj

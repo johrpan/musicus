@@ -84,12 +84,14 @@ impl AlbumPage {
             .build();
 
         obj.imp().title_label.set_label(&album.to_string());
-        obj.imp().subtitle_label.set_label(&album.performers_string());
+        obj.imp()
+            .subtitle_label
+            .set_label(&album.performers_string());
 
         for recording in &album.recordings {
             obj.imp()
                 .recordings_flow_box
-                .append(&RecordingTile::new(navigation, library, recording));
+                .append(&RecordingTile::new(navigation, library, player, recording));
         }
 
         obj.imp().album.set(album).unwrap();

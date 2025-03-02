@@ -280,6 +280,7 @@ impl Player {
             if first_index == 0 {
                 self.set_active(true);
                 self.set_current_index(0);
+                self.pause();
             }
 
             Ok(first_index)

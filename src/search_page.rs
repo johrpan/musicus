@@ -460,6 +460,7 @@ impl SearchPage {
                 imp.recordings_flow_box.append(&RecordingTile::new(
                     &self.navigation(),
                     &self.library(),
+                    &self.player(),
                     recording,
                 ));
             }
