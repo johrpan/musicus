@@ -208,7 +208,7 @@ impl SearchPage {
     fn play_button_clicked(&self) {
         let program = Program::from_query(self.imp().query.get().unwrap().clone());
         self.player().set_program(program);
-        self.player().play();
+        self.player().play_from_program();
     }
 
     #[template_callback]
@@ -218,6 +218,7 @@ impl SearchPage {
         if imp.programs_flow_box.is_visible() {
             if let Some(program) = imp.programs.borrow().first().cloned() {
                 self.player().set_program(program);
+                self.player().play_from_program();
             }
         } else {
             let mut new_query = self.imp().query.get().unwrap().clone();
@@ -263,6 +264,7 @@ impl SearchPage {
     fn program_selected(&self, tile: &gtk::FlowBoxChild) {
         self.player()
             .set_program(tile.downcast_ref::<ProgramTile>().unwrap().program());
+        self.player().play_from_program();
     }
 
     #[template_callback]

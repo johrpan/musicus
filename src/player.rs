@@ -3,6 +3,7 @@ use std::{
     path::PathBuf,
 };
 
+use anyhow::{anyhow, Context, Result};
 use fragile::Fragile;
 use gstreamer_play::gst;
 use gtk::{
@@ -33,7 +34,7 @@ mod imp {
         pub active: Cell<bool>,
         #[property(get, set)]
         pub playing: Cell<bool>,
-        #[property(get, set = Self::set_program)]
+        #[property(get, set)]
         pub program: RefCell<Option<Program>>,
         #[property(get, construct_only)]
         pub playlist: OnceCell<gio::ListStore>,
@@ -50,17 +51,6 @@ mod imp {
     }
 
     impl Player {
-        pub fn set_program(&self, program: &Program) {
-            self.program.replace(Some(program.to_owned()));
-
-            if !self.obj().active() {
-                self.obj().set_active(true);
-                self.obj().generate_items(program);
-                self.obj().set_current_index(0);
-                self.obj().play();
-            }
-        }
-
         pub fn set_current_index(&self, index: u32) {
             let playlist = self.playlist.get().unwrap();
 
@@ -275,32 +265,56 @@ impl Player {
         items
     }
 
-    pub fn append(&self, items: Vec<PlaylistItem>) {
-        let playlist = self.playlist();
+    /// Append playlist items to the playlist and return the index of the first newly added item.
+    /// An error will be returned if `items` is empty.
+    pub fn append(&self, items: Vec<PlaylistItem>) -> Result<u32> {
+        if !items.is_empty() {
+            let playlist = self.playlist();
+            let first_index = playlist.n_items();
 
-        for item in items {
-            playlist.append(&item);
-        }
+            for item in items {
+                playlist.append(&item);
+            }
 
-        if !self.active() && playlist.n_items() > 0 {
-            self.set_active(true);
-            self.set_current_index(0);
-            self.play();
+            // If playlist was empty:
+            if first_index == 0 {
+                self.set_active(true);
+                self.set_current_index(0);
+            }
+
+            Ok(first_index)
+        } else {
+            Err(anyhow!("At least one item has to be added to the playlist"))
         }
     }
 
+    /// Append playlist items to the playlist and immediately start playing the first newly added
+    /// item. This will discard the error if `items` is empty.
     pub fn append_and_play(&self, items: Vec<PlaylistItem>) {
-        let playlist = self.playlist();
-        let first_index = playlist.n_items();
-
-        for item in items {
-            playlist.append(&item);
+        match self.append(items) {
+            Ok(index) => {
+                self.set_current_index(index);
+                self.play();
+            }
+            Err(err) => {
+                log::warn!("Failed to append and play items: {err}");
+            }
         }
+    }
 
-        if playlist.n_items() > first_index {
-            self.set_active(true);
-            self.set_current_index(first_index);
-            self.play();
+    /// Generate new playlist items based on the current program and immediately start playing the
+    /// first new item.
+    pub fn play_from_program(&self) {
+        if let Some(program) = self.program() {
+            match self.generate_items(&program) {
+                Ok(index) => {
+                    self.set_current_index(index);
+                    self.play();
+                }
+                Err(err) => {
+                    log::warn!("Failed to play from program: {err}");
+                }
+            }
         }
     }
 
@@ -367,8 +381,10 @@ impl Player {
         if self.current_index() < self.playlist().n_items() - 1 {
             self.set_current_index(self.current_index() + 1);
         } else if let Some(program) = self.program() {
-            self.generate_items(&program);
-            self.set_current_index(self.current_index() + 1);
+            match self.generate_items(&program) {
+                Ok(index) => self.set_current_index(index),
+                Err(err) => log::warn!("Failed to continue playing from program: {err}"),
+            }
         }
     }
 
@@ -434,13 +450,17 @@ impl Player {
             .expect("mpris should not be set");
     }
 
-    fn generate_items(&self, program: &Program) {
-        if let Some(library) = self.library() {
-            // TODO: if program.play_full_recordings() {
-            let recording = library.generate_recording(program).unwrap();
-            let playlist = self.recording_to_playlist(&recording);
-            self.append(playlist);
-        }
+    /// Generate new playlist items based on `program` and return the index of the first newly
+    /// added item if successful.
+    fn generate_items(&self, program: &Program) -> Result<u32> {
+        let recording = self
+            .library()
+            .unwrap()
+            .generate_recording(program)
+            .context("Failed to generate playlist items from program")?;
+
+        let playlist = self.recording_to_playlist(&recording);
+        self.append(playlist)
     }
 
     fn library_path_to_file_path(&self, path: &str) -> String {
