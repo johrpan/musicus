@@ -192,17 +192,26 @@ impl Window {
 
     fn load_library(&self, path: impl AsRef<Path>) {
         let library = Library::new(path);
-        self.imp().player.set_library(&library);
 
+        library.connect_changed(clone!(
+            #[weak(rename_to = obj)]
+            self,
+            move |_| obj.reset_view()
+        ));
+
+        self.imp().player.set_library(&library);
+        self.imp().library.replace(Some(library));
+        self.reset_view();
+    }
+
+    fn reset_view(&self) {
         let navigation = self.imp().navigation_view.get();
         navigation.replace(&[SearchPage::new(
             &navigation,
-            &library,
+            self.imp().library.borrow().as_ref().unwrap(),
             &self.imp().player,
             LibraryQuery::default(),
         )
         .into()]);
-
-        self.imp().library.replace(Some(library));
     }
 }
