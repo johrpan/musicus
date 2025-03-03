@@ -11,11 +11,15 @@ use crate::{
     player::Player,
     player_bar::PlayerBar,
     playlist_page::PlaylistPage,
+    process_manager::ProcessManager,
     search_page::SearchPage,
     welcome_page::WelcomePage,
 };
 
 mod imp {
+    use adw::prelude::{AlertDialogExt, AlertDialogExtManual};
+    use gettextrs::gettext;
+
     use super::*;
 
     #[derive(Debug, Default, gtk::CompositeTemplate)]
@@ -23,6 +27,7 @@ mod imp {
     pub struct Window {
         pub library: RefCell<Option<Library>>,
         pub player: Player,
+        pub process_manager: ProcessManager,
 
         #[template_child]
         pub stack: TemplateChild<gtk::Stack>,
@@ -72,8 +77,11 @@ mod imp {
             let library_action = gio::ActionEntry::builder("library")
                 .activate(move |_, _, _| {
                     if let Some(library) = &*obj.imp().library.borrow() {
-                        let library_manager =
-                            LibraryManager::new(&obj.imp().navigation_view, library);
+                        let library_manager = LibraryManager::new(
+                            &obj.imp().navigation_view,
+                            library,
+                            &obj.imp().process_manager,
+                        );
                         obj.imp().navigation_view.push(&library_manager);
                     }
                 })
@@ -135,11 +143,38 @@ mod imp {
 
     impl WindowImpl for Window {
         fn close_request(&self) -> glib::signal::Propagation {
-            if let Err(err) = self.obj().save_window_state() {
-                log::warn!("Failed to save window state: {err}");
-            }
+            if self.process_manager.any_ongoing() {
+                let dialog = adw::AlertDialog::builder()
+                    .heading(&gettext("Close window?"))
+                    .body(&gettext(
+                        "There are ongoing processes that will be canceled.",
+                    ))
+                    .build();
 
-            glib::signal::Propagation::Proceed
+                dialog.add_responses(&[
+                    ("cancel", &gettext("Keep open")),
+                    ("close", &gettext("Close window")),
+                ]);
+
+                dialog.set_response_appearance("close", adw::ResponseAppearance::Destructive);
+                dialog.set_close_response("cancel");
+                dialog.set_default_response(Some("cancel"));
+
+                let obj = self.obj().to_owned();
+                glib::spawn_future_local(async move {
+                    if dialog.choose_future(&obj).await == "close" {
+                        obj.destroy();
+                    }
+                });
+
+                glib::signal::Propagation::Stop
+            } else {
+                if let Err(err) = self.obj().save_window_state() {
+                    log::warn!("Failed to save window state: {err}");
+                }
+
+                glib::signal::Propagation::Proceed
+            }
         }
     }
 

@@ -1,0 +1,65 @@
+using Gtk 4.0;
+
+template $MusicusProcessRow: Gtk.ListBoxRow {
+  activatable: false;
+
+  Gtk.Box {
+    orientation: vertical;
+    spacing: 12;
+    margin-top: 12;
+    margin-bottom: 12;
+    margin-start: 12;
+    margin-end: 12;
+
+    Gtk.Box {
+      spacing: 12;
+
+      Gtk.Box {
+        orientation: vertical;
+        hexpand: true;
+
+        Gtk.Label description_label {
+          wrap: true;
+          xalign: 0.0;
+        }
+
+        Gtk.Label success_label {
+          label: _("Process finished");
+          wrap: true;
+          xalign: 0.0;
+          visible: false;
+
+          styles [
+            "success",
+            "caption"
+          ]
+        }
+
+        Gtk.Label error_label {
+          wrap: true;
+          visible: false;
+          xalign: 0.0;
+
+          styles [
+            "error",
+            "caption"
+          ]
+        }
+      }
+
+      Gtk.Button remove_button {
+        icon-name: "window-close-symbolic";
+        tooltip-text: _("Remove from list");
+        valign: start;
+        visible: false;
+        clicked => $remove() swapped;
+
+        styles [
+          "flat",
+        ]
+      }
+    }
+
+    Gtk.ProgressBar progress_bar {}
+  }
+}

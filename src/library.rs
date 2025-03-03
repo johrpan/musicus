@@ -1,8 +1,10 @@
 use std::{
     cell::{OnceCell, RefCell},
     ffi::OsString,
-    fs,
+    fs::{self, File},
+    io::{BufWriter, Read, Write},
     path::{Path, PathBuf},
+    thread,
 };
 
 use adw::{
@@ -14,6 +16,7 @@ use anyhow::{anyhow, Result};
 use chrono::prelude::*;
 use diesel::{dsl::exists, prelude::*, QueryDsl, SqliteConnection};
 use once_cell::sync::Lazy;
+use zip::{write::SimpleFileOptions, ZipWriter};
 
 use crate::{
     db::{self, models::*, schema::*, tables, TranslatedString},
@@ -70,6 +73,39 @@ impl Library {
         glib::Object::builder()
             .property("folder", path.as_ref().to_str().unwrap())
             .build()
+    }
+
+    /// Import from a library archive.
+    pub fn import(&self, _path: impl AsRef<Path>) -> Result<()> {
+        Ok(())
+    }
+
+    /// Export the whole music library to an archive at `path`. If `path` already exists, it will
+    /// be overwritten. The work will be done in a background thread.
+    pub fn export(
+        &self,
+        path: impl AsRef<Path>,
+    ) -> Result<async_channel::Receiver<LibraryProcessMsg>> {
+        let mut binding = self.imp().connection.borrow_mut();
+        let connection = &mut *binding.as_mut().unwrap();
+
+        let path = path.as_ref().to_owned();
+        let library_folder = PathBuf::from(&self.folder());
+        let tracks = tracks::table.load::<tables::Track>(connection)?;
+
+        let (sender, receiver) = async_channel::unbounded::<LibraryProcessMsg>();
+        thread::spawn(move || {
+            if let Err(err) = sender.send_blocking(LibraryProcessMsg::Result(write_zip(
+                path,
+                library_folder,
+                tracks,
+                &sender,
+            ))) {
+                log::error!("Failed to send library action result: {err}");
+            }
+        });
+
+        Ok(receiver)
     }
 
     pub fn search(&self, query: &LibraryQuery, search: &str) -> Result<LibraryResults> {
@@ -1581,4 +1617,56 @@ impl LibraryResults {
             && self.recordings.is_empty()
             && self.albums.is_empty()
     }
+}
+
+fn write_zip(
+    zip_path: impl AsRef<Path>,
+    library_folder: impl AsRef<Path>,
+    tracks: Vec<tables::Track>,
+    sender: &async_channel::Sender<LibraryProcessMsg>,
+) -> Result<()> {
+    let mut zip = zip::ZipWriter::new(BufWriter::new(fs::File::create(zip_path)?));
+
+    // Start with the database:
+    add_file_to_zip(&mut zip, &library_folder, "musicus.db")?;
+
+    let n_tracks = tracks.len();
+
+    // Include all tracks that are part of the library.
+    for (index, track) in tracks.into_iter().enumerate() {
+        add_file_to_zip(&mut zip, &library_folder, &track.path)?;
+
+        // Ignore if the reveiver has been dropped.
+        let _ = sender.send_blocking(LibraryProcessMsg::Progress(
+            (index + 1) as f64 / n_tracks as f64,
+        ));
+    }
+
+    zip.finish()?;
+
+    Ok(())
+}
+
+// TODO: Cross-platform paths?
+fn add_file_to_zip(
+    zip: &mut ZipWriter<BufWriter<File>>,
+    library_folder: impl AsRef<Path>,
+    library_path: &str,
+) -> Result<()> {
+    let file_path = library_folder.as_ref().join(PathBuf::from(library_path));
+
+    let mut file = File::open(file_path)?;
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer)?;
+
+    zip.start_file(library_path, SimpleFileOptions::default())?;
+    zip.write_all(&buffer)?;
+
+    Ok(())
+}
+
+#[derive(Debug)]
+pub enum LibraryProcessMsg {
+    Progress(f64),
+    Result(Result<()>),
 }
