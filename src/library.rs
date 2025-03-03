@@ -1,9 +1,10 @@
 use std::{
-    cell::{OnceCell, RefCell},
+    cell::OnceCell,
     ffi::OsString,
     fs::{self, File},
-    io::{BufWriter, Read, Write},
+    io::{BufReader, BufWriter, Read, Write},
     path::{Path, PathBuf},
+    sync::{Arc, Mutex},
     thread,
 };
 
@@ -16,6 +17,7 @@ use anyhow::{anyhow, Result};
 use chrono::prelude::*;
 use diesel::{dsl::exists, prelude::*, QueryDsl, SqliteConnection};
 use once_cell::sync::Lazy;
+use tempfile::NamedTempFile;
 use zip::{write::SimpleFileOptions, ZipWriter};
 
 use crate::{
@@ -36,7 +38,7 @@ mod imp {
     pub struct Library {
         #[property(get, construct_only)]
         pub folder: OnceCell<String>,
-        pub connection: RefCell<Option<SqliteConnection>>,
+        pub connection: OnceCell<Arc<Mutex<SqliteConnection>>>,
     }
 
     #[glib::object_subclass]
@@ -59,7 +61,14 @@ mod imp {
 
             let db_path = PathBuf::from(&self.folder.get().unwrap()).join("musicus.db");
             let connection = db::connect(db_path.to_str().unwrap()).unwrap();
-            self.connection.replace(Some(connection));
+
+            if self
+                .connection
+                .set(Arc::new(Mutex::new(connection)))
+                .is_err()
+            {
+                panic!("connection should not be set");
+            }
         }
     }
 }
@@ -76,8 +85,27 @@ impl Library {
     }
 
     /// Import from a library archive.
-    pub fn import(&self, _path: impl AsRef<Path>) -> Result<()> {
-        Ok(())
+    pub fn import(
+        &self,
+        path: impl AsRef<Path>,
+    ) -> Result<async_channel::Receiver<LibraryProcessMsg>> {
+        let path = path.as_ref().to_owned();
+        let library_folder = PathBuf::from(&self.folder());
+        let this_connection = self.imp().connection.get().unwrap().clone();
+
+        let (sender, receiver) = async_channel::unbounded::<LibraryProcessMsg>();
+        thread::spawn(move || {
+            if let Err(err) = sender.send_blocking(LibraryProcessMsg::Result(import_from_zip(
+                path,
+                library_folder,
+                this_connection,
+                &sender,
+            ))) {
+                log::error!("Failed to send library action result: {err}");
+            }
+        });
+
+        Ok(receiver)
     }
 
     /// Export the whole music library to an archive at `path`. If `path` already exists, it will
@@ -86,8 +114,7 @@ impl Library {
         &self,
         path: impl AsRef<Path>,
     ) -> Result<async_channel::Receiver<LibraryProcessMsg>> {
-        let mut binding = self.imp().connection.borrow_mut();
-        let connection = &mut *binding.as_mut().unwrap();
+        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
 
         let path = path.as_ref().to_owned();
         let library_folder = PathBuf::from(&self.folder());
@@ -110,8 +137,7 @@ impl Library {
 
     pub fn search(&self, query: &LibraryQuery, search: &str) -> Result<LibraryResults> {
         let search = format!("%{}%", search);
-        let mut binding = self.imp().connection.borrow_mut();
-        let connection = &mut *binding.as_mut().unwrap();
+        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
 
         Ok(match query {
             LibraryQuery { work: None, .. } => {
@@ -486,8 +512,7 @@ impl Library {
     }
 
     pub fn generate_recording(&self, program: &Program) -> Result<Recording> {
-        let mut binding = self.imp().connection.borrow_mut();
-        let connection = &mut *binding.as_mut().unwrap();
+        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
 
         let composer_id = program.composer_id();
         let performer_id = program.performer_id();
@@ -557,8 +582,7 @@ impl Library {
     }
 
     pub fn tracks_for_recording(&self, recording_id: &str) -> Result<Vec<Track>> {
-        let mut binding = self.imp().connection.borrow_mut();
-        let connection = &mut *binding.as_mut().unwrap();
+        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
 
         let tracks = tracks::table
             .order(tracks::recording_index)
@@ -573,8 +597,7 @@ impl Library {
     }
 
     pub fn track_played(&self, track_id: &str) -> Result<()> {
-        let mut binding = self.imp().connection.borrow_mut();
-        let connection = &mut *binding.as_mut().unwrap();
+        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
 
         let now = Local::now().naive_local();
 
@@ -599,8 +622,7 @@ impl Library {
 
     pub fn search_persons(&self, search: &str) -> Result<Vec<Person>> {
         let search = format!("%{}%", search);
-        let mut binding = self.imp().connection.borrow_mut();
-        let connection = &mut *binding.as_mut().unwrap();
+        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
 
         let persons = persons::table
             .order(persons::last_used_at.desc())
@@ -612,8 +634,7 @@ impl Library {
     }
 
     pub fn all_persons(&self) -> Result<Vec<Person>> {
-        let mut binding = self.imp().connection.borrow_mut();
-        let connection = &mut *binding.as_mut().unwrap();
+        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
 
         let persons = persons::table.order(persons::name).load(connection)?;
 
@@ -622,8 +643,7 @@ impl Library {
 
     pub fn search_roles(&self, search: &str) -> Result<Vec<Role>> {
         let search = format!("%{}%", search);
-        let mut binding = self.imp().connection.borrow_mut();
-        let connection = &mut *binding.as_mut().unwrap();
+        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
 
         let roles = roles::table
             .order(roles::last_used_at.desc())
@@ -635,8 +655,7 @@ impl Library {
     }
 
     pub fn all_roles(&self) -> Result<Vec<Role>> {
-        let mut binding = self.imp().connection.borrow_mut();
-        let connection = &mut *binding.as_mut().unwrap();
+        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
 
         let roles = roles::table.order(roles::name).load(connection)?;
 
@@ -645,8 +664,7 @@ impl Library {
 
     pub fn search_instruments(&self, search: &str) -> Result<Vec<Instrument>> {
         let search = format!("%{}%", search);
-        let mut binding = self.imp().connection.borrow_mut();
-        let connection = &mut *binding.as_mut().unwrap();
+        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
 
         let instruments = instruments::table
             .order(instruments::last_used_at.desc())
@@ -658,8 +676,7 @@ impl Library {
     }
 
     pub fn all_instruments(&self) -> Result<Vec<Instrument>> {
-        let mut binding = self.imp().connection.borrow_mut();
-        let connection = &mut *binding.as_mut().unwrap();
+        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
 
         let instruments = instruments::table
             .order(instruments::name)
@@ -670,8 +687,7 @@ impl Library {
 
     pub fn search_works(&self, composer: &Person, search: &str) -> Result<Vec<Work>> {
         let search = format!("%{}%", search);
-        let mut binding = self.imp().connection.borrow_mut();
-        let connection = &mut *binding.as_mut().unwrap();
+        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
 
         let works: Vec<Work> = works::table
             .left_join(work_persons::table)
@@ -693,8 +709,7 @@ impl Library {
 
     pub fn search_recordings(&self, work: &Work, search: &str) -> Result<Vec<Recording>> {
         let search = format!("%{}%", search);
-        let mut binding = self.imp().connection.borrow_mut();
-        let connection = &mut *binding.as_mut().unwrap();
+        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
 
         let recordings = recordings::table
             .left_join(recording_persons::table.inner_join(persons::table))
@@ -718,8 +733,7 @@ impl Library {
     }
 
     pub fn all_works(&self) -> Result<Vec<Work>> {
-        let mut binding = self.imp().connection.borrow_mut();
-        let connection = &mut *binding.as_mut().unwrap();
+        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
 
         let works = works::table
             .order(works::name)
@@ -733,8 +747,7 @@ impl Library {
 
     pub fn search_ensembles(&self, search: &str) -> Result<Vec<Ensemble>> {
         let search = format!("%{}%", search);
-        let mut binding = self.imp().connection.borrow_mut();
-        let connection = &mut *binding.as_mut().unwrap();
+        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
 
         let ensembles = ensembles::table
             .order(ensembles::last_used_at.desc())
@@ -755,8 +768,7 @@ impl Library {
     }
 
     pub fn all_ensembles(&self) -> Result<Vec<Ensemble>> {
-        let mut binding = self.imp().connection.borrow_mut();
-        let connection = &mut *binding.as_mut().unwrap();
+        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
 
         let ensembles = ensembles::table
             .order(ensembles::name)
@@ -769,8 +781,7 @@ impl Library {
     }
 
     pub fn all_recordings(&self) -> Result<Vec<Recording>> {
-        let mut binding = self.imp().connection.borrow_mut();
-        let connection = &mut *binding.as_mut().unwrap();
+        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
 
         let recordings = recordings::table
             .load::<tables::Recording>(connection)?
@@ -782,8 +793,7 @@ impl Library {
     }
 
     pub fn all_tracks(&self) -> Result<Vec<Track>> {
-        let mut binding = self.imp().connection.borrow_mut();
-        let connection = &mut *binding.as_mut().unwrap();
+        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
 
         let tracks = tracks::table
             .load::<tables::Track>(connection)?
@@ -800,8 +810,7 @@ impl Library {
     }
 
     pub fn all_albums(&self) -> Result<Vec<Album>> {
-        let mut binding = self.imp().connection.borrow_mut();
-        let connection = &mut *binding.as_mut().unwrap();
+        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
 
         let albums = albums::table
             .load::<tables::Album>(connection)?
@@ -813,8 +822,7 @@ impl Library {
     }
 
     pub fn composer_default_role(&self) -> Result<Role> {
-        let mut binding = self.imp().connection.borrow_mut();
-        let connection = &mut *binding.as_mut().unwrap();
+        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
 
         Ok(roles::table
             .filter(roles::role_id.eq("380d7e09eb2f49c1a90db2ba4acb6ffd"))
@@ -822,8 +830,7 @@ impl Library {
     }
 
     pub fn performer_default_role(&self) -> Result<Role> {
-        let mut binding = self.imp().connection.borrow_mut();
-        let connection = &mut *binding.as_mut().unwrap();
+        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
 
         Ok(roles::table
             .filter(roles::role_id.eq("28ff0aeb11c041a6916d93e9b4884eef"))
@@ -831,8 +838,7 @@ impl Library {
     }
 
     pub fn create_person(&self, name: TranslatedString) -> Result<Person> {
-        let mut binding = self.imp().connection.borrow_mut();
-        let connection = &mut *binding.as_mut().unwrap();
+        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
 
         let now = Local::now().naive_local();
 
@@ -855,8 +861,7 @@ impl Library {
     }
 
     pub fn update_person(&self, id: &str, name: TranslatedString) -> Result<()> {
-        let mut binding = self.imp().connection.borrow_mut();
-        let connection = &mut *binding.as_mut().unwrap();
+        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
 
         let now = Local::now().naive_local();
 
@@ -875,8 +880,7 @@ impl Library {
     }
 
     pub fn create_instrument(&self, name: TranslatedString) -> Result<Instrument> {
-        let mut binding = self.imp().connection.borrow_mut();
-        let connection = &mut *binding.as_mut().unwrap();
+        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
 
         let now = Local::now().naive_local();
 
@@ -899,8 +903,7 @@ impl Library {
     }
 
     pub fn update_instrument(&self, id: &str, name: TranslatedString) -> Result<()> {
-        let mut binding = self.imp().connection.borrow_mut();
-        let connection = &mut *binding.as_mut().unwrap();
+        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
 
         let now = Local::now().naive_local();
 
@@ -919,8 +922,7 @@ impl Library {
     }
 
     pub fn create_role(&self, name: TranslatedString) -> Result<Role> {
-        let mut binding = self.imp().connection.borrow_mut();
-        let connection = &mut *binding.as_mut().unwrap();
+        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
 
         let now = Local::now().naive_local();
 
@@ -942,8 +944,7 @@ impl Library {
     }
 
     pub fn update_role(&self, id: &str, name: TranslatedString) -> Result<()> {
-        let mut binding = self.imp().connection.borrow_mut();
-        let connection = &mut *binding.as_mut().unwrap();
+        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
 
         let now = Local::now().naive_local();
 
@@ -968,8 +969,7 @@ impl Library {
         persons: Vec<Composer>,
         instruments: Vec<Instrument>,
     ) -> Result<Work> {
-        let mut binding = self.imp().connection.borrow_mut();
-        let connection = &mut *binding.as_mut().unwrap();
+        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
 
         let work =
             self.create_work_priv(connection, name, parts, persons, instruments, None, None)?;
@@ -1057,8 +1057,7 @@ impl Library {
         persons: Vec<Composer>,
         instruments: Vec<Instrument>,
     ) -> Result<()> {
-        let mut binding = self.imp().connection.borrow_mut();
-        let connection = &mut *binding.as_mut().unwrap();
+        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
 
         self.update_work_priv(
             connection,
@@ -1177,8 +1176,7 @@ impl Library {
     }
 
     pub fn create_ensemble(&self, name: TranslatedString) -> Result<Ensemble> {
-        let mut binding = self.imp().connection.borrow_mut();
-        let connection = &mut *binding.as_mut().unwrap();
+        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
 
         let now = Local::now().naive_local();
 
@@ -1205,8 +1203,7 @@ impl Library {
     }
 
     pub fn update_ensemble(&self, id: &str, name: TranslatedString) -> Result<()> {
-        let mut binding = self.imp().connection.borrow_mut();
-        let connection = &mut *binding.as_mut().unwrap();
+        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
 
         let now = Local::now().naive_local();
 
@@ -1233,8 +1230,7 @@ impl Library {
         performers: Vec<Performer>,
         ensembles: Vec<EnsemblePerformer>,
     ) -> Result<Recording> {
-        let mut binding = self.imp().connection.borrow_mut();
-        let connection = &mut *binding.as_mut().unwrap();
+        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
 
         let recording_id = db::generate_id();
         let now = Local::now().naive_local();
@@ -1295,8 +1291,7 @@ impl Library {
         performers: Vec<Performer>,
         ensembles: Vec<EnsemblePerformer>,
     ) -> Result<()> {
-        let mut binding = self.imp().connection.borrow_mut();
-        let connection = &mut *binding.as_mut().unwrap();
+        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
 
         let now = Local::now().naive_local();
 
@@ -1355,8 +1350,7 @@ impl Library {
         name: TranslatedString,
         recordings: Vec<Recording>,
     ) -> Result<Album> {
-        let mut binding = self.imp().connection.borrow_mut();
-        let connection = &mut *binding.as_mut().unwrap();
+        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
 
         let album_id = db::generate_id();
         let now = Local::now().naive_local();
@@ -1399,8 +1393,7 @@ impl Library {
         name: TranslatedString,
         recordings: Vec<Recording>,
     ) -> Result<()> {
-        let mut binding = self.imp().connection.borrow_mut();
-        let connection = &mut *binding.as_mut().unwrap();
+        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
 
         let now = Local::now().naive_local();
 
@@ -1443,8 +1436,7 @@ impl Library {
         recording_index: i32,
         works: Vec<Work>,
     ) -> Result<()> {
-        let mut binding = self.imp().connection.borrow_mut();
-        let connection = &mut *binding.as_mut().unwrap();
+        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
 
         let track_id = db::generate_id();
         let now = Local::now().naive_local();
@@ -1500,8 +1492,7 @@ impl Library {
 
     // TODO: Support mediums, think about albums.
     pub fn delete_track(&self, track: &Track) -> Result<()> {
-        let mut binding = self.imp().connection.borrow_mut();
-        let connection = &mut *binding.as_mut().unwrap();
+        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
 
         diesel::delete(track_works::table)
             .filter(track_works::track_id.eq(&track.track_id))
@@ -1525,8 +1516,7 @@ impl Library {
         recording_index: i32,
         works: Vec<Work>,
     ) -> Result<()> {
-        let mut binding = self.imp().connection.borrow_mut();
-        let connection = &mut *binding.as_mut().unwrap();
+        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
 
         let now = Local::now().naive_local();
 
@@ -1566,7 +1556,7 @@ impl Library {
         })
     }
 
-    fn changed(&self) {
+    pub fn changed(&self) {
         let obj = self.clone();
         // Note: This is a dirty hack to let the calling function return before
         // signal handlers are called. This is neccessary because RefCells
@@ -1661,6 +1651,246 @@ fn add_file_to_zip(
 
     zip.start_file(library_path, SimpleFileOptions::default())?;
     zip.write_all(&buffer)?;
+
+    Ok(())
+}
+
+fn import_from_zip(
+    zip_path: impl AsRef<Path>,
+    library_folder: impl AsRef<Path>,
+    this_connection: Arc<Mutex<SqliteConnection>>,
+    sender: &async_channel::Sender<LibraryProcessMsg>,
+) -> Result<()> {
+    let now = Local::now().naive_local();
+
+    let mut archive = zip::ZipArchive::new(BufReader::new(fs::File::open(zip_path)?))?;
+
+    let archive_db_file = archive.by_name("musicus.db")?;
+    let tmp_db_file = NamedTempFile::new()?;
+    std::io::copy(
+        &mut BufReader::new(archive_db_file),
+        &mut BufWriter::new(tmp_db_file.as_file()),
+    )?;
+
+    let mut other_connection = db::connect(tmp_db_file.path().to_str().unwrap())?;
+
+    // Load all metadata from the archive.
+    let persons = persons::table.load::<tables::Person>(&mut other_connection)?;
+    let roles = roles::table.load::<tables::Role>(&mut other_connection)?;
+    let instruments = instruments::table.load::<tables::Instrument>(&mut other_connection)?;
+    let works = works::table.load::<tables::Work>(&mut other_connection)?;
+    let work_persons = work_persons::table.load::<tables::WorkPerson>(&mut other_connection)?;
+    let work_instruments =
+        work_instruments::table.load::<tables::WorkInstrument>(&mut other_connection)?;
+    let ensembles = ensembles::table.load::<tables::Ensemble>(&mut other_connection)?;
+    let ensemble_persons =
+        ensemble_persons::table.load::<tables::EnsemblePerson>(&mut other_connection)?;
+    let recordings = recordings::table.load::<tables::Recording>(&mut other_connection)?;
+    let recording_persons =
+        recording_persons::table.load::<tables::RecordingPerson>(&mut other_connection)?;
+    let recording_ensembles =
+        recording_ensembles::table.load::<tables::RecordingEnsemble>(&mut other_connection)?;
+    let tracks = tracks::table.load::<tables::Track>(&mut other_connection)?;
+    let track_works = track_works::table.load::<tables::TrackWork>(&mut other_connection)?;
+    let mediums = mediums::table.load::<tables::Medium>(&mut other_connection)?;
+    let albums = albums::table.load::<tables::Album>(&mut other_connection)?;
+    let album_recordings =
+        album_recordings::table.load::<tables::AlbumRecording>(&mut other_connection)?;
+    let album_mediums = album_mediums::table.load::<tables::AlbumMedium>(&mut other_connection)?;
+
+    // Import metadata that is not already present.
+
+    for mut person in persons {
+        person.created_at = now;
+        person.edited_at = now;
+        person.last_used_at = now;
+        person.last_played_at = None;
+
+        diesel::insert_into(persons::table)
+            .values(person)
+            .on_conflict_do_nothing()
+            .execute(&mut *this_connection.lock().unwrap())?;
+    }
+
+    for mut role in roles {
+        role.created_at = now;
+        role.edited_at = now;
+        role.last_used_at = now;
+
+        diesel::insert_into(roles::table)
+            .values(role)
+            .on_conflict_do_nothing()
+            .execute(&mut *this_connection.lock().unwrap())?;
+    }
+
+    for mut instrument in instruments {
+        instrument.created_at = now;
+        instrument.edited_at = now;
+        instrument.last_used_at = now;
+        instrument.last_played_at = None;
+
+        diesel::insert_into(instruments::table)
+            .values(instrument)
+            .on_conflict_do_nothing()
+            .execute(&mut *this_connection.lock().unwrap())?;
+    }
+
+    for mut work in works {
+        work.created_at = now;
+        work.edited_at = now;
+        work.last_used_at = now;
+        work.last_played_at = None;
+
+        diesel::insert_into(works::table)
+            .values(work)
+            .on_conflict_do_nothing()
+            .execute(&mut *this_connection.lock().unwrap())?;
+    }
+
+    for work_person in work_persons {
+        diesel::insert_into(work_persons::table)
+            .values(work_person)
+            .on_conflict_do_nothing()
+            .execute(&mut *this_connection.lock().unwrap())?;
+    }
+
+    for work_instrument in work_instruments {
+        diesel::insert_into(work_instruments::table)
+            .values(work_instrument)
+            .on_conflict_do_nothing()
+            .execute(&mut *this_connection.lock().unwrap())?;
+    }
+
+    for mut ensemble in ensembles {
+        ensemble.created_at = now;
+        ensemble.edited_at = now;
+        ensemble.last_used_at = now;
+        ensemble.last_played_at = None;
+
+        diesel::insert_into(ensembles::table)
+            .values(ensemble)
+            .on_conflict_do_nothing()
+            .execute(&mut *this_connection.lock().unwrap())?;
+    }
+
+    for ensemble_person in ensemble_persons {
+        diesel::insert_into(ensemble_persons::table)
+            .values(ensemble_person)
+            .on_conflict_do_nothing()
+            .execute(&mut *this_connection.lock().unwrap())?;
+    }
+
+    for mut recording in recordings {
+        recording.created_at = now;
+        recording.edited_at = now;
+        recording.last_used_at = now;
+        recording.last_played_at = None;
+
+        diesel::insert_into(recordings::table)
+            .values(recording)
+            .on_conflict_do_nothing()
+            .execute(&mut *this_connection.lock().unwrap())?;
+    }
+
+    for recording_person in recording_persons {
+        diesel::insert_into(recording_persons::table)
+            .values(recording_person)
+            .on_conflict_do_nothing()
+            .execute(&mut *this_connection.lock().unwrap())?;
+    }
+
+    for recording_ensemble in recording_ensembles {
+        diesel::insert_into(recording_ensembles::table)
+            .values(recording_ensemble)
+            .on_conflict_do_nothing()
+            .execute(&mut *this_connection.lock().unwrap())?;
+    }
+
+    for mut track in tracks.clone() {
+        track.created_at = now;
+        track.edited_at = now;
+        track.last_used_at = now;
+        track.last_played_at = None;
+
+        diesel::insert_into(tracks::table)
+            .values(track)
+            .on_conflict_do_nothing()
+            .execute(&mut *this_connection.lock().unwrap())?;
+    }
+
+    for track_work in track_works {
+        diesel::insert_into(track_works::table)
+            .values(track_work)
+            .on_conflict_do_nothing()
+            .execute(&mut *this_connection.lock().unwrap())?;
+    }
+
+    for mut medium in mediums {
+        medium.created_at = now;
+        medium.edited_at = now;
+        medium.last_used_at = now;
+        medium.last_played_at = None;
+
+        diesel::insert_into(mediums::table)
+            .values(medium)
+            .on_conflict_do_nothing()
+            .execute(&mut *this_connection.lock().unwrap())?;
+    }
+
+    for mut album in albums {
+        album.created_at = now;
+        album.edited_at = now;
+        album.last_used_at = now;
+        album.last_played_at = None;
+
+        diesel::insert_into(albums::table)
+            .values(album)
+            .on_conflict_do_nothing()
+            .execute(&mut *this_connection.lock().unwrap())?;
+    }
+
+    for album_recording in album_recordings {
+        diesel::insert_into(album_recordings::table)
+            .values(album_recording)
+            .on_conflict_do_nothing()
+            .execute(&mut *this_connection.lock().unwrap())?;
+    }
+
+    for album_medium in album_mediums {
+        diesel::insert_into(album_mediums::table)
+            .values(album_medium)
+            .on_conflict_do_nothing()
+            .execute(&mut *this_connection.lock().unwrap())?;
+    }
+
+    // Import audio files.
+
+    let n_tracks = tracks.len();
+
+    // TODO: Cross-platform paths?
+    for (index, track) in tracks.into_iter().enumerate() {
+        let library_track_file_path = library_folder.as_ref().join(Path::new(&track.path));
+
+        // Skip tracks that are already present.
+        if !fs::exists(&library_track_file_path)? {
+            if let Some(parent) = library_track_file_path.parent() {
+                fs::create_dir_all(parent)?;
+            }
+
+            let archive_track_file = archive.by_name(&track.path)?;
+            let library_track_file = File::create(library_track_file_path)?;
+
+            std::io::copy(
+                &mut BufReader::new(archive_track_file),
+                &mut BufWriter::new(library_track_file),
+            )?;
+        }
+
+        // Ignore if the reveiver has been dropped.
+        let _ = sender.send_blocking(LibraryProcessMsg::Progress(
+            (index + 1) as f64 / n_tracks as f64,
+        ));
+    }
 
     Ok(())
 }

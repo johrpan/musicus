@@ -125,8 +125,36 @@ impl LibraryManager {
             }
             Ok(path) => {
                 if let Some(path) = path.path() {
-                    if let Err(err) = self.imp().library.get().unwrap().import(path) {
-                        log::error!("Failed to import library from archive: {err}");
+                    match self.imp().library.get().unwrap().import(&path) {
+                        Ok(receiver) => {
+                            let process = Process::new(
+                                &formatx!(
+                                    gettext("Importing music library from {}"),
+                                    path.file_name()
+                                        .map(|f| f.to_string_lossy().into_owned())
+                                        .unwrap_or(gettext("archive"))
+                                )
+                                .unwrap(),
+                                receiver,
+                            );
+
+                            process.connect_finished_notify(clone!(
+                                #[weak(rename_to = obj)]
+                                self,
+                                move |_| {
+                                    obj.imp().library.get().unwrap().changed();
+                                }
+                            ));
+
+                            self.imp()
+                                .process_manager
+                                .get()
+                                .unwrap()
+                                .add_process(&process);
+
+                            self.add_process(&process);
+                        }
+                        Err(err) => log::error!("Failed to import library: {err}"),
                     }
                 }
             }
