@@ -2,6 +2,7 @@ use std::cell::OnceCell;
 
 use adw::subclass::prelude::*;
 use gtk::{
+    gio,
     glib::{self, Properties},
     prelude::*,
 };
@@ -57,6 +58,48 @@ mod imp {
     impl ObjectImpl for AlbumPage {
         fn constructed(&self) {
             self.parent_constructed();
+
+            let obj = self.obj().to_owned();
+            let add_to_playlist_action = gio::ActionEntry::builder("add-to-playlist")
+                .activate(move |_, _, _| {
+                    let playlist = obj
+                        .imp()
+                        .album
+                        .get()
+                        .unwrap()
+                        .recordings
+                        .iter()
+                        .map(|r| obj.player().recording_to_playlist(r))
+                        .flatten()
+                        .collect::<Vec<PlaylistItem>>();
+
+                    if let Err(err) = obj.player().append(playlist) {
+                        log::warn!("Failed to add album to the playlits: {err}");
+                    };
+                })
+                .build();
+
+            let obj = self.obj().to_owned();
+            let edit_action = gio::ActionEntry::builder("edit")
+                .activate(move |_, _, _| {
+                    obj.navigation().push(&AlbumEditor::new(
+                        &obj.navigation(),
+                        &obj.library(),
+                        Some(&obj.imp().album.get().unwrap().clone()),
+                    ));
+                })
+                .build();
+
+            // let obj = self.obj().to_owned();
+            let delete_action = gio::ActionEntry::builder("delete")
+                .activate(move |_, _, _| {
+                    log::error!("Delete not implemented");
+                })
+                .build();
+
+            let actions = gio::SimpleActionGroup::new();
+            actions.add_action_entries([add_to_playlist_action, edit_action, delete_action]);
+            self.obj().insert_action_group("album", Some(&actions));
         }
     }
 
@@ -97,15 +140,6 @@ impl AlbumPage {
         obj.imp().album.set(album).unwrap();
 
         obj
-    }
-
-    #[template_callback]
-    fn edit_button_clicked(&self) {
-        self.navigation().push(&AlbumEditor::new(
-            &self.navigation(),
-            &self.library(),
-            Some(&self.imp().album.get().unwrap().clone()),
-        ));
     }
 
     #[template_callback]

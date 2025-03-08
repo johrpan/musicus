@@ -115,6 +115,32 @@ mod imp {
                 obj.imp().scrolled_window.vadjustment().set_value(0.0);
                 obj.search(&entry.text());
             });
+
+            let obj = self.obj().to_owned();
+            let add_to_playlist_action = gio::ActionEntry::builder("add-to-playlist")
+                .activate(move |_, _, _| {
+                    let program = Program::from_query(obj.imp().query.get().unwrap().clone());
+                    obj.player().set_program(program);
+                })
+                .build();
+
+            let obj = self.obj().to_owned();
+            let edit_action = gio::ActionEntry::builder("edit")
+                .activate(move |_, _, _| {
+                    obj.edit();
+                })
+                .build();
+
+            let obj = self.obj().to_owned();
+            let delete_action = gio::ActionEntry::builder("delete")
+                .activate(move |_, _, _| {
+                    obj.delete();
+                })
+                .build();
+
+            let actions = gio::SimpleActionGroup::new();
+            actions.add_action_entries([add_to_playlist_action, edit_action, delete_action]);
+            self.obj().insert_action_group("search", Some(&actions));
         }
     }
 
@@ -171,8 +197,7 @@ impl SearchPage {
         obj
     }
 
-    #[template_callback]
-    fn edit_button_clicked(&self) {
+    fn edit(&self) {
         if let Some(highlight) = &*self.imp().highlight.borrow() {
             match highlight {
                 Tag::Composer(person) | Tag::Performer(person) => {
@@ -202,6 +227,27 @@ impl SearchPage {
                 )),
             }
         }
+    }
+
+    fn delete(&self) {
+        log::warn!("Deletion not implemented");
+
+        // if let Some(highlight) = &*self.imp().highlight.borrow() {
+        //     match highlight {
+        //         Tag::Composer(person) | Tag::Performer(person) => {
+        //             // TODO
+        //         }
+        //         Tag::Ensemble(ensemble) => {
+        //             // TODO
+        //         }
+        //         Tag::Instrument(instrument) => {
+        //             // TODO
+        //         }
+        //         Tag::Work(work) => {
+        //             // TODO
+        //         }
+        //     }
+        // }
     }
 
     #[template_callback]

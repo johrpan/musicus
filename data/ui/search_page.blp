@@ -33,6 +33,7 @@ template $MusicusSearchPage: Adw.NavigationPage {
             Gtk.Box {
               orientation: vertical;
               hexpand: true;
+              valign: center;
 
               Gtk.Label title_label {
                 wrap: true;
@@ -49,10 +50,10 @@ template $MusicusSearchPage: Adw.NavigationPage {
               }
             }
 
-            Gtk.Button {
-              icon-name: "document-edit-symbolic";
+            Gtk.MenuButton {
+              icon-name: "view-more-symbolic";
+              menu-model: item_menu;
               valign: center;
-              clicked => $edit_button_clicked() swapped;
 
               styles [
                 "flat",
@@ -60,8 +61,8 @@ template $MusicusSearchPage: Adw.NavigationPage {
             }
 
             Gtk.Button {
-              icon-name: "media-playback-start-symbolic";
               label: _("_Play");
+              tooltip-text: _("Play this as a program");
               use-underline: true;
               valign: center;
               clicked => $play_button_clicked() swapped;
@@ -274,5 +275,26 @@ menu primary_menu {
   item {
     label: _("_About Musicus");
     action: "app.about";
+  }
+}
+
+menu item_menu {
+  section {
+    item {
+      label: _("_Add to playlist");
+      action: "search.add-to-playlist";
+    }
+  }
+
+  section {
+    item {
+      label: _("_Edit item");
+      action: "search.edit";
+    }
+
+    item {
+      label: _("_Delete item");
+      action: "search.delete";
+    }
   }
 }

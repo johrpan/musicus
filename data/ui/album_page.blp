@@ -25,6 +25,7 @@ template $MusicusAlbumPage: Adw.NavigationPage {
             Gtk.Box {
               orientation: vertical;
               hexpand: true;
+              valign: center;
 
               Gtk.Label title_label {
                 wrap: true;
@@ -41,10 +42,10 @@ template $MusicusAlbumPage: Adw.NavigationPage {
               }
             }
 
-            Gtk.Button {
-              icon-name: "document-edit-symbolic";
+            Gtk.MenuButton {
+              icon-name: "view-more-symbolic";
+              menu-model: album_menu;
               valign: center;
-              clicked => $edit_button_clicked() swapped;
 
               styles [
                 "flat",
@@ -52,8 +53,8 @@ template $MusicusAlbumPage: Adw.NavigationPage {
             }
 
             Gtk.Button {
-              icon-name: "media-playback-start-symbolic";
-              label: _("_Play album");
+              label: _("_Play");
+              tooltip-text: _("Play this album");
               use-underline: true;
               valign: center;
               clicked => $play_button_clicked() swapped;
@@ -85,6 +86,27 @@ template $MusicusAlbumPage: Adw.NavigationPage {
           }
         }
       }
+    }
+  }
+}
+
+menu album_menu {
+  section {
+    item {
+      label: _("_Add to playlist");
+      action: "album.add-to-playlist";
+    }
+  }
+
+  section {
+    item {
+      label: _("_Edit item");
+      action: "album.edit";
+    }
+
+    item {
+      label: _("_Delete item");
+      action: "album.delete";
     }
   }
 }
