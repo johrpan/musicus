@@ -181,6 +181,7 @@ impl Library {
                     }
 
                     statement
+                        .order_by(persons::last_played_at.desc())
                         .limit(9)
                         .select(persons::all_columns)
                         .distinct()
@@ -223,6 +224,7 @@ impl Library {
                     }
 
                     statement
+                        .order_by(persons::last_played_at.desc())
                         .limit(9)
                         .select(persons::all_columns)
                         .distinct()
@@ -273,6 +275,7 @@ impl Library {
                     }
 
                     statement
+                        .order_by(ensembles::last_played_at.desc())
                         .limit(9)
                         .select(ensembles::all_columns)
                         .distinct()
@@ -313,6 +316,7 @@ impl Library {
                     }
 
                     statement
+                        .order_by(instruments::last_played_at.desc())
                         .limit(9)
                         .select(instruments::all_columns)
                         .distinct()
@@ -362,6 +366,7 @@ impl Library {
                     }
 
                     statement
+                        .order_by(works::last_played_at.desc())
                         .limit(9)
                         .select(works::all_columns)
                         .distinct()
@@ -418,6 +423,7 @@ impl Library {
                     }
 
                     statement
+                        .order_by(recordings::last_played_at.desc())
                         .limit(9)
                         .select(recordings::all_columns)
                         .distinct()
@@ -474,6 +480,7 @@ impl Library {
                 }
 
                 let albums = statement
+                    .order_by(albums::last_played_at.desc())
                     .limit(9)
                     .select(albums::all_columns)
                     .distinct()
@@ -498,6 +505,7 @@ impl Library {
             } => {
                 let recordings = recordings::table
                     .filter(recordings::work_id.eq(&work.work_id))
+                    .order_by(recordings::last_played_at.desc())
                     .load::<tables::Recording>(connection)?
                     .into_iter()
                     .map(|r| Recording::from_table(r, connection))
@@ -601,6 +609,11 @@ impl Library {
 
         let now = Local::now().naive_local();
 
+        diesel::update(tracks::table)
+            .filter(tracks::track_id.eq(track_id))
+            .set(tracks::last_played_at.eq(now))
+            .execute(connection)?;
+
         diesel::update(recordings::table)
             .filter(exists(
                 tracks::table.filter(
@@ -612,9 +625,89 @@ impl Library {
             .set(recordings::last_played_at.eq(now))
             .execute(connection)?;
 
-        diesel::update(tracks::table)
-            .filter(tracks::track_id.eq(track_id))
-            .set(tracks::last_played_at.eq(now))
+        diesel::update(works::table)
+            .filter(exists(
+                recordings::table.inner_join(tracks::table).filter(
+                    tracks::track_id
+                        .eq(track_id)
+                        .and(recordings::work_id.eq(works::work_id)),
+                ),
+            ))
+            .set(works::last_played_at.eq(now))
+            .execute(connection)?;
+
+        diesel::update(persons::table)
+            .filter(
+                exists(
+                    work_persons::table
+                        .inner_join(
+                            works::table.inner_join(recordings::table.inner_join(tracks::table)),
+                        )
+                        .filter(
+                            tracks::track_id
+                                .eq(track_id)
+                                .and(work_persons::person_id.eq(persons::person_id)),
+                        ),
+                )
+                .or(exists(
+                    recording_persons::table
+                        .inner_join(recordings::table.inner_join(tracks::table))
+                        .filter(
+                            tracks::track_id
+                                .eq(track_id)
+                                .and(recording_persons::person_id.eq(persons::person_id)),
+                        ),
+                )),
+            )
+            .set(persons::last_played_at.eq(now))
+            .execute(connection)?;
+
+        diesel::update(ensembles::table)
+            .filter(exists(
+                recording_ensembles::table
+                    .inner_join(recordings::table.inner_join(tracks::table))
+                    .filter(
+                        tracks::track_id
+                            .eq(track_id)
+                            .and(recording_ensembles::ensemble_id.eq(ensembles::ensemble_id)),
+                    ),
+            ))
+            .set(ensembles::last_played_at.eq(now))
+            .execute(connection)?;
+
+        diesel::update(mediums::table)
+            .filter(exists(
+                tracks::table.filter(
+                    tracks::track_id
+                        .eq(track_id)
+                        .and(tracks::medium_id.eq(mediums::medium_id.nullable())),
+                ),
+            ))
+            .set(mediums::last_played_at.eq(now))
+            .execute(connection)?;
+
+        diesel::update(albums::table)
+            .filter(
+                exists(
+                    album_recordings::table
+                        .inner_join(recordings::table.inner_join(tracks::table))
+                        .filter(
+                            tracks::track_id
+                                .eq(track_id)
+                                .and(album_recordings::album_id.eq(albums::album_id)),
+                        ),
+                )
+                .or(exists(
+                    album_mediums::table
+                        .inner_join(mediums::table.inner_join(tracks::table))
+                        .filter(
+                            tracks::track_id
+                                .eq(track_id)
+                                .and(album_mediums::album_id.eq(albums::album_id)),
+                        ),
+                )),
+            )
+            .set(albums::last_played_at.eq(now))
             .execute(connection)?;
 
         Ok(())
