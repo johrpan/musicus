@@ -1,0 +1,39 @@
+using Gtk 4.0;
+using Adw 1;
+
+template $MusicusErrorDialog: Adw.Dialog {
+  content-width: 600;
+  content-height: 400;
+
+  Adw.ToastOverlay toast_overlay {
+    Adw.ToolbarView {
+      [top]
+      Adw.HeaderBar {
+        title-widget: Adw.WindowTitle {
+          title: _("Error");
+        };
+
+        [end]
+        Gtk.Button {
+          icon-name: "edit-copy-symbolic";
+          tooltip-text: _("Copy details to clipboard");
+          clicked => $copy() swapped;
+
+          styles [
+            "flat",
+          ]
+        }
+      }
+
+      Gtk.ScrolledWindow {
+        Gtk.Label error_label {
+          xalign: 0.0;
+          margin-start: 12;
+          margin-end: 12;
+          margin-top: 12;
+          margin-bottom: 12;
+        }
+      }
+    }
+  }
+}

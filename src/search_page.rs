@@ -5,7 +5,7 @@ use formatx::formatx;
 use gettextrs::gettext;
 use gtk::{
     gio,
-    glib::{self, Properties},
+    glib::{self, clone, Properties},
     prelude::*,
 };
 
@@ -25,6 +25,7 @@ use crate::{
     recording_tile::RecordingTile,
     search_tag::Tag,
     tag_tile::TagTile,
+    util::error_dialog::ErrorDialog,
 };
 
 mod imp {
@@ -34,6 +35,9 @@ mod imp {
     #[properties(wrapper_type = super::SearchPage)]
     #[template(file = "data/ui/search_page.blp")]
     pub struct SearchPage {
+        #[property(get, construct_only)]
+        pub toast_overlay: OnceCell<adw::ToastOverlay>,
+
         #[property(get, construct_only)]
         pub navigation: OnceCell<adw::NavigationView>,
 
@@ -162,12 +166,14 @@ glib::wrapper! {
 #[gtk::template_callbacks]
 impl SearchPage {
     pub fn new(
+        toast_overlay: &adw::ToastOverlay,
         navigation: &adw::NavigationView,
         library: &Library,
         player: &Player,
         query: LibraryQuery,
     ) -> Self {
         let obj: Self = glib::Object::builder()
+            .property("toast-overlay", toast_overlay)
             .property("navigation", navigation)
             .property("library", library)
             .property("player", player)
@@ -230,24 +236,82 @@ impl SearchPage {
     }
 
     fn delete(&self) {
-        log::warn!("Deletion not implemented");
+        if let Some(highlight) = &*self.imp().highlight.borrow() {
+            match highlight {
+                Tag::Composer(person) | Tag::Performer(person) => {
+                    if let Err(err) = self.library().delete_person(&person.person_id) {
+                        let toast = adw::Toast::builder()
+                            .title(&gettext("Failed to delete person"))
+                            .button_label("Details")
+                            .build();
 
-        // if let Some(highlight) = &*self.imp().highlight.borrow() {
-        //     match highlight {
-        //         Tag::Composer(person) | Tag::Performer(person) => {
-        //             // TODO
-        //         }
-        //         Tag::Ensemble(ensemble) => {
-        //             // TODO
-        //         }
-        //         Tag::Instrument(instrument) => {
-        //             // TODO
-        //         }
-        //         Tag::Work(work) => {
-        //             // TODO
-        //         }
-        //     }
-        // }
+                        toast.connect_button_clicked(clone!(
+                            #[weak(rename_to = obj)]
+                            self,
+                            move |_| {
+                                ErrorDialog::present(&err, &obj);
+                            }
+                        ));
+
+                        self.toast_overlay().add_toast(toast);
+                    }
+                }
+                Tag::Ensemble(ensemble) => {
+                    if let Err(err) = self.library().delete_ensemble(&ensemble.ensemble_id) {
+                        let toast = adw::Toast::builder()
+                            .title(&gettext("Failed to delete ensemble"))
+                            .button_label("Details")
+                            .build();
+
+                        toast.connect_button_clicked(clone!(
+                            #[weak(rename_to = obj)]
+                            self,
+                            move |_| {
+                                ErrorDialog::present(&err, &obj);
+                            }
+                        ));
+
+                        self.toast_overlay().add_toast(toast);
+                    }
+                }
+                Tag::Instrument(instrument) => {
+                    if let Err(err) = self.library().delete_instrument(&instrument.instrument_id) {
+                        let toast = adw::Toast::builder()
+                            .title(&gettext("Failed to delete instrument"))
+                            .button_label("Details")
+                            .build();
+
+                        toast.connect_button_clicked(clone!(
+                            #[weak(rename_to = obj)]
+                            self,
+                            move |_| {
+                                ErrorDialog::present(&err, &obj);
+                            }
+                        ));
+
+                        self.toast_overlay().add_toast(toast);
+                    }
+                }
+                Tag::Work(work) => {
+                    if let Err(err) = self.library().delete_work(&work.work_id) {
+                        let toast = adw::Toast::builder()
+                            .title(&gettext("Failed to delete work"))
+                            .button_label("Details")
+                            .build();
+
+                        toast.connect_button_clicked(clone!(
+                            #[weak(rename_to = obj)]
+                            self,
+                            move |_| {
+                                ErrorDialog::present(&err, &obj);
+                            }
+                        ));
+
+                        self.toast_overlay().add_toast(toast);
+                    }
+                }
+            }
+        }
     }
 
     #[template_callback]
@@ -297,6 +361,7 @@ impl SearchPage {
 
             if query_changed {
                 self.navigation().push(&SearchPage::new(
+                    &self.toast_overlay(),
                     &self.navigation(),
                     &self.library(),
                     &self.player(),
@@ -325,6 +390,7 @@ impl SearchPage {
         }
 
         self.navigation().push(&SearchPage::new(
+            &self.toast_overlay(),
             &self.navigation(),
             &self.library(),
             &self.player(),
@@ -347,6 +413,7 @@ impl SearchPage {
 
     fn show_album(&self, album: &Album) {
         self.navigation().push(&AlbumPage::new(
+            &self.toast_overlay(),
             &self.navigation(),
             &self.library(),
             &self.player(),

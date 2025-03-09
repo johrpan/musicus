@@ -879,6 +879,18 @@ impl Library {
         Ok(())
     }
 
+    pub fn delete_person(&self, person_id: &str) -> Result<()> {
+        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
+
+        diesel::delete(persons::table)
+            .filter(persons::person_id.eq(person_id))
+            .execute(connection)?;
+
+        self.changed();
+
+        Ok(())
+    }
+
     pub fn create_instrument(&self, name: TranslatedString) -> Result<Instrument> {
         let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
 
@@ -921,6 +933,18 @@ impl Library {
         Ok(())
     }
 
+    pub fn delete_instrument(&self, instrument_id: &str) -> Result<()> {
+        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
+
+        diesel::delete(instruments::table)
+            .filter(instruments::instrument_id.eq(instrument_id))
+            .execute(connection)?;
+
+        self.changed();
+
+        Ok(())
+    }
+
     pub fn create_role(&self, name: TranslatedString) -> Result<Role> {
         let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
 
@@ -955,6 +979,18 @@ impl Library {
                 roles::edited_at.eq(now),
                 roles::last_used_at.eq(now),
             ))
+            .execute(connection)?;
+
+        self.changed();
+
+        Ok(())
+    }
+
+    pub fn delete_role(&self, role_id: &str) -> Result<()> {
+        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
+
+        diesel::delete(roles::table)
+            .filter(roles::role_id.eq(role_id))
             .execute(connection)?;
 
         self.changed();
@@ -1175,6 +1211,18 @@ impl Library {
         Ok(())
     }
 
+    pub fn delete_work(&self, work_id: &str) -> Result<()> {
+        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
+
+        diesel::delete(works::table)
+            .filter(works::work_id.eq(work_id))
+            .execute(connection)?;
+
+        self.changed();
+
+        Ok(())
+    }
+
     pub fn create_ensemble(&self, name: TranslatedString) -> Result<Ensemble> {
         let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
 
@@ -1217,6 +1265,18 @@ impl Library {
             .execute(connection)?;
 
         // TODO: Support updating persons.
+
+        self.changed();
+
+        Ok(())
+    }
+
+    pub fn delete_ensemble(&self, ensemble_id: &str) -> Result<()> {
+        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
+
+        diesel::delete(ensembles::table)
+            .filter(ensembles::ensemble_id.eq(ensemble_id))
+            .execute(connection)?;
 
         self.changed();
 
@@ -1345,6 +1405,18 @@ impl Library {
         Ok(())
     }
 
+    pub fn delete_recording(&self, recording_id: &str) -> Result<()> {
+        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
+
+        diesel::delete(recordings::table)
+            .filter(recordings::recording_id.eq(recording_id))
+            .execute(connection)?;
+
+        self.changed();
+
+        Ok(())
+    }
+
     pub fn create_album(
         &self,
         name: TranslatedString,
@@ -1421,6 +1493,18 @@ impl Library {
                 .values(&album_recording_data)
                 .execute(connection)?;
         }
+
+        self.changed();
+
+        Ok(())
+    }
+
+    pub fn delete_album(&self, album_id: &str) -> Result<()> {
+        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
+
+        diesel::delete(albums::table)
+            .filter(albums::album_id.eq(album_id))
+            .execute(connection)?;
 
         self.changed();
 

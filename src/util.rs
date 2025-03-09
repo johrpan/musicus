@@ -1,5 +1,6 @@
 pub mod activatable_row;
 pub mod drag_widget;
+pub mod error_dialog;
 
 use gtk::glib;
 use lazy_static::lazy_static;

@@ -30,6 +30,8 @@ mod imp {
         pub process_manager: ProcessManager,
 
         #[template_child]
+        pub toast_overlay: TemplateChild<adw::ToastOverlay>,
+        #[template_child]
         pub stack: TemplateChild<gtk::Stack>,
         #[template_child]
         pub navigation_view: TemplateChild<adw::NavigationView>,
@@ -242,6 +244,7 @@ impl Window {
     fn reset_view(&self) {
         let navigation = self.imp().navigation_view.get();
         navigation.replace(&[SearchPage::new(
+            &self.imp().toast_overlay,
             &navigation,
             self.imp().library.borrow().as_ref().unwrap(),
             &self.imp().player,

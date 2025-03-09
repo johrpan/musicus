@@ -1,27 +1,30 @@
 using Gtk 4.0;
 using Adw 1;
 
-template $MusicusWindow : Adw.ApplicationWindow {
+template $MusicusWindow: Adw.ApplicationWindow {
   title: _("Musicus");
 
-  Adw.ToolbarView {
-    Gtk.Stack stack {
-      transition-type: over_up_down;
+  Adw.ToastOverlay toast_overlay {
+    Adw.ToolbarView {
+      Gtk.Stack stack {
+        transition-type: over_up_down;
 
-      Gtk.StackPage {
-        name: "navigation";
-        child: Adw.NavigationView navigation_view {
-          $MusicusWelcomePage {
-            folder-selected => $set_library_folder() swapped;
-          }
-        };
+        Gtk.StackPage {
+          name: "navigation";
+
+          child: Adw.NavigationView navigation_view {
+            $MusicusWelcomePage {
+              folder-selected => $set_library_folder() swapped;
+            }
+          };
+        }
       }
-    }
 
-    [bottom]
-    Gtk.Revealer player_bar_revealer {
-      reveal-child: true;
-      transition-type: slide_up;
+      [bottom]
+      Gtk.Revealer player_bar_revealer {
+        reveal-child: true;
+        transition-type: slide_up;
+      }
     }
   }
 }

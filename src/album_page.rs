@@ -1,15 +1,16 @@
 use std::cell::OnceCell;
 
 use adw::subclass::prelude::*;
+use gettextrs::gettext;
 use gtk::{
     gio,
-    glib::{self, Properties},
+    glib::{self, clone, Properties},
     prelude::*,
 };
 
 use crate::{
     db::models::*, editor::album::AlbumEditor, library::Library, player::Player,
-    playlist_item::PlaylistItem, recording_tile::RecordingTile,
+    playlist_item::PlaylistItem, recording_tile::RecordingTile, util::error_dialog::ErrorDialog,
 };
 
 mod imp {
@@ -19,6 +20,9 @@ mod imp {
     #[properties(wrapper_type = super::AlbumPage)]
     #[template(file = "data/ui/album_page.blp")]
     pub struct AlbumPage {
+        #[property(get, construct_only)]
+        pub toast_overlay: OnceCell<adw::ToastOverlay>,
+
         #[property(get, construct_only)]
         pub navigation: OnceCell<adw::NavigationView>,
 
@@ -90,10 +94,28 @@ mod imp {
                 })
                 .build();
 
-            // let obj = self.obj().to_owned();
+            let obj = self.obj().to_owned();
             let delete_action = gio::ActionEntry::builder("delete")
                 .activate(move |_, _, _| {
-                    log::error!("Delete not implemented");
+                    if let Err(err) = obj
+                        .library()
+                        .delete_album(&obj.imp().album.get().unwrap().album_id)
+                    {
+                        let toast = adw::Toast::builder()
+                            .title(&gettext("Failed to delete album"))
+                            .button_label("Details")
+                            .build();
+
+                        toast.connect_button_clicked(clone!(
+                            #[weak]
+                            obj,
+                            move |_| {
+                                ErrorDialog::present(&err, &obj);
+                            }
+                        ));
+
+                        obj.toast_overlay().add_toast(toast);
+                    }
                 })
                 .build();
 
@@ -115,12 +137,14 @@ glib::wrapper! {
 #[gtk::template_callbacks]
 impl AlbumPage {
     pub fn new(
+        toast_overlay: &adw::ToastOverlay,
         navigation: &adw::NavigationView,
         library: &Library,
         player: &Player,
         album: Album,
     ) -> Self {
         let obj: Self = glib::Object::builder()
+            .property("toast-overlay", toast_overlay)
             .property("navigation", navigation)
             .property("library", library)
             .property("player", player)
