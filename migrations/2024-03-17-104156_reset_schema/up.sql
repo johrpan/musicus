@@ -133,14 +133,14 @@ CREATE TABLE albums (
 );
 
 CREATE TABLE album_recordings (
-    album_id TEXT NOT NULL REFERENCES albums(album_id),
+    album_id TEXT NOT NULL REFERENCES albums(album_id) ON DELETE CASCADE,
     recording_id TEXT NOT NULL REFERENCES recordings(recording_id),
     sequence_number INTEGER NOT NULL,
     PRIMARY KEY (album_id, recording_id)
 );
 
 CREATE TABLE album_mediums (
-    album_id TEXT NOT NULL REFERENCES albums(album_id),
+    album_id TEXT NOT NULL REFERENCES albums(album_id) ON DELETE CASCADE,
     medium_id TEXT NOT NULL REFERENCES mediums(medium_id),
     sequence_number INTEGER NOT NULL,
     PRIMARY KEY (album_id, medium_id)
