@@ -162,15 +162,6 @@ diesel::table! {
 }
 
 diesel::table! {
-    work_sections (id) {
-        id -> BigInt,
-        work -> Text,
-        title -> Text,
-        before_index -> BigInt,
-    }
-}
-
-diesel::table! {
     works (work_id) {
         work_id -> Text,
         parent_work_id -> Nullable<Text>,
@@ -225,6 +216,5 @@ diesel::allow_tables_to_appear_in_same_query!(
     tracks,
     work_instruments,
     work_persons,
-    work_sections,
     works,
 );
