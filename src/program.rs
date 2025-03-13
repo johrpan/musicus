@@ -78,7 +78,7 @@ impl Program {
             .property("performer-id", query.performer.map(|p| p.person_id))
             .property("ensemble-id", query.ensemble.map(|e| e.ensemble_id))
             .property("instrument-id", query.instrument.map(|i| i.instrument_id))
-            .property("prefer-recently-added", 0.25)
+            .property("prefer-recently-added", 0.0)
             .property("prefer-least-recently-played", 0.5)
             .property("play-full-recordings", true)
             .build()

@@ -15,7 +15,7 @@ use adw::{
 };
 use anyhow::{anyhow, Result};
 use chrono::prelude::*;
-use diesel::{dsl::exists, prelude::*, QueryDsl, SqliteConnection};
+use diesel::{dsl::exists, prelude::*, sql_types, QueryDsl, SqliteConnection};
 use once_cell::sync::Lazy;
 use tempfile::NamedTempFile;
 use zip::{write::SimpleFileOptions, ZipWriter};
@@ -576,12 +576,44 @@ impl Library {
             query = query.filter(album_recordings::album_id.eq(album_id));
         }
 
-        // TODO: Implement weighting.
-        // if program.prefer_recently_added() > 0.0 {}
-        // if program.prefer_least_recently_played() > 0.0 {}
+        if program.prefer_least_recently_played() > 0.0 || program.prefer_recently_added() > 0.0 {
+            // Orders recordings using a dynamically calculated priority score that includes:
+            //  - a random base value between 0.0 and 1.0 giving equal probability to each recording
+            //  - weighted by the average of two scores between 0.0 and 1.0 based on
+            //    1. how long ago the last playback is
+            //    2. how recently the recording was added to the library
+            // Both scores are individually modified based on the following formula:
+            //   e^(10 * a * (score - 1))
+            // This assigns a new score between 0.0 and 1.0 that favors higher scores with "a" being
+            // a user defined constant to determine the bias.
+            query = query.order(
+                diesel::dsl::sql::<sql_types::Untyped>("( \
+                        WITH \
+                            global_bounds AS ( \
+                                SELECT \
+                                    MIN(UNIXEPOCH(last_played_at)) AS min_last_played_at, \
+                                    NULLIF(MAX(UNIXEPOCH(last_played_at)) - MIN(UNIXEPOCH(last_played_at)), 0.0) AS last_played_at_range, \
+                                    MIN(UNIXEPOCH(created_at)) AS min_created_at, \
+                                    NULLIF(MAX(UNIXEPOCH(created_at)) - MIN(UNIXEPOCH(created_at)), 0.0) AS created_at_range \
+                                FROM recordings \
+                            ), \
+                            normalized AS ( \
+                                SELECT \
+                                    IFNULL(1.0 - (UNIXEPOCH(recordings.last_played_at) - min_last_played_at) * 1.0 / last_played_at_range, 1.0) AS least_recently_played, \
+                                    IFNULL((UNIXEPOCH(recordings.created_at) - min_created_at) * 1.0 / created_at_range, 1.0) AS recently_created \
+                                FROM global_bounds \
+                            ) \
+                        SELECT (RANDOM() / 9223372036854775808.0 + 1.0) / 2.0 * (EXP(10.0 * ")
+                    .bind::<sql_types::Double, _>(program.prefer_least_recently_played())
+                    .sql(" * (least_recently_played - 1.0)) + EXP(10.0 * ")
+                    .bind::<sql_types::Double, _>(program.prefer_recently_added())
+                    .sql(" * (recently_created - 1.0))) / 2.0 FROM normalized) DESC")
+            );
+        } else {
+            query = query.order(random());
+        }
 
         let row = query
-            .order(random())
             .select(tables::Recording::as_select())
             .distinct()
             .first::<tables::Recording>(connection)?;
