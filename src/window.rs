@@ -172,7 +172,7 @@ mod imp {
                 glib::signal::Propagation::Stop
             } else {
                 if let Err(err) = self.obj().save_window_state() {
-                    log::warn!("Failed to save window state: {err}");
+                    log::warn!("Failed to save window state: {err:?}");
                 }
 
                 glib::signal::Propagation::Proceed

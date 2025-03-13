@@ -78,7 +78,7 @@ mod imp {
                         .collect::<Vec<PlaylistItem>>();
 
                     if let Err(err) = obj.player().append(playlist) {
-                        log::warn!("Failed to add album to the playlits: {err}");
+                        log::warn!("Failed to add album to the playlits: {err:?}");
                     };
                 })
                 .build();

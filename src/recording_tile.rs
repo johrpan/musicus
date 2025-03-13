@@ -52,7 +52,7 @@ mod imp {
                     let player = obj.imp().player.get().unwrap();
                     let playlist = player.recording_to_playlist(obj.imp().recording.get().unwrap());
                     if let Err(err) = player.append(playlist) {
-                        log::error!("Failed to add recording to playlist: {err}");
+                        log::error!("Failed to add recording to playlist: {err:?}");
                     }
                 })
                 .build();

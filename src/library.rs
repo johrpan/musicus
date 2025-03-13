@@ -101,7 +101,7 @@ impl Library {
                 this_connection,
                 &sender,
             ))) {
-                log::error!("Failed to send library action result: {err}");
+                log::error!("Failed to send library action result: {err:?}");
             }
         });
 
@@ -128,7 +128,7 @@ impl Library {
                 tracks,
                 &sender,
             ))) {
-                log::error!("Failed to send library action result: {err}");
+                log::error!("Failed to send library action result: {err:?}");
             }
         });
 

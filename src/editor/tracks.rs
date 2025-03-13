@@ -170,7 +170,7 @@ impl TracksEditor {
         match dialog.open_multiple_future(Some(window)).await {
             Err(err) => {
                 if !err.matches(gtk::DialogError::Dismissed) {
-                    log::error!("File selection failed: {err}");
+                    log::error!("File selection failed: {err:?}");
                 }
             }
             Ok(files) => {

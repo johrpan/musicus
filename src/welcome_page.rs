@@ -80,7 +80,7 @@ impl WelcomePage {
         {
             Err(err) => {
                 if !err.matches(gtk::DialogError::Dismissed) {
-                    log::error!("Folder selection failed: {err}");
+                    log::error!("Folder selection failed: {err:?}");
                 }
             }
             Ok(folder) => {

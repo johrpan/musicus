@@ -96,7 +96,7 @@ impl LibraryManager {
         match dialog.select_folder_future(Some(window)).await {
             Err(err) => {
                 if !err.matches(gtk::DialogError::Dismissed) {
-                    log::error!("Folder selection failed: {err}");
+                    log::error!("Folder selection failed: {err:?}");
                 }
             }
             Ok(folder) => window.set_library_folder(&folder),
@@ -120,7 +120,7 @@ impl LibraryManager {
         match dialog.open_future(Some(window)).await {
             Err(err) => {
                 if !err.matches(gtk::DialogError::Dismissed) {
-                    log::error!("File selection failed: {err}");
+                    log::error!("File selection failed: {err:?}");
                 }
             }
             Ok(path) => {
@@ -154,7 +154,7 @@ impl LibraryManager {
 
                             self.add_process(&process);
                         }
-                        Err(err) => log::error!("Failed to import library: {err}"),
+                        Err(err) => log::error!("Failed to import library: {err:?}"),
                     }
                 }
             }
@@ -178,7 +178,7 @@ impl LibraryManager {
         match dialog.save_future(Some(window)).await {
             Err(err) => {
                 if !err.matches(gtk::DialogError::Dismissed) {
-                    log::error!("File selection failed: {err}");
+                    log::error!("File selection failed: {err:?}");
                 }
             }
             Ok(path) => {
@@ -204,7 +204,7 @@ impl LibraryManager {
 
                             self.add_process(&process);
                         }
-                        Err(err) => log::error!("Failed to export library: {err}"),
+                        Err(err) => log::error!("Failed to export library: {err:?}"),
                     }
                 }
             }

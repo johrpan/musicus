@@ -63,7 +63,7 @@ mod imp {
                             self.obj().pause();
                         }
                         Err(err) => {
-                            log::warn!("Failed to play from program: {err}");
+                            log::warn!("Failed to play from program: {err:?}");
                         }
                     }
                 }
@@ -317,7 +317,7 @@ impl Player {
                 self.play();
             }
             Err(err) => {
-                log::warn!("Failed to append and play items: {err}");
+                log::warn!("Failed to append and play items: {err:?}");
             }
         }
     }
@@ -332,7 +332,7 @@ impl Player {
                     self.play();
                 }
                 Err(err) => {
-                    log::warn!("Failed to play from program: {err}");
+                    log::warn!("Failed to play from program: {err:?}");
                 }
             }
         }
@@ -403,7 +403,7 @@ impl Player {
         } else if let Some(program) = self.program() {
             match self.generate_items(&program) {
                 Ok(index) => self.set_current_index(index),
-                Err(err) => log::warn!("Failed to continue playing from program: {err}"),
+                Err(err) => log::warn!("Failed to continue playing from program: {err:?}"),
             }
         }
     }
