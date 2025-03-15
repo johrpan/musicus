@@ -532,8 +532,8 @@ impl Library {
         let mut query = recordings::table
             .inner_join(
                 works::table
-                    .left_join(work_persons::table)
-                    .left_join(work_instruments::table),
+                    .left_join(work_persons::table.inner_join(persons::table))
+                    .left_join(work_instruments::table.inner_join(instruments::table)),
             )
             .left_join(recording_persons::table)
             .left_join(
@@ -576,42 +576,82 @@ impl Library {
             query = query.filter(album_recordings::album_id.eq(album_id));
         }
 
-        if program.prefer_least_recently_played() > 0.0 || program.prefer_recently_added() > 0.0 {
-            // Orders recordings using a dynamically calculated priority score that includes:
-            //  - a random base value between 0.0 and 1.0 giving equal probability to each recording
-            //  - weighted by the average of two scores between 0.0 and 1.0 based on
-            //    1. how long ago the last playback is
-            //    2. how recently the recording was added to the library
-            // Both scores are individually modified based on the following formula:
-            //   e^(10 * a * (score - 1))
-            // This assigns a new score between 0.0 and 1.0 that favors higher scores with "a" being
-            // a user defined constant to determine the bias.
-            query = query.order(
-                diesel::dsl::sql::<sql_types::Untyped>("( \
-                        WITH \
-                            global_bounds AS ( \
-                                SELECT \
-                                    MIN(UNIXEPOCH(last_played_at)) AS min_last_played_at, \
-                                    NULLIF(MAX(UNIXEPOCH(last_played_at)) - MIN(UNIXEPOCH(last_played_at)), 0.0) AS last_played_at_range, \
-                                    MIN(UNIXEPOCH(created_at)) AS min_created_at, \
-                                    NULLIF(MAX(UNIXEPOCH(created_at)) - MIN(UNIXEPOCH(created_at)), 0.0) AS created_at_range \
-                                FROM recordings \
-                            ), \
-                            normalized AS ( \
-                                SELECT \
-                                    IFNULL(1.0 - (UNIXEPOCH(recordings.last_played_at) - min_last_played_at) * 1.0 / last_played_at_range, 1.0) AS least_recently_played, \
-                                    IFNULL((UNIXEPOCH(recordings.created_at) - min_created_at) * 1.0 / created_at_range, 1.0) AS recently_created \
-                                FROM global_bounds \
-                            ) \
-                        SELECT (RANDOM() / 9223372036854775808.0 + 1.0) / 2.0 * (EXP(10.0 * ")
-                    .bind::<sql_types::Double, _>(program.prefer_least_recently_played())
-                    .sql(" * (least_recently_played - 1.0)) + EXP(10.0 * ")
-                    .bind::<sql_types::Double, _>(program.prefer_recently_added())
-                    .sql(" * (recently_created - 1.0))) / 2.0 FROM normalized) DESC")
-            );
-        } else {
-            query = query.order(random());
-        }
+        // Orders recordings using a dynamically calculated priority score that includes:
+        //  - a random base value between 0.0 and 1.0 giving equal probability to each recording
+        //  - weighted by the average of two scores between 0.0 and 1.0 based on
+        //    1. how long ago the last playback is
+        //    2. how recently the recording was added to the library
+        // Both scores are individually modified based on the following formula:
+        //   e^(10 * a * (score - 1))
+        // This assigns a new score between 0.0 and 1.0 that favors higher scores with "a" being
+        // a user defined constant to determine the bias.
+        query = query.order(
+            diesel::dsl::sql::<sql_types::Untyped>("( \
+                WITH global_bounds AS (
+                    SELECT MIN(UNIXEPOCH(last_played_at)) AS min_last_played_at,
+                        NULLIF(
+                            MAX(UNIXEPOCH(last_played_at)) - MIN(UNIXEPOCH(last_played_at)),
+                            0.0
+                        ) AS last_played_at_range,
+                        MIN(UNIXEPOCH(created_at)) AS min_created_at,
+                        NULLIF(
+                            MAX(UNIXEPOCH(created_at)) - MIN(UNIXEPOCH(created_at)),
+                            0.0
+                        ) AS created_at_range
+                    FROM recordings
+                ),
+                normalized AS (
+                    SELECT IFNULL(
+                            1.0 - (
+                                UNIXEPOCH(recordings.last_played_at) - min_last_played_at
+                            ) * 1.0 / last_played_at_range,
+                            1.0
+                        ) AS least_recently_played,
+                        IFNULL(
+                            (
+                                UNIXEPOCH(recordings.created_at) - min_created_at
+                            ) * 1.0 / created_at_range,
+                            1.0
+                        ) AS recently_created
+                    FROM global_bounds
+                )
+                SELECT (RANDOM() / 9223372036854775808.0 + 1.0) / 2.0 * MIN(
+                        (
+                            EXP(10.0 * ")
+                                .bind::<sql_types::Double, _>(program.prefer_least_recently_played())
+                                .sql(" * (least_recently_played - 1.0)) + EXP(10.0 * ")
+                                .bind::<sql_types::Double, _>(program.prefer_recently_added())
+                                .sql(" * (recently_created - 1.0))
+                        ) / 2.0,
+                        FIRST_VALUE(
+                            MIN(
+                                IFNULL(
+                                    (
+                                        UNIXEPOCH('now', 'localtime') - UNIXEPOCH(instruments.last_played_at)
+                                    ) * 1.0 / ")
+                                        .bind::<sql_types::Integer, _>(program.avoid_repeated_instruments_seconds())
+                                        .sql(",
+                                    1.0
+                                ),
+                                IFNULL(
+                                    (
+                                        UNIXEPOCH('now', 'localtime') - UNIXEPOCH(persons.last_played_at)
+                                    ) * 1.0 / ").bind::<sql_types::Integer, _>(program.avoid_repeated_composers_seconds()).sql(",
+                                    1.0
+                                ),
+                                1.0
+                            )
+                        ) OVER (
+                            PARTITION BY recordings.recording_id
+                            ORDER BY MAX(
+                                    IFNULL(instruments.last_played_at, 0),
+                                    IFNULL(persons.last_played_at, 0)
+                                )
+                        )
+                    )
+                FROM normalized
+            ) DESC")
+        );
 
         let row = query
             .select(tables::Recording::as_select())
@@ -666,6 +706,21 @@ impl Library {
                 ),
             ))
             .set(works::last_played_at.eq(now))
+            .execute(connection)?;
+
+        diesel::update(instruments::table)
+            .filter(exists(
+                work_instruments::table
+                    .inner_join(
+                        works::table.inner_join(recordings::table.inner_join(tracks::table)),
+                    )
+                    .filter(
+                        tracks::track_id
+                            .eq(track_id)
+                            .and(work_instruments::instrument_id.eq(instruments::instrument_id)),
+                    ),
+            ))
+            .set(instruments::last_played_at.eq(now))
             .execute(connection)?;
 
         diesel::update(persons::table)

@@ -11,6 +11,7 @@ mod imp {
 
     #[derive(Properties, Serialize, Deserialize, Default)]
     #[properties(wrapper_type = super::Program)]
+    #[serde(default)]
     pub struct Program {
         #[property(get, set)]
         pub title: RefCell<Option<String>>,
@@ -46,6 +47,12 @@ mod imp {
         pub prefer_least_recently_played: Cell<f64>,
 
         #[property(get, set)]
+        pub avoid_repeated_composers_seconds: Cell<i32>,
+
+        #[property(get, set)]
+        pub avoid_repeated_instruments_seconds: Cell<i32>,
+
+        #[property(get, set)]
         pub play_full_recordings: Cell<bool>,
     }
 
@@ -74,12 +81,35 @@ impl Program {
 
     pub fn from_query(query: LibraryQuery) -> Self {
         glib::Object::builder()
-            .property("composer-id", query.composer.map(|p| p.person_id))
+            .property(
+                "composer-id",
+                query.composer.as_ref().map(|p| p.person_id.clone()),
+            )
             .property("performer-id", query.performer.map(|p| p.person_id))
             .property("ensemble-id", query.ensemble.map(|e| e.ensemble_id))
-            .property("instrument-id", query.instrument.map(|i| i.instrument_id))
+            .property(
+                "instrument-id",
+                query.instrument.as_ref().map(|i| i.instrument_id.clone()),
+            )
+            .property("work-id", query.work.as_ref().map(|w| w.work_id.clone()))
             .property("prefer-recently-added", 0.0)
             .property("prefer-least-recently-played", 0.5)
+            .property(
+                "avoid-repeated-composers-seconds",
+                if query.composer.is_none() && query.work.is_none() {
+                    3600
+                } else {
+                    0
+                },
+            )
+            .property(
+                "avoid-repeated-instruments-seconds",
+                if query.instrument.is_none() && query.work.is_none() {
+                    3600
+                } else {
+                    0
+                },
+            )
             .property("play-full-recordings", true)
             .build()
     }
@@ -95,6 +125,14 @@ impl Program {
             .property(
                 "prefer-least-recently-played",
                 data.prefer_least_recently_played.get(),
+            )
+            .property(
+                "avoid-repeated-composers-seconds",
+                data.avoid_repeated_composers_seconds.get(),
+            )
+            .property(
+                "avoid-repeated-instruments-seconds",
+                data.avoid_repeated_instruments_seconds.get(),
             )
             .property("play-full-recordings", data.play_full_recordings.get())
             .build();
