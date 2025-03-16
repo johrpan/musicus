@@ -1,0 +1,65 @@
+using Gtk 4.0;
+using Adw 1;
+
+template $MusicusPreferencesDialog: Adw.PreferencesDialog {
+  Adw.PreferencesPage {
+    title: _("Playback");
+
+    Adw.PreferencesGroup {
+      title: _("Default program");
+      description: _("These settings apply when you add search results to the playlist.");
+
+      $MusicusSliderRow {
+        title: _("Prefer recordings that haven't been played for a long time");
+        suffix: _("%");
+
+        adjustment: Gtk.Adjustment prefer_least_recently_played_adjustment {
+          lower: 0;
+          upper: 100;
+          step-increment: 1;
+          page-increment: 10;
+        };
+      }
+
+      $MusicusSliderRow {
+        title: _("Prefer recordings that were recently added");
+        suffix: _("%");
+
+        adjustment: Gtk.Adjustment prefer_recently_added_adjustment {
+          lower: 0;
+          upper: 100;
+          step-increment: 1;
+          page-increment: 10;
+        };
+      }
+
+      $MusicusSliderRow {
+        title: _("Avoid repeating composers");
+        suffix: _(" min");
+
+        adjustment: Gtk.Adjustment avoid_repeated_composers_adjustment {
+          lower: 0;
+          upper: 120;
+          step-increment: 10;
+          page-increment: 30;
+        };
+      }
+
+      $MusicusSliderRow {
+        title: _("Avoid repeating instruments");
+        suffix: _(" min");
+
+        adjustment: Gtk.Adjustment avoid_repeated_instruments_adjustment {
+          lower: 0;
+          upper: 120;
+          step-increment: 10;
+          page-increment: 30;
+        };
+      }
+
+      Adw.SwitchRow play_full_recordings_row {
+        title: _("Play full recordings");
+      }
+    }
+  }
+}

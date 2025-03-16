@@ -1,7 +1,8 @@
 use std::{cell::RefCell, path::Path};
 
-use adw::subclass::prelude::*;
-use gtk::{gio, glib, glib::clone, prelude::*};
+use adw::{prelude::*, subclass::prelude::*};
+use gettextrs::gettext;
+use gtk::{gio, glib, glib::clone};
 
 use crate::{
     config,
@@ -11,15 +12,13 @@ use crate::{
     player::Player,
     player_bar::PlayerBar,
     playlist_page::PlaylistPage,
+    preferences_dialog::PreferencesDialog,
     process_manager::ProcessManager,
     search_page::SearchPage,
     welcome_page::WelcomePage,
 };
 
 mod imp {
-    use adw::prelude::{AlertDialogExt, AlertDialogExtManual};
-    use gettextrs::gettext;
-
     use super::*;
 
     #[derive(Debug, Default, gtk::CompositeTemplate)]
@@ -89,8 +88,15 @@ mod imp {
                 })
                 .build();
 
+            let obj = self.obj().to_owned();
+            let preferences_action = gio::ActionEntry::builder("preferences")
+                .activate(move |_, _, _| {
+                    PreferencesDialog::show(&obj);
+                })
+                .build();
+
             self.obj()
-                .add_action_entries([import_action, library_action]);
+                .add_action_entries([import_action, library_action, preferences_action]);
 
             let player_bar = PlayerBar::new(&self.player);
             self.player_bar_revealer.set_child(Some(&player_bar));

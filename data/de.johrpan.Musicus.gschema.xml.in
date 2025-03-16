@@ -17,19 +17,39 @@
       <default>''</default>
       <summary>Path to the music library</summary>
     </key>
+    <key name="prefer-least-recently-played" type="i">
+      <default>20</default>
+      <summary>How much recently played items should be penalized (0–100)</summary>
+    </key>
+    <key name="prefer-recently-added" type="i">
+      <default>0</default>
+      <summary>How much recently added items should be preferred (0–100)</summary>
+    </key>
+    <key name="avoid-repeated-composers" type="i">
+      <default>60</default>
+      <summary>For how many minutes a composer should be penalized</summary>
+    </key>
+    <key name="avoid-repeated-instruments" type="i">
+      <default>60</default>
+      <summary>For how many minutes an instrument should be penalized</summary>
+    </key>
+    <key name="play-full-recordings" type="b">
+      <default>true</default>
+      <summary>Whether to play full recordings</summary>
+    </key>
     <key name="program1" type="s">
       <!-- Translators: Configuration for the default programs in JSON. Please only translate the values of "title" and "description". -->
-      <default l10n="messages">'{"title":"Just play some music","description":"Randomly select some music. Customize programs using the button in the top right.","design":"Program1","prefer_recently_added":0.0,"prefer_least_recently_played":0.1,"avoid_repeated_composers_seconds":3600,"avoid_repeated_instruments_seconds":3600,"play_full_recordings":true}'</default>
+      <default l10n="messages">'{"title":"Just play some music","description":"Randomly select some music. Customize programs using the button in the top right.","design":"Program1","prefer_recently_added":0.0,"prefer_least_recently_played":0.1,"avoid_repeated_composers":60,"avoid_repeated_instruments":60,"play_full_recordings":true}'</default>
       <summary>Default settings for program 1</summary>
     </key>
     <key name="program2" type="s">
       <!-- Translators: Configuration for the default programs in JSON. Please only translate the values of "title" and "description". -->
-      <default l10n="messages">'{"title":"What\'s new?","description":"Recordings that you recently added to your music library.","design":"Program2","prefer_recently_added":1.0,"prefer_least_recently_played":0.0,"avoid_repeated_composers_seconds":3600,"avoid_repeated_instruments_seconds":3600,"play_full_recordings":true}'</default>
+      <default l10n="messages">'{"title":"What\'s new?","description":"Recordings that you recently added to your music library.","design":"Program2","prefer_recently_added":1.0,"prefer_least_recently_played":0.0,"avoid_repeated_composers":60,"avoid_repeated_instruments":60,"play_full_recordings":true}'</default>
       <summary>Default settings for program 2</summary>
     </key>
     <key name="program3" type="s">
       <!-- Translators: Configuration for the default programs in JSON. Please only translate the values of "title" and "description". -->
-      <default l10n="messages">'{"title":"A long time ago","description":"Works that you haven\'t listened to for a long time.","design":"Program3","prefer_recently_added":0.0,"prefer_least_recently_played":1.0,"avoid_repeated_composers_seconds":3600,"avoid_repeated_instruments_seconds":3600,"play_full_recordings":true}'</default>
+      <default l10n="messages">'{"title":"A long time ago","description":"Works that you haven\'t listened to for a long time.","design":"Program3","prefer_recently_added":0.0,"prefer_least_recently_played":1.0,"avoid_repeated_composers":60,"avoid_repeated_instruments":60,"play_full_recordings":true}'</default>
       <summary>Default settings for program 3</summary>
     </key>
   </schema>

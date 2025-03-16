@@ -1,10 +1,10 @@
 use std::cell::{Cell, RefCell};
 
 use anyhow::Result;
-use gtk::{glib, glib::Properties, prelude::*, subclass::prelude::*};
+use gtk::{gio, glib, glib::Properties, prelude::*, subclass::prelude::*};
 use serde::{Deserialize, Serialize};
 
-use crate::library::LibraryQuery;
+use crate::{config, library::LibraryQuery};
 
 mod imp {
     use super::*;
@@ -47,10 +47,10 @@ mod imp {
         pub prefer_least_recently_played: Cell<f64>,
 
         #[property(get, set)]
-        pub avoid_repeated_composers_seconds: Cell<i32>,
+        pub avoid_repeated_composers: Cell<i32>,
 
         #[property(get, set)]
-        pub avoid_repeated_instruments_seconds: Cell<i32>,
+        pub avoid_repeated_instruments: Cell<i32>,
 
         #[property(get, set)]
         pub play_full_recordings: Cell<bool>,
@@ -80,6 +80,8 @@ impl Program {
     }
 
     pub fn from_query(query: LibraryQuery) -> Self {
+        let settings = gio::Settings::new(&config::APP_ID);
+
         glib::Object::builder()
             .property(
                 "composer-id",
@@ -92,25 +94,34 @@ impl Program {
                 query.instrument.as_ref().map(|i| i.instrument_id.clone()),
             )
             .property("work-id", query.work.as_ref().map(|w| w.work_id.clone()))
-            .property("prefer-recently-added", 0.0)
-            .property("prefer-least-recently-played", 0.5)
             .property(
-                "avoid-repeated-composers-seconds",
+                "prefer-recently-added",
+                settings.int("prefer-recently-added") as f64 / 100.0,
+            )
+            .property(
+                "prefer-least-recently-played",
+                settings.int("prefer-least-recently-played") as f64 / 100.0,
+            )
+            .property(
+                "avoid-repeated-composers",
                 if query.composer.is_none() && query.work.is_none() {
-                    3600
+                    settings.int("avoid-repeated-composers")
                 } else {
                     0
                 },
             )
             .property(
-                "avoid-repeated-instruments-seconds",
+                "avoid-repeated-instruments",
                 if query.instrument.is_none() && query.work.is_none() {
-                    3600
+                    settings.int("avoid-repeated-instruments")
                 } else {
                     0
                 },
             )
-            .property("play-full-recordings", true)
+            .property(
+                "play-full-recordings",
+                settings.boolean("play-full-recordings"),
+            )
             .build()
     }
 
@@ -127,12 +138,12 @@ impl Program {
                 data.prefer_least_recently_played.get(),
             )
             .property(
-                "avoid-repeated-composers-seconds",
-                data.avoid_repeated_composers_seconds.get(),
+                "avoid-repeated-composers",
+                data.avoid_repeated_composers.get(),
             )
             .property(
-                "avoid-repeated-instruments-seconds",
-                data.avoid_repeated_instruments_seconds.get(),
+                "avoid-repeated-instruments",
+                data.avoid_repeated_instruments.get(),
             )
             .property("play-full-recordings", data.play_full_recordings.get())
             .build();

@@ -1,0 +1,41 @@
+using Gtk 4.0;
+using Adw 1;
+
+template $MusicusSliderRow: Adw.PreferencesRow {
+  activatable: false;
+
+  Gtk.Box {
+    orientation: vertical;
+    spacing: 12;
+    margin-top: 12;
+    margin-bottom: 12;
+    margin-start: 12;
+    margin-end: 12;
+
+    Gtk.Box {
+      spacing: 12;
+
+      Gtk.Label {
+        label: bind template.title;
+        wrap: true;
+        xalign: 0.0;
+        hexpand: true;
+      }
+
+      Gtk.Label value_label {
+        xalign: 1.0;
+        valign: center;
+
+        styles [
+          "numeric",
+        ]
+      }
+    }
+
+    Gtk.Scale {
+      adjustment: bind template.adjustment;
+      hexpand: true;
+      valign: center;
+    }
+  }
+}

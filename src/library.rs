@@ -629,14 +629,14 @@ impl Library {
                                     (
                                         UNIXEPOCH('now', 'localtime') - UNIXEPOCH(instruments.last_played_at)
                                     ) * 1.0 / ")
-                                        .bind::<sql_types::Integer, _>(program.avoid_repeated_instruments_seconds())
+                                        .bind::<sql_types::Integer, _>(program.avoid_repeated_instruments())
                                         .sql(",
                                     1.0
                                 ),
                                 IFNULL(
                                     (
                                         UNIXEPOCH('now', 'localtime') - UNIXEPOCH(persons.last_played_at)
-                                    ) * 1.0 / ").bind::<sql_types::Integer, _>(program.avoid_repeated_composers_seconds()).sql(",
+                                    ) * 1.0 / ").bind::<sql_types::Integer, _>(program.avoid_repeated_composers()).sql(",
                                     1.0
                                 ),
                                 1.0
