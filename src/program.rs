@@ -1,4 +1,7 @@
-use std::cell::{Cell, RefCell};
+use std::{
+    cell::{Cell, RefCell},
+    str::FromStr,
+};
 
 use anyhow::Result;
 use gtk::{gio, glib, glib::Properties, prelude::*, subclass::prelude::*};
@@ -156,10 +159,15 @@ impl Program {
     }
 }
 
+impl Default for Program {
+    fn default() -> Self {
+        glib::Object::new()
+    }
+}
+
 #[derive(glib::Enum, Serialize, Deserialize, Eq, PartialEq, Clone, Copy, Debug)]
 #[enum_type(name = "MusicusProgramDesign")]
 pub enum ProgramDesign {
-    Generic,
     Program1,
     Program2,
     Program3,
@@ -168,8 +176,43 @@ pub enum ProgramDesign {
     Program6,
 }
 
+impl ProgramDesign {
+    pub fn css_class(&self) -> String {
+        self.to_string()
+    }
+}
+
 impl Default for ProgramDesign {
     fn default() -> Self {
-        Self::Generic
+        Self::Program1
+    }
+}
+
+impl ToString for ProgramDesign {
+    fn to_string(&self) -> String {
+        String::from(match self {
+            ProgramDesign::Program1 => "program-1",
+            ProgramDesign::Program2 => "program-2",
+            ProgramDesign::Program3 => "program-3",
+            ProgramDesign::Program4 => "program-4",
+            ProgramDesign::Program5 => "program-5",
+            ProgramDesign::Program6 => "program-6",
+        })
+    }
+}
+
+impl FromStr for ProgramDesign {
+    type Err = ();
+
+    fn from_str(s: &str) -> std::result::Result<Self, ()> {
+        match s {
+            "program-1" => Ok(ProgramDesign::Program1),
+            "program-2" => Ok(ProgramDesign::Program2),
+            "program-3" => Ok(ProgramDesign::Program3),
+            "program-4" => Ok(ProgramDesign::Program4),
+            "program-5" => Ok(ProgramDesign::Program5),
+            "program-6" => Ok(ProgramDesign::Program6),
+            _ => Err(()),
+        }
     }
 }

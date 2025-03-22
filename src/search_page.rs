@@ -12,7 +12,6 @@ use gtk::{
 use crate::{
     album_page::AlbumPage,
     album_tile::AlbumTile,
-    config,
     db::models::*,
     editor::{
         ensemble::EnsembleEditor, instrument::InstrumentEditor, person::PersonEditor,
@@ -50,7 +49,7 @@ mod imp {
         pub query: OnceCell<LibraryQuery>,
         pub highlight: RefCell<Option<Tag>>,
 
-        pub programs: RefCell<Vec<Program>>,
+        pub program_tiles: RefCell<Vec<ProgramTile>>,
         pub composers: RefCell<Vec<Person>>,
         pub performers: RefCell<Vec<Person>>,
         pub ensembles: RefCell<Vec<Ensemble>>,
@@ -180,21 +179,11 @@ impl SearchPage {
             .build();
 
         if query.is_empty() {
-            let settings = gio::Settings::new(&config::APP_ID);
-
-            let programs = vec![
-                Program::deserialize(&settings.string("program1")).unwrap(),
-                Program::deserialize(&settings.string("program2")).unwrap(),
-                Program::deserialize(&settings.string("program3")).unwrap(),
-            ];
-
-            for program in &programs {
+            for key in &["program1", "program2", "program3"] {
                 obj.imp()
                     .programs_flow_box
-                    .append(&ProgramTile::new(program.to_owned()));
+                    .append(&ProgramTile::new_for_setting(navigation, key));
             }
-
-            obj.imp().programs.replace(programs);
         }
 
         obj.imp().query.set(query).unwrap();
@@ -326,9 +315,11 @@ impl SearchPage {
         let imp = self.imp();
 
         if imp.programs_flow_box.is_visible() {
-            if let Some(program) = imp.programs.borrow().first().cloned() {
-                self.player().set_program(program);
-                self.player().play_from_program();
+            if let Some(widget) = imp.programs_flow_box.first_child() {
+                if let Ok(program_tile) = widget.downcast::<ProgramTile>() {
+                    self.player().set_program(program_tile.program());
+                    self.player().play_from_program();
+                }
             }
         } else {
             let mut new_query = self.imp().query.get().unwrap().clone();

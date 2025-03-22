@@ -56,53 +56,63 @@
   font-style: italic;
 }
 
-.program {
+.program-tile {
   padding: 12px;
   min-width: 200px;
+  transition: transform 100ms;
 }
 
-.program .title {
+.program-tile:hover {
+  transform: scale(1.01);
+}
+
+.program-tile:active {
+  transform: scale(0.99);
+}
+
+.program-tile .title {
   margin-top: 6px;
   font-size: larger;
   font-weight: bold;
 }
 
-.program.highlight {
-  color: white;
-  transition: transform 100ms;
+.program-design-button {
+  min-width: 24px;
+  min-height: 24px;
 }
 
-.program.highlight.program1 {
+.program-design-button:checked {
+  box-shadow: 0 0 0 3px var(--accent-bg-color);
+}
+
+.program-1 {
+  color: white;
   background: linear-gradient(-225deg, #ac32e4 0%, #7918f2 48%, #4801ff 100%);
 }
 
-.program.highlight.program2 {
+.program-2 {
+  color: white;
   background: linear-gradient(145deg, #f12711, #f5af19);
 }
 
-.program.highlight.program3 {
+.program-3 {
+  color: white;
   background: linear-gradient(-80deg, #ad5389, #3c1053);
 }
 
-.program.highlight.program4 {
+.program-4 {
+  color: white;
   background: linear-gradient(140deg, #136797, #0b486b);
 }
 
-.program.highlight.program5 {
+.program-5 {
+  color: white;
   background: linear-gradient(100deg, #6a9113, #141517);
 }
 
-.program.highlight.program6 {
+.program-6 {
+  color: white;
   background: linear-gradient(120deg, #870000, #190a05);
-}
-
-
-.program.highlight:hover {
-  transform: scale(1.01);
-}
-
-.program.highlight:active {
-  transform: scale(0.99);
 }
 
 .selector>contents {

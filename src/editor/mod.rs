@@ -2,6 +2,7 @@ pub mod album;
 pub mod ensemble;
 pub mod instrument;
 pub mod person;
+pub mod program;
 pub mod recording;
 pub mod role;
 pub mod tracks;
