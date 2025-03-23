@@ -34,7 +34,7 @@ mod imp {
         pub active: Cell<bool>,
         #[property(get, set)]
         pub playing: Cell<bool>,
-        #[property(get, set = Self::set_program)]
+        #[property(get, set)]
         pub program: RefCell<Option<Program>>,
         #[property(get, construct_only)]
         pub playlist: OnceCell<gio::ListStore>,
@@ -51,25 +51,6 @@ mod imp {
     }
 
     impl Player {
-        pub fn set_program(&self, program: Option<&Program>) {
-            self.program.replace(program.cloned());
-
-            if let Some(program) = program {
-                if !self.obj().active() {
-                    match self.obj().generate_items(program) {
-                        Ok(index) => {
-                            self.obj().set_active(true);
-                            self.obj().set_current_index(index);
-                            self.obj().pause();
-                        }
-                        Err(err) => {
-                            log::warn!("Failed to play from program: {err:?}");
-                        }
-                    }
-                }
-            }
-        }
-
         pub fn set_current_index(&self, index: u32) {
             let playlist = self.playlist.get().unwrap();
 
