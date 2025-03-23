@@ -1,16 +1,15 @@
 use std::cell::OnceCell;
 
 use adw::subclass::prelude::*;
-use gettextrs::gettext;
 use gtk::{
     gio,
-    glib::{self, clone, Properties},
+    glib::{self, Properties},
     prelude::*,
 };
 
 use crate::{
     db::models::*, editor::album::AlbumEditor, library::Library, player::Player,
-    playlist_item::PlaylistItem, recording_tile::RecordingTile, util::error_dialog::ErrorDialog,
+    playlist_item::PlaylistItem, recording_tile::RecordingTile, util,
 };
 
 mod imp {
@@ -101,20 +100,7 @@ mod imp {
                         .library()
                         .delete_album(&obj.imp().album.get().unwrap().album_id)
                     {
-                        let toast = adw::Toast::builder()
-                            .title(&gettext("Failed to delete album"))
-                            .button_label("Details")
-                            .build();
-
-                        toast.connect_button_clicked(clone!(
-                            #[weak]
-                            obj,
-                            move |_| {
-                                ErrorDialog::present(&err, &obj);
-                            }
-                        ));
-
-                        obj.toast_overlay().add_toast(toast);
+                        util::error_toast("Failed to delete album", err, &obj.toast_overlay());
                     }
                 })
                 .build();

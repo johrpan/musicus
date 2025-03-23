@@ -5,7 +5,7 @@ use formatx::formatx;
 use gettextrs::gettext;
 use gtk::{
     gio,
-    glib::{self, clone, Properties},
+    glib::{self, Properties},
     prelude::*,
 };
 
@@ -24,7 +24,7 @@ use crate::{
     recording_tile::RecordingTile,
     search_tag::Tag,
     tag_tile::TagTile,
-    util::error_dialog::ErrorDialog,
+    util,
 };
 
 mod imp {
@@ -229,74 +229,26 @@ impl SearchPage {
             match highlight {
                 Tag::Composer(person) | Tag::Performer(person) => {
                     if let Err(err) = self.library().delete_person(&person.person_id) {
-                        let toast = adw::Toast::builder()
-                            .title(&gettext("Failed to delete person"))
-                            .button_label("Details")
-                            .build();
-
-                        toast.connect_button_clicked(clone!(
-                            #[weak(rename_to = obj)]
-                            self,
-                            move |_| {
-                                ErrorDialog::present(&err, &obj);
-                            }
-                        ));
-
-                        self.toast_overlay().add_toast(toast);
+                        util::error_toast("Failed to delete person", err, &self.toast_overlay());
                     }
                 }
                 Tag::Ensemble(ensemble) => {
                     if let Err(err) = self.library().delete_ensemble(&ensemble.ensemble_id) {
-                        let toast = adw::Toast::builder()
-                            .title(&gettext("Failed to delete ensemble"))
-                            .button_label("Details")
-                            .build();
-
-                        toast.connect_button_clicked(clone!(
-                            #[weak(rename_to = obj)]
-                            self,
-                            move |_| {
-                                ErrorDialog::present(&err, &obj);
-                            }
-                        ));
-
-                        self.toast_overlay().add_toast(toast);
+                        util::error_toast("Failed to delete ensemble", err, &self.toast_overlay());
                     }
                 }
                 Tag::Instrument(instrument) => {
                     if let Err(err) = self.library().delete_instrument(&instrument.instrument_id) {
-                        let toast = adw::Toast::builder()
-                            .title(&gettext("Failed to delete instrument"))
-                            .button_label("Details")
-                            .build();
-
-                        toast.connect_button_clicked(clone!(
-                            #[weak(rename_to = obj)]
-                            self,
-                            move |_| {
-                                ErrorDialog::present(&err, &obj);
-                            }
-                        ));
-
-                        self.toast_overlay().add_toast(toast);
+                        util::error_toast(
+                            "Failed to delete instrument",
+                            err,
+                            &self.toast_overlay(),
+                        );
                     }
                 }
                 Tag::Work(work) => {
                     if let Err(err) = self.library().delete_work(&work.work_id) {
-                        let toast = adw::Toast::builder()
-                            .title(&gettext("Failed to delete work"))
-                            .button_label("Details")
-                            .build();
-
-                        toast.connect_button_clicked(clone!(
-                            #[weak(rename_to = obj)]
-                            self,
-                            move |_| {
-                                ErrorDialog::present(&err, &obj);
-                            }
-                        ));
-
-                        self.toast_overlay().add_toast(toast);
+                        util::error_toast("Failed to delete work", err, &self.toast_overlay());
                     }
                 }
             }
