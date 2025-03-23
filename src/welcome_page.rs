@@ -3,8 +3,6 @@ use gettextrs::gettext;
 use gtk::{gio, glib, glib::subclass::Signal, prelude::*};
 use once_cell::sync::Lazy;
 
-use crate::config;
-
 mod imp {
     use super::*;
 
@@ -40,11 +38,6 @@ mod imp {
             });
 
             SIGNALS.as_ref()
-        }
-
-        fn constructed(&self) {
-            self.parent_constructed();
-            self.status_page.set_icon_name(Some(config::APP_ID));
         }
     }
 

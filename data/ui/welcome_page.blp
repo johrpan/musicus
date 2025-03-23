@@ -16,9 +16,9 @@ template $MusicusWelcomePage : Adw.NavigationPage {
     }
 
     Adw.StatusPage status_page {
-      icon-name: "de.johrpan.Musicus";
+      icon-name: "music-note-symbolic";
       title: _("Welcome to Musicus");
-      description: _("Get started by choosing where to store your music library. Is this your first time using Musicus? If so, create a new empty folder for your library. Musicus will use this location to manage your recordings. You can also select a folder that already contains a music library created by Musicus.");
+      description: _("Get started by choosing where you want to store your music library. Are you using Musicus for the first time? If so, create a new empty folder for your library. If you wish, Musicus will automatically download some music for you.");
       child: Gtk.Button {
         styles ["suggested-action", "pill"]
         halign: center;
