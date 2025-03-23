@@ -19,6 +19,10 @@ mod imp {
         pub avoid_repeated_instruments_adjustment: TemplateChild<gtk::Adjustment>,
         #[template_child]
         pub play_full_recordings_row: TemplateChild<adw::SwitchRow>,
+        #[template_child]
+        pub use_custom_url_row: TemplateChild<adw::SwitchRow>,
+        #[template_child]
+        pub custom_url_row: TemplateChild<adw::EntryRow>,
     }
 
     #[glib::object_subclass]
@@ -82,6 +86,23 @@ mod imp {
                     &*self.play_full_recordings_row,
                     "active",
                 )
+                .build();
+
+            settings
+                .bind(
+                    "use-custom-library-url",
+                    &*self.use_custom_url_row,
+                    "active",
+                )
+                .build();
+
+            settings
+                .bind("custom-library-url", &*self.custom_url_row, "text")
+                .build();
+
+            self.use_custom_url_row
+                .bind_property("active", &*self.custom_url_row, "sensitive")
+                .sync_create()
                 .build();
         }
     }

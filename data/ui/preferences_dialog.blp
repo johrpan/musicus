@@ -62,4 +62,22 @@ template $MusicusPreferencesDialog: Adw.PreferencesDialog {
       }
     }
   }
+
+  Adw.PreferencesPage {
+    title: _("Library");
+
+    Adw.PreferencesGroup {
+      title: _("Library download");
+
+      Adw.SwitchRow use_custom_url_row {
+        title: _("Use custom download URL");
+        active: false;
+      }
+
+      Adw.EntryRow custom_url_row {
+        title: _("Download URL");
+        show-apply-button: true;
+      }
+    }
+  }
 }
