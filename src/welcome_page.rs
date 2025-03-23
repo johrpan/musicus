@@ -8,10 +8,7 @@ mod imp {
 
     #[derive(Debug, Default, gtk::CompositeTemplate)]
     #[template(file = "data/ui/welcome_page.blp")]
-    pub struct WelcomePage {
-        #[template_child]
-        pub status_page: TemplateChild<adw::StatusPage>,
-    }
+    pub struct WelcomePage {}
 
     #[glib::object_subclass]
     impl ObjectSubclass for WelcomePage {

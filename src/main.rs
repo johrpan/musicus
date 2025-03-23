@@ -4,6 +4,7 @@ mod application;
 mod config;
 mod db;
 mod editor;
+mod empty_page;
 mod library;
 mod library_manager;
 mod player;

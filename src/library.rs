@@ -77,6 +77,16 @@ impl Library {
         Ok(obj)
     }
 
+    /// Whether this library is empty. The library is considered empty, if
+    /// there are no tracks.
+    pub fn is_empty(&self) -> Result<bool> {
+        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
+        Ok(tracks::table
+            .first::<tables::Track>(connection)
+            .optional()?
+            .is_none())
+    }
+
     /// Import from a library archive.
     pub fn import_archive(
         &self,

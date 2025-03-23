@@ -8,6 +8,7 @@ use gtk::{gio, glib, glib::clone};
 use crate::{
     config,
     editor::tracks::TracksEditor,
+    empty_page::EmptyPage,
     library::{Library, LibraryQuery},
     library_manager::LibraryManager,
     player::Player,
@@ -259,8 +260,29 @@ impl Window {
         ));
 
         self.imp().player.set_library(&library);
+
+        let is_empty = library.is_empty()?;
         self.imp().library.replace(Some(library));
-        self.reset_view();
+
+        if is_empty {
+            let navigation = self.imp().navigation_view.get();
+            let empty_page = EmptyPage::new(
+                self.imp().library.borrow().as_ref().unwrap(),
+                &self.imp().process_manager,
+            );
+
+            empty_page.connect_ready(clone!(
+                #[weak(rename_to = obj)]
+                self,
+                move |_| {
+                    obj.reset_view();
+                }
+            ));
+
+            navigation.replace(&[empty_page.into()]);
+        } else {
+            self.reset_view();
+        }
 
         Ok(())
     }

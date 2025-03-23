@@ -1,7 +1,7 @@
 using Gtk 4.0;
 using Adw 1;
 
-template $MusicusWelcomePage : Adw.NavigationPage {
+template $MusicusWelcomePage: Adw.NavigationPage {
   title: _("Welcome to Musicus");
   tag: "welcome";
 
@@ -15,12 +15,17 @@ template $MusicusWelcomePage : Adw.NavigationPage {
       }
     }
 
-    Adw.StatusPage status_page {
+    Adw.StatusPage {
       icon-name: "music-note-symbolic";
       title: _("Welcome to Musicus");
       description: _("Get started by choosing where you want to store your music library. Are you using Musicus for the first time? If so, create a new empty folder for your library. If you wish, Musicus will automatically download some music for you.");
+
       child: Gtk.Button {
-        styles ["suggested-action", "pill"]
+        styles [
+          "suggested-action",
+          "pill",
+        ]
+
         halign: center;
         label: _("Choose library folder");
         clicked => $choose_library_folder() swapped;
@@ -34,6 +39,7 @@ menu primary_menu {
     label: _("_Preferences");
     action: "win.preferences";
   }
+
   item {
     label: _("_About Musicus");
     action: "app.about";
