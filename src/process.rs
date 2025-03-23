@@ -1,12 +1,11 @@
 use std::cell::{Cell, OnceCell, RefCell};
 
+use anyhow::Result;
 use gtk::{
     glib::{self, Properties},
     prelude::*,
     subclass::prelude::*,
 };
-
-use crate::library::LibraryProcessMsg;
 
 mod imp {
     use super::*;
@@ -16,6 +15,8 @@ mod imp {
     pub struct Process {
         #[property(get, construct_only)]
         pub description: OnceCell<String>,
+        #[property(get, set, nullable)]
+        pub message: RefCell<Option<String>>,
         #[property(get, set)]
         pub progress: Cell<f64>,
         #[property(get, set)]
@@ -39,7 +40,7 @@ glib::wrapper! {
 }
 
 impl Process {
-    pub fn new(description: &str, receiver: async_channel::Receiver<LibraryProcessMsg>) -> Self {
+    pub fn new(description: &str, receiver: async_channel::Receiver<ProcessMsg>) -> Self {
         let obj: Self = glib::Object::builder()
             .property("description", description)
             .build();
@@ -48,11 +49,17 @@ impl Process {
         glib::spawn_future_local(async move {
             while let Ok(msg) = receiver.recv().await {
                 match msg {
-                    LibraryProcessMsg::Progress(fraction) => {
+                    ProcessMsg::Message(message) => {
+                        obj_clone.set_message(Some(message));
+                    }
+                    ProcessMsg::Progress(fraction) => {
                         obj_clone.set_progress(fraction);
                     }
-                    LibraryProcessMsg::Result(result) => {
+                    ProcessMsg::Result(result) => {
+                        obj_clone.set_message(None::<String>);
+
                         if let Err(err) = result {
+                            log::error!("Process \"{}\" failed: {err:?}", obj_clone.description());
                             obj_clone.set_error(err.to_string());
                         }
 
@@ -64,4 +71,11 @@ impl Process {
 
         obj
     }
+}
+
+#[derive(Debug)]
+pub enum ProcessMsg {
+    Message(String),
+    Progress(f64),
+    Result(Result<()>),
 }

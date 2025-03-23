@@ -13,6 +13,7 @@ gnome = import('gnome')
 
 name = 'Musicus'
 base_id = 'de.johrpan.Musicus'
+library_url = 'https://musicus.johrpan.de/musicus_library_latest.zip'
 app_id = base_id
 path_id = '/de/johrpan/Musicus'
 profile = get_option('profile')

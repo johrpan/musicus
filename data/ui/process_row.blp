@@ -23,6 +23,16 @@ template $MusicusProcessRow: Gtk.ListBoxRow {
           xalign: 0.0;
         }
 
+        Gtk.Label message_label {
+          wrap: true;
+          xalign: 0.0;
+          visible: false;
+
+          styles [
+            "caption",
+          ]
+        }
+
         Gtk.Label success_label {
           label: _("Process finished");
           wrap: true;
@@ -31,7 +41,7 @@ template $MusicusProcessRow: Gtk.ListBoxRow {
 
           styles [
             "success",
-            "caption"
+            "caption",
           ]
         }
 
@@ -42,7 +52,7 @@ template $MusicusProcessRow: Gtk.ListBoxRow {
 
           styles [
             "error",
-            "caption"
+            "caption",
           ]
         }
       }

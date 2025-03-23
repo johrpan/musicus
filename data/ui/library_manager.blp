@@ -61,6 +61,12 @@ template $MusicusLibraryManager: Adw.NavigationPage {
               end-icon-name: "go-next-symbolic";
               activated => $export_archive() swapped;
             }
+
+            Adw.ButtonRow {
+              title: _("Update default library");
+              end-icon-name: "go-next-symbolic";
+              activated => $update_default_library() swapped;
+            }
           }
 
           Gtk.Label {

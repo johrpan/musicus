@@ -6,3 +6,4 @@ pub static VERSION: &str = @VERSION@;
 pub static PROFILE: &str = @PROFILE@;
 pub static LOCALEDIR: &str = @LOCALEDIR@;
 pub static DATADIR: &str = @DATADIR@;
+pub static LIBRARY_URL: &str = @LIBRARY_URL@;

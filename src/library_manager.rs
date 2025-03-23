@@ -3,11 +3,14 @@ use std::{cell::OnceCell, ffi::OsStr, path::Path};
 use adw::{prelude::*, subclass::prelude::*};
 use formatx::formatx;
 use gettextrs::gettext;
-use gtk::glib::{self, clone};
+use gtk::{
+    gio,
+    glib::{self, clone},
+};
 
 use crate::{
-    library::Library, process::Process, process_manager::ProcessManager, process_row::ProcessRow,
-    window::Window,
+    config, library::Library, process::Process, process_manager::ProcessManager,
+    process_row::ProcessRow, window::Window,
 };
 
 mod imp {
@@ -125,7 +128,7 @@ impl LibraryManager {
             }
             Ok(path) => {
                 if let Some(path) = path.path() {
-                    match self.imp().library.get().unwrap().import(&path) {
+                    match self.imp().library.get().unwrap().import_archive(&path) {
                         Ok(receiver) => {
                             let process = Process::new(
                                 &formatx!(
@@ -183,7 +186,7 @@ impl LibraryManager {
             }
             Ok(path) => {
                 if let Some(path) = path.path() {
-                    match self.imp().library.get().unwrap().export(&path) {
+                    match self.imp().library.get().unwrap().export_archive(&path) {
                         Ok(receiver) => {
                             let process = Process::new(
                                 &formatx!(
@@ -208,6 +211,31 @@ impl LibraryManager {
                     }
                 }
             }
+        }
+    }
+
+    #[template_callback]
+    fn update_default_library(&self) {
+        let settings = gio::Settings::new(config::APP_ID);
+        let url = if settings.boolean("use-custom-library-url") {
+            settings.string("custom-library-url").to_string()
+        } else {
+            config::LIBRARY_URL.to_string()
+        };
+
+        match self.imp().library.get().unwrap().import_url(&url) {
+            Ok(receiver) => {
+                let process = Process::new(&gettext("Downloading music library"), receiver);
+
+                self.imp()
+                    .process_manager
+                    .get()
+                    .unwrap()
+                    .add_process(&process);
+
+                self.add_process(&process);
+            }
+            Err(err) => log::error!("Failed to download library: {err:?}"),
         }
     }
 

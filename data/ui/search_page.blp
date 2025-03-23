@@ -81,6 +81,8 @@ template $MusicusSearchPage: Adw.NavigationPage {
           }
 
           Gtk.Stack stack {
+            vhomogeneous: false;
+
             Gtk.StackPage {
               name: "results";
 
@@ -247,6 +249,7 @@ template $MusicusSearchPage: Adw.NavigationPage {
                 icon-name: "system-search-symbolic";
                 title: _("Nothing Found");
                 description: _("Try a different search.");
+                vexpand: true;
               };
             }
           }

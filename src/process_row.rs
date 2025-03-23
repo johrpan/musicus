@@ -24,6 +24,8 @@ mod imp {
         #[template_child]
         pub description_label: TemplateChild<gtk::Label>,
         #[template_child]
+        pub message_label: TemplateChild<gtk::Label>,
+        #[template_child]
         pub success_label: TemplateChild<gtk::Label>,
         #[template_child]
         pub error_label: TemplateChild<gtk::Label>,
@@ -70,6 +72,11 @@ mod imp {
                 .build();
 
             let obj = self.obj().to_owned();
+            self.obj().process().connect_message_notify(move |_| {
+                obj.update();
+            });
+
+            let obj = self.obj().to_owned();
             self.obj().process().connect_finished_notify(move |_| {
                 obj.update();
             });
@@ -107,6 +114,16 @@ impl ProcessRow {
     }
 
     fn update(&self) {
+        match self.process().message() {
+            Some(message) => {
+                self.imp().message_label.set_visible(true);
+                self.imp().message_label.set_label(&message);
+            }
+            None => {
+                self.imp().message_label.set_visible(false);
+            }
+        }
+
         if !self.process().finished() {
             self.imp()
                 .progress_bar
