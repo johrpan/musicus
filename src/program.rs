@@ -168,12 +168,16 @@ impl Default for Program {
 #[derive(glib::Enum, Serialize, Deserialize, Eq, PartialEq, Clone, Copy, Debug)]
 #[enum_type(name = "MusicusProgramDesign")]
 pub enum ProgramDesign {
-    Program1,
-    Program2,
-    Program3,
-    Program4,
-    Program5,
-    Program6,
+    Default,
+    Blue,
+    Teal,
+    Green,
+    Yellow,
+    Orange,
+    Red,
+    Pink,
+    Purple,
+    Slate,
 }
 
 impl ProgramDesign {
@@ -184,19 +188,23 @@ impl ProgramDesign {
 
 impl Default for ProgramDesign {
     fn default() -> Self {
-        Self::Program1
+        Self::Default
     }
 }
 
 impl ToString for ProgramDesign {
     fn to_string(&self) -> String {
         String::from(match self {
-            ProgramDesign::Program1 => "program-1",
-            ProgramDesign::Program2 => "program-2",
-            ProgramDesign::Program3 => "program-3",
-            ProgramDesign::Program4 => "program-4",
-            ProgramDesign::Program5 => "program-5",
-            ProgramDesign::Program6 => "program-6",
+            ProgramDesign::Default => "default",
+            ProgramDesign::Blue => "blue",
+            ProgramDesign::Teal => "teal",
+            ProgramDesign::Green => "green",
+            ProgramDesign::Yellow => "yellow",
+            ProgramDesign::Orange => "orange",
+            ProgramDesign::Red => "red",
+            ProgramDesign::Pink => "pink",
+            ProgramDesign::Purple => "purple",
+            ProgramDesign::Slate => "slate",
         })
     }
 }
@@ -206,12 +214,16 @@ impl FromStr for ProgramDesign {
 
     fn from_str(s: &str) -> std::result::Result<Self, ()> {
         match s {
-            "program-1" => Ok(ProgramDesign::Program1),
-            "program-2" => Ok(ProgramDesign::Program2),
-            "program-3" => Ok(ProgramDesign::Program3),
-            "program-4" => Ok(ProgramDesign::Program4),
-            "program-5" => Ok(ProgramDesign::Program5),
-            "program-6" => Ok(ProgramDesign::Program6),
+            "default" => Ok(ProgramDesign::Default),
+            "blue" => Ok(ProgramDesign::Blue),
+            "teal" => Ok(ProgramDesign::Teal),
+            "green" => Ok(ProgramDesign::Green),
+            "yellow" => Ok(ProgramDesign::Yellow),
+            "orange" => Ok(ProgramDesign::Orange),
+            "red" => Ok(ProgramDesign::Red),
+            "pink" => Ok(ProgramDesign::Pink),
+            "purple" => Ok(ProgramDesign::Purple),
+            "slate" => Ok(ProgramDesign::Slate),
             _ => Err(()),
         }
     }

@@ -74,8 +74,12 @@ mod imp {
         }
 
         fn set_program(&self, program: &Program) {
-            self.obj()
-                .set_css_classes(&["program-tile", &program.design().css_class()]);
+            self.obj().set_css_classes(&[
+                "program-tile",
+                "card",
+                "activatable",
+                &program.design().css_class(),
+            ]);
 
             if let Some(title) = program.title() {
                 self.title_label.set_label(&title);

@@ -59,15 +59,6 @@
 .program-tile {
   padding: 12px;
   min-width: 200px;
-  transition: transform 100ms;
-}
-
-.program-tile:hover {
-  transform: scale(1.01);
-}
-
-.program-tile:active {
-  transform: scale(0.99);
 }
 
 .program-tile .title {
@@ -85,34 +76,49 @@
   box-shadow: 0 0 0 3px var(--accent-bg-color);
 }
 
-.program-1 {
+.blue {
   color: white;
-  background: linear-gradient(-225deg, #ac32e4 0%, #7918f2 48%, #4801ff 100%);
+  background-color: var(--accent-blue);
 }
 
-.program-2 {
+.teal {
   color: white;
-  background: linear-gradient(145deg, #f12711, #f5af19);
+  background-color: var(--accent-teal);
 }
 
-.program-3 {
+.green {
   color: white;
-  background: linear-gradient(-80deg, #ad5389, #3c1053);
+  background-color: var(--accent-green);
 }
 
-.program-4 {
+.yellow {
   color: white;
-  background: linear-gradient(140deg, #136797, #0b486b);
+  background-color: var(--accent-yellow);
 }
 
-.program-5 {
+.orange {
   color: white;
-  background: linear-gradient(100deg, #6a9113, #141517);
+  background-color: var(--accent-orange);
 }
 
-.program-6 {
+.red {
   color: white;
-  background: linear-gradient(120deg, #870000, #190a05);
+  background-color: var(--accent-red);
+}
+
+.pink {
+  color: white;
+  background-color: var(--accent-pink);
+}
+
+.purple {
+  color: white;
+  background-color: var(--accent-purple);
+}
+
+.slate {
+  color: white;
+  background-color: var(--accent-slate);
 }
 
 .selector>contents {
