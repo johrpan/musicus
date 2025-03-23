@@ -13,7 +13,7 @@ use adw::{
     prelude::*,
     subclass::prelude::*,
 };
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use chrono::prelude::*;
 use diesel::{dsl::exists, prelude::*, sql_types, QueryDsl, SqliteConnection};
 use once_cell::sync::Lazy;
@@ -55,21 +55,6 @@ mod imp {
 
             SIGNALS.as_ref()
         }
-
-        fn constructed(&self) {
-            self.parent_constructed();
-
-            let db_path = PathBuf::from(&self.folder.get().unwrap()).join("musicus.db");
-            let connection = db::connect(db_path.to_str().unwrap()).unwrap();
-
-            if self
-                .connection
-                .set(Arc::new(Mutex::new(connection)))
-                .is_err()
-            {
-                panic!("connection should not be set");
-            }
-        }
     }
 }
 
@@ -78,10 +63,13 @@ glib::wrapper! {
 }
 
 impl Library {
-    pub fn new(path: impl AsRef<Path>) -> Self {
-        glib::Object::builder()
+    pub fn new(path: impl AsRef<Path>) -> Result<Self> {
+        let obj: Self = glib::Object::builder()
             .property("folder", path.as_ref().to_str().unwrap())
-            .build()
+            .build();
+
+        obj.init()?;
+        Ok(obj)
     }
 
     /// Import from a library archive.
@@ -1735,6 +1723,24 @@ impl Library {
         glib::spawn_future_local(async move {
             obj.emit_by_name::<()>("changed", &[]);
         });
+    }
+
+    fn init(&self) -> Result<()> {
+        let db_path = PathBuf::from(&self.folder()).join("musicus.db");
+
+        let connection = db::connect(
+            db_path
+                .to_str()
+                .ok_or_else(|| anyhow!("Failed to convert libary path to string"))?,
+        )
+        .context("Failed to connect to music library database")?;
+
+        self.imp()
+            .connection
+            .set(Arc::new(Mutex::new(connection)))
+            .map_err(|_| anyhow!("Library already initialized"))?;
+
+        Ok(())
     }
 }
 

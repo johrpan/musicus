@@ -1,6 +1,7 @@
 use std::{cell::RefCell, path::Path};
 
 use adw::{prelude::*, subclass::prelude::*};
+use anyhow::{anyhow, Result};
 use gettextrs::gettext;
 use gtk::{gio, glib, glib::clone};
 
@@ -15,6 +16,7 @@ use crate::{
     preferences_dialog::PreferencesDialog,
     process_manager::ProcessManager,
     search_page::SearchPage,
+    util,
     welcome_page::WelcomePage,
 };
 
@@ -142,7 +144,9 @@ mod imp {
             let settings = gio::Settings::new(config::APP_ID);
             let library_path = settings.string("library-path").to_string();
             if !library_path.is_empty() {
-                self.obj().load_library(&library_path);
+                if let Err(err) = self.obj().load_library(&library_path) {
+                    util::error_toast("Failed to open music library", err, &self.toast_overlay);
+                }
             }
         }
     }
@@ -225,16 +229,28 @@ impl Window {
     pub fn set_library_folder(&self, folder: &gio::File) {
         let path = folder.path().unwrap();
 
-        let settings = gio::Settings::new(config::APP_ID);
-        settings
-            .set_string("library-path", path.to_str().unwrap())
-            .unwrap();
-
-        self.load_library(path);
+        match self.load_library(&path) {
+            Ok(_) => {
+                if let Err(err) = self.save_library_path(path) {
+                    util::error_toast(
+                        "Failed to save library folder",
+                        err,
+                        &self.imp().toast_overlay,
+                    );
+                }
+            }
+            Err(err) => {
+                util::error_toast(
+                    "Failed to open music library",
+                    err,
+                    &self.imp().toast_overlay,
+                );
+            }
+        }
     }
 
-    fn load_library(&self, path: impl AsRef<Path>) {
-        let library = Library::new(path);
+    fn load_library(&self, path: impl AsRef<Path>) -> Result<()> {
+        let library = Library::new(path)?;
 
         library.connect_changed(clone!(
             #[weak(rename_to = obj)]
@@ -245,6 +261,20 @@ impl Window {
         self.imp().player.set_library(&library);
         self.imp().library.replace(Some(library));
         self.reset_view();
+
+        Ok(())
+    }
+
+    fn save_library_path(&self, path: impl AsRef<Path>) -> Result<()> {
+        let settings = gio::Settings::new(config::APP_ID);
+        settings.set_string(
+            "library-path",
+            path.as_ref()
+                .to_str()
+                .ok_or_else(|| anyhow!("Failed to convert path to string"))?,
+        )?;
+
+        Ok(())
     }
 
     fn reset_view(&self) {
