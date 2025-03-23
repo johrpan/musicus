@@ -47,7 +47,7 @@ mod imp {
 
         pub play: OnceCell<gstreamer_play::Play>,
         pub play_signal_adapter: OnceCell<gstreamer_play::PlaySignalAdapter>,
-        pub mpris: OnceCell<mpris_server::Player>,
+        pub mpris_player: OnceCell<mpris_server::Player>,
     }
 
     impl Player {
@@ -87,7 +87,7 @@ mod imp {
                 let item_clone = item.clone();
                 glib::spawn_future_local(async move {
                     obj.imp()
-                        .mpris
+                        .mpris_player
                         .get()
                         .unwrap()
                         .set_metadata(
@@ -142,7 +142,15 @@ mod imp {
 
             let obj = self.obj().clone();
             glib::spawn_future_local(async move {
-                obj.init_mpris().await;
+                match obj.init_mpris().await {
+                    Ok(task) => {
+                        // Run the MPRIS server
+                        task.await;
+                    }
+                    Err(err) => {
+                        log::error!("Failed to initialize MPRIS server: {err:?}");
+                    }
+                }
             });
 
             let play = gstreamer_play::Play::new(None::<gstreamer_play::PlayVideoRenderer>);
@@ -354,7 +362,7 @@ impl Player {
         let obj = self.clone();
         glib::spawn_future_local(async move {
             obj.imp()
-                .mpris
+                .mpris_player
                 .get()
                 .unwrap()
                 .set_playback_status(mpris_server::PlaybackStatus::Playing)
@@ -371,7 +379,7 @@ impl Player {
         let obj = self.clone();
         glib::spawn_future_local(async move {
             obj.imp()
-                .mpris
+                .mpris_player
                 .get()
                 .unwrap()
                 .set_playback_status(mpris_server::PlaybackStatus::Paused)
@@ -414,8 +422,8 @@ impl Player {
         }
     }
 
-    async fn init_mpris(&self) {
-        let mpris = mpris_server::Player::builder(config::APP_ID)
+    async fn init_mpris(&self) -> Result<mpris_server::LocalServerRunTask> {
+        let mpris_player = mpris_server::Player::builder(config::APP_ID)
             .desktop_entry(config::APP_ID)
             .can_raise(true)
             .can_play(true)
@@ -423,51 +431,52 @@ impl Player {
             .can_go_previous(true)
             .can_go_next(true)
             .build()
-            .await
-            .unwrap();
+            .await?;
 
-        let obj = self.clone();
-
-        mpris.connect_raise(clone!(
-            #[weak]
-            obj,
+        mpris_player.connect_raise(clone!(
+            #[weak(rename_to = obj)]
+            self,
             move |_| obj.emit_by_name::<()>("raise", &[])
         ));
 
-        mpris.connect_play(clone!(
-            #[weak]
-            obj,
+        mpris_player.connect_play(clone!(
+            #[weak(rename_to = obj)]
+            self,
             move |_| obj.play()
         ));
 
-        mpris.connect_pause(clone!(
-            #[weak]
-            obj,
+        mpris_player.connect_pause(clone!(
+            #[weak(rename_to = obj)]
+            self,
             move |_| obj.pause()
         ));
 
-        mpris.connect_play_pause(clone!(
-            #[weak]
-            obj,
+        mpris_player.connect_play_pause(clone!(
+            #[weak(rename_to = obj)]
+            self,
             move |_| obj.play_pause()
         ));
 
-        mpris.connect_previous(clone!(
-            #[weak]
-            obj,
+        mpris_player.connect_previous(clone!(
+            #[weak(rename_to = obj)]
+            self,
             move |_| obj.previous()
         ));
 
-        mpris.connect_next(clone!(
-            #[weak]
-            obj,
+        mpris_player.connect_next(clone!(
+            #[weak(rename_to = obj)]
+            self,
             move |_| obj.next()
         ));
 
+        let task = mpris_player.run();
+
         self.imp()
-            .mpris
-            .set(mpris)
-            .expect("mpris should not be set");
+            .mpris_player
+            .set(mpris_player)
+            .map_err(|_| anyhow!("Player already initialized"))?;
+
+        Ok(task)
     }
 
     /// Generate new playlist items based on `program` and return the index of the first newly
