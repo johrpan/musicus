@@ -7,6 +7,7 @@ use std::{
 };
 
 use adw::{prelude::*, subclass::prelude::*};
+use anyhow::Result;
 use gettextrs::gettext;
 use gtk::{
     gio,
@@ -20,6 +21,7 @@ use crate::{
     editor::recording::RecordingEditor,
     library::Library,
     selector::recording::RecordingSelectorPopover,
+    util,
 };
 
 mod imp {
@@ -29,6 +31,8 @@ mod imp {
     #[properties(wrapper_type = super::TracksEditor)]
     #[template(file = "data/ui/editor/tracks.blp")]
     pub struct TracksEditor {
+        #[property(get, construct_only)]
+        pub toast_overlay: OnceCell<adw::ToastOverlay>,
         #[property(get, construct_only)]
         pub navigation: OnceCell<adw::NavigationView>,
         #[property(get, construct_only)]
@@ -131,11 +135,13 @@ glib::wrapper! {
 #[gtk::template_callbacks]
 impl TracksEditor {
     pub fn new(
+        toast_overlay: &adw::ToastOverlay,
         navigation: &adw::NavigationView,
         library: &Library,
         recording: Option<Recording>,
     ) -> Self {
         let obj: Self = glib::Object::builder()
+            .property("toast-overlay", toast_overlay)
             .property("navigation", navigation)
             .property("library", library)
             .build();
@@ -306,37 +312,43 @@ impl TracksEditor {
     #[template_callback]
     fn save(&self) {
         if let Some(recording) = &*self.imp().recording.borrow() {
-            for track in self.imp().removed_tracks.borrow_mut().drain(..) {
-                self.library().delete_track(&track).unwrap();
-            }
-
-            for (index, track_row) in self.imp().track_rows.borrow_mut().drain(..).enumerate() {
-                let track_data = track_row.track_data();
-
-                match track_data.location {
-                    TrackLocation::Undefined => {
-                        log::error!("Failed to save track: Undefined track location.");
-                    }
-                    TrackLocation::Library(track) => self
-                        .library()
-                        .update_track(&track.track_id, index as i32, track_data.parts)
-                        .unwrap(),
-                    TrackLocation::System(path) => {
-                        self.library()
-                            .import_track(
-                                &path,
-                                &recording.recording_id,
-                                index as i32,
-                                track_data.parts,
-                            )
-                            .unwrap();
-                    }
-                }
-
-                self.imp().track_list.remove(&track_row);
+            if let Err(err) = self.import(recording) {
+                util::error_toast("Failed to import tracks", err, &self.toast_overlay());
             }
 
             self.navigation().pop();
         }
+    }
+
+    fn import(&self, recording: &Recording) -> Result<()> {
+        for track in self.imp().removed_tracks.borrow_mut().drain(..) {
+            self.library().delete_track(&track)?;
+        }
+
+        for (index, track_row) in self.imp().track_rows.borrow_mut().drain(..).enumerate() {
+            let track_data = track_row.track_data();
+
+            match track_data.location {
+                TrackLocation::Undefined => {
+                    log::error!("Failed to save track: Undefined track location.");
+                }
+                TrackLocation::Library(track) => {
+                    self.library()
+                        .update_track(&track.track_id, index as i32, track_data.parts)?
+                }
+                TrackLocation::System(path) => {
+                    self.library().import_track(
+                        &path,
+                        &recording.recording_id,
+                        index as i32,
+                        track_data.parts,
+                    )?;
+                }
+            }
+
+            self.imp().track_list.remove(&track_row);
+        }
+
+        Ok(())
     }
 }

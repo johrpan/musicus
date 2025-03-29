@@ -142,9 +142,13 @@ impl AlbumPage {
             .set_label(&album.performers_string());
 
         for recording in &album.recordings {
-            obj.imp()
-                .recordings_flow_box
-                .append(&RecordingTile::new(navigation, library, player, recording));
+            obj.imp().recordings_flow_box.append(&RecordingTile::new(
+                toast_overlay,
+                navigation,
+                library,
+                player,
+                recording,
+            ));
         }
 
         obj.imp().album.set(album).unwrap();

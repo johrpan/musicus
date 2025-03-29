@@ -71,7 +71,12 @@ mod imp {
             let import_action = gio::ActionEntry::builder("import")
                 .activate(move |_, _, _| {
                     if let Some(library) = &*obj.imp().library.borrow() {
-                        let editor = TracksEditor::new(&obj.imp().navigation_view, library, None);
+                        let editor = TracksEditor::new(
+                            &obj.imp().toast_overlay,
+                            &obj.imp().navigation_view,
+                            library,
+                            None,
+                        );
                         obj.imp().navigation_view.push(&editor);
                     }
                 })
