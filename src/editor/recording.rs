@@ -256,7 +256,7 @@ impl RecordingEditor {
     fn new_performer(&self, person: Person) {
         let performer = Performer {
             person,
-            role: self.library().performer_default_role().unwrap(),
+            role: None,
             instrument: None,
         };
 
@@ -299,7 +299,7 @@ impl RecordingEditor {
     fn new_ensemble_performer(&self, ensemble: Ensemble) {
         let performer = EnsemblePerformer {
             ensemble,
-            role: self.library().performer_default_role().unwrap(),
+            role: None,
         };
 
         self.add_ensemble_row(performer);

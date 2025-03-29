@@ -233,8 +233,7 @@ impl WorkEditor {
     }
 
     fn add_composer(&self, person: Person) {
-        let role = self.library().composer_default_role().unwrap();
-        let composer = Composer { person, role };
+        let composer = Composer { person, role: None };
         self.add_composer_row(composer);
     }
 

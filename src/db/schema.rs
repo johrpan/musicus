@@ -81,19 +81,19 @@ diesel::table! {
 }
 
 diesel::table! {
-    recording_ensembles (recording_id, ensemble_id, role_id) {
+    recording_ensembles (recording_id, ensemble_id, sequence_number) {
         recording_id -> Text,
         ensemble_id -> Text,
-        role_id -> Text,
+        role_id -> Nullable<Text>,
         sequence_number -> Integer,
     }
 }
 
 diesel::table! {
-    recording_persons (recording_id, person_id, role_id, instrument_id) {
+    recording_persons (recording_id, person_id, sequence_number) {
         recording_id -> Text,
         person_id -> Text,
-        role_id -> Text,
+        role_id -> Nullable<Text>,
         instrument_id -> Nullable<Text>,
         sequence_number -> Integer,
     }
@@ -153,10 +153,10 @@ diesel::table! {
 }
 
 diesel::table! {
-    work_persons (work_id, person_id, role_id) {
+    work_persons (work_id, person_id, sequence_number) {
         work_id -> Text,
         person_id -> Text,
-        role_id -> Text,
+        role_id -> Nullable<Text>,
         sequence_number -> Integer,
     }
 }

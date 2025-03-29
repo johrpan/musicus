@@ -1,6 +1,7 @@
 use std::cell::{OnceCell, RefCell};
 
 use adw::{prelude::*, subclass::prelude::*};
+use gettextrs::gettext;
 use gtk::{
     gdk,
     glib::{self, clone, subclass::Signal, Properties},
@@ -112,7 +113,7 @@ mod imp {
             role_popover.connect_role_selected(move |_, role| {
                 if let Some(ensemble) = &mut *obj.imp().ensemble.borrow_mut() {
                     obj.imp().role_label.set_label(&role.to_string());
-                    ensemble.role = role;
+                    ensemble.role = Some(role);
                 }
             });
 
@@ -126,7 +127,7 @@ mod imp {
                     move |_, role| {
                         if let Some(ensemble) = &mut *obj.imp().ensemble.borrow_mut() {
                             obj.imp().role_label.set_label(&role.to_string());
-                            ensemble.role = role;
+                            ensemble.role = Some(role);
                         };
                     }
                 ));
@@ -188,7 +189,13 @@ impl RecordingEditorEnsembleRow {
 
     fn set_ensemble(&self, ensemble: EnsemblePerformer) {
         self.set_title(&ensemble.ensemble.to_string());
-        self.imp().role_label.set_label(&ensemble.role.to_string());
+        self.imp().role_label.set_label(
+            &ensemble
+                .role
+                .as_ref()
+                .map(ToString::to_string)
+                .unwrap_or_else(|| gettext("Performer")),
+        );
         self.imp().ensemble.replace(Some(ensemble));
     }
 

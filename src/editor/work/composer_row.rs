@@ -1,6 +1,7 @@
 use std::cell::{OnceCell, RefCell};
 
 use adw::{prelude::*, subclass::prelude::*};
+use gettextrs::gettext;
 use gtk::{
     gdk,
     glib::{self, clone, subclass::Signal, Properties},
@@ -109,10 +110,18 @@ mod imp {
             let role_popover = RoleSelectorPopover::new(self.library.get().unwrap());
 
             let obj = self.obj().to_owned();
+            role_popover.connect_reset(move |_| {
+                if let Some(composer) = &mut *obj.imp().composer.borrow_mut() {
+                    obj.imp().role_label.set_label(&gettext("Composer"));
+                    composer.role = None;
+                }
+            });
+
+            let obj = self.obj().to_owned();
             role_popover.connect_role_selected(move |_, role| {
                 if let Some(composer) = &mut *obj.imp().composer.borrow_mut() {
                     obj.imp().role_label.set_label(&role.to_string());
-                    composer.role = role;
+                    composer.role = Some(role);
                 }
             });
 
@@ -126,7 +135,7 @@ mod imp {
                     move |_, role| {
                         if let Some(composer) = &mut *obj.imp().composer.borrow_mut() {
                             obj.imp().role_label.set_label(&role.to_string());
-                            composer.role = role;
+                            composer.role = Some(role);
                         };
                     }
                 ));
@@ -184,7 +193,13 @@ impl WorkEditorComposerRow {
 
     fn set_composer(&self, composer: Composer) {
         self.set_title(&composer.person.to_string());
-        self.imp().role_label.set_label(&composer.role.to_string());
+        self.imp().role_label.set_label(
+            &composer
+                .role
+                .as_ref()
+                .map(ToString::to_string)
+                .unwrap_or_else(|| gettext("Composer")),
+        );
         self.imp().composer.replace(Some(composer));
     }
 

@@ -29,17 +29,13 @@ mod imp {
         pub instruments: RefCell<Vec<Instrument>>,
 
         #[template_child]
-        pub stack: TemplateChild<gtk::Stack>,
-        #[template_child]
-        pub role_view: TemplateChild<adw::ToolbarView>,
+        pub stack: TemplateChild<adw::ViewStack>,
         #[template_child]
         pub role_search_entry: TemplateChild<gtk::SearchEntry>,
         #[template_child]
         pub role_scrolled_window: TemplateChild<gtk::ScrolledWindow>,
         #[template_child]
         pub role_list: TemplateChild<gtk::ListBox>,
-        #[template_child]
-        pub instrument_view: TemplateChild<adw::ToolbarView>,
         #[template_child]
         pub instrument_search_entry: TemplateChild<gtk::SearchEntry>,
         #[template_child]
@@ -71,21 +67,35 @@ mod imp {
 
             self.obj().connect_visible_notify(|obj| {
                 if obj.is_visible() {
-                    obj.imp().stack.set_visible_child(&*obj.imp().role_view);
                     obj.imp().role_search_entry.set_text("");
-                    obj.imp().role_search_entry.grab_focus();
                     obj.imp().role_scrolled_window.vadjustment().set_value(0.0);
+                    obj.imp().instrument_search_entry.set_text("");
+                    obj.imp()
+                        .instrument_scrolled_window
+                        .vadjustment()
+                        .set_value(0.0);
+
+                    if obj.imp().stack.visible_child_name().as_deref() == Some("role") {
+                        obj.imp().role_search_entry.grab_focus();
+                    } else {
+                        obj.imp().instrument_search_entry.grab_focus();
+                    }
                 }
             });
 
             self.obj().search_roles("");
+            self.obj().search_instruments("");
         }
 
         fn signals() -> &'static [Signal] {
             static SIGNALS: Lazy<Vec<Signal>> = Lazy::new(|| {
                 vec![
-                    Signal::builder("selected")
-                        .param_types([Role::static_type(), Instrument::static_type()])
+                    Signal::builder("reset").build(),
+                    Signal::builder("role-selected")
+                        .param_types([Role::static_type()])
+                        .build(),
+                    Signal::builder("instrument-selected")
+                        .param_types([Instrument::static_type()])
                         .build(),
                     Signal::builder("create-role").build(),
                     Signal::builder("create-instrument").build(),
@@ -100,7 +110,7 @@ mod imp {
         // TODO: Fix focus.
         fn focus(&self, direction_type: gtk::DirectionType) -> bool {
             if direction_type == gtk::DirectionType::Down {
-                if self.stack.visible_child() == Some(self.role_list.get().upcast()) {
+                if self.stack.visible_child_name().as_deref() == Some("role") {
                     self.role_list.child_focus(direction_type)
                 } else {
                     self.instrument_list.child_focus(direction_type)
@@ -125,15 +135,34 @@ impl PerformerRoleSelectorPopover {
         glib::Object::builder().property("library", library).build()
     }
 
-    pub fn connect_selected<F: Fn(&Self, Role, Option<Instrument>) + 'static>(
+    pub fn connect_reset<F: Fn(&Self) + 'static>(&self, f: F) -> glib::SignalHandlerId {
+        self.connect_local("reset", true, move |values| {
+            let obj = values[0].get::<Self>().unwrap();
+            f(&obj);
+            None
+        })
+    }
+
+    pub fn connect_role_selected<F: Fn(&Self, Role) + 'static>(
         &self,
         f: F,
     ) -> glib::SignalHandlerId {
-        self.connect_local("selected", true, move |values| {
+        self.connect_local("role-selected", true, move |values| {
             let obj = values[0].get::<Self>().unwrap();
             let role = values[1].get::<Role>().unwrap();
-            let instrument = values[2].get::<Option<Instrument>>().unwrap();
-            f(&obj, role, instrument);
+            f(&obj, role);
+            None
+        })
+    }
+
+    pub fn connect_instrument_selected<F: Fn(&Self, Instrument) + 'static>(
+        &self,
+        f: F,
+    ) -> glib::SignalHandlerId {
+        self.connect_local("instrument-selected", true, move |values| {
+            let obj = values[0].get::<Self>().unwrap();
+            let role = values[1].get::<Instrument>().unwrap();
+            f(&obj, role);
             None
         })
     }
@@ -155,6 +184,12 @@ impl PerformerRoleSelectorPopover {
     }
 
     #[template_callback]
+    fn reset_button_clicked(&self) {
+        self.emit_by_name::<()>("reset", &[]);
+        self.popdown();
+    }
+
+    #[template_callback]
     fn role_search_changed(&self, entry: &gtk::SearchEntry) {
         self.search_roles(&entry.text());
     }
@@ -166,12 +201,6 @@ impl PerformerRoleSelectorPopover {
         } else {
             self.create_role();
         }
-    }
-
-    #[template_callback]
-    fn back_button_clicked(&self) {
-        self.imp().stack.set_visible_child(&*self.imp().role_view);
-        self.imp().role_search_entry.grab_focus();
     }
 
     #[template_callback]
@@ -293,27 +322,12 @@ impl PerformerRoleSelectorPopover {
     }
 
     fn select_role(&self, role: Role) {
-        if role == self.library().performer_default_role().unwrap() {
-            self.imp().instrument_search_entry.set_text("");
-            self.imp().instrument_search_entry.grab_focus();
-            self.imp()
-                .instrument_scrolled_window
-                .vadjustment()
-                .set_value(0.0);
-            self.imp()
-                .stack
-                .set_visible_child(&*self.imp().instrument_view);
-
-            self.search_instruments("");
-        } else {
-            self.emit_by_name::<()>("selected", &[&role, &None::<Instrument>]);
-            self.popdown();
-        }
+        self.emit_by_name::<()>("role-selected", &[&role]);
+        self.popdown();
     }
 
     fn select_instrument(&self, instrument: Instrument) {
-        let role = self.library().performer_default_role().unwrap();
-        self.emit_by_name::<()>("selected", &[&role, &instrument]);
+        self.emit_by_name::<()>("instrument-selected", &[&instrument]);
         self.popdown();
     }
 

@@ -21,12 +21,10 @@ pub struct Work {
     pub instruments: Vec<Instrument>,
 }
 
-#[derive(Queryable, Selectable, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct Composer {
-    #[diesel(embed)]
     pub person: Person,
-    #[diesel(embed)]
-    pub role: Role,
+    pub role: Option<Role>,
 }
 
 #[derive(Boxed, Clone, Debug)]
@@ -50,14 +48,14 @@ pub struct Recording {
 #[derive(Clone, Debug)]
 pub struct Performer {
     pub person: Person,
-    pub role: Role,
+    pub role: Option<Role>,
     pub instrument: Option<Instrument>,
 }
 
 #[derive(Clone, Debug)]
 pub struct EnsemblePerformer {
     pub ensemble: Ensemble,
-    pub role: Role,
+    pub role: Option<Role>,
 }
 
 #[derive(Clone, Debug)]
@@ -133,12 +131,13 @@ impl Work {
             .map(|w| Work::from_table(w, connection))
             .collect::<Result<Vec<Work>>>()?;
 
-        let persons: Vec<Composer> = persons::table
-            .inner_join(work_persons::table.inner_join(roles::table))
+        let persons = work_persons::table
             .order(work_persons::sequence_number)
             .filter(work_persons::work_id.eq(&data.work_id))
-            .select(Composer::as_select())
-            .load(connection)?;
+            .load::<tables::WorkPerson>(connection)?
+            .into_iter()
+            .map(|r| Composer::from_table(r, connection))
+            .collect::<Result<Vec<Composer>>>()?;
 
         let instruments: Vec<Instrument> = instruments::table
             .inner_join(work_instruments::table)
@@ -157,11 +156,10 @@ impl Work {
     }
 
     pub fn composers_string(&self) -> Option<String> {
-        // TODO: Include roles except default composer.
         let composers_string = self
             .persons
             .iter()
-            .map(|p| p.person.name.get().to_string())
+            .map(ToString::to_string)
             .collect::<Vec<String>>()
             .join(", ");
 
@@ -186,6 +184,34 @@ impl Display for Work {
             write!(f, "{}: {}", composers, self.name)
         } else {
             write!(f, "{}", self.name)
+        }
+    }
+}
+
+impl Composer {
+    pub fn from_table(data: tables::WorkPerson, connection: &mut SqliteConnection) -> Result<Self> {
+        let person: Person = persons::table
+            .filter(persons::person_id.eq(&data.person_id))
+            .first(connection)?;
+
+        let role = match &data.role_id {
+            Some(role_id) => Some(
+                roles::table
+                    .filter(roles::role_id.eq(role_id))
+                    .first::<Role>(connection)?,
+            ),
+            None => None,
+        };
+
+        Ok(Self { person, role })
+    }
+}
+
+impl Display for Composer {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self.role {
+            Some(role) => format!("{} ({})", self.person.name.get(), role.name.get()).fmt(f),
+            None => self.person.name.get().fmt(f),
         }
     }
 }
@@ -297,9 +323,14 @@ impl Performer {
             .filter(persons::person_id.eq(&data.person_id))
             .first(connection)?;
 
-        let role: Role = roles::table
-            .filter(roles::role_id.eq(&data.role_id))
-            .first(connection)?;
+        let role = match &data.role_id {
+            Some(role_id) => Some(
+                roles::table
+                    .filter(roles::role_id.eq(role_id))
+                    .first::<Role>(connection)?,
+            ),
+            None => None,
+        };
 
         let instrument = match &data.instrument_id {
             Some(instrument_id) => Some(
@@ -320,11 +351,12 @@ impl Performer {
 
 impl Display for Performer {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match &self.instrument {
-            Some(instrument) => {
+        match (&self.role, &self.instrument) {
+            (_, Some(instrument)) => {
                 format!("{} ({})", self.person.name.get(), instrument.name.get()).fmt(f)
             }
-            None => self.person.name.get().fmt(f),
+            (Some(role), _) => format!("{} ({})", self.person.name.get(), role.name.get()).fmt(f),
+            (None, None) => self.person.name.get().fmt(f),
         }
     }
 }
@@ -340,9 +372,14 @@ impl EnsemblePerformer {
 
         let ensemble = Ensemble::from_table(ensemble_data, connection)?;
 
-        let role: Role = roles::table
-            .filter(roles::role_id.eq(&data.role_id))
-            .first(connection)?;
+        let role = match &data.role_id {
+            Some(role_id) => Some(
+                roles::table
+                    .filter(roles::role_id.eq(role_id))
+                    .first::<Role>(connection)?,
+            ),
+            None => None,
+        };
 
         Ok(Self { ensemble, role })
     }

@@ -65,6 +65,7 @@ mod imp {
         fn signals() -> &'static [Signal] {
             static SIGNALS: Lazy<Vec<Signal>> = Lazy::new(|| {
                 vec![
+                    Signal::builder("reset").build(),
                     Signal::builder("role-selected")
                         .param_types([Role::static_type()])
                         .build(),
@@ -99,6 +100,14 @@ glib::wrapper! {
 impl RoleSelectorPopover {
     pub fn new(library: &Library) -> Self {
         glib::Object::builder().property("library", library).build()
+    }
+
+    pub fn connect_reset<F: Fn(&Self) + 'static>(&self, f: F) -> glib::SignalHandlerId {
+        self.connect_local("reset", true, move |values| {
+            let obj = values[0].get::<Self>().unwrap();
+            f(&obj);
+            None
+        })
     }
 
     pub fn connect_role_selected<F: Fn(&Self, Role) + 'static>(
@@ -137,6 +146,12 @@ impl RoleSelectorPopover {
 
     #[template_callback]
     fn stop_search(&self, _: &gtk::SearchEntry) {
+        self.popdown();
+    }
+
+    #[template_callback]
+    fn reset_button_clicked(&self) {
+        self.emit_by_name::<()>("reset", &[]);
         self.popdown();
     }
 

@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-adw = { package = "libadwaita", version = "0.7", features = ["v1_6"] }
+adw = { package = "libadwaita", version = "0.7", features = ["v1_7"] }
 anyhow = "1"
 async-channel = "2.3"
 chrono = "0.4"

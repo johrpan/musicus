@@ -933,22 +933,6 @@ impl Library {
         Ok(ensembles)
     }
 
-    pub fn composer_default_role(&self) -> Result<Role> {
-        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
-
-        Ok(roles::table
-            .filter(roles::role_id.eq("380d7e09eb2f49c1a90db2ba4acb6ffd"))
-            .first::<Role>(connection)?)
-    }
-
-    pub fn performer_default_role(&self) -> Result<Role> {
-        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
-
-        Ok(roles::table
-            .filter(roles::role_id.eq("28ff0aeb11c041a6916d93e9b4884eef"))
-            .first::<Role>(connection)?)
-    }
-
     pub fn create_person(&self, name: TranslatedString) -> Result<Person> {
         let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
 
@@ -1171,7 +1155,7 @@ impl Library {
             let composer_data = tables::WorkPerson {
                 work_id: work_id.clone(),
                 person_id: composer.person.person_id,
-                role_id: composer.role.role_id,
+                role_id: composer.role.map(|r| r.role_id),
                 sequence_number: index as i32,
             };
 
@@ -1295,7 +1279,7 @@ impl Library {
             let composer_data = tables::WorkPerson {
                 work_id: work_id.to_string(),
                 person_id: composer.person.person_id,
-                role_id: composer.role.role_id,
+                role_id: composer.role.map(|r| r.role_id),
                 sequence_number: index as i32,
             };
 
@@ -1425,7 +1409,7 @@ impl Library {
             let recording_person_data = tables::RecordingPerson {
                 recording_id: recording_id.clone(),
                 person_id: performer.person.person_id,
-                role_id: performer.role.role_id,
+                role_id: performer.role.map(|r| r.role_id),
                 instrument_id: performer.instrument.map(|i| i.instrument_id),
                 sequence_number: index as i32,
             };
@@ -1439,7 +1423,7 @@ impl Library {
             let recording_ensemble_data = tables::RecordingEnsemble {
                 recording_id: recording_id.clone(),
                 ensemble_id: ensemble.ensemble.ensemble_id,
-                role_id: ensemble.role.role_id,
+                role_id: ensemble.role.map(|r| r.role_id),
                 sequence_number: index as i32,
             };
 
@@ -1485,7 +1469,7 @@ impl Library {
             let recording_person_data = tables::RecordingPerson {
                 recording_id: recording_id.to_string(),
                 person_id: performer.person.person_id,
-                role_id: performer.role.role_id,
+                role_id: performer.role.map(|r| r.role_id),
                 instrument_id: performer.instrument.map(|i| i.instrument_id),
                 sequence_number: index as i32,
             };
@@ -1503,7 +1487,7 @@ impl Library {
             let recording_ensemble_data = tables::RecordingEnsemble {
                 recording_id: recording_id.to_string(),
                 ensemble_id: ensemble.ensemble.ensemble_id,
-                role_id: ensemble.role.role_id,
+                role_id: ensemble.role.map(|r| r.role_id),
                 sequence_number: index as i32,
             };
 

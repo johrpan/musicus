@@ -60,7 +60,7 @@ pub struct Work {
 pub struct WorkPerson {
     pub work_id: String,
     pub person_id: String,
-    pub role_id: String,
+    pub role_id: Option<String>,
     pub sequence_number: i32,
 }
 
@@ -109,7 +109,7 @@ pub struct Recording {
 pub struct RecordingPerson {
     pub recording_id: String,
     pub person_id: String,
-    pub role_id: String,
+    pub role_id: Option<String>,
     pub instrument_id: Option<String>,
     pub sequence_number: i32,
 }
@@ -119,7 +119,7 @@ pub struct RecordingPerson {
 pub struct RecordingEnsemble {
     pub recording_id: String,
     pub ensemble_id: String,
-    pub role_id: String,
+    pub role_id: Option<String>,
     pub sequence_number: i32,
 }
 

@@ -3,20 +3,35 @@ using Adw 1;
 
 template $MusicusRoleSelectorPopover: Gtk.Popover {
   styles [
-    "selector"
+    "selector",
   ]
 
   Adw.ToolbarView {
     [top]
-    Gtk.SearchEntry search_entry {
-      placeholder-text: _("Search roles…");
+    Gtk.Box {
+      spacing: 6;
       margin-start: 8;
       margin-end: 8;
       margin-top: 8;
       margin-bottom: 6;
-      search-changed => $search_changed() swapped;
-      activate => $activate() swapped;
-      stop-search => $stop_search() swapped;
+
+      Gtk.SearchEntry search_entry {
+        placeholder-text: _("Search roles…");
+        hexpand: true;
+        search-changed => $search_changed() swapped;
+        activate => $activate() swapped;
+        stop-search => $stop_search() swapped;
+      }
+
+      Gtk.Button {
+        icon-name: "edit-clear-symbolic";
+        tooltip-text: _("Reset to default role");
+        clicked => $reset_button_clicked() swapped;
+
+        styles [
+          "flat",
+        ]
+      }
     }
 
     Gtk.ScrolledWindow scrolled_window {
@@ -24,7 +39,7 @@ template $MusicusRoleSelectorPopover: Gtk.Popover {
 
       Gtk.ListBox list_box {
         styles [
-          "selector-list"
+          "selector-list",
         ]
 
         selection-mode: none;
