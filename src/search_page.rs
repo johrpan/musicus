@@ -514,6 +514,7 @@ impl SearchPage {
 
             for recording in &results.recordings {
                 imp.recordings_flow_box.append(&RecordingTile::new(
+                    &self.toast_overlay(),
                     &self.navigation(),
                     &self.library(),
                     &self.player(),

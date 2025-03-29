@@ -21,6 +21,7 @@ mod imp {
         #[template_child]
         pub performances_label: TemplateChild<gtk::Label>,
 
+        pub toast_overlay: OnceCell<adw::ToastOverlay>,
         pub navigation: OnceCell<adw::NavigationView>,
         pub library: OnceCell<Library>,
         pub player: OnceCell<Player>,
@@ -76,6 +77,7 @@ mod imp {
             let edit_tracks_action = gio::ActionEntry::builder("edit-tracks")
                 .activate(move |_, _, _| {
                     obj.imp().navigation.get().unwrap().push(&TracksEditor::new(
+                        obj.imp().toast_overlay.get().unwrap(),
                         obj.imp().navigation.get().unwrap(),
                         obj.imp().library.get().unwrap(),
                         Some(obj.imp().recording.get().unwrap().clone()),
@@ -100,6 +102,7 @@ glib::wrapper! {
 
 impl RecordingTile {
     pub fn new(
+        toast_overlay: &adw::ToastOverlay,
         navigation: &adw::NavigationView,
         library: &Library,
         player: &Player,
@@ -118,6 +121,7 @@ impl RecordingTile {
         imp.performances_label
             .set_label(&recording.performers_string());
 
+        imp.toast_overlay.set(toast_overlay.to_owned()).unwrap();
         imp.navigation.set(navigation.to_owned()).unwrap();
         imp.library.set(library.to_owned()).unwrap();
         imp.player.set(player.to_owned()).unwrap();
