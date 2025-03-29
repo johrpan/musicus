@@ -3,91 +3,98 @@ using Adw 1;
 
 template $MusicusPerformerRoleSelectorPopover: Gtk.Popover {
   styles [
-    "selector"
+    "selector",
   ]
 
-  Gtk.Stack stack {
-    transition-type: slide_left_right;
+  Gtk.Box {
+    orientation: vertical;
 
-    Adw.ToolbarView role_view {
-      [top]
-      Gtk.SearchEntry role_search_entry {
-        placeholder-text: _("Search roles…");
-        margin-start: 8;
-        margin-end: 8;
-        margin-top: 8;
-        margin-bottom: 6;
-        search-changed => $role_search_changed() swapped;
-        activate => $role_activate() swapped;
-        stop-search => $stop_search() swapped;
+    Gtk.CenterBox {
+      margin-start: 6;
+      margin-end: 6;
+      margin-top: 6;
+
+      [center]
+      Adw.InlineViewSwitcher {
+        stack: stack;
       }
 
-      Gtk.ScrolledWindow role_scrolled_window {
-        height-request: 200;
+      [end]
+      Gtk.Button {
+        icon-name: "edit-clear-symbolic";
+        tooltip-text: _("Reset to default role");
+        margin-start: 6;
+        clicked => $reset_button_clicked() swapped;
 
-        Gtk.ListBox role_list {
-          styles [
-            "selector-list"
-          ]
-
-          selection-mode: none;
-          activate-on-single-click: true;
-        }
+        styles [
+          "flat",
+        ]
       }
     }
 
-    Adw.ToolbarView instrument_view {
-      [top]
-      Gtk.Box {
-        margin-start: 8;
-        margin-end: 8;
-        margin-top: 8;
-        margin-bottom: 6;
-        orientation: vertical;
+    Adw.ViewStack stack {
+      Adw.ViewStackPage {
+        name: "role";
+        title: _("Role");
 
-        Gtk.CenterBox {
-          [start]
-          Gtk.Button {
-            styles [
-              "flat"
-            ]
-
-            icon-name: "go-previous-symbolic";
-            clicked => $back_button_clicked() swapped;
+        child: Adw.ToolbarView role_view {
+          [top]
+          Gtk.SearchEntry role_search_entry {
+            placeholder-text: _("Search roles…");
+            margin-start: 8;
+            margin-end: 8;
+            margin-top: 8;
+            margin-bottom: 6;
+            search-changed => $role_search_changed() swapped;
+            activate => $role_activate() swapped;
+            stop-search => $stop_search() swapped;
           }
 
-          [center]
-          Gtk.Label {
-            styles [
-              "heading"
-            ]
+          Gtk.ScrolledWindow role_scrolled_window {
+            height-request: 200;
 
-            label: _("Performer");
-            ellipsize: end;
-            margin-start: 6;
+            Gtk.ListBox role_list {
+              styles [
+                "selector-list",
+              ]
+
+              selection-mode: none;
+              activate-on-single-click: true;
+            }
           }
-        }
-
-        Gtk.SearchEntry instrument_search_entry {
-          placeholder-text: _("Search instruments…");
-          margin-top: 6;
-          search-changed => $instrument_search_changed() swapped;
-          activate => $instrument_activate() swapped;
-          stop-search => $stop_search() swapped;
-        }
+        };
       }
 
-      Gtk.ScrolledWindow instrument_scrolled_window {
-        height-request: 200;
+      Adw.ViewStackPage {
+        name: "instrument";
+        title: _("Instrument");
 
-        Gtk.ListBox instrument_list {
-          styles [
-            "selector-list"
-          ]
+        child: Adw.ToolbarView instrument_view {
+          [top]
+          Gtk.SearchEntry instrument_search_entry {
+            placeholder-text: _("Search instruments…");
+            margin-start: 8;
+            margin-end: 8;
+            margin-top: 8;
+            margin-bottom: 6;
+            search-changed => $instrument_search_changed() swapped;
+            activate => $instrument_activate() swapped;
+            stop-search => $stop_search() swapped;
+          }
 
-          selection-mode: none;
-          activate-on-single-click: true;
-        }
+          Gtk.ScrolledWindow instrument_scrolled_window {
+            height-request: 200;
+
+            Gtk.ListBox instrument_list {
+              styles [
+                "selector-list",
+              ]
+
+              selection-mode: none;
+              activate-on-single-click: true;
+            }
+          }
+        };
       }
     }
   }

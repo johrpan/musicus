@@ -1,6 +1,7 @@
 use std::cell::{OnceCell, RefCell};
 
 use adw::{prelude::*, subclass::prelude::*};
+use gettextrs::gettext;
 use gtk::{
     gdk,
     glib::{self, clone, subclass::Signal, Properties},
@@ -110,17 +111,29 @@ mod imp {
             let role_popover = PerformerRoleSelectorPopover::new(self.library.get().unwrap());
 
             let obj = self.obj().to_owned();
-            role_popover.connect_selected(move |_, role, instrument| {
+            role_popover.connect_reset(move |_| {
                 if let Some(performer) = &mut *obj.imp().performer.borrow_mut() {
-                    let label = match &instrument {
-                        Some(instrument) => instrument.to_string(),
-                        None => role.to_string(),
-                    };
+                    obj.imp().role_label.set_label(&gettext("Performer"));
+                    performer.role = None;
+                    performer.instrument = None;
+                }
+            });
 
-                    obj.imp().role_label.set_label(&label);
+            let obj = self.obj().to_owned();
+            role_popover.connect_role_selected(move |_, role| {
+                if let Some(performer) = &mut *obj.imp().performer.borrow_mut() {
+                    obj.imp().role_label.set_label(&role.to_string());
+                    performer.role = Some(role);
+                    performer.instrument = None;
+                }
+            });
 
-                    performer.role = role;
-                    performer.instrument = instrument;
+            let obj = self.obj().to_owned();
+            role_popover.connect_instrument_selected(move |_, instrument| {
+                if let Some(performer) = &mut *obj.imp().performer.borrow_mut() {
+                    obj.imp().role_label.set_label(&instrument.to_string());
+                    performer.role = None;
+                    performer.instrument = Some(instrument);
                 }
             });
 
@@ -134,7 +147,7 @@ mod imp {
                     move |_, role| {
                         if let Some(performer) = &mut *obj.imp().performer.borrow_mut() {
                             obj.imp().role_label.set_label(&role.to_string());
-                            performer.role = role;
+                            performer.role = Some(role);
                             performer.instrument = None;
                         };
                     }
@@ -153,7 +166,7 @@ mod imp {
                     move |_, instrument| {
                         if let Some(performer) = &mut *obj.imp().performer.borrow_mut() {
                             obj.imp().role_label.set_label(&instrument.to_string());
-                            performer.role = obj.library().performer_default_role().unwrap();
+                            performer.role = None;
                             performer.instrument = Some(instrument);
                         };
                     }
@@ -215,7 +228,11 @@ impl RecordingEditorPerformerRow {
 
         let label = match &performer.instrument {
             Some(instrument) => instrument.to_string(),
-            None => performer.role.to_string(),
+            None => performer
+                .role
+                .as_ref()
+                .map(ToString::to_string)
+                .unwrap_or_else(|| gettext("Performer")),
         };
 
         self.imp().role_label.set_label(&label.to_string());
