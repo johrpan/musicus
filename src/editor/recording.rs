@@ -250,6 +250,7 @@ impl RecordingEditor {
                 .composers_string()
                 .unwrap_or_else(|| gettext("No composers")),
         );
+        self.imp().save_row.set_sensitive(true);
         self.imp().work.replace(Some(work));
     }
 
@@ -344,39 +345,40 @@ impl RecordingEditor {
 
     #[template_callback]
     fn save(&self) {
-        let library = self.imp().library.get().unwrap();
+        if let Some(work) = &*self.imp().work.borrow() {
+            let library = self.imp().library.get().unwrap();
 
-        // TODO: No work selected?
-        let work = self.imp().work.borrow().as_ref().unwrap().clone();
-        let year = self.imp().year_row.value() as i32;
+            let work = work.to_owned();
+            let year = self.imp().year_row.value() as i32;
 
-        let performers = self
-            .imp()
-            .performer_rows
-            .borrow()
-            .iter()
-            .map(|p| p.performer())
-            .collect::<Vec<Performer>>();
+            let performers = self
+                .imp()
+                .performer_rows
+                .borrow()
+                .iter()
+                .map(|p| p.performer())
+                .collect::<Vec<Performer>>();
 
-        let ensembles = self
-            .imp()
-            .ensemble_rows
-            .borrow()
-            .iter()
-            .map(|e| e.ensemble())
-            .collect::<Vec<EnsemblePerformer>>();
+            let ensembles = self
+                .imp()
+                .ensemble_rows
+                .borrow()
+                .iter()
+                .map(|e| e.ensemble())
+                .collect::<Vec<EnsemblePerformer>>();
 
-        if let Some(recording_id) = self.imp().recording_id.get() {
-            library
-                .update_recording(recording_id, work, Some(year), performers, ensembles)
-                .unwrap();
-        } else {
-            let recording = library
-                .create_recording(work, Some(year), performers, ensembles)
-                .unwrap();
-            self.emit_by_name::<()>("created", &[&recording]);
+            if let Some(recording_id) = self.imp().recording_id.get() {
+                library
+                    .update_recording(recording_id, work, Some(year), performers, ensembles)
+                    .unwrap();
+            } else {
+                let recording = library
+                    .create_recording(work, Some(year), performers, ensembles)
+                    .unwrap();
+                self.emit_by_name::<()>("created", &[&recording]);
+            }
+
+            self.imp().navigation.get().unwrap().pop();
         }
-
-        self.imp().navigation.get().unwrap().pop();
     }
 }

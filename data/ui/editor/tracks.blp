@@ -89,7 +89,12 @@ template $MusicusTracksEditor: Adw.NavigationPage {
             Adw.ButtonRow save_row {
               title: _("_Import tracks");
               use-underline: true;
+              sensitive: false;
               activated => $save() swapped;
+
+              styles [
+                "suggested-action",
+              ]
             }
           }
         }

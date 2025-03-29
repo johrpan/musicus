@@ -42,6 +42,10 @@ template $MusicusRoleEditor: Adw.NavigationPage {
               title: _("_Create role");
               use-underline: true;
               activated => $save() swapped;
+
+              styles [
+                "suggested-action",
+              ]
             }
           }
         }

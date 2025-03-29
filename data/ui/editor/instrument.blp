@@ -42,6 +42,10 @@ template $MusicusInstrumentEditor: Adw.NavigationPage {
               title: _("_Create instrument");
               use-underline: true;
               activated => $save() swapped;
+
+              styles [
+                "suggested-action",
+              ]
             }
           }
         }
