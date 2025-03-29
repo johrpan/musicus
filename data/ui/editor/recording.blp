@@ -131,7 +131,12 @@ template $MusicusRecordingEditor: Adw.NavigationPage {
             Adw.ButtonRow save_row {
               title: _("_Create recording");
               use-underline: true;
+              sensitive: false;
               activated => $save() swapped;
+
+              styles [
+                "suggested-action",
+              ]
             }
           }
         }

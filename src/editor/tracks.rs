@@ -227,6 +227,7 @@ impl TracksEditor {
 
         self.imp().tracks_label.set_sensitive(true);
         self.imp().track_list.set_sensitive(true);
+        self.imp().save_row.set_sensitive(true);
 
         self.imp().recording.replace(Some(recording));
     }
@@ -304,23 +305,23 @@ impl TracksEditor {
 
     #[template_callback]
     fn save(&self) {
-        for track in self.imp().removed_tracks.borrow_mut().drain(..) {
-            self.library().delete_track(&track).unwrap();
-        }
+        if let Some(recording) = &*self.imp().recording.borrow() {
+            for track in self.imp().removed_tracks.borrow_mut().drain(..) {
+                self.library().delete_track(&track).unwrap();
+            }
 
-        for (index, track_row) in self.imp().track_rows.borrow_mut().drain(..).enumerate() {
-            let track_data = track_row.track_data();
+            for (index, track_row) in self.imp().track_rows.borrow_mut().drain(..).enumerate() {
+                let track_data = track_row.track_data();
 
-            match track_data.location {
-                TrackLocation::Undefined => {
-                    log::error!("Failed to save track: Undefined track location.");
-                }
-                TrackLocation::Library(track) => self
-                    .library()
-                    .update_track(&track.track_id, index as i32, track_data.parts)
-                    .unwrap(),
-                TrackLocation::System(path) => {
-                    if let Some(recording) = &*self.imp().recording.borrow() {
+                match track_data.location {
+                    TrackLocation::Undefined => {
+                        log::error!("Failed to save track: Undefined track location.");
+                    }
+                    TrackLocation::Library(track) => self
+                        .library()
+                        .update_track(&track.track_id, index as i32, track_data.parts)
+                        .unwrap(),
+                    TrackLocation::System(path) => {
                         self.library()
                             .import_track(
                                 &path,
@@ -329,15 +330,13 @@ impl TracksEditor {
                                 track_data.parts,
                             )
                             .unwrap();
-                    } else {
-                        log::error!("Failed to save track: No recording set.");
                     }
                 }
+
+                self.imp().track_list.remove(&track_row);
             }
 
-            self.imp().track_list.remove(&track_row);
+            self.navigation().pop();
         }
-
-        self.navigation().pop();
     }
 }

@@ -126,6 +126,10 @@ template $MusicusWorkEditor: Adw.NavigationPage {
               title: _("_Create work");
               use-underline: true;
               activated => $save() swapped;
+
+              styles [
+                "suggested-action",
+              ]
             }
           }
         }

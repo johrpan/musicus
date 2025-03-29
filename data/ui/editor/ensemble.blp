@@ -42,6 +42,10 @@ template $MusicusEnsembleEditor: Adw.NavigationPage {
               title: _("_Create ensemble");
               use-underline: true;
               activated => $save() swapped;
+
+              styles [
+                "suggested-action",
+              ]
             }
           }
         }

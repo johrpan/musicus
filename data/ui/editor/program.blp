@@ -264,6 +264,10 @@ template $MusicusProgramEditor: Adw.NavigationPage {
               title: _("_Save program");
               use-underline: true;
               activated => $save() swapped;
+
+              styles [
+                "suggested-action",
+              ]
             }
           }
         }

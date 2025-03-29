@@ -72,6 +72,10 @@ template $MusicusAlbumEditor: Adw.NavigationPage {
               title: _("_Create album");
               use-underline: true;
               activated => $save() swapped;
+
+              styles [
+                "suggested-action",
+              ]
             }
           }
         }
