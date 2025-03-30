@@ -8,8 +8,14 @@ project(
 i18n = import('i18n')
 gnome = import('gnome')
 
-# TODO: Add dependency checks for required shared libraries like SQLite,
-# GStreamer (including plugins), Gtk, Libadwaita etc.
+dependency('libadwaita-1', version: '>= 1.7')
+dependency('sqlite3', version: '>= 3.38')
+dependency('glib-2.0', version: '>= 2.84')
+dependency('gstreamer-1.0', version: '>= 1.16')
+dependency('gstreamer-play-1.0', version: '>= 1.16')
+dependency('gtk4', version: '>= 4.18')
+dependency('dbus-1')
+dependency('openssl', version: '>= 1.0')
 
 name = 'Musicus'
 base_id = 'de.johrpan.Musicus'
