@@ -1,0 +1,1 @@
+UPDATE tracks SET path = (SELECT group_concat(value, '/') FROM json_each(tracks.path));

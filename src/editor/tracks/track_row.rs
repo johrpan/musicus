@@ -149,7 +149,7 @@ impl TracksEditorTrackRow {
 
         obj.set_subtitle(&match &track_data.location {
             TrackLocation::Undefined => String::new(),
-            TrackLocation::Library(track) => track.path.clone(),
+            TrackLocation::Library(track) => track.path.to_string_lossy().into_owned(),
             TrackLocation::System(path) => {
                 let format_string = gettext("Import from {}");
                 let file_name = path.file_name().unwrap().to_str().unwrap();

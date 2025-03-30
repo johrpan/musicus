@@ -1,7 +1,7 @@
 //! This module contains higher-level models combining information from
 //! multiple database tables.
 
-use std::{collections::HashSet, fmt::Display};
+use std::{collections::HashSet, fmt::Display, path::PathBuf};
 
 use anyhow::Result;
 use diesel::prelude::*;
@@ -61,7 +61,7 @@ pub struct EnsemblePerformer {
 #[derive(Clone, Debug)]
 pub struct Track {
     pub track_id: String,
-    pub path: String,
+    pub path: PathBuf,
     pub works: Vec<Work>,
 }
 
@@ -405,7 +405,7 @@ impl Track {
 
         Ok(Self {
             track_id: data.track_id,
-            path: data.path,
+            path: data.path.0,
             works,
         })
     }

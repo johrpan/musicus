@@ -1,0 +1,1 @@
+UPDATE tracks SET path = '["' || replace(path, '/', '","') || '"]';

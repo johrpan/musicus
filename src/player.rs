@@ -1,6 +1,6 @@
 use std::{
     cell::{Cell, OnceCell, RefCell},
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 
 use anyhow::{anyhow, Context, Result};
@@ -473,7 +473,7 @@ impl Player {
         self.append(playlist)
     }
 
-    fn library_path_to_file_path(&self, path: &str) -> String {
+    fn library_path_to_file_path(&self, path: impl AsRef<Path>) -> String {
         PathBuf::from(self.library().unwrap().folder())
             .join(path)
             .to_str()

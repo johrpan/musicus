@@ -1632,9 +1632,7 @@ impl Library {
 
         let mut to_path = PathBuf::from(self.folder());
         to_path.push(&filename);
-        let library_path = filename
-            .into_string()
-            .or(Err(anyhow!("Filename contains invalid Unicode.")))?;
+        let library_path = PathBuf::from(filename);
 
         fs::copy(path, to_path)?;
 
@@ -1644,7 +1642,7 @@ impl Library {
             recording_index,
             medium_id: None,
             medium_index: None,
-            path: library_path,
+            path: library_path.into(),
             created_at: now,
             edited_at: now,
             last_used_at: now,
@@ -1822,7 +1820,7 @@ fn write_zip(
 
     // Include all tracks that are part of the library.
     for (index, track) in tracks.into_iter().enumerate() {
-        add_file_to_zip(&mut zip, &library_folder, &track.path)?;
+        add_file_to_zip(&mut zip, &library_folder, &path_to_zip(&track.path)?)?;
 
         // Ignore if the reveiver has been dropped.
         let _ = sender.send_blocking(ProcessMsg::Progress((index + 1) as f64 / n_tracks as f64));
@@ -1833,7 +1831,6 @@ fn write_zip(
     Ok(())
 }
 
-// TODO: Cross-platform paths?
 fn add_file_to_zip(
     zip: &mut ZipWriter<BufWriter<File>>,
     library_folder: impl AsRef<Path>,
@@ -2064,9 +2061,8 @@ fn import_from_zip(
 
     let n_tracks = tracks.len();
 
-    // TODO: Cross-platform paths?
     for (index, track) in tracks.into_iter().enumerate() {
-        let library_track_file_path = library_folder.as_ref().join(Path::new(&track.path));
+        let library_track_file_path = library_folder.as_ref().join(&track.path);
 
         // Skip tracks that are already present.
         if !fs::exists(&library_track_file_path)? {
@@ -2074,7 +2070,7 @@ fn import_from_zip(
                 fs::create_dir_all(parent)?;
             }
 
-            let archive_track_file = archive.by_name(&track.path)?;
+            let archive_track_file = archive.by_name(&path_to_zip(&track.path)?)?;
             let library_track_file = File::create(library_track_file_path)?;
 
             std::io::copy(
@@ -2159,4 +2155,24 @@ async fn download_tmp_file(
     }
 
     Ok(file)
+}
+
+/// Convert a path to a ZIP path. ZIP files use "/" as the path separator
+/// regardless of the current platform.
+fn path_to_zip(path: impl AsRef<Path>) -> Result<String> {
+    Ok(path
+        .as_ref()
+        .iter()
+        .map(|p| {
+            p.to_str()
+                .ok_or_else(|| {
+                    anyhow!(
+                        "Path \"{}\"contains invalid UTF-8",
+                        path.as_ref().to_string_lossy()
+                    )
+                })
+                .map(|s| s.to_owned())
+        })
+        .collect::<Result<Vec<String>>>()?
+        .join("/"))
 }

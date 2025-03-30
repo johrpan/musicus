@@ -1,8 +1,19 @@
 //! This module contains structs that are one-to-one representations of the
 //! tables in the database schema.
 
+use std::path::{Path, PathBuf};
+
+use anyhow::{anyhow, Result};
 use chrono::NaiveDateTime;
-use diesel::{prelude::*, sqlite::Sqlite};
+use diesel::{
+    backend::Backend,
+    deserialize::{FromSql, FromSqlRow},
+    expression::AsExpression,
+    prelude::*,
+    serialize::{IsNull, Output, ToSql},
+    sql_types::Text,
+    sqlite::Sqlite,
+};
 use gtk::glib::{self, Boxed};
 
 use super::{schema::*, TranslatedString};
@@ -131,7 +142,7 @@ pub struct Track {
     pub recording_index: i32,
     pub medium_id: Option<String>,
     pub medium_index: Option<i32>,
-    pub path: String,
+    pub path: PathBufWrapper,
     pub created_at: NaiveDateTime,
     pub edited_at: NaiveDateTime,
     pub last_used_at: NaiveDateTime,
@@ -182,4 +193,60 @@ pub struct AlbumMedium {
     pub album_id: String,
     pub medium_id: String,
     pub sequence_number: i32,
+}
+
+#[derive(AsExpression, FromSqlRow, Clone, Debug)]
+#[diesel(sql_type = Text)]
+pub struct PathBufWrapper(pub PathBuf);
+
+impl ToSql<Text, Sqlite> for PathBufWrapper
+where
+    String: ToSql<Text, Sqlite>,
+{
+    fn to_sql(&self, out: &mut Output<Sqlite>) -> diesel::serialize::Result {
+        out.set_value(serde_json::to_string(
+            &self
+                .0
+                .iter()
+                .map(|p| {
+                    p.to_str()
+                        .ok_or_else(|| anyhow!("Path contains invalid UTF-8"))
+                })
+                .collect::<Result<Vec<&str>>>()?,
+        )?);
+
+        Ok(IsNull::No)
+    }
+}
+
+impl<DB> FromSql<Text, DB> for PathBufWrapper
+where
+    DB: Backend,
+    String: FromSql<Text, DB>,
+{
+    fn from_sql(bytes: DB::RawValue<'_>) -> diesel::deserialize::Result<Self> {
+        Ok(PathBufWrapper(
+            serde_json::from_str::<Vec<String>>(&String::from_sql(bytes)?)?
+                .into_iter()
+                .collect(),
+        ))
+    }
+}
+
+impl From<PathBuf> for PathBufWrapper {
+    fn from(value: PathBuf) -> Self {
+        PathBufWrapper(value)
+    }
+}
+
+impl From<PathBufWrapper> for PathBuf {
+    fn from(value: PathBufWrapper) -> Self {
+        value.0
+    }
+}
+
+impl AsRef<Path> for PathBufWrapper {
+    fn as_ref(&self) -> &Path {
+        self.0.as_ref()
+    }
 }
