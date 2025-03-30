@@ -13,7 +13,7 @@ use adw::{
     prelude::*,
     subclass::prelude::*,
 };
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, Context, Error, Result};
 use chrono::prelude::*;
 use diesel::{dsl::exists, prelude::*, sql_types, QueryDsl, SqliteConnection};
 use formatx::formatx;
@@ -1507,6 +1507,44 @@ impl Library {
         diesel::delete(recordings::table)
             .filter(recordings::recording_id.eq(recording_id))
             .execute(connection)?;
+
+        self.changed();
+
+        Ok(())
+    }
+
+    pub fn delete_recording_and_tracks(&self, recording_id: &str) -> Result<()> {
+        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
+
+        let tracks = tracks::table
+            .filter(tracks::recording_id.eq(recording_id))
+            .load::<tables::Track>(connection)?;
+
+        // Delete from library first to avoid orphan tracks in case of file
+        // system related errors.
+
+        connection.transaction::<(), Error, _>(|connection| {
+            for track in &tracks {
+                diesel::delete(track_works::table)
+                    .filter(track_works::track_id.eq(&track.track_id))
+                    .execute(connection)?;
+
+                diesel::delete(tracks::table)
+                    .filter(tracks::track_id.eq(&track.track_id))
+                    .execute(connection)?;
+            }
+
+            diesel::delete(recordings::table)
+                .filter(recordings::recording_id.eq(recording_id))
+                .execute(connection)?;
+
+            Ok(())
+        })?;
+        
+        let library_path = PathBuf::from(self.folder());
+        for track in tracks {
+            fs::remove_file(library_path.join(&track.path))?;
+        }
 
         self.changed();
 

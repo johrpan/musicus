@@ -1,7 +1,8 @@
 use std::cell::OnceCell;
 
+use adw::prelude::*;
 use gettextrs::gettext;
-use gtk::{gio, glib, prelude::*, subclass::prelude::*};
+use gtk::{gio, glib, subclass::prelude::*};
 
 use crate::{
     db::models::Recording, editor::recording::RecordingEditor, library::Library, player::Player,
@@ -9,7 +10,7 @@ use crate::{
 
 mod imp {
     use super::*;
-    use crate::editor::tracks::TracksEditor;
+    use crate::{editor::tracks::TracksEditor, util};
 
     #[derive(Debug, Default, gtk::CompositeTemplate)]
     #[template(file = "data/ui/recording_tile.blp")]
@@ -85,8 +86,38 @@ mod imp {
                 })
                 .build();
 
+            let obj = self.obj().to_owned();
+            let delete_action = gio::ActionEntry::builder("delete")
+                .activate(move |_, _, _| {
+                    let dialog = adw::AlertDialog::builder()
+                        .heading(&gettext("Delete recording?"))
+                        .body(&gettext("The recording will be removed from your music library and the corresponding audio files will be deleted. This action cannot be undone."))
+                        .build();
+
+                    dialog.add_response("delete", &gettext("Delete"));
+                    dialog.set_response_appearance("delete", adw::ResponseAppearance::Destructive);
+                    dialog.add_response("cancel", &gettext("Cancel"));
+                    dialog.set_default_response(Some("cancel"));
+                    dialog.set_close_response("cancel");
+
+                    let obj = obj.clone();
+                    glib::spawn_future_local(async move {
+                        if dialog.choose_future(&obj).await == "delete" {
+                            if let Err(err) = obj.imp().library.get().unwrap().delete_recording_and_tracks(&obj.recording().recording_id) {
+                                util::error_toast("Failed to delete recording", err, obj.imp().toast_overlay.get().unwrap());
+                            }
+                        }
+                    });
+                })
+                .build();
+
             let actions = gio::SimpleActionGroup::new();
-            actions.add_action_entries([append_action, edit_recording_action, edit_tracks_action]);
+            actions.add_action_entries([
+                append_action,
+                edit_recording_action,
+                edit_tracks_action,
+                delete_action,
+            ]);
             self.obj().insert_action_group("recording", Some(&actions));
         }
     }
