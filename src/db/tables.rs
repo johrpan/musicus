@@ -28,6 +28,7 @@ pub struct Person {
     pub edited_at: NaiveDateTime,
     pub last_used_at: NaiveDateTime,
     pub last_played_at: Option<NaiveDateTime>,
+    pub enable_updates: bool,
 }
 
 #[derive(Boxed, Insertable, Queryable, Selectable, Clone, Debug)]
@@ -39,6 +40,7 @@ pub struct Role {
     pub created_at: NaiveDateTime,
     pub edited_at: NaiveDateTime,
     pub last_used_at: NaiveDateTime,
+    pub enable_updates: bool,
 }
 
 #[derive(Boxed, Insertable, Queryable, Selectable, Clone, Debug)]
@@ -51,6 +53,7 @@ pub struct Instrument {
     pub edited_at: NaiveDateTime,
     pub last_used_at: NaiveDateTime,
     pub last_played_at: Option<NaiveDateTime>,
+    pub enable_updates: bool,
 }
 
 #[derive(Insertable, Queryable, Selectable, Clone, Debug)]
@@ -64,6 +67,7 @@ pub struct Work {
     pub edited_at: NaiveDateTime,
     pub last_used_at: NaiveDateTime,
     pub last_played_at: Option<NaiveDateTime>,
+    pub enable_updates: bool,
 }
 
 #[derive(Insertable, Queryable, Selectable, Clone, Debug)]
@@ -92,6 +96,7 @@ pub struct Ensemble {
     pub edited_at: NaiveDateTime,
     pub last_used_at: NaiveDateTime,
     pub last_played_at: Option<NaiveDateTime>,
+    pub enable_updates: bool,
 }
 
 #[derive(Insertable, Queryable, Selectable, Clone, Debug)]
@@ -113,6 +118,7 @@ pub struct Recording {
     pub edited_at: NaiveDateTime,
     pub last_used_at: NaiveDateTime,
     pub last_played_at: Option<NaiveDateTime>,
+    pub enable_updates: bool,
 }
 
 #[derive(Insertable, Queryable, Selectable, Clone, Debug)]

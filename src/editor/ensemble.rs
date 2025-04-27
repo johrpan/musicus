@@ -21,6 +21,8 @@ mod imp {
         #[template_child]
         pub name_editor: TemplateChild<TranslationEditor>,
         #[template_child]
+        pub enable_updates_row: TemplateChild<adw::SwitchRow>,
+        #[template_child]
         pub save_row: TemplateChild<adw::ButtonRow>,
     }
 
@@ -81,6 +83,9 @@ impl EnsembleEditor {
                 .set(ensemble.ensemble_id.clone())
                 .unwrap();
             obj.imp().name_editor.set_translation(&ensemble.name);
+            obj.imp()
+                .enable_updates_row
+                .set_active(ensemble.enable_updates);
         }
 
         obj
@@ -99,11 +104,14 @@ impl EnsembleEditor {
     fn save(&self) {
         let library = self.imp().library.get().unwrap();
         let name = self.imp().name_editor.translation();
+        let enable_updates = self.imp().enable_updates_row.is_active();
 
         if let Some(ensemble_id) = self.imp().ensemble_id.get() {
-            library.update_ensemble(ensemble_id, name).unwrap();
+            library
+                .update_ensemble(ensemble_id, name, enable_updates)
+                .unwrap();
         } else {
-            let ensemble = library.create_ensemble(name).unwrap();
+            let ensemble = library.create_ensemble(name, enable_updates).unwrap();
             self.emit_by_name::<()>("created", &[&ensemble]);
         }
 

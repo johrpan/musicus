@@ -19,6 +19,7 @@ pub struct Work {
     pub parts: Vec<Work>,
     pub persons: Vec<Composer>,
     pub instruments: Vec<Instrument>,
+    pub enable_updates: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -33,6 +34,7 @@ pub struct Ensemble {
     pub ensemble_id: String,
     pub name: TranslatedString,
     pub persons: Vec<(Person, Instrument)>,
+    pub enable_updates: bool,
 }
 
 #[derive(Boxed, Clone, Debug)]
@@ -43,6 +45,7 @@ pub struct Recording {
     pub year: Option<i32>,
     pub persons: Vec<Performer>,
     pub ensembles: Vec<EnsemblePerformer>,
+    pub enable_updates: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -152,6 +155,7 @@ impl Work {
             parts,
             persons,
             instruments,
+            enable_updates: data.enable_updates,
         })
     }
 
@@ -229,6 +233,7 @@ impl Ensemble {
             ensemble_id: data.ensemble_id,
             name: data.name,
             persons,
+            enable_updates: data.enable_updates,
         })
     }
 }
@@ -279,6 +284,7 @@ impl Recording {
             year: data.year,
             persons,
             ensembles,
+            enable_updates: data.enable_updates,
         })
     }
 

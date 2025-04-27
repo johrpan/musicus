@@ -57,6 +57,8 @@ mod imp {
         #[template_child]
         pub ensemble_list: TemplateChild<gtk::ListBox>,
         #[template_child]
+        pub enable_updates_row: TemplateChild<adw::SwitchRow>,
+        #[template_child]
         pub save_row: TemplateChild<adw::ButtonRow>,
     }
 
@@ -250,6 +252,11 @@ impl RecordingEditor {
                 .composers_string()
                 .unwrap_or_else(|| gettext("No composers")),
         );
+
+        self.imp()
+            .enable_updates_row
+            .set_active(work.enable_updates);
+
         self.imp().save_row.set_sensitive(true);
         self.imp().work.replace(Some(work));
     }
@@ -367,13 +374,22 @@ impl RecordingEditor {
                 .map(|e| e.ensemble())
                 .collect::<Vec<EnsemblePerformer>>();
 
+            let enable_updates = self.imp().enable_updates_row.is_active();
+
             if let Some(recording_id) = self.imp().recording_id.get() {
                 library
-                    .update_recording(recording_id, work, Some(year), performers, ensembles)
+                    .update_recording(
+                        recording_id,
+                        work,
+                        Some(year),
+                        performers,
+                        ensembles,
+                        enable_updates,
+                    )
                     .unwrap();
             } else {
                 let recording = library
-                    .create_recording(work, Some(year), performers, ensembles)
+                    .create_recording(work, Some(year), performers, ensembles, enable_updates)
                     .unwrap();
                 self.emit_by_name::<()>("created", &[&recording]);
             }

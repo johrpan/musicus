@@ -61,6 +61,8 @@ mod imp {
         #[template_child]
         pub instrument_list: TemplateChild<gtk::ListBox>,
         #[template_child]
+        pub enable_updates_row: TemplateChild<adw::SwitchRow>,
+        #[template_child]
         pub save_row: TemplateChild<adw::ButtonRow>,
     }
 
@@ -193,6 +195,8 @@ impl WorkEditor {
             for instrument in &work.instruments {
                 obj.add_instrument_row(instrument.clone());
             }
+
+            obj.imp().enable_updates_row.set_active(work.enable_updates);
         }
 
         obj
@@ -366,6 +370,8 @@ impl WorkEditor {
             .map(|r| r.instrument())
             .collect::<Vec<Instrument>>();
 
+        let enable_updates = self.imp().enable_updates_row.is_active();
+
         if self.imp().is_part_editor.get() {
             let work_id = self
                 .imp()
@@ -380,17 +386,18 @@ impl WorkEditor {
                 parts,
                 persons: composers,
                 instruments,
+                enable_updates,
             };
 
             self.emit_by_name::<()>("created", &[&part]);
         } else {
             if let Some(work_id) = self.imp().work_id.get() {
                 library
-                    .update_work(work_id, name, parts, composers, instruments)
+                    .update_work(work_id, name, parts, composers, instruments, enable_updates)
                     .unwrap();
             } else {
                 let work = library
-                    .create_work(name, parts, composers, instruments)
+                    .create_work(name, parts, composers, instruments, enable_updates)
                     .unwrap();
                 self.emit_by_name::<()>("created", &[&work]);
             }

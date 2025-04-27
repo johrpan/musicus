@@ -9,6 +9,7 @@ conf.set_quoted('VERSION', meson.project_version())
 conf.set_quoted('PROFILE', profile)
 conf.set_quoted('LOCALEDIR', localedir)
 conf.set_quoted('DATADIR', datadir)
+conf.set_quoted('METADATA_URL', metadata_url)
 conf.set_quoted('LIBRARY_URL', library_url)
 
 configure_file(

@@ -128,7 +128,7 @@ impl LibraryManager {
             }
             Ok(path) => {
                 if let Some(path) = path.path() {
-                    match self.imp().library.get().unwrap().import_archive(&path) {
+                    match self.imp().library.get().unwrap().import_library_from_zip(&path) {
                         Ok(receiver) => {
                             let process = Process::new(
                                 &formatx!(
@@ -186,7 +186,7 @@ impl LibraryManager {
             }
             Ok(path) => {
                 if let Some(path) = path.path() {
-                    match self.imp().library.get().unwrap().export_archive(&path) {
+                    match self.imp().library.get().unwrap().export_library_to_zip(&path) {
                         Ok(receiver) => {
                             let process = Process::new(
                                 &formatx!(
@@ -215,17 +215,23 @@ impl LibraryManager {
     }
 
     #[template_callback]
-    fn update_default_library(&self) {
+    fn update_metadata(&self) {
         let settings = gio::Settings::new(config::APP_ID);
-        let url = if settings.boolean("use-custom-library-url") {
-            settings.string("custom-library-url").to_string()
+        let url = if settings.boolean("use-custom-metadata-url") {
+            settings.string("custom-metadata-url").to_string()
         } else {
-            config::LIBRARY_URL.to_string()
+            config::METADATA_URL.to_string()
         };
 
-        match self.imp().library.get().unwrap().import_url(&url) {
+        match self
+            .imp()
+            .library
+            .get()
+            .unwrap()
+            .import_metadata_from_url(&url)
+        {
             Ok(receiver) => {
-                let process = Process::new(&gettext("Downloading music library"), receiver);
+                let process = Process::new(&gettext("Updating metadata"), receiver);
 
                 self.imp()
                     .process_manager
@@ -235,7 +241,38 @@ impl LibraryManager {
 
                 self.add_process(&process);
             }
-            Err(err) => log::error!("Failed to download library: {err:?}"),
+            Err(err) => log::error!("Failed to update metadata: {err:?}"),
+        }
+    }
+
+    #[template_callback]
+    fn update_library(&self) {
+        let settings = gio::Settings::new(config::APP_ID);
+        let url = if settings.boolean("use-custom-library-url") {
+            settings.string("custom-library-url").to_string()
+        } else {
+            config::LIBRARY_URL.to_string()
+        };
+
+        match self
+            .imp()
+            .library
+            .get()
+            .unwrap()
+            .import_library_from_url(&url)
+        {
+            Ok(receiver) => {
+                let process = Process::new(&gettext("Updating music library"), receiver);
+
+                self.imp()
+                    .process_manager
+                    .get()
+                    .unwrap()
+                    .add_process(&process);
+
+                self.add_process(&process);
+            }
+            Err(err) => log::error!("Failed to update library: {err:?}"),
         }
     }
 

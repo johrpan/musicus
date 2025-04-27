@@ -19,7 +19,8 @@ dependency('openssl', version: '>= 1.0')
 
 name = 'Musicus'
 base_id = 'de.johrpan.Musicus'
-library_url = 'https://musicus.johrpan.de/musicus_library_latest.zip'
+metadata_url = 'https://musicus.johrpan.de/musicus_metadata_latest.musdb'
+library_url = 'https://musicus.johrpan.de/musicus_library_latest.muslib'
 app_id = base_id
 path_id = '/de/johrpan/Musicus'
 profile = get_option('profile')

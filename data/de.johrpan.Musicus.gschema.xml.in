@@ -52,12 +52,24 @@
       <default l10n="messages">'{"title":"A long time ago","description":"Works that you haven\'t listened to for a long time.","design":"Purple","prefer_recently_added":0.0,"prefer_least_recently_played":1.0,"avoid_repeated_composers":60,"avoid_repeated_instruments":60,"play_full_recordings":true}'</default>
       <summary>Default settings for program 3</summary>
     </key>
+    <key name="enable-automatic-metadata-updates" type="b">
+      <default>true</default>
+      <summary>Automatically download metadata updates</summary>
+    </key>
+    <key name="use-custom-metadata-url" type="b">
+      <default>false</default>
+      <summary>Use a custom URL for metadata downloads</summary>
+    </key>
+    <key name="custom-metadata-url" type="s">
+      <default>'https://musicus.johrpan.de/musicus_metadata_latest.musdb'</default>
+      <summary>Custom URL for metadata downloads</summary>
+    </key>
     <key name="use-custom-library-url" type="b">
       <default>false</default>
       <summary>Use a custom URL for library downloads</summary>
     </key>
     <key name="custom-library-url" type="s">
-      <default>'https://musicus.johrpan.de/musicus_library_latest.zip'</default>
+      <default>'https://musicus.johrpan.de/musicus_library_latest.muslib'</default>
       <summary>Custom URL for library downloads</summary>
     </key>
   </schema>

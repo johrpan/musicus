@@ -15,6 +15,7 @@ use crate::{
     player_bar::PlayerBar,
     playlist_page::PlaylistPage,
     preferences_dialog::PreferencesDialog,
+    process::Process,
     process_manager::ProcessManager,
     search_page::SearchPage,
     util,
@@ -267,6 +268,24 @@ impl Window {
         self.imp().player.set_library(&library);
 
         let is_empty = library.is_empty()?;
+
+        let settings = gio::Settings::new(config::APP_ID);
+        if settings.boolean("enable-automatic-metadata-updates") {
+            let url = if settings.boolean("use-custom-metadata-url") {
+                settings.string("custom-metadata-url").to_string()
+            } else {
+                config::METADATA_URL.to_string()
+            };
+
+            match library.import_metadata_from_url(&url) {
+                Ok(receiver) => {
+                    let process = Process::new(&gettext("Updating metadata"), receiver);
+                    self.imp().process_manager.add_process(&process);
+                }
+                Err(err) => log::error!("Failed to update metadata: {err:?}"),
+            }
+        }
+
         self.imp().library.replace(Some(library));
 
         if is_empty {

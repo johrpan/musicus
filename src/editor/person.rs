@@ -21,6 +21,8 @@ mod imp {
         #[template_child]
         pub name_editor: TemplateChild<TranslationEditor>,
         #[template_child]
+        pub enable_updates_row: TemplateChild<adw::SwitchRow>,
+        #[template_child]
         pub save_row: TemplateChild<adw::ButtonRow>,
     }
 
@@ -78,6 +80,9 @@ impl PersonEditor {
             obj.imp().save_row.set_title(&gettext("_Save changes"));
             obj.imp().person_id.set(person.person_id.clone()).unwrap();
             obj.imp().name_editor.set_translation(&person.name);
+            obj.imp()
+                .enable_updates_row
+                .set_active(person.enable_updates);
         }
 
         obj
@@ -96,11 +101,14 @@ impl PersonEditor {
     fn save(&self) {
         let library = self.imp().library.get().unwrap();
         let name = self.imp().name_editor.translation();
+        let enable_updates = self.imp().enable_updates_row.is_active();
 
         if let Some(person_id) = self.imp().person_id.get() {
-            library.update_person(person_id, name).unwrap();
+            library
+                .update_person(person_id, name, enable_updates)
+                .unwrap();
         } else {
-            let person = library.create_person(name).unwrap();
+            let person = library.create_person(name, enable_updates).unwrap();
             self.emit_by_name::<()>("created", &[&person]);
         }
 

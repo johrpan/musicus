@@ -21,6 +21,8 @@ mod imp {
         #[template_child]
         pub name_editor: TemplateChild<TranslationEditor>,
         #[template_child]
+        pub enable_updates_row: TemplateChild<adw::SwitchRow>,
+        #[template_child]
         pub save_row: TemplateChild<adw::ButtonRow>,
     }
 
@@ -81,6 +83,9 @@ impl InstrumentEditor {
                 .set(instrument.instrument_id.clone())
                 .unwrap();
             obj.imp().name_editor.set_translation(&instrument.name);
+            obj.imp()
+                .enable_updates_row
+                .set_active(instrument.enable_updates);
         }
 
         obj
@@ -102,11 +107,14 @@ impl InstrumentEditor {
     fn save(&self) {
         let library = self.imp().library.get().unwrap();
         let name = self.imp().name_editor.translation();
+        let enable_updates = self.imp().enable_updates_row.is_active();
 
         if let Some(instrument_id) = self.imp().instrument_id.get() {
-            library.update_instrument(instrument_id, name).unwrap();
+            library
+                .update_instrument(instrument_id, name, enable_updates)
+                .unwrap();
         } else {
-            let instrument = library.create_instrument(name).unwrap();
+            let instrument = library.create_instrument(name, enable_updates).unwrap();
             self.emit_by_name::<()>("created", &[&instrument]);
         }
 

@@ -63,9 +63,15 @@ template $MusicusLibraryManager: Adw.NavigationPage {
             }
 
             Adw.ButtonRow {
-              title: _("Update default library");
+              title: _("Update metadata");
               end-icon-name: "go-next-symbolic";
-              activated => $update_default_library() swapped;
+              activated => $update_metadata() swapped;
+            }
+
+            Adw.ButtonRow {
+              title: _("Update library");
+              end-icon-name: "go-next-symbolic";
+              activated => $update_library() swapped;
             }
           }
 

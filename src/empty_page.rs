@@ -114,7 +114,13 @@ impl EmptyPage {
                     config::LIBRARY_URL.to_string()
                 };
 
-                match obj.imp().library.get().unwrap().import_url(&url) {
+                match obj
+                    .imp()
+                    .library
+                    .get()
+                    .unwrap()
+                    .import_library_from_url(&url)
+                {
                     Ok(receiver) => {
                         let process = Process::new(&gettext("Downloading music library"), receiver);
 

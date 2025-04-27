@@ -20,6 +20,8 @@ mod imp {
         #[template_child]
         pub name_editor: TemplateChild<TranslationEditor>,
         #[template_child]
+        pub enable_updates_row: TemplateChild<adw::SwitchRow>,
+        #[template_child]
         pub save_row: TemplateChild<adw::ButtonRow>,
     }
 
@@ -73,6 +75,7 @@ impl RoleEditor {
             obj.imp().save_row.set_title(&gettext("_Save changes"));
             obj.imp().role_id.set(role.role_id.clone()).unwrap();
             obj.imp().name_editor.set_translation(&role.name);
+            obj.imp().enable_updates_row.set_active(role.enable_updates);
         }
 
         obj
@@ -91,11 +94,12 @@ impl RoleEditor {
     fn save(&self) {
         let library = self.imp().library.get().unwrap();
         let name = self.imp().name_editor.translation();
+        let enable_updates = self.imp().enable_updates_row.is_active();
 
         if let Some(role_id) = self.imp().role_id.get() {
-            library.update_role(role_id, name).unwrap();
+            library.update_role(role_id, name, enable_updates).unwrap();
         } else {
-            let role = library.create_role(name).unwrap();
+            let role = library.create_role(name, enable_updates).unwrap();
             self.emit_by_name::<()>("created", &[&role]);
         }
 

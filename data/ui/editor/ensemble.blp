@@ -35,8 +35,14 @@ template $MusicusEnsembleEditor: Adw.NavigationPage {
             margin-top: 24;
 
             styles [
-              "boxed-list",
+              "boxed-list-separate",
             ]
+
+            Adw.SwitchRow enable_updates_row {
+              title: _("Enable updates");
+              subtitle: _("Keep this item up to date with the online metadata library");
+              active: true;
+            }
 
             Adw.ButtonRow save_row {
               title: _("_Create ensemble");

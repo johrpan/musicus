@@ -69,15 +69,33 @@ template $MusicusPreferencesDialog: Adw.PreferencesDialog {
     icon-name: "library-symbolic";
 
     Adw.PreferencesGroup {
-      title: _("Library download");
+      title: _("Metadata updates");
 
-      Adw.SwitchRow use_custom_url_row {
-        title: _("Use custom download URL");
+      Adw.SwitchRow enable_automatic_metadata_updates_row {
+        title: _("Enable automatic metadata updates");
+      }
+
+      Adw.SwitchRow use_custom_metadata_url_row {
+        title: _("Use custom metadata URL");
         active: false;
       }
 
-      Adw.EntryRow custom_url_row {
-        title: _("Download URL");
+      Adw.EntryRow custom_metadata_url_row {
+        title: _("Metadata download URL");
+        show-apply-button: true;
+      }
+    }
+
+    Adw.PreferencesGroup {
+      title: _("Library updates");
+
+      Adw.SwitchRow use_custom_library_url_row {
+        title: _("Use custom library URL");
+        active: false;
+      }
+
+      Adw.EntryRow custom_library_url_row {
+        title: _("Library download URL");
         show-apply-button: true;
       }
     }

@@ -44,6 +44,7 @@ diesel::table! {
         edited_at -> Timestamp,
         last_used_at -> Timestamp,
         last_played_at -> Nullable<Timestamp>,
+        enable_updates -> Bool,
     }
 }
 
@@ -55,6 +56,7 @@ diesel::table! {
         edited_at -> Timestamp,
         last_used_at -> Timestamp,
         last_played_at -> Nullable<Timestamp>,
+        enable_updates -> Bool,
     }
 }
 
@@ -77,11 +79,12 @@ diesel::table! {
         edited_at -> Timestamp,
         last_used_at -> Timestamp,
         last_played_at -> Nullable<Timestamp>,
+        enable_updates -> Bool,
     }
 }
 
 diesel::table! {
-    recording_ensembles (recording_id, ensemble_id, sequence_number) {
+    recording_ensembles (recording_id, ensemble_id) {
         recording_id -> Text,
         ensemble_id -> Text,
         role_id -> Nullable<Text>,
@@ -90,7 +93,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    recording_persons (recording_id, person_id, sequence_number) {
+    recording_persons (recording_id, person_id) {
         recording_id -> Text,
         person_id -> Text,
         role_id -> Nullable<Text>,
@@ -108,6 +111,7 @@ diesel::table! {
         edited_at -> Timestamp,
         last_used_at -> Timestamp,
         last_played_at -> Nullable<Timestamp>,
+        enable_updates -> Bool,
     }
 }
 
@@ -118,6 +122,7 @@ diesel::table! {
         created_at -> Timestamp,
         edited_at -> Timestamp,
         last_used_at -> Timestamp,
+        enable_updates -> Bool,
     }
 }
 
@@ -153,7 +158,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    work_persons (work_id, person_id, sequence_number) {
+    work_persons (work_id, person_id) {
         work_id -> Text,
         person_id -> Text,
         role_id -> Nullable<Text>,
@@ -171,6 +176,7 @@ diesel::table! {
         edited_at -> Timestamp,
         last_used_at -> Timestamp,
         last_played_at -> Nullable<Timestamp>,
+        enable_updates -> Bool,
     }
 }
 

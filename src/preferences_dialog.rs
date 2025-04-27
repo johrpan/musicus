@@ -20,9 +20,15 @@ mod imp {
         #[template_child]
         pub play_full_recordings_row: TemplateChild<adw::SwitchRow>,
         #[template_child]
-        pub use_custom_url_row: TemplateChild<adw::SwitchRow>,
+        pub enable_automatic_metadata_updates_row: TemplateChild<adw::SwitchRow>,
         #[template_child]
-        pub custom_url_row: TemplateChild<adw::EntryRow>,
+        pub use_custom_metadata_url_row: TemplateChild<adw::SwitchRow>,
+        #[template_child]
+        pub custom_metadata_url_row: TemplateChild<adw::EntryRow>,
+        #[template_child]
+        pub use_custom_library_url_row: TemplateChild<adw::SwitchRow>,
+        #[template_child]
+        pub custom_library_url_row: TemplateChild<adw::EntryRow>,
     }
 
     #[glib::object_subclass]
@@ -90,18 +96,47 @@ mod imp {
 
             settings
                 .bind(
-                    "use-custom-library-url",
-                    &*self.use_custom_url_row,
+                    "enable-automatic-metadata-updates",
+                    &*self.enable_automatic_metadata_updates_row,
                     "active",
                 )
                 .build();
 
             settings
-                .bind("custom-library-url", &*self.custom_url_row, "text")
+                .bind(
+                    "use-custom-metadata-url",
+                    &*self.use_custom_metadata_url_row,
+                    "active",
+                )
                 .build();
 
-            self.use_custom_url_row
-                .bind_property("active", &*self.custom_url_row, "sensitive")
+            settings
+                .bind(
+                    "custom-metadata-url",
+                    &*self.custom_metadata_url_row,
+                    "text",
+                )
+                .build();
+
+            self.use_custom_metadata_url_row
+                .bind_property("active", &*self.custom_metadata_url_row, "sensitive")
+                .sync_create()
+                .build();
+
+            settings
+                .bind(
+                    "use-custom-library-url",
+                    &*self.use_custom_library_url_row,
+                    "active",
+                )
+                .build();
+
+            settings
+                .bind("custom-library-url", &*self.custom_library_url_row, "text")
+                .build();
+
+            self.use_custom_library_url_row
+                .bind_property("active", &*self.custom_library_url_row, "sensitive")
                 .sync_create()
                 .build();
         }
