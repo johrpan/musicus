@@ -299,13 +299,13 @@ impl Window {
                 #[weak(rename_to = obj)]
                 self,
                 move |_| {
-                    obj.reset_view();
+                    obj.initial_view();
                 }
             ));
 
             navigation.replace(&[empty_page.into()]);
         } else {
-            self.reset_view();
+            self.initial_view();
         }
 
         Ok(())
@@ -323,8 +323,9 @@ impl Window {
         Ok(())
     }
 
-    fn reset_view(&self) {
+    fn initial_view(&self) {
         let navigation = self.imp().navigation_view.get();
+
         navigation.replace(&[SearchPage::new(
             &self.imp().toast_overlay,
             &navigation,
@@ -333,5 +334,37 @@ impl Window {
             LibraryQuery::default(),
         )
         .into()]);
+    }
+
+    fn reset_view(&self) {
+        let navigation = self.imp().navigation_view.get();
+
+        // Get all pages that are not instances of SearchPage.
+        let mut navigation_stack = navigation
+            .navigation_stack()
+            .iter::<adw::NavigationPage>()
+            .filter_map(|page| match page {
+                Ok(page) => match page.downcast_ref::<SearchPage>() {
+                    Some(_) => None,
+                    None => Some(page),
+                },
+                Err(_) => None,
+            })
+            .collect::<Vec<adw::NavigationPage>>();
+
+        navigation_stack.insert(
+            0,
+            SearchPage::new(
+                &self.imp().toast_overlay,
+                &navigation,
+                self.imp().library.borrow().as_ref().unwrap(),
+                &self.imp().player,
+                LibraryQuery::default(),
+            )
+            .into(),
+        );
+
+        // Readd all pages except for instances of SearchPage and add a new SearchPage as the root.
+        navigation.replace(&navigation_stack);
     }
 }
