@@ -34,7 +34,7 @@ cargo_opt += [ '--target-dir', meson.project_build_root()  / 'src' ]
 cargo_env  = [ 'CARGO_HOME=' + meson.project_build_root()  / 'cargo-home' ]
 
 if get_option('profile') == 'release'
-  cargo_options += [ '--release' ]
+  cargo_opt += [ '--release' ]
   rust_target = 'release'
   message('Building in release mode')
 else
