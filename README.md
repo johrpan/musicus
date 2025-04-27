@@ -27,7 +27,19 @@ This file should never be edited manually.
 Execute the following commands from the project root directory to update
 translation files whenever translatable strings have been changed.
 
-1. Update `template.pot`
+1. Update `po/POTFILES`
+
+    ```bash
+    cat <<EOF > po/POTFILES
+    data/de.johrpan.Musicus.desktop.in.in
+    data/de.johrpan.Musicus.gschema.xml.in
+    EOF
+
+    find data/ui -name "*.blp" >> po/POTFILES
+    find src -name "*.rs" -a ! -name "config.rs" >> po/POTFILES
+    ```
+
+2. Update `po/template.pot`
 
     ```bash
     xgettext \
@@ -39,7 +51,7 @@ translation files whenever translatable strings have been changed.
         --output=po/template.pot
     ```
 
-2. Update translation files
+3. Update translation files
 
     ```bash
     msgmerge \

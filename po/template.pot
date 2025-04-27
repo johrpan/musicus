@@ -8,44 +8,802 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-09-13 14:57+0200\n"
+"POT-Creation-Date: 2025-04-27 17:54+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: \n"
 "MIME-Version: 1.0\n"
-"Content-Type: text/plain; charset=CHARSET\n"
+"Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: data/res/welcome_page.blp:5 data/res/welcome_page.blp:19
+#. Translators: Do not translate
+#: data/de.johrpan.Musicus.desktop.in.in:3
+msgid "@NAME@"
+msgstr ""
+
+#. Translators: Search terms to find this application. The list must be separated and terminated by semicolons.
+#: data/de.johrpan.Musicus.desktop.in.in:10
+msgid "Music;Player;Library;"
+msgstr ""
+
+#: data/de.johrpan.Musicus.gschema.xml.in:6
+msgid "Window width"
+msgstr ""
+
+#: data/de.johrpan.Musicus.gschema.xml.in:10
+msgid "Window height"
+msgstr ""
+
+#: data/de.johrpan.Musicus.gschema.xml.in:14
+msgid "Window maximized state"
+msgstr ""
+
+#: data/de.johrpan.Musicus.gschema.xml.in:18
+msgid "Path to the music library"
+msgstr ""
+
+#: data/de.johrpan.Musicus.gschema.xml.in:22
+msgid "How much recently played items should be penalized (0–100)"
+msgstr ""
+
+#: data/de.johrpan.Musicus.gschema.xml.in:26
+msgid "How much recently added items should be preferred (0–100)"
+msgstr ""
+
+#: data/de.johrpan.Musicus.gschema.xml.in:30
+msgid "For how many minutes a composer should be penalized"
+msgstr ""
+
+#: data/de.johrpan.Musicus.gschema.xml.in:34
+msgid "For how many minutes an instrument should be penalized"
+msgstr ""
+
+#: data/de.johrpan.Musicus.gschema.xml.in:38
+msgid "Whether to play full recordings"
+msgstr ""
+
+#. Translators: Configuration for the default programs in JSON. Please only translate the values of "title" and "description".
+#: data/de.johrpan.Musicus.gschema.xml.in:42
+msgid ""
+"'{\"title\":\"Just play some music\",\"description\":\"Randomly select some "
+"music. Customize programs using the button in the top right.\",\"design\":"
+"\"Slate\","
+"\"prefer_recently_added\":0.0,\"prefer_least_recently_played\":0.1,\"avoid_repeated_composers\":60,\"avoid_repeated_instruments\":60,\"play_full_recordings\":true}'"
+msgstr ""
+
+#: data/de.johrpan.Musicus.gschema.xml.in:43
+msgid "Default settings for program 1"
+msgstr ""
+
+#. Translators: Configuration for the default programs in JSON. Please only translate the values of "title" and "description".
+#: data/de.johrpan.Musicus.gschema.xml.in:47
+msgid ""
+"'{\"title\":\"What\\'s new?\",\"description\":\"Recordings that you recently "
+"added to your music library.\",\"design\":\"Orange\","
+"\"prefer_recently_added\":1.0,\"prefer_least_recently_played\":0.0,\"avoid_repeated_composers\":60,\"avoid_repeated_instruments\":60,\"play_full_recordings\":true}'"
+msgstr ""
+
+#: data/de.johrpan.Musicus.gschema.xml.in:48
+msgid "Default settings for program 2"
+msgstr ""
+
+#. Translators: Configuration for the default programs in JSON. Please only translate the values of "title" and "description".
+#: data/de.johrpan.Musicus.gschema.xml.in:52
+msgid ""
+"'{\"title\":\"A long time ago\",\"description\":\"Works that you haven\\'t "
+"listened to for a long time.\",\"design\":\"Purple\","
+"\"prefer_recently_added\":0.0,\"prefer_least_recently_played\":1.0,\"avoid_repeated_composers\":60,\"avoid_repeated_instruments\":60,\"play_full_recordings\":true}'"
+msgstr ""
+
+#: data/de.johrpan.Musicus.gschema.xml.in:53
+msgid "Default settings for program 3"
+msgstr ""
+
+#: data/de.johrpan.Musicus.gschema.xml.in:57
+msgid "Automatically download metadata updates"
+msgstr ""
+
+#: data/de.johrpan.Musicus.gschema.xml.in:61
+msgid "Use a custom URL for metadata downloads"
+msgstr ""
+
+#: data/de.johrpan.Musicus.gschema.xml.in:65
+msgid "Custom URL for metadata downloads"
+msgstr ""
+
+#: data/de.johrpan.Musicus.gschema.xml.in:69
+msgid "Use a custom URL for library downloads"
+msgstr ""
+
+#: data/de.johrpan.Musicus.gschema.xml.in:73
+msgid "Custom URL for library downloads"
+msgstr ""
+
+#: data/ui/player_bar.blp:102
+msgid "Elapsed time"
+msgstr ""
+
+#: data/ui/player_bar.blp:125
+msgid "Remaining time"
+msgstr ""
+
+#: data/ui/playlist_page.blp:11 data/ui/editor/program.blp:5
+msgid "Program"
+msgstr ""
+
+#: data/ui/welcome_page.blp:5 data/ui/welcome_page.blp:20
 msgid "Welcome to Musicus"
 msgstr ""
 
-#: data/res/welcome_page.blp:20
+#: data/ui/welcome_page.blp:21
 msgid ""
-"Get started by choosing where to store your music library. Is this your "
-"first time using Musicus? If so, create a new empty folder for your library. "
-"Musicus will use this location to manage your recordings. You can also "
-"select a folder that already contains a music library created by Musicus."
+"Get started by choosing where you want to store your music library. Are you "
+"using Musicus for the first time? If so, create a new empty folder for your "
+"library. If you wish, Musicus will automatically download some music for you."
 msgstr ""
 
-#: data/res/welcome_page.blp:24
+#: data/ui/welcome_page.blp:30
 msgid "Choose library folder"
 msgstr ""
 
-#: data/res/welcome_page.blp:32
+#: data/ui/welcome_page.blp:39 data/ui/search_page.blp:274
+#: data/ui/empty_page.blp:64
 msgid "_Preferences"
 msgstr ""
 
-#: data/res/welcome_page.blp:36
+#: data/ui/welcome_page.blp:44 data/ui/search_page.blp:279
+#: data/ui/empty_page.blp:69
 msgid "_About Musicus"
 msgstr ""
 
-#: data/res/window.blp:5 data/de.johrpan.musicus.desktop.in:3
-#: src/application.rs:79
+#: data/ui/window.blp:5 data/ui/search_page.blp:5
 msgid "Musicus"
 msgstr ""
 
-#: data/de.johrpan.musicus.appdata.xml.in:7
-msgid "No description"
+#: data/ui/editor/translation_entry.blp:5
+msgid "Translated name"
+msgstr ""
+
+#: data/ui/editor/translation_entry.blp:46
+msgid "Language code"
+msgstr ""
+
+#: data/ui/editor/translation_entry.blp:56
+msgid ""
+"Enter an <a href=\"https://en.wikipedia.org/wiki/"
+"List_of_ISO_639_language_codes\">ISO 639</a> two-letter language code "
+"identifying the language this translation uses."
+msgstr ""
+
+#: data/ui/editor/tracks/parts_popover.blp:12
+msgid "Search parts…"
+msgstr ""
+
+#: data/ui/editor/tracks/track_row.blp:5 src/editor/tracks/track_row.rs:233
+msgid "Select parts"
+msgstr ""
+
+#: data/ui/editor/tracks/track_row.blp:27
+msgid "Clear selected work parts"
+msgstr ""
+
+#: data/ui/editor/tracks/track_row.blp:39
+msgid "Remove this track"
+msgstr ""
+
+#: data/ui/editor/translation.blp:13
+msgid "_Name"
+msgstr ""
+
+#: data/ui/editor/translation.blp:18
+msgid "Add _translation"
+msgstr ""
+
+#: data/ui/editor/album.blp:5 data/ui/album_page.blp:5
+msgid "Album"
+msgstr ""
+
+#: data/ui/editor/album.blp:20 data/ui/editor/ensemble.blp:20
+#: data/ui/editor/instrument.blp:20 data/ui/editor/person.blp:20
+#: data/ui/editor/role.blp:20 data/ui/editor/work.blp:20
+msgid "Name"
+msgstr ""
+
+#: data/ui/editor/album.blp:34 data/ui/album_page.blp:70
+#: data/ui/search_page.blp:210
+msgid "Recordings"
+msgstr ""
+
+#: data/ui/editor/album.blp:55
+msgid "Add _recording"
+msgstr ""
+
+#: data/ui/editor/album.blp:72
+msgid "_Create album"
+msgstr ""
+
+#: data/ui/editor/program.blp:20
+msgid "Appearance"
+msgstr ""
+
+#: data/ui/editor/program.blp:38
+msgid "Title"
+msgstr ""
+
+#: data/ui/editor/program.blp:42
+msgid "Description"
+msgstr ""
+
+#: data/ui/editor/program.blp:46 data/ui/editor/program.blp:59
+msgid "Design"
+msgstr ""
+
+#: data/ui/editor/program.blp:185
+msgid "Settings"
+msgstr ""
+
+#: data/ui/editor/program.blp:203 data/ui/preferences_dialog.blp:14
+msgid "Prefer recordings that haven't been played for a long time"
+msgstr ""
+
+#: data/ui/editor/program.blp:204 data/ui/editor/program.blp:216
+#: data/ui/preferences_dialog.blp:15 data/ui/preferences_dialog.blp:27
+msgid "%"
+msgstr ""
+
+#: data/ui/editor/program.blp:215 data/ui/preferences_dialog.blp:26
+msgid "Prefer recordings that were recently added"
+msgstr ""
+
+#: data/ui/editor/program.blp:227 data/ui/preferences_dialog.blp:38
+msgid "Avoid repeating composers"
+msgstr ""
+
+#: data/ui/editor/program.blp:228 data/ui/editor/program.blp:240
+#: data/ui/preferences_dialog.blp:39 data/ui/preferences_dialog.blp:51
+msgid " min"
+msgstr ""
+
+#: data/ui/editor/program.blp:239 data/ui/preferences_dialog.blp:50
+msgid "Avoid repeating instruments"
+msgstr ""
+
+#: data/ui/editor/program.blp:251 data/ui/preferences_dialog.blp:62
+msgid "Play full recordings"
+msgstr ""
+
+#: data/ui/editor/program.blp:264
+msgid "_Save program"
+msgstr ""
+
+#: data/ui/editor/tracks.blp:5 data/ui/editor/tracks.blp:54
+msgid "Tracks"
+msgstr ""
+
+#: data/ui/editor/tracks.blp:20
+msgid "_Recording"
+msgstr ""
+
+#: data/ui/editor/tracks.blp:40
+msgid "Select recording"
+msgstr ""
+
+#: data/ui/editor/tracks.blp:74
+msgid "Add _files"
+msgstr ""
+
+#: data/ui/editor/tracks.blp:90
+msgid "_Import tracks"
+msgstr ""
+
+#: data/ui/editor/ensemble.blp:5
+msgid "Ensemble"
+msgstr ""
+
+#: data/ui/editor/ensemble.blp:42 data/ui/editor/instrument.blp:42
+#: data/ui/editor/person.blp:42 data/ui/editor/recording.blp:132
+#: data/ui/editor/role.blp:42 data/ui/editor/work.blp:126
+msgid "Enable updates"
+msgstr ""
+
+#: data/ui/editor/ensemble.blp:43 data/ui/editor/instrument.blp:43
+#: data/ui/editor/person.blp:43 data/ui/editor/recording.blp:133
+#: data/ui/editor/role.blp:43 data/ui/editor/work.blp:127
+msgid "Keep this item up to date with the online metadata library"
+msgstr ""
+
+#: data/ui/editor/ensemble.blp:48
+msgid "_Create ensemble"
+msgstr ""
+
+#: data/ui/editor/instrument.blp:5 data/ui/selector/performer_role.blp:70
+msgid "Instrument"
+msgstr ""
+
+#: data/ui/editor/instrument.blp:48
+msgid "_Create instrument"
+msgstr ""
+
+#: data/ui/editor/person.blp:5
+msgid "Person"
+msgstr ""
+
+#: data/ui/editor/person.blp:48
+msgid "_Create person"
+msgstr ""
+
+#: data/ui/editor/recording.blp:5 data/ui/editor/recording.blp:20
+msgid "Recording"
+msgstr ""
+
+#: data/ui/editor/recording.blp:38
+msgid "Select _work"
+msgstr ""
+
+#: data/ui/editor/recording.blp:52
+msgid "_Year"
+msgstr ""
+
+#: data/ui/editor/recording.blp:66 data/ui/search_page.blp:130
+msgid "Performers"
+msgstr ""
+
+#: data/ui/editor/recording.blp:86
+msgid "Add _performer"
+msgstr ""
+
+#: data/ui/editor/recording.blp:95 data/ui/search_page.blp:150
+msgid "Ensembles"
+msgstr ""
+
+#: data/ui/editor/recording.blp:115
+msgid "Add _ensemble"
+msgstr ""
+
+#: data/ui/editor/recording.blp:138
+msgid "_Create recording"
+msgstr ""
+
+#: data/ui/editor/role.blp:5 data/ui/selector/performer_role.blp:38
+msgid "Role"
+msgstr ""
+
+#: data/ui/editor/role.blp:48
+msgid "_Create role"
+msgstr ""
+
+#: data/ui/editor/work.blp:5
+msgid "Work"
+msgstr ""
+
+#: data/ui/editor/work.blp:34 data/ui/search_page.blp:110
+msgid "Composers"
+msgstr ""
+
+#: data/ui/editor/work.blp:54
+msgid "Add _composer"
+msgstr ""
+
+#: data/ui/editor/work.blp:63
+msgid "Structure"
+msgstr ""
+
+#: data/ui/editor/work.blp:81
+msgid "Add _part"
+msgstr ""
+
+#: data/ui/editor/work.blp:89 data/ui/search_page.blp:170
+msgid "Instruments"
+msgstr ""
+
+#: data/ui/editor/work.blp:109
+msgid "Add _instrument"
+msgstr ""
+
+#: data/ui/editor/work.blp:132
+msgid "_Create work"
+msgstr ""
+
+#: data/ui/selector/ensemble.blp:12
+msgid "Search ensembles…"
+msgstr ""
+
+#: data/ui/selector/instrument.blp:12 data/ui/selector/performer_role.blp:75
+msgid "Search instruments…"
+msgstr ""
+
+#: data/ui/selector/person.blp:12
+msgid "Search persons…"
+msgstr ""
+
+#: data/ui/selector/recording.blp:15 data/ui/selector/work.blp:15
+msgid "Search composers…"
+msgstr ""
+
+#: data/ui/selector/recording.blp:71 data/ui/selector/work.blp:71
+msgid "Search works…"
+msgstr ""
+
+#: data/ui/selector/recording.blp:125
+msgid "Search recordings…"
+msgstr ""
+
+#: data/ui/selector/role.blp:19 data/ui/selector/performer_role.blp:43
+msgid "Search roles…"
+msgstr ""
+
+#: data/ui/selector/role.blp:28 data/ui/selector/performer_role.blp:25
+msgid "Reset to default role"
+msgstr ""
+
+#: data/ui/album_page.blp:56 data/ui/search_page.blp:64
+msgid "_Play"
+msgstr ""
+
+#: data/ui/album_page.blp:57
+msgid "Play this album"
+msgstr ""
+
+#: data/ui/album_page.blp:96 data/ui/search_page.blp:287
+#: data/ui/recording_tile.blp:69
+msgid "_Add to playlist"
+msgstr ""
+
+#: data/ui/album_page.blp:103 data/ui/search_page.blp:294
+msgid "_Edit item"
+msgstr ""
+
+#: data/ui/album_page.blp:108 data/ui/search_page.blp:299
+msgid "_Delete item"
+msgstr ""
+
+#: data/ui/search_page.blp:65
+msgid "Play this as a program"
+msgstr ""
+
+#: data/ui/search_page.blp:78
+msgid "Enter composers, performers, works…"
+msgstr ""
+
+#: data/ui/search_page.blp:190
+msgid "Works"
+msgstr ""
+
+#: data/ui/search_page.blp:230
+msgid "Albums"
+msgstr ""
+
+#: data/ui/search_page.blp:250
+msgid "Nothing Found"
+msgstr ""
+
+#: data/ui/search_page.blp:251
+msgid "Try a different search."
+msgstr ""
+
+#: data/ui/search_page.blp:264 data/ui/empty_page.blp:54
+msgid "_Import music"
+msgstr ""
+
+#: data/ui/search_page.blp:269 data/ui/empty_page.blp:59
+msgid "_Library manager"
+msgstr ""
+
+#: data/ui/process_row.blp:37
+msgid "Process finished"
+msgstr ""
+
+#: data/ui/process_row.blp:62
+msgid "Remove from list"
+msgstr ""
+
+#: data/ui/error_dialog.blp:13
+msgid "Error"
+msgstr ""
+
+#: data/ui/error_dialog.blp:19
+msgid "Copy details to clipboard"
+msgstr ""
+
+#: data/ui/empty_page.blp:5 data/ui/empty_page.blp:19
+msgid "New Library"
+msgstr ""
+
+#: data/ui/empty_page.blp:20
+msgid ""
+"You can import your recordings by selecting \"Import music\" in the main "
+"menu. Musicus also comes with a small pre-made library of recordings. You "
+"can download it using the button below."
+msgstr ""
+
+#: data/ui/empty_page.blp:27
+msgid "Download music"
+msgstr ""
+
+#: data/ui/recording_tile.blp:70
+msgid "Edit _recording"
+msgstr ""
+
+#: data/ui/recording_tile.blp:71
+msgid "Edit _tracks"
+msgstr ""
+
+#: data/ui/recording_tile.blp:72
+msgid "_Delete from library"
+msgstr ""
+
+#: data/ui/library_manager.blp:5
+msgid "Music Library"
+msgstr ""
+
+#: data/ui/library_manager.blp:21
+msgid "Overview"
+msgstr ""
+
+#: data/ui/library_manager.blp:39
+msgid "Library path"
+msgstr ""
+
+#: data/ui/library_manager.blp:54
+msgid "Import from archive"
+msgstr ""
+
+#: data/ui/library_manager.blp:60
+msgid "Export to archive"
+msgstr ""
+
+#: data/ui/library_manager.blp:66
+msgid "Update metadata"
+msgstr ""
+
+#: data/ui/library_manager.blp:72
+msgid "Update library"
+msgstr ""
+
+#: data/ui/library_manager.blp:79
+msgid "Progress"
+msgstr ""
+
+#: data/ui/preferences_dialog.blp:6
+msgid "Playback"
+msgstr ""
+
+#: data/ui/preferences_dialog.blp:10
+msgid "Default program"
+msgstr ""
+
+#: data/ui/preferences_dialog.blp:11
+msgid "These settings apply when you add search results to the playlist."
+msgstr ""
+
+#: data/ui/preferences_dialog.blp:68
+msgid "Library"
+msgstr ""
+
+#: data/ui/preferences_dialog.blp:72
+msgid "Metadata updates"
+msgstr ""
+
+#: data/ui/preferences_dialog.blp:75
+msgid "Enable automatic metadata updates"
+msgstr ""
+
+#: data/ui/preferences_dialog.blp:79
+msgid "Use custom metadata URL"
+msgstr ""
+
+#: data/ui/preferences_dialog.blp:84
+msgid "Metadata download URL"
+msgstr ""
+
+#: data/ui/preferences_dialog.blp:90
+msgid "Library updates"
+msgstr ""
+
+#: data/ui/preferences_dialog.blp:93
+msgid "Use custom library URL"
+msgstr ""
+
+#: data/ui/preferences_dialog.blp:98
+msgid "Library download URL"
+msgstr ""
+
+#: src/editor/recording/ensemble_row.rs:197
+#: src/editor/recording/performer_row.rs:116
+#: src/editor/recording/performer_row.rs:235
+msgid "Performer"
+msgstr ""
+
+#: src/editor/work/composer_row.rs:115 src/editor/work/composer_row.rs:201
+msgid "Composer"
+msgstr ""
+
+#: src/editor/tracks/track_row.rs:154
+#, rust-format
+msgid "Import from {}"
+msgstr ""
+
+#: src/editor/tracks/track_row.rs:231
+msgid "Whole work"
+msgstr ""
+
+#: src/editor/album.rs:122 src/editor/tracks.rs:150 src/editor/tracks.rs:221
+#: src/editor/ensemble.rs:80 src/editor/instrument.rs:80
+#: src/editor/person.rs:80 src/editor/recording.rs:197 src/editor/role.rs:75
+#: src/editor/work.rs:182
+msgid "_Save changes"
+msgstr ""
+
+#: src/editor/tracks.rs:165
+msgid "Select audio files"
+msgstr ""
+
+#: src/editor/recording.rs:253 src/recording_tile.rs:150
+msgid "No composers"
+msgstr ""
+
+#: src/editor/work.rs:176
+msgid "Work part"
+msgstr ""
+
+#: src/editor/work.rs:177
+msgid "Add _work part"
+msgstr ""
+
+#: src/welcome_page.rs:59 src/library_manager.rs:88
+msgid "Select music library folder"
+msgstr ""
+
+#: src/selector/ensemble.rs:173
+msgid "Create new ensemble"
+msgstr ""
+
+#: src/selector/instrument.rs:178 src/selector/performer_role.rs:308
+msgid "Create new instrument"
+msgstr ""
+
+#: src/selector/performer_role.rs:256 src/selector/role.rs:188
+msgid "Create new role"
+msgstr ""
+
+#: src/selector/person.rs:173
+msgid "Create new person"
+msgstr ""
+
+#: src/selector/recording.rs:260 src/selector/recording.rs:312
+#: src/selector/recording.rs:370
+msgid "Create new recording"
+msgstr ""
+
+#: src/selector/work.rs:222 src/selector/work.rs:274
+msgid "Create new work"
+msgstr ""
+
+#: src/util/error_dialog.rs:76
+msgid "Copied to clipboard"
+msgstr ""
+
+#: src/process_row.rs:138
+#, rust-format
+msgid "Process failed: {}"
+msgstr ""
+
+#: src/search_page.rs:417
+#, rust-format
+msgid "Music for {}"
+msgstr ""
+
+#: src/search_page.rs:431 src/search_page.rs:448 src/search_page.rs:457
+#, rust-format
+msgid "Works with {}"
+msgstr ""
+
+#: src/search_page.rs:437
+#, rust-format
+msgid "Performed by {} and {}"
+msgstr ""
+
+#: src/search_page.rs:441 src/search_page.rs:443
+#, rust-format
+msgid "Performed by {}"
+msgstr ""
+
+#: src/search_page.rs:452
+#, rust-format
+msgid "Performed with {}"
+msgstr ""
+
+#: src/recording_tile.rs:93
+msgid "Delete recording?"
+msgstr ""
+
+#: src/recording_tile.rs:94
+msgid ""
+"The recording will be removed from your music library and the corresponding "
+"audio files will be deleted. This action cannot be undone."
+msgstr ""
+
+#: src/recording_tile.rs:97
+msgid "Delete"
+msgstr ""
+
+#: src/recording_tile.rs:99 src/empty_page.rs:101
+msgid "Cancel"
+msgstr ""
+
+#: src/empty_page.rs:95
+msgid "Disclaimer"
+msgstr ""
+
+#: src/empty_page.rs:96
+msgid ""
+"You are about to download a library of audio files. These are from "
+"recordings that are in the public domain under EU law and are hosted on a "
+"server within the EU. Please ensure that you comply with the copyright laws "
+"of you country."
+msgstr ""
+
+#: src/empty_page.rs:99
+msgid "Continue"
+msgstr ""
+
+#: src/empty_page.rs:125
+msgid "Downloading music library"
+msgstr ""
+
+#: src/library/exchange.rs:223 src/library/exchange.rs:263
+#, rust-format
+msgid "Downloading {}"
+msgstr ""
+
+#: src/library/exchange.rs:229 src/library/exchange.rs:271
+#, rust-format
+msgid "Importing downloaded library"
+msgstr ""
+
+#: src/library_manager.rs:112
+msgid "Import from library archive"
+msgstr ""
+
+#: src/library_manager.rs:135
+#, rust-format
+msgid "Importing music library from {}"
+msgstr ""
+
+#: src/library_manager.rs:138 src/library_manager.rs:196
+msgid "archive"
+msgstr ""
+
+#: src/library_manager.rs:170
+msgid "Export library"
+msgstr ""
+
+#: src/library_manager.rs:193
+#, rust-format
+msgid "Exporting music library to {}"
+msgstr ""
+
+#: src/library_manager.rs:234 src/window.rs:282
+msgid "Updating metadata"
+msgstr ""
+
+#: src/library_manager.rs:265
+msgid "Updating music library"
+msgstr ""
+
+#: src/window.rs:167
+msgid "Close window?"
+msgstr ""
+
+#: src/window.rs:169
+msgid "There are ongoing processes that will be canceled."
+msgstr ""
+
+#: src/window.rs:174
+msgid "Keep open"
+msgstr ""
+
+#: src/window.rs:175
+msgid "Close window"
 msgstr ""

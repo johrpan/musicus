@@ -1,4 +1,5 @@
 [Desktop Entry]
+# Translators: Do not translate
 Name=@NAME@
 Icon=@APP_ID@
 Exec=@PKGNAME@
