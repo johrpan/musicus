@@ -53,7 +53,7 @@
       <summary>Default settings for program 3</summary>
     </key>
     <key name="enable-automatic-metadata-updates" type="b">
-      <default>true</default>
+      <default>false</default>
       <summary>Automatically download metadata updates</summary>
     </key>
     <key name="use-custom-metadata-url" type="b">
