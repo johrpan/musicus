@@ -1,0 +1,24 @@
+name: Build and Release Flatpak
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Flatpak
+      uses: flatpak/flatpak-github-actions/setup-flatpak@v5
+
+    - name: Build Flatpak
+      run: |
+        flatpak-builder --repo=repo --default-branch=stable build flatpak/de.johrpan.Musicus.json
+        flatpak build-bundle repo de.johrpan.Musicus.flatpak de.johrpan.Musicus stable
+
+    - name: Upload Flatpak to Release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: de.johrpan.Musicus.flatpak
