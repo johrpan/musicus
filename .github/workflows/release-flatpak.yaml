@@ -7,16 +7,18 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-48
+      options: --privileged
     steps:
     - uses: actions/checkout@v4
 
-    - name: Set up Flatpak
-      uses: flatpak/flatpak-github-actions/setup-flatpak@v5
-
     - name: Build Flatpak
-      run: |
-        flatpak-builder --repo=repo --default-branch=stable build flatpak/de.johrpan.Musicus.json
-        flatpak build-bundle repo de.johrpan.Musicus.flatpak de.johrpan.Musicus stable
+      uses: flatpak/flatpak-github-actions/flatpak-builder@v6
+      with:
+        bundle: de.johrpan.Musicus.flatpak
+        manifest-path: flatpak/de.johrpan.Musicus.json
+        cache-key: flatpak-builder-${{ github.sha }}
 
     - name: Upload Flatpak to Release
       uses: softprops/action-gh-release@v2
