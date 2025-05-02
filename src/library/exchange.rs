@@ -527,6 +527,8 @@ async fn download_tmp_file(
         }
     }
 
+    writer.flush().await?;
+
     Ok(file)
 }
 
