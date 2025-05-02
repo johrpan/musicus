@@ -1,6 +1,29 @@
+![Musicus Logo](data/misc/logo.png)
+
 # Musicus
 
-The classical music player and organizer.
+## Introduction
+
+Musicus is a classical music player and organizer designed for the
+[GNOME](https://www.gnome.org)
+platform. It helps you manage your personal collection of classical music
+recordings. Musicus also comes with a pre-made sample library of public domain
+recordings, which you can use as a starting point or to test the application.
+
+The following features make Musicus special:
+
+ - Combination of library management, search and playback
+ - Metadata handling optimized for classical music
+ - Intelligent random playback with customizable programs
+ - Built-in sample library for just listening to music right-away
+ - Local-first, no cloud or account required
+
+Please note that Musicus will not be ready for everyone until version 1.0 is
+released. Before then, the format of the music library may change, which could
+result in permanent data loss. Do not use the Musicus library as your primary
+music collection!
+
+![Screenshot](data/misc/screenshot.png)
 
 ## Hacking
 
