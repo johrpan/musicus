@@ -1880,7 +1880,6 @@ dependencies = [
  "glib",
  "gstreamer-play",
  "gtk4",
- "lazy_static",
  "libadwaita",
  "log",
  "mpris-server",
