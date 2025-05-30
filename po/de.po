@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-04-27 17:54+0200\n"
+"POT-Creation-Date: 2025-05-30 15:27+0200\n"
 "PO-Revision-Date: 2025-04-27 18:23+0200\n"
 "Last-Translator: elias@johrpan.de\n"
 "Language-Team: German <translation-team-de@lists.sourceforge.net>\n"
@@ -818,7 +818,7 @@ msgstr "Bibliothek exportieren"
 msgid "Exporting music library to {}"
 msgstr "Bibliothek wird nach {} exportiert"
 
-#: src/library_manager.rs:234 src/window.rs:282
+#: src/library_manager.rs:234 src/window.rs:305
 msgid "Updating metadata"
 msgstr "Metadaten werden aktualisiert"
 
@@ -826,19 +826,23 @@ msgstr "Metadaten werden aktualisiert"
 msgid "Updating music library"
 msgstr "Musikbibliothek wird aktualisiert"
 
-#: src/window.rs:167
+#: src/window.rs:166
+msgid "Currently playing music"
+msgstr "Musik wird abgespielt"
+
+#: src/window.rs:190
 msgid "Close window?"
 msgstr "Fenster schließen?"
 
-#: src/window.rs:169
+#: src/window.rs:192
 msgid "There are ongoing processes that will be canceled."
 msgstr "Es gibt laufende Prozesse, die abgebrochen werden."
 
-#: src/window.rs:174
+#: src/window.rs:197
 msgid "Keep open"
 msgstr "Nicht schließen"
 
-#: src/window.rs:175
+#: src/window.rs:198
 msgid "Close window"
 msgstr "Fenster schließen"
 

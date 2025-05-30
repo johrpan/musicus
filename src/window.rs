@@ -1,4 +1,7 @@
-use std::{cell::RefCell, path::Path};
+use std::{
+    cell::{Cell, RefCell},
+    path::Path,
+};
 
 use adw::{prelude::*, subclass::prelude::*};
 use anyhow::{anyhow, Result};
@@ -31,6 +34,7 @@ mod imp {
         pub library: RefCell<Option<Library>>,
         pub player: Player,
         pub process_manager: ProcessManager,
+        pub inhibitor_cookie: Cell<Option<u32>>,
 
         #[template_child]
         pub toast_overlay: TemplateChild<adw::ToastOverlay>,
@@ -147,6 +151,25 @@ mod imp {
 
             let obj = self.obj().to_owned();
             self.player.connect_raise(move |_| obj.present());
+
+            let obj = self.obj().to_owned();
+            self.player.connect_playing_notify(move |player| {
+                if let Some(app) = obj.application() {
+                    if let Some(cookie) = obj.imp().inhibitor_cookie.take() {
+                        app.uninhibit(cookie);
+                    };
+
+                    if player.playing() {
+                        let cookie = app.inhibit(
+                            Some(&obj),
+                            gtk::ApplicationInhibitFlags::SUSPEND,
+                            Some(&gettext("Currently playing music")),
+                        );
+
+                        obj.imp().inhibitor_cookie.set(Some(cookie));
+                    }
+                }
+            });
 
             let settings = gio::Settings::new(config::APP_ID);
             let library_path = settings.string("library-path").to_string();

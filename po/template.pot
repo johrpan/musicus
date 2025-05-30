@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-04-27 17:54+0200\n"
+"POT-Creation-Date: 2025-05-30 15:27+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -784,7 +784,7 @@ msgstr ""
 msgid "Exporting music library to {}"
 msgstr ""
 
-#: src/library_manager.rs:234 src/window.rs:282
+#: src/library_manager.rs:234 src/window.rs:305
 msgid "Updating metadata"
 msgstr ""
 
@@ -792,18 +792,22 @@ msgstr ""
 msgid "Updating music library"
 msgstr ""
 
-#: src/window.rs:167
+#: src/window.rs:166
+msgid "Currently playing music"
+msgstr ""
+
+#: src/window.rs:190
 msgid "Close window?"
 msgstr ""
 
-#: src/window.rs:169
+#: src/window.rs:192
 msgid "There are ongoing processes that will be canceled."
 msgstr ""
 
-#: src/window.rs:174
+#: src/window.rs:197
 msgid "Keep open"
 msgstr ""
 
-#: src/window.rs:175
+#: src/window.rs:198
 msgid "Close window"
 msgstr ""
