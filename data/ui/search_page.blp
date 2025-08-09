@@ -73,17 +73,15 @@ template $MusicusSearchPage: Adw.NavigationPage {
               ]
             }
           }
+          
+          Gtk.SearchEntry search_entry {
+            placeholder-text: _("Enter composers, performers, works…");
+            margin-top: 24;
+            activate => $select() swapped;
 
-          Adw.Clamp {
-            Gtk.SearchEntry search_entry {
-              placeholder-text: _("Enter composers, performers, works…");
-              margin-top: 24;
-              activate => $select() swapped;
-
-              styles [
-                "rounded-entry"
-              ]
-            }
+            styles [
+              "rounded-entry"
+            ]
           }
 
           Gtk.Stack stack {
