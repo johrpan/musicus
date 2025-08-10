@@ -9,6 +9,7 @@ use gettextrs::gettext;
 use gtk::{gio, glib, glib::clone};
 
 use crate::{
+    album_page::AlbumPage,
     config,
     editor::tracks::TracksEditor,
     empty_page::EmptyPage,
@@ -362,17 +363,12 @@ impl Window {
     fn reset_view(&self) {
         let navigation = self.imp().navigation_view.get();
 
-        // Get all pages that are not instances of SearchPage.
+        // Get all pages that are not instances of SearchPage or AlbumPage.
         let mut navigation_stack = navigation
             .navigation_stack()
             .iter::<adw::NavigationPage>()
-            .filter_map(|page| match page {
-                Ok(page) => match page.downcast_ref::<SearchPage>() {
-                    Some(_) => None,
-                    None => Some(page),
-                },
-                Err(_) => None,
-            })
+            .filter_map(|page| page.ok())
+            .filter(|page| !page.is::<SearchPage>() && !page.is::<AlbumPage>())
             .collect::<Vec<adw::NavigationPage>>();
 
         navigation_stack.insert(
