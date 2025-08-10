@@ -29,7 +29,10 @@ impl Library {
         &self,
         path: impl AsRef<Path>,
     ) -> Result<async_channel::Receiver<ProcessMsg>> {
-        log::info!("Importing library from ZIP at {}", path.as_ref().to_string_lossy());
+        log::info!(
+            "Importing library from ZIP at {}",
+            path.as_ref().to_string_lossy()
+        );
         let path = path.as_ref().to_owned();
         let library_folder = PathBuf::from(&self.folder());
         let this_connection = self.imp().connection.get().unwrap().clone();
@@ -52,7 +55,10 @@ impl Library {
         &self,
         path: impl AsRef<Path>,
     ) -> Result<async_channel::Receiver<ProcessMsg>> {
-        log::info!("Exporting library to ZIP at {}", path.as_ref().to_string_lossy());
+        log::info!(
+            "Exporting library to ZIP at {}",
+            path.as_ref().to_string_lossy()
+        );
         let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
 
         let path = path.as_ref().to_owned();
