@@ -45,7 +45,7 @@ impl AlbumTile {
     pub fn new(album: &Album) -> Self {
         let obj: Self = glib::Object::new();
 
-        obj.imp().title_label.set_label(&album.name.get());
+        obj.imp().title_label.set_label(album.name.get());
         obj.imp().album.set(album.clone()).unwrap();
 
         obj

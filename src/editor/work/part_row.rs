@@ -145,7 +145,7 @@ impl WorkEditorPartRow {
     }
 
     fn set_part(&self, part: Work) {
-        self.set_title(&part.name.get());
+        self.set_title(part.name.get());
 
         if !part.parts.is_empty() {
             self.set_subtitle(

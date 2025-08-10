@@ -28,7 +28,7 @@ pub fn error_toast(msgid: &str, err: anyhow::Error, toast_overlay: &adw::ToastOv
     log::error!("{msgid}: {err:?}");
 
     let toast = adw::Toast::builder()
-        .title(&gettext(msgid))
+        .title(gettext(msgid))
         .button_label("Details")
         .build();
 

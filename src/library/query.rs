@@ -414,7 +414,6 @@ impl Library {
                     works,
                     recordings,
                     albums,
-                    ..Default::default()
                 }
             }
             LibraryQuery {

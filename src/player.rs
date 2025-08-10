@@ -221,14 +221,14 @@ impl Player {
             items.push(PlaylistItem::new(
                 true,
                 recording.work.composers_string(),
-                &recording.work.name.get(),
+                recording.work.name.get(),
                 Some(&performances),
                 None,
-                &self.library_path_to_file_path(&tracks[0].path),
+                self.library_path_to_file_path(&tracks[0].path),
                 &tracks[0].track_id,
             ));
         } else {
-            let mut tracks = tracks.into_iter();
+            let mut tracks = tracks.iter();
             let first_track = tracks.next().unwrap();
 
             let track_title = |track: &Track, number: usize| -> String {
@@ -249,10 +249,10 @@ impl Player {
             items.push(PlaylistItem::new(
                 true,
                 recording.work.composers_string(),
-                &recording.work.name.get(),
+                recording.work.name.get(),
                 Some(&performances),
-                Some(&track_title(&first_track, 1)),
-                &self.library_path_to_file_path(&first_track.path),
+                Some(&track_title(first_track, 1)),
+                self.library_path_to_file_path(&first_track.path),
                 &first_track.track_id,
             ));
 
@@ -260,11 +260,11 @@ impl Player {
                 items.push(PlaylistItem::new(
                     false,
                     recording.work.composers_string(),
-                    &recording.work.name.get(),
+                    recording.work.name.get(),
                     Some(&performances),
                     // track number = track index + 1 (first track) + 1 (zero based)
-                    Some(&track_title(&track, index + 2)),
-                    &self.library_path_to_file_path(&track.path),
+                    Some(&track_title(track, index + 2)),
+                    self.library_path_to_file_path(&track.path),
                     &track.track_id,
                 ));
             }

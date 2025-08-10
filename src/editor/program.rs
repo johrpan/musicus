@@ -69,7 +69,7 @@ mod imp {
             self.parent_constructed();
 
             let set_design_action = gio::ActionEntry::builder("set-design")
-                .parameter_type(Some(&glib::VariantTy::STRING))
+                .parameter_type(Some(glib::VariantTy::STRING))
                 .state(glib::Variant::from("program-1"))
                 .build();
 

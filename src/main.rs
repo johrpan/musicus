@@ -46,7 +46,7 @@ fn main() -> glib::ExitCode {
     gettextrs::textdomain(config::PKGNAME).unwrap();
 
     gio::resources_register(
-        &gio::Resource::load(&format!(
+        &gio::Resource::load(format!(
             "{}/{}/{}.gresource",
             config::DATADIR,
             config::PKGNAME,
