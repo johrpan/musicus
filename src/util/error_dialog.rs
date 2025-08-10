@@ -61,7 +61,7 @@ glib::wrapper! {
 impl ErrorDialog {
     pub fn present(err: &anyhow::Error, parent: &impl IsA<gtk::Widget>) {
         let obj: Self = glib::Object::builder()
-            .property("error-text", &format!("{err:?}"))
+            .property("error-text", format!("{err:?}"))
             .build();
 
         obj.present(Some(parent));

@@ -83,7 +83,7 @@ impl Program {
     }
 
     pub fn from_query(query: LibraryQuery) -> Self {
-        let settings = gio::Settings::new(&config::APP_ID);
+        let settings = gio::Settings::new(config::APP_ID);
 
         glib::Object::builder()
             .property(

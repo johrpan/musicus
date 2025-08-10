@@ -209,7 +209,7 @@ impl Library {
     ) -> Result<Work> {
         let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
 
-        let work = self.create_work_priv(
+        let work = Self::create_work_priv(
             connection,
             name,
             parts,
@@ -226,7 +226,6 @@ impl Library {
     }
 
     fn create_work_priv(
-        &self,
         connection: &mut SqliteConnection,
         name: TranslatedString,
         parts: Vec<Work>,
@@ -242,7 +241,7 @@ impl Library {
         let work_data = tables::Work {
             work_id: work_id.clone(),
             parent_work_id: parent_work_id.map(|w| w.to_string()),
-            sequence_number: sequence_number,
+            sequence_number,
             name,
             created_at: now,
             edited_at: now,
@@ -256,7 +255,7 @@ impl Library {
             .execute(connection)?;
 
         for (index, part) in parts.into_iter().enumerate() {
-            self.create_work_priv(
+            Self::create_work_priv(
                 connection,
                 part.name,
                 part.parts,
@@ -309,7 +308,7 @@ impl Library {
     ) -> Result<()> {
         let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
 
-        self.update_work_priv(
+        Self::update_work_priv(
             connection,
             work_id,
             name,
@@ -327,7 +326,6 @@ impl Library {
     }
 
     fn update_work_priv(
-        &self,
         connection: &mut SqliteConnection,
         work_id: &str,
         name: TranslatedString,
@@ -367,7 +365,7 @@ impl Library {
                 .optional()?
                 .is_some()
             {
-                self.update_work_priv(
+                Self::update_work_priv(
                     connection,
                     &part.work_id,
                     part.name,
@@ -381,7 +379,7 @@ impl Library {
             } else {
                 // Note: The previously used ID is discarded. This should be OK, because
                 // at this point, the part ID should not have been used anywhere.
-                self.create_work_priv(
+                Self::create_work_priv(
                     connection,
                     part.name,
                     part.parts,

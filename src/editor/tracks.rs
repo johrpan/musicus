@@ -245,8 +245,7 @@ impl TracksEditor {
                     .track_rows
                     .borrow()
                     .iter()
-                    .map(|t| t.track_data().parts.clone())
-                    .flatten()
+                    .flat_map(|t| t.track_data().parts.clone())
                     .collect::<Vec<Work>>()
             };
 

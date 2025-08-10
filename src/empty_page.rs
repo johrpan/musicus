@@ -92,8 +92,8 @@ impl EmptyPage {
     #[template_callback]
     async fn download_library(&self) {
         let dialog = adw::AlertDialog::builder()
-            .heading(&gettext("Disclaimer"))
-            .body(&gettext("You are about to download a library of audio files. These are from recordings that are in the public domain under EU law and are hosted on a server within the EU. Please ensure that you comply with the copyright laws of you country."))
+            .heading(gettext("Disclaimer"))
+            .body(gettext("You are about to download a library of audio files. These are from recordings that are in the public domain under EU law and are hosted on a server within the EU. Please ensure that you comply with the copyright laws of you country."))
             .build();
 
         dialog.add_response("continue", &gettext("Continue"));

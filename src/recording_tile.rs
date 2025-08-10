@@ -69,7 +69,7 @@ mod imp {
                         .push(&RecordingEditor::new(
                             obj.imp().navigation.get().unwrap(),
                             obj.imp().library.get().unwrap(),
-                            Some(&obj.imp().recording.get().unwrap()),
+                            Some(obj.imp().recording.get().unwrap()),
                         ));
                 })
                 .build();
@@ -90,8 +90,8 @@ mod imp {
             let delete_action = gio::ActionEntry::builder("delete")
                 .activate(move |_, _, _| {
                     let dialog = adw::AlertDialog::builder()
-                        .heading(&gettext("Delete recording?"))
-                        .body(&gettext("The recording will be removed from your music library and the corresponding audio files will be deleted. This action cannot be undone."))
+                        .heading(gettext("Delete recording?"))
+                        .body(gettext("The recording will be removed from your music library and the corresponding audio files will be deleted. This action cannot be undone."))
                         .build();
 
                     dialog.add_response("delete", &gettext("Delete"));
@@ -142,7 +142,7 @@ impl RecordingTile {
         let obj: Self = glib::Object::new();
         let imp = obj.imp();
 
-        imp.work_label.set_label(&recording.work.name.get());
+        imp.work_label.set_label(recording.work.name.get());
         imp.composer_label.set_label(
             &recording
                 .work

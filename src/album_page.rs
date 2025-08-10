@@ -72,8 +72,7 @@ mod imp {
                         .unwrap()
                         .recordings
                         .iter()
-                        .map(|r| obj.player().recording_to_playlist(r))
-                        .flatten()
+                        .flat_map(|r| obj.player().recording_to_playlist(r))
                         .collect::<Vec<PlaylistItem>>();
 
                     if let Err(err) = obj.player().append(playlist) {
@@ -165,8 +164,7 @@ impl AlbumPage {
             .unwrap()
             .recordings
             .iter()
-            .map(|r| self.player().recording_to_playlist(r))
-            .flatten()
+            .flat_map(|r| self.player().recording_to_playlist(r))
             .collect::<Vec<PlaylistItem>>();
 
         self.player().append_and_play(playlist);

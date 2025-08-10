@@ -391,7 +391,7 @@ impl SearchPage {
         imp.header_box.set_visible(!query.is_empty());
 
         let highlight = if let Some(work) = &query.work {
-            imp.title_label.set_text(&work.name.get());
+            imp.title_label.set_text(work.name.get());
             if let Some(composers) = work.composers_string() {
                 imp.subtitle_label.set_text(&composers);
                 imp.subtitle_label.set_visible(true);
@@ -400,15 +400,15 @@ impl SearchPage {
             }
             Some(Tag::Work(work.to_owned()))
         } else if let Some(person) = &query.composer {
-            imp.title_label.set_text(&person.name.get());
+            imp.title_label.set_text(person.name.get());
             imp.subtitle_label.set_visible(false);
             Some(Tag::Composer(person.to_owned()))
         } else if let Some(person) = &query.performer {
-            imp.title_label.set_text(&person.name.get());
+            imp.title_label.set_text(person.name.get());
             imp.subtitle_label.set_visible(false);
             Some(Tag::Performer(person.to_owned()))
         } else if let Some(ensemble) = &query.ensemble {
-            imp.title_label.set_text(&ensemble.name.get());
+            imp.title_label.set_text(ensemble.name.get());
             imp.subtitle_label.set_visible(false);
             Some(Tag::Ensemble(ensemble.to_owned()))
         } else if let Some(instrument) = &query.instrument {

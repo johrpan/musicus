@@ -229,22 +229,18 @@ fn import_metadata_from_url_priv(
         formatx!(gettext("Downloading {}"), &url).unwrap(),
     ));
 
-    match runtime.block_on(download_tmp_file(&url, &sender)) {
+    match runtime.block_on(download_tmp_file(&url, sender)) {
         Ok(db_file) => {
             let _ = sender.send_blocking(ProcessMsg::Message(
                 formatx!(gettext("Importing downloaded library"), &url).unwrap(),
             ));
 
             let _ = sender.send_blocking(ProcessMsg::Result(
-                import_metadata_from_file(db_file.path(), this_connection, true).and_then(
-                    |tracks| {
-                        if !tracks.is_empty() {
-                            log::warn!("The metadata file at {url} contains tracks.");
-                        }
-
-                        Ok(())
-                    },
-                ),
+                import_metadata_from_file(db_file.path(), this_connection, true).map(|tracks| {
+                    if !tracks.is_empty() {
+                        log::warn!("The metadata file at {url} contains tracks.");
+                    }
+                }),
             ));
         }
         Err(err) => {
@@ -269,7 +265,7 @@ fn import_library_from_url_priv(
         formatx!(gettext("Downloading {}"), &url).unwrap(),
     ));
 
-    let archive_file = runtime.block_on(download_tmp_file(&url, &sender));
+    let archive_file = runtime.block_on(download_tmp_file(&url, sender));
 
     match archive_file {
         Ok(archive_file) => {
@@ -281,7 +277,7 @@ fn import_library_from_url_priv(
                 archive_file.path(),
                 library_folder,
                 this_connection,
-                &sender,
+                sender,
             )));
         }
         Err(err) => {

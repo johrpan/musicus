@@ -390,17 +390,15 @@ impl WorkEditor {
             };
 
             self.emit_by_name::<()>("created", &[&part]);
+        } else if let Some(work_id) = self.imp().work_id.get() {
+            library
+                .update_work(work_id, name, parts, composers, instruments, enable_updates)
+                .unwrap();
         } else {
-            if let Some(work_id) = self.imp().work_id.get() {
-                library
-                    .update_work(work_id, name, parts, composers, instruments, enable_updates)
-                    .unwrap();
-            } else {
-                let work = library
-                    .create_work(name, parts, composers, instruments, enable_updates)
-                    .unwrap();
-                self.emit_by_name::<()>("created", &[&work]);
-            }
+            let work = library
+                .create_work(name, parts, composers, instruments, enable_updates)
+                .unwrap();
+            self.emit_by_name::<()>("created", &[&work]);
         }
 
         self.imp().navigation.get().unwrap().pop();

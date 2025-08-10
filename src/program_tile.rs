@@ -56,7 +56,7 @@ mod imp {
             self.set_program_from_settings(&settings);
 
             let obj = self.obj().to_owned();
-            settings.connect_changed(Some(&self.key.get().unwrap()), move |settings, _| {
+            settings.connect_changed(Some(self.key.get().unwrap()), move |settings, _| {
                 obj.imp().set_program_from_settings(settings);
             });
         }

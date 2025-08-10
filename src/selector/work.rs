@@ -256,7 +256,7 @@ impl WorkSelectorPopover {
                     .build(),
             );
 
-            row.set_tooltip_text(Some(&work.name.get()));
+            row.set_tooltip_text(Some(work.name.get()));
 
             let work = work.clone();
             let obj = self.clone();

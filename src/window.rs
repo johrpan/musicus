@@ -202,8 +202,8 @@ mod imp {
         fn close_request(&self) -> glib::signal::Propagation {
             if self.process_manager.any_ongoing() {
                 let dialog = adw::AlertDialog::builder()
-                    .heading(&gettext("Close window?"))
-                    .body(&gettext(
+                    .heading(gettext("Close window?"))
+                    .body(gettext(
                         "There are ongoing processes that will be canceled.",
                     ))
                     .build();
