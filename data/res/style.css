@@ -14,17 +14,6 @@
   padding-bottom: 3px;
 }
 
-.searchbar .searchtag {
-  background-color: alpha(currentColor, 0.1);
-  border-radius: 100px;
-}
-
-.searchbar .searchtag>button {
-  min-width: 24px;
-  min-height: 24px;
-  margin: 0px;
-}
-
 .tile {
   min-height: 50px;
   min-width: 200px;

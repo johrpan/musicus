@@ -128,7 +128,13 @@ impl LibraryManager {
             }
             Ok(path) => {
                 if let Some(path) = path.path() {
-                    match self.imp().library.get().unwrap().import_library_from_zip(&path) {
+                    match self
+                        .imp()
+                        .library
+                        .get()
+                        .unwrap()
+                        .import_library_from_zip(&path)
+                    {
                         Ok(receiver) => {
                             let process = Process::new(
                                 &formatx!(
@@ -186,7 +192,13 @@ impl LibraryManager {
             }
             Ok(path) => {
                 if let Some(path) = path.path() {
-                    match self.imp().library.get().unwrap().export_library_to_zip(&path) {
+                    match self
+                        .imp()
+                        .library
+                        .get()
+                        .unwrap()
+                        .export_library_to_zip(&path)
+                    {
                         Ok(receiver) => {
                             let process = Process::new(
                                 &formatx!(

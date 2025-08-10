@@ -20,7 +20,6 @@ mod program;
 mod program_tile;
 mod recording_tile;
 mod search_page;
-mod search_tag;
 mod selector;
 mod slider_row;
 mod tag_tile;

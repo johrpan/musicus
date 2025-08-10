@@ -22,8 +22,7 @@ use crate::{
     program::Program,
     program_tile::ProgramTile,
     recording_tile::RecordingTile,
-    search_tag::Tag,
-    tag_tile::TagTile,
+    tag_tile::{Tag, TagTile},
     util,
 };
 
