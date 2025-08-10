@@ -73,14 +73,14 @@ template $MusicusSearchPage: Adw.NavigationPage {
               ]
             }
           }
-          
+
           Gtk.SearchEntry search_entry {
             placeholder-text: _("Enter composers, performers, works…");
             margin-top: 24;
             activate => $select() swapped;
 
             styles [
-              "rounded-entry"
+              "rounded-entry",
             ]
           }
 
@@ -264,24 +264,33 @@ template $MusicusSearchPage: Adw.NavigationPage {
 }
 
 menu primary_menu {
-  item {
-    label: _("_Import music");
-    action: "win.import";
+  section {
+    item {
+      label: _("_Import music");
+      action: "win.import";
+    }
+
+    item {
+      label: _("_Create album");
+      action: "win.create-album";
+    }
+
+    item {
+      label: _("_Library manager");
+      action: "win.library";
+    }
   }
 
-  item {
-    label: _("_Library manager");
-    action: "win.library";
-  }
+  section {
+    item {
+      label: _("_Preferences");
+      action: "win.preferences";
+    }
 
-  item {
-    label: _("_Preferences");
-    action: "win.preferences";
-  }
-
-  item {
-    label: _("_About Musicus");
-    action: "app.about";
+    item {
+      label: _("_About Musicus");
+      action: "app.about";
+    }
   }
 }
 

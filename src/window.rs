@@ -11,7 +11,7 @@ use gtk::{gio, glib, glib::clone};
 use crate::{
     album_page::AlbumPage,
     config,
-    editor::tracks::TracksEditor,
+    editor::{album::AlbumEditor, tracks::TracksEditor},
     empty_page::EmptyPage,
     library::{Library, LibraryQuery},
     library_manager::LibraryManager,
@@ -89,6 +89,16 @@ mod imp {
                 .build();
 
             let obj = self.obj().to_owned();
+            let create_album_action = gio::ActionEntry::builder("create-album")
+                .activate(move |_, _, _| {
+                    if let Some(library) = &*obj.imp().library.borrow() {
+                        let editor = AlbumEditor::new(&obj.imp().navigation_view, library, None);
+                        obj.imp().navigation_view.push(&editor);
+                    }
+                })
+                .build();
+
+            let obj = self.obj().to_owned();
             let library_action = gio::ActionEntry::builder("library")
                 .activate(move |_, _, _| {
                     if let Some(library) = &*obj.imp().library.borrow() {
@@ -109,8 +119,12 @@ mod imp {
                 })
                 .build();
 
-            self.obj()
-                .add_action_entries([import_action, library_action, preferences_action]);
+            self.obj().add_action_entries([
+                import_action,
+                create_album_action,
+                library_action,
+                preferences_action,
+            ]);
 
             let player_bar = PlayerBar::new(&self.player);
             self.player_bar_revealer.set_child(Some(&player_bar));
