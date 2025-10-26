@@ -10,8 +10,8 @@ use gtk::{gio, glib, glib::subclass::Signal};
 use once_cell::sync::Lazy;
 
 use crate::{
-    config, library::Library, process::Process, process_manager::ProcessManager,
-    process_row::ProcessRow,
+    config, db::tables::Source, library::Library, process::Process,
+    process_manager::ProcessManager, process_row::ProcessRow,
 };
 
 mod imp {
@@ -119,7 +119,7 @@ impl EmptyPage {
                     .library
                     .get()
                     .unwrap()
-                    .import_library_from_url(&url)
+                    .import_library_from_url(&url, Source::Metadata)
                 {
                     Ok(receiver) => {
                         let process = Process::new(&gettext("Downloading music library"), receiver);

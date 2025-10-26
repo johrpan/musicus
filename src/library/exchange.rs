@@ -19,7 +19,11 @@ use zip::{write::SimpleFileOptions, ZipWriter};
 
 use super::Library;
 use crate::{
-    db::{self, schema::*, tables},
+    db::{
+        self,
+        schema::*,
+        tables::{self, Source},
+    },
     process::ProcessMsg,
 };
 
@@ -28,6 +32,7 @@ impl Library {
     pub fn import_library_from_zip(
         &self,
         path: impl AsRef<Path>,
+        source: Source,
     ) -> Result<async_channel::Receiver<ProcessMsg>> {
         log::info!(
             "Importing library from ZIP at {}",
@@ -39,9 +44,15 @@ impl Library {
 
         let (sender, receiver) = async_channel::unbounded::<ProcessMsg>();
         thread::spawn(move || {
-            if let Err(err) = sender.send_blocking(ProcessMsg::Result(
-                import_library_from_zip_priv(path, library_folder, this_connection, &sender),
-            )) {
+            if let Err(err) =
+                sender.send_blocking(ProcessMsg::Result(import_library_from_zip_priv(
+                    path,
+                    library_folder,
+                    source,
+                    this_connection,
+                    &sender,
+                )))
+            {
                 log::error!("Failed to send library action result: {err:?}");
             }
         });
@@ -84,6 +95,7 @@ impl Library {
     pub fn import_library_from_url(
         &self,
         url: &str,
+        source: Source,
     ) -> Result<async_channel::Receiver<ProcessMsg>> {
         log::info!("Importing library from URL {url}");
         let url = url.to_owned();
@@ -94,7 +106,7 @@ impl Library {
 
         thread::spawn(move || {
             if let Err(err) = sender.send_blocking(ProcessMsg::Result(
-                import_library_from_url_priv(url, library_folder, this_connection, &sender),
+                import_library_from_url_priv(url, library_folder, source, this_connection, &sender),
             )) {
                 log::error!("Failed to send library action result: {err:?}");
             }
@@ -107,6 +119,7 @@ impl Library {
     pub fn import_metadata_from_url(
         &self,
         url: &str,
+        source: Source,
     ) -> Result<async_channel::Receiver<ProcessMsg>> {
         log::info!("Importing metadata from URL {url}");
 
@@ -117,7 +130,7 @@ impl Library {
 
         thread::spawn(move || {
             if let Err(err) = sender.send_blocking(ProcessMsg::Result(
-                import_metadata_from_url_priv(url, this_connection, &sender),
+                import_metadata_from_url_priv(url, source, this_connection, &sender),
             )) {
                 log::error!("Failed to send library action result: {err:?}");
             }
@@ -131,6 +144,7 @@ impl Library {
 fn import_library_from_zip_priv(
     zip_path: impl AsRef<Path>,
     library_folder: impl AsRef<Path>,
+    source: Source,
     this_connection: Arc<Mutex<SqliteConnection>>,
     sender: &async_channel::Sender<ProcessMsg>,
 ) -> Result<()> {
@@ -144,7 +158,7 @@ fn import_library_from_zip_priv(
     )?;
 
     // Import metadata.
-    let tracks = import_metadata_from_file(tmp_db_file.path(), this_connection, false)?;
+    let tracks = import_metadata_from_file(tmp_db_file.path(), source, this_connection, false)?;
 
     // Import audio files.
     let n_tracks = tracks.len();
@@ -218,6 +232,7 @@ fn add_file_to_zip(
 
 fn import_metadata_from_url_priv(
     url: String,
+    source: Source,
     this_connection: Arc<Mutex<SqliteConnection>>,
     sender: &async_channel::Sender<ProcessMsg>,
 ) -> Result<()> {
@@ -236,11 +251,13 @@ fn import_metadata_from_url_priv(
             ));
 
             let _ = sender.send_blocking(ProcessMsg::Result(
-                import_metadata_from_file(db_file.path(), this_connection, true).map(|tracks| {
-                    if !tracks.is_empty() {
-                        log::warn!("The metadata file at {url} contains tracks.");
-                    }
-                }),
+                import_metadata_from_file(db_file.path(), source, this_connection, true).map(
+                    |tracks| {
+                        if !tracks.is_empty() {
+                            log::warn!("The metadata file at {url} contains tracks.");
+                        }
+                    },
+                ),
             ));
         }
         Err(err) => {
@@ -254,6 +271,7 @@ fn import_metadata_from_url_priv(
 fn import_library_from_url_priv(
     url: String,
     library_folder: impl AsRef<Path>,
+    source: Source,
     this_connection: Arc<Mutex<SqliteConnection>>,
     sender: &async_channel::Sender<ProcessMsg>,
 ) -> Result<()> {
@@ -276,6 +294,7 @@ fn import_library_from_url_priv(
             let _ = sender.send_blocking(ProcessMsg::Result(import_library_from_zip_priv(
                 archive_file.path(),
                 library_folder,
+                source,
                 this_connection,
                 sender,
             )));
@@ -295,6 +314,7 @@ fn import_library_from_url_priv(
 /// In any case, tracks are returned.
 fn import_metadata_from_file(
     path: impl AsRef<Path>,
+    source: Source,
     this_connection: Arc<Mutex<SqliteConnection>>,
     ignore_tracks: bool,
 ) -> Result<Vec<tables::Track>> {
@@ -329,6 +349,7 @@ fn import_metadata_from_file(
     // Import metadata that is not already present.
 
     for mut person in persons {
+        person.source = source;
         person.created_at = now;
         person.edited_at = now;
         person.last_used_at = now;
@@ -341,6 +362,7 @@ fn import_metadata_from_file(
     }
 
     for mut role in roles {
+        role.source = source;
         role.created_at = now;
         role.edited_at = now;
         role.last_used_at = now;
@@ -352,6 +374,7 @@ fn import_metadata_from_file(
     }
 
     for mut instrument in instruments {
+        instrument.source = source;
         instrument.created_at = now;
         instrument.edited_at = now;
         instrument.last_used_at = now;
@@ -364,6 +387,7 @@ fn import_metadata_from_file(
     }
 
     for mut work in works {
+        work.source = source;
         work.created_at = now;
         work.edited_at = now;
         work.last_used_at = now;
@@ -390,6 +414,7 @@ fn import_metadata_from_file(
     }
 
     for mut ensemble in ensembles {
+        ensemble.source = source;
         ensemble.created_at = now;
         ensemble.edited_at = now;
         ensemble.last_used_at = now;
@@ -409,6 +434,7 @@ fn import_metadata_from_file(
     }
 
     for mut recording in recordings {
+        recording.source = source;
         recording.created_at = now;
         recording.edited_at = now;
         recording.last_used_at = now;
@@ -468,6 +494,7 @@ fn import_metadata_from_file(
     }
 
     for mut album in albums {
+        album.source = source;
         album.created_at = now;
         album.edited_at = now;
         album.last_used_at = now;

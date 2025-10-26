@@ -39,6 +39,8 @@ mod imp {
         #[template_child]
         pub recordings_list: TemplateChild<gtk::ListBox>,
         #[template_child]
+        pub enable_updates_row: TemplateChild<adw::SwitchRow>,
+        #[template_child]
         pub save_row: TemplateChild<adw::ButtonRow>,
     }
 
@@ -126,6 +128,10 @@ impl AlbumEditor {
             for recording in &album.recordings {
                 obj.add_recording(recording.to_owned());
             }
+
+            obj.imp()
+                .enable_updates_row
+                .set_active(album.enable_updates);
         }
 
         obj
@@ -191,10 +197,16 @@ impl AlbumEditor {
             .map(|r| r.recording())
             .collect::<Vec<Recording>>();
 
+        let enable_updates = self.imp().enable_updates_row.is_active();
+
         if let Some(album_id) = self.imp().album_id.get() {
-            library.update_album(album_id, name, recordings).unwrap();
+            library
+                .update_album(album_id, name, recordings, enable_updates)
+                .unwrap();
         } else {
-            let album = library.create_album(name, recordings).unwrap();
+            let album = library
+                .create_album(name, recordings, enable_updates)
+                .unwrap();
             self.emit_by_name::<()>("created", &[&album]);
         }
 

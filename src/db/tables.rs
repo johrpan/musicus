@@ -24,11 +24,12 @@ use super::{schema::*, TranslatedString};
 pub struct Person {
     pub person_id: String,
     pub name: TranslatedString,
+    pub source: Source,
+    pub enable_updates: bool,
     pub created_at: NaiveDateTime,
     pub edited_at: NaiveDateTime,
     pub last_used_at: NaiveDateTime,
     pub last_played_at: Option<NaiveDateTime>,
-    pub enable_updates: bool,
 }
 
 #[derive(Boxed, Insertable, Queryable, Selectable, Clone, Debug)]
@@ -37,10 +38,11 @@ pub struct Person {
 pub struct Role {
     pub role_id: String,
     pub name: TranslatedString,
+    pub source: Source,
+    pub enable_updates: bool,
     pub created_at: NaiveDateTime,
     pub edited_at: NaiveDateTime,
     pub last_used_at: NaiveDateTime,
-    pub enable_updates: bool,
 }
 
 #[derive(Boxed, Insertable, Queryable, Selectable, Clone, Debug)]
@@ -49,11 +51,12 @@ pub struct Role {
 pub struct Instrument {
     pub instrument_id: String,
     pub name: TranslatedString,
+    pub source: Source,
+    pub enable_updates: bool,
     pub created_at: NaiveDateTime,
     pub edited_at: NaiveDateTime,
     pub last_used_at: NaiveDateTime,
     pub last_played_at: Option<NaiveDateTime>,
-    pub enable_updates: bool,
 }
 
 #[derive(Insertable, Queryable, Selectable, Clone, Debug)]
@@ -63,11 +66,12 @@ pub struct Work {
     pub parent_work_id: Option<String>,
     pub sequence_number: Option<i32>,
     pub name: TranslatedString,
+    pub source: Source,
+    pub enable_updates: bool,
     pub created_at: NaiveDateTime,
     pub edited_at: NaiveDateTime,
     pub last_used_at: NaiveDateTime,
     pub last_played_at: Option<NaiveDateTime>,
-    pub enable_updates: bool,
 }
 
 #[derive(Insertable, Queryable, Selectable, Clone, Debug)]
@@ -92,11 +96,12 @@ pub struct WorkInstrument {
 pub struct Ensemble {
     pub ensemble_id: String,
     pub name: TranslatedString,
+    pub source: Source,
+    pub enable_updates: bool,
     pub created_at: NaiveDateTime,
     pub edited_at: NaiveDateTime,
     pub last_used_at: NaiveDateTime,
     pub last_played_at: Option<NaiveDateTime>,
-    pub enable_updates: bool,
 }
 
 #[derive(Insertable, Queryable, Selectable, Clone, Debug)]
@@ -114,11 +119,12 @@ pub struct Recording {
     pub recording_id: String,
     pub work_id: String,
     pub year: Option<i32>,
+    pub source: Source,
+    pub enable_updates: bool,
     pub created_at: NaiveDateTime,
     pub edited_at: NaiveDateTime,
     pub last_used_at: NaiveDateTime,
     pub last_played_at: Option<NaiveDateTime>,
-    pub enable_updates: bool,
 }
 
 #[derive(Insertable, Queryable, Selectable, Clone, Debug)]
@@ -168,6 +174,8 @@ pub struct TrackWork {
 pub struct Medium {
     pub medium_id: String,
     pub discid: String,
+    pub source: Source,
+    pub enable_updates: bool,
     pub created_at: NaiveDateTime,
     pub edited_at: NaiveDateTime,
     pub last_used_at: NaiveDateTime,
@@ -179,6 +187,8 @@ pub struct Medium {
 pub struct Album {
     pub album_id: String,
     pub name: TranslatedString,
+    pub source: Source,
+    pub enable_updates: bool,
     pub created_at: NaiveDateTime,
     pub edited_at: NaiveDateTime,
     pub last_used_at: NaiveDateTime,
@@ -254,5 +264,42 @@ impl From<PathBufWrapper> for PathBuf {
 impl AsRef<Path> for PathBufWrapper {
     fn as_ref(&self) -> &Path {
         self.0.as_ref()
+    }
+}
+
+#[derive(AsExpression, FromSqlRow, Copy, Clone, Debug)]
+#[diesel(sql_type = Text)]
+pub enum Source {
+    Metadata,
+    User,
+    Import,
+    Unknown,
+}
+
+impl ToSql<Text, Sqlite> for Source {
+    fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, Sqlite>) -> diesel::serialize::Result {
+        out.set_value(match self {
+            Source::Metadata => "metadata",
+            Source::User => "user",
+            Source::Import => "import",
+            Source::Unknown => "unknown",
+        });
+
+        Ok(IsNull::No)
+    }
+}
+
+impl<DB> FromSql<Text, DB> for Source
+where
+    DB: Backend,
+    String: FromSql<Text, DB>,
+{
+    fn from_sql(bytes: DB::RawValue<'_>) -> diesel::deserialize::Result<Self> {
+        Ok(match String::from_sql(bytes)?.as_str() {
+            "metadata" => Source::Metadata,
+            "user" => Source::User,
+            "import" => Source::Import,
+            _ => Source::Unknown,
+        })
     }
 }

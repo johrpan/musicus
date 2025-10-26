@@ -74,6 +74,7 @@ pub struct Album {
     pub album_id: String,
     pub name: TranslatedString,
     pub recordings: Vec<Recording>,
+    pub enable_updates: bool,
 }
 
 impl Eq for Person {}
@@ -433,6 +434,7 @@ impl Album {
             album_id: data.album_id,
             name: data.name,
             recordings,
+            enable_updates: data.enable_updates,
         })
     }
 

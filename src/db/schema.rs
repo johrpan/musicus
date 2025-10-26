@@ -20,6 +20,8 @@ diesel::table! {
     albums (album_id) {
         album_id -> Text,
         name -> Text,
+        source -> Text,
+        enable_updates -> Bool,
         created_at -> Timestamp,
         edited_at -> Timestamp,
         last_used_at -> Timestamp,
@@ -40,11 +42,12 @@ diesel::table! {
     ensembles (ensemble_id) {
         ensemble_id -> Text,
         name -> Text,
+        source -> Text,
+        enable_updates -> Bool,
         created_at -> Timestamp,
         edited_at -> Timestamp,
         last_used_at -> Timestamp,
         last_played_at -> Nullable<Timestamp>,
-        enable_updates -> Bool,
     }
 }
 
@@ -52,11 +55,12 @@ diesel::table! {
     instruments (instrument_id) {
         instrument_id -> Text,
         name -> Text,
+        source -> Text,
+        enable_updates -> Bool,
         created_at -> Timestamp,
         edited_at -> Timestamp,
         last_used_at -> Timestamp,
         last_played_at -> Nullable<Timestamp>,
-        enable_updates -> Bool,
     }
 }
 
@@ -64,6 +68,8 @@ diesel::table! {
     mediums (medium_id) {
         medium_id -> Text,
         discid -> Text,
+        source -> Text,
+        enable_updates -> Bool,
         created_at -> Timestamp,
         edited_at -> Timestamp,
         last_used_at -> Timestamp,
@@ -75,16 +81,17 @@ diesel::table! {
     persons (person_id) {
         person_id -> Text,
         name -> Text,
+        source -> Text,
+        enable_updates -> Bool,
         created_at -> Timestamp,
         edited_at -> Timestamp,
         last_used_at -> Timestamp,
         last_played_at -> Nullable<Timestamp>,
-        enable_updates -> Bool,
     }
 }
 
 diesel::table! {
-    recording_ensembles (recording_id, ensemble_id) {
+    recording_ensembles (recording_id, ensemble_id, sequence_number) {
         recording_id -> Text,
         ensemble_id -> Text,
         role_id -> Nullable<Text>,
@@ -93,7 +100,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    recording_persons (recording_id, person_id) {
+    recording_persons (recording_id, person_id, sequence_number) {
         recording_id -> Text,
         person_id -> Text,
         role_id -> Nullable<Text>,
@@ -107,11 +114,12 @@ diesel::table! {
         recording_id -> Text,
         work_id -> Text,
         year -> Nullable<Integer>,
+        source -> Text,
+        enable_updates -> Bool,
         created_at -> Timestamp,
         edited_at -> Timestamp,
         last_used_at -> Timestamp,
         last_played_at -> Nullable<Timestamp>,
-        enable_updates -> Bool,
     }
 }
 
@@ -119,10 +127,11 @@ diesel::table! {
     roles (role_id) {
         role_id -> Text,
         name -> Text,
+        source -> Text,
+        enable_updates -> Bool,
         created_at -> Timestamp,
         edited_at -> Timestamp,
         last_used_at -> Timestamp,
-        enable_updates -> Bool,
     }
 }
 
@@ -158,7 +167,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    work_persons (work_id, person_id) {
+    work_persons (work_id, person_id, sequence_number) {
         work_id -> Text,
         person_id -> Text,
         role_id -> Nullable<Text>,
@@ -172,11 +181,12 @@ diesel::table! {
         parent_work_id -> Nullable<Text>,
         sequence_number -> Nullable<Integer>,
         name -> Text,
+        source -> Text,
+        enable_updates -> Bool,
         created_at -> Timestamp,
         edited_at -> Timestamp,
         last_used_at -> Timestamp,
         last_played_at -> Nullable<Timestamp>,
-        enable_updates -> Bool,
     }
 }
 

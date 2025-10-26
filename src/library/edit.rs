@@ -10,7 +10,13 @@ use chrono::prelude::*;
 use diesel::{prelude::*, QueryDsl, SqliteConnection};
 
 use super::Library;
-use crate::db::{self, models::*, schema::*, tables, TranslatedString};
+use crate::db::{
+    self,
+    models::*,
+    schema::*,
+    tables::{self, Source},
+    TranslatedString,
+};
 
 impl Library {
     pub fn create_person(&self, name: TranslatedString, enable_updates: bool) -> Result<Person> {
@@ -21,6 +27,7 @@ impl Library {
         let person = Person {
             person_id: db::generate_id(),
             name,
+            source: Source::User,
             created_at: now,
             edited_at: now,
             last_used_at: now,
@@ -86,6 +93,7 @@ impl Library {
         let instrument = Instrument {
             instrument_id: db::generate_id(),
             name,
+            source: Source::User,
             created_at: now,
             edited_at: now,
             last_used_at: now,
@@ -147,6 +155,7 @@ impl Library {
         let role = Role {
             role_id: db::generate_id(),
             name,
+            source: Source::User,
             created_at: now,
             edited_at: now,
             last_used_at: now,
@@ -243,6 +252,7 @@ impl Library {
             parent_work_id: parent_work_id.map(|w| w.to_string()),
             sequence_number,
             name,
+            source: Source::User,
             created_at: now,
             edited_at: now,
             last_used_at: now,
@@ -452,6 +462,7 @@ impl Library {
         let ensemble_data = tables::Ensemble {
             ensemble_id: db::generate_id(),
             name,
+            source: Source::User,
             created_at: now,
             edited_at: now,
             last_used_at: now,
@@ -528,6 +539,7 @@ impl Library {
             recording_id: recording_id.clone(),
             work_id: work.work_id.clone(),
             year,
+            source: Source::User,
             created_at: now,
             edited_at: now,
             last_used_at: now,
@@ -691,6 +703,7 @@ impl Library {
         &self,
         name: TranslatedString,
         recordings: Vec<Recording>,
+        enable_updates: bool,
     ) -> Result<Album> {
         let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
 
@@ -700,6 +713,8 @@ impl Library {
         let album_data = tables::Album {
             album_id: album_id.clone(),
             name,
+            source: Source::User,
+            enable_updates,
             created_at: now,
             edited_at: now,
             last_used_at: now,
@@ -734,6 +749,7 @@ impl Library {
         album_id: &str,
         name: TranslatedString,
         recordings: Vec<Recording>,
+        enable_updates: bool,
     ) -> Result<()> {
         let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
 
@@ -743,6 +759,7 @@ impl Library {
             .filter(albums::album_id.eq(album_id))
             .set((
                 albums::name.eq(name),
+                albums::enable_updates.eq(enable_updates),
                 albums::edited_at.eq(now),
                 albums::last_used_at.eq(now),
             ))

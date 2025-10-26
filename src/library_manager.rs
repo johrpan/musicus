@@ -9,8 +9,8 @@ use gtk::{
 };
 
 use crate::{
-    config, library::Library, process::Process, process_manager::ProcessManager,
-    process_row::ProcessRow, window::Window,
+    config, db::tables::Source, library::Library, process::Process,
+    process_manager::ProcessManager, process_row::ProcessRow, window::Window,
 };
 
 mod imp {
@@ -133,7 +133,7 @@ impl LibraryManager {
                         .library
                         .get()
                         .unwrap()
-                        .import_library_from_zip(&path)
+                        .import_library_from_zip(&path, Source::Import)
                     {
                         Ok(receiver) => {
                             let process = Process::new(
@@ -240,7 +240,7 @@ impl LibraryManager {
             .library
             .get()
             .unwrap()
-            .import_metadata_from_url(&url)
+            .import_metadata_from_url(&url, Source::Metadata)
         {
             Ok(receiver) => {
                 let process = Process::new(&gettext("Updating metadata"), receiver);
@@ -271,7 +271,7 @@ impl LibraryManager {
             .library
             .get()
             .unwrap()
-            .import_library_from_url(&url)
+            .import_library_from_url(&url, Source::Metadata)
         {
             Ok(receiver) => {
                 let process = Process::new(&gettext("Updating music library"), receiver);
