@@ -5,6 +5,7 @@ use std::{
 
 use adw::{prelude::*, subclass::prelude::*};
 use anyhow::{anyhow, Result};
+use chrono::{Duration, Local};
 use gettextrs::gettext;
 use gtk::{gio, glib, glib::clone};
 
@@ -310,18 +311,28 @@ impl Window {
 
         let settings = gio::Settings::new(config::APP_ID);
         if settings.boolean("enable-automatic-metadata-updates") {
-            let url = if settings.boolean("use-custom-metadata-url") {
-                settings.string("custom-metadata-url").to_string()
-            } else {
-                config::METADATA_URL.to_string()
-            };
+            let last_metadata_download_time = settings.int64("last-metadata-download-time");
+            let now = Local::now().timestamp();
 
-            match library.import_metadata_from_url(&url, Source::Metadata) {
-                Ok(receiver) => {
-                    let process = Process::new(&gettext("Updating metadata"), receiver);
-                    self.imp().process_manager.add_process(&process);
+            if last_metadata_download_time <= now - Duration::weeks(1).num_seconds() {
+                log::info!("Updating metadata");
+
+                let url = if settings.boolean("use-custom-metadata-url") {
+                    settings.string("custom-metadata-url").to_string()
+                } else {
+                    config::METADATA_URL.to_string()
+                };
+
+                match library.import_metadata_from_url(&url, Source::Metadata) {
+                    Ok(receiver) => {
+                        let process = Process::new(&gettext("Updating metadata"), receiver);
+                        self.imp().process_manager.add_process(&process);
+                    }
+                    Err(err) => log::error!("Failed to update metadata: {err:?}"),
                 }
-                Err(err) => log::error!("Failed to update metadata: {err:?}"),
+
+                settings.set_int64("last-metadata-download-time", now)?;
+                log::info!("Metadata updated");
             }
         }
 
