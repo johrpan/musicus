@@ -12,7 +12,6 @@ use gtk::{gio, glib, glib::clone};
 use crate::{
     album_page::AlbumPage,
     config,
-    db::tables::Source,
     editor::{album::AlbumEditor, tracks::TracksEditor},
     empty_page::EmptyPage,
     library::{Library, LibraryQuery},
@@ -323,7 +322,7 @@ impl Window {
                     config::METADATA_URL.to_string()
                 };
 
-                match library.import_metadata_from_url(&url, Source::Metadata) {
+                match library.import_metadata_from_url(&url) {
                     Ok(receiver) => {
                         let process = Process::new(&gettext("Updating metadata"), receiver);
                         self.imp().process_manager.add_process(&process);

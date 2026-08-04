@@ -241,7 +241,7 @@ impl LibraryManager {
             .library
             .get()
             .unwrap()
-            .import_metadata_from_url(&url, Source::Metadata)
+            .import_metadata_from_url(&url)
         {
             Ok(receiver) => {
                 let process = Process::new(&gettext("Updating metadata"), receiver);

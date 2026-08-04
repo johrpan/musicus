@@ -19,6 +19,7 @@ use zip::{write::SimpleFileOptions, ZipWriter};
 
 use super::Library;
 use crate::{
+    config,
     db::{
         self,
         schema::*,
@@ -119,7 +120,6 @@ impl Library {
     pub fn import_metadata_from_url(
         &self,
         url: &str,
-        source: Source,
     ) -> Result<async_channel::Receiver<ProcessMsg>> {
         log::info!("Importing metadata from URL {url}");
 
@@ -130,7 +130,7 @@ impl Library {
 
         thread::spawn(move || {
             if let Err(err) = sender.send_blocking(ProcessMsg::Result(
-                import_metadata_from_url_priv(url, source, this_connection, &sender),
+                import_metadata_from_url_priv(url, this_connection, &sender),
             )) {
                 log::error!("Failed to send library action result: {err:?}");
             }
@@ -232,7 +232,6 @@ fn add_file_to_zip(
 
 fn import_metadata_from_url_priv(
     url: String,
-    source: Source,
     this_connection: Arc<Mutex<SqliteConnection>>,
     sender: &async_channel::Sender<ProcessMsg>,
 ) -> Result<()> {
@@ -244,21 +243,18 @@ fn import_metadata_from_url_priv(
         formatx!(gettext("Downloading {}"), &url).unwrap(),
     ));
 
-    match runtime.block_on(download_tmp_file(&url, sender)) {
-        Ok(db_file) => {
+    let db_path = metadata_file_path();
+
+    match runtime.block_on(download_file(&url, &db_path, sender)) {
+        Ok(()) => {
             let _ = sender.send_blocking(ProcessMsg::Message(
                 formatx!(gettext("Importing downloaded library"), &url).unwrap(),
             ));
 
-            let _ = sender.send_blocking(ProcessMsg::Result(
-                import_metadata_from_file(db_file.path(), source, this_connection, true).map(
-                    |tracks| {
-                        if !tracks.is_empty() {
-                            log::warn!("The metadata file at {url} contains tracks.");
-                        }
-                    },
-                ),
-            ));
+            let _ = sender.send_blocking(ProcessMsg::Result(update_metadata_from_file(
+                &db_path,
+                this_connection,
+            )));
         }
         Err(err) => {
             let _ = sender.send_blocking(ProcessMsg::Result(Err(err)));
@@ -301,6 +297,224 @@ fn import_library_from_url_priv(
         }
         Err(err) => {
             let _ = sender.send_blocking(ProcessMsg::Result(Err(err)));
+        }
+    }
+
+    Ok(())
+}
+
+/// Update metadata from the database file at `path`.
+fn update_metadata_from_file(
+    path: impl AsRef<Path>,
+    this_connection: Arc<Mutex<SqliteConnection>>,
+) -> Result<()> {
+    let mut other_connection = db::connect(path.as_ref().to_str().unwrap())?;
+
+    // Load all metadata from the archive.
+    let persons = persons::table.load::<tables::Person>(&mut other_connection)?;
+    let roles = roles::table.load::<tables::Role>(&mut other_connection)?;
+    let instruments = instruments::table.load::<tables::Instrument>(&mut other_connection)?;
+    let works = works::table.load::<tables::Work>(&mut other_connection)?;
+    let work_persons = work_persons::table.load::<tables::WorkPerson>(&mut other_connection)?;
+    let work_instruments =
+        work_instruments::table.load::<tables::WorkInstrument>(&mut other_connection)?;
+    let ensembles = ensembles::table.load::<tables::Ensemble>(&mut other_connection)?;
+    let ensemble_persons =
+        ensemble_persons::table.load::<tables::EnsemblePerson>(&mut other_connection)?;
+    let recordings = recordings::table.load::<tables::Recording>(&mut other_connection)?;
+    let recording_persons =
+        recording_persons::table.load::<tables::RecordingPerson>(&mut other_connection)?;
+    let recording_ensembles =
+        recording_ensembles::table.load::<tables::RecordingEnsemble>(&mut other_connection)?;
+    let albums = albums::table.load::<tables::Album>(&mut other_connection)?;
+    let album_recordings =
+        album_recordings::table.load::<tables::AlbumRecording>(&mut other_connection)?;
+
+    for person in persons {
+        let enable_updates = persons::table
+            .filter(persons::person_id.eq(&person.person_id))
+            .select(persons::enable_updates)
+            .first(&mut *this_connection.lock().unwrap())
+            .optional()?;
+
+        if enable_updates == Some(true) {
+            diesel::update(persons::table.filter(persons::person_id.eq(&person.person_id)))
+                .set(persons::name.eq(person.name))
+                .execute(&mut *this_connection.lock().unwrap())?;
+        }
+    }
+
+    for role in roles {
+        let enable_updates = roles::table
+            .filter(roles::role_id.eq(&role.role_id))
+            .select(roles::enable_updates)
+            .first(&mut *this_connection.lock().unwrap())
+            .optional()?;
+
+        if enable_updates == Some(true) {
+            diesel::update(roles::table.filter(roles::role_id.eq(&role.role_id)))
+                .set(roles::name.eq(role.name))
+                .execute(&mut *this_connection.lock().unwrap())?;
+        }
+    }
+
+    for instrument in instruments {
+        let enable_updates = instruments::table
+            .filter(instruments::instrument_id.eq(&instrument.instrument_id))
+            .select(instruments::enable_updates)
+            .first(&mut *this_connection.lock().unwrap())
+            .optional()?;
+
+        if enable_updates == Some(true) {
+            diesel::update(
+                instruments::table.filter(instruments::instrument_id.eq(&instrument.instrument_id)),
+            )
+            .set(instruments::name.eq(instrument.name))
+            .execute(&mut *this_connection.lock().unwrap())?;
+        }
+    }
+
+    for work in works {
+        let enable_updates = works::table
+            .filter(works::work_id.eq(&work.work_id))
+            .select(works::enable_updates)
+            .first(&mut *this_connection.lock().unwrap())
+            .optional()?;
+
+        if enable_updates == Some(true) {
+            diesel::update(works::table.filter(works::work_id.eq(&work.work_id)))
+                .set(works::name.eq(work.name.clone()))
+                .execute(&mut *this_connection.lock().unwrap())?;
+
+            diesel::delete(work_persons::table.filter(work_persons::work_id.eq(&work.work_id)))
+                .execute(&mut *this_connection.lock().unwrap())?;
+
+            for work_person in work_persons
+                .iter()
+                .filter(|work_person| work_person.work_id == work.work_id)
+            {
+                diesel::insert_into(work_persons::table)
+                    .values(work_person)
+                    .execute(&mut *this_connection.lock().unwrap())?;
+            }
+
+            diesel::delete(
+                work_instruments::table.filter(work_instruments::work_id.eq(&work.work_id)),
+            )
+            .execute(&mut *this_connection.lock().unwrap())?;
+
+            for work_instrument in work_instruments
+                .iter()
+                .filter(|work_instrument| work_instrument.work_id == work.work_id)
+            {
+                diesel::insert_into(work_instruments::table)
+                    .values(work_instrument)
+                    .execute(&mut *this_connection.lock().unwrap())?;
+            }
+        }
+    }
+
+    for ensemble in ensembles {
+        let enable_updates = ensembles::table
+            .filter(ensembles::ensemble_id.eq(&ensemble.ensemble_id))
+            .select(ensembles::enable_updates)
+            .first(&mut *this_connection.lock().unwrap())
+            .optional()?;
+
+        if enable_updates == Some(true) {
+            diesel::update(
+                ensembles::table.filter(ensembles::ensemble_id.eq(&ensemble.ensemble_id)),
+            )
+            .set(ensembles::name.eq(ensemble.name.clone()))
+            .execute(&mut *this_connection.lock().unwrap())?;
+
+            diesel::delete(
+                ensemble_persons::table
+                    .filter(ensemble_persons::ensemble_id.eq(&ensemble.ensemble_id)),
+            )
+            .execute(&mut *this_connection.lock().unwrap())?;
+
+            for ensemble_person in ensemble_persons
+                .iter()
+                .filter(|ensemble_person| ensemble_person.ensemble_id == ensemble.ensemble_id)
+            {
+                diesel::insert_into(ensemble_persons::table)
+                    .values(ensemble_person)
+                    .execute(&mut *this_connection.lock().unwrap())?;
+            }
+        }
+    }
+
+    for recording in recordings {
+        let enable_updates = recordings::table
+            .filter(recordings::recording_id.eq(&recording.recording_id))
+            .select(recordings::enable_updates)
+            .first(&mut *this_connection.lock().unwrap())
+            .optional()?;
+
+        if enable_updates == Some(true) {
+            diesel::update(
+                recordings::table.filter(recordings::recording_id.eq(&recording.recording_id)),
+            )
+            .set(recordings::year.eq(recording.year))
+            .execute(&mut *this_connection.lock().unwrap())?;
+
+            diesel::delete(
+                recording_persons::table
+                    .filter(recording_persons::recording_id.eq(&recording.recording_id)),
+            )
+            .execute(&mut *this_connection.lock().unwrap())?;
+
+            for recording_person in recording_persons
+                .iter()
+                .filter(|recording_person| recording_person.recording_id == recording.recording_id)
+            {
+                diesel::insert_into(recording_persons::table)
+                    .values(recording_person)
+                    .execute(&mut *this_connection.lock().unwrap())?;
+            }
+
+            diesel::delete(
+                recording_ensembles::table
+                    .filter(recording_ensembles::recording_id.eq(&recording.recording_id)),
+            )
+            .execute(&mut *this_connection.lock().unwrap())?;
+
+            for recording_ensemble in recording_ensembles.iter().filter(|recording_ensemble| {
+                recording_ensemble.recording_id == recording.recording_id
+            }) {
+                diesel::insert_into(recording_ensembles::table)
+                    .values(recording_ensemble)
+                    .execute(&mut *this_connection.lock().unwrap())?;
+            }
+        }
+    }
+
+    for album in albums {
+        let enable_updates = albums::table
+            .filter(albums::album_id.eq(&album.album_id))
+            .select(albums::enable_updates)
+            .first(&mut *this_connection.lock().unwrap())
+            .optional()?;
+
+        if enable_updates == Some(true) {
+            diesel::update(albums::table.filter(albums::album_id.eq(&album.album_id)))
+                .set(albums::name.eq(album.name.clone()))
+                .execute(&mut *this_connection.lock().unwrap())?;
+
+            diesel::delete(
+                album_recordings::table.filter(album_recordings::album_id.eq(&album.album_id)),
+            )
+            .execute(&mut *this_connection.lock().unwrap())?;
+
+            for album_recording in album_recordings
+                .iter()
+                .filter(|album_recording| album_recording.album_id == album.album_id)
+            {
+                diesel::insert_into(album_recordings::table)
+                    .values(album_recording)
+                    .execute(&mut *this_connection.lock().unwrap())?;
+            }
         }
     }
 
@@ -523,6 +737,47 @@ fn import_metadata_from_file(
     Ok(tracks)
 }
 
+async fn download_file(
+    url: &str,
+    path: impl AsRef<Path>,
+    sender: &async_channel::Sender<ProcessMsg>,
+) -> Result<()> {
+    let client = reqwest::Client::builder()
+        .connect_timeout(std::time::Duration::from_secs(10))
+        .build()?;
+
+    let response = client.get(url).send().await?;
+    response.error_for_status_ref()?;
+
+    let total_size = response.content_length();
+    let mut body_stream = response.bytes_stream();
+
+    if let Some(parent) = path.as_ref().parent() {
+        tokio::fs::create_dir_all(parent).await?;
+    }
+
+    let mut writer = tokio::io::BufWriter::new(tokio::fs::File::create(path).await?);
+
+    let mut downloaded = 0;
+    while let Some(chunk) = body_stream.next().await {
+        let chunk: Vec<u8> = chunk?.into();
+        let chunk_size = chunk.len();
+
+        writer.write_all(&chunk).await?;
+
+        if let Some(total_size) = total_size {
+            downloaded += chunk_size as u64;
+            let _ = sender
+                .send(ProcessMsg::Progress(downloaded as f64 / total_size as f64))
+                .await;
+        }
+    }
+
+    writer.flush().await?;
+
+    Ok(())
+}
+
 async fn download_tmp_file(
     url: &str,
     sender: &async_channel::Sender<ProcessMsg>,
@@ -579,4 +834,10 @@ fn path_to_zip(path: impl AsRef<Path>) -> Result<String> {
         })
         .collect::<Result<Vec<String>>>()?
         .join("/"))
+}
+
+fn metadata_file_path() -> PathBuf {
+    glib::user_cache_dir()
+        .join(config::APP_ID)
+        .join("metadata.muslib")
 }
