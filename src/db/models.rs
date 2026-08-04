@@ -33,7 +33,7 @@ pub struct Composer {
 pub struct Ensemble {
     pub ensemble_id: String,
     pub name: TranslatedString,
-    pub persons: Vec<(Person, Instrument)>,
+    pub persons: Vec<(Person, Option<Instrument>)>,
     pub enable_updates: bool,
 }
 
@@ -223,11 +223,14 @@ impl Display for Composer {
 
 impl Ensemble {
     pub fn from_table(data: tables::Ensemble, connection: &mut SqliteConnection) -> Result<Self> {
-        let persons: Vec<(Person, Instrument)> = persons::table
-            .inner_join(ensemble_persons::table.inner_join(instruments::table))
+        let persons: Vec<(Person, Option<Instrument>)> = persons::table
+            .inner_join(ensemble_persons::table.left_join(instruments::table))
             .order(ensemble_persons::sequence_number)
             .filter(ensemble_persons::ensemble_id.eq(&data.ensemble_id))
-            .select((tables::Person::as_select(), tables::Instrument::as_select()))
+            .select((
+                tables::Person::as_select(),
+                Option::<tables::Instrument>::as_select(),
+            ))
             .load(connection)?;
 
         Ok(Self {
@@ -236,6 +239,26 @@ impl Ensemble {
             persons,
             enable_updates: data.enable_updates,
         })
+    }
+
+    pub fn members_string(&self) -> Option<String> {
+        let members_string = self
+            .persons
+            .iter()
+            .map(|(person, instrument)| match instrument {
+                Some(instrument) => {
+                    format!("{} ({})", person.name.get(), instrument.name.get())
+                }
+                None => person.name.get().to_string(),
+            })
+            .collect::<Vec<String>>()
+            .join(", ");
+
+        if members_string.is_empty() {
+            None
+        } else {
+            Some(members_string)
+        }
     }
 }
 

@@ -306,7 +306,10 @@ fn copy_ensemble(
 
     for ensemble_person in ensemble_persons {
         copy_person(from, to, &ensemble_person.person_id)?;
-        copy_instrument(from, to, &ensemble_person.instrument_id)?;
+
+        if let Some(instrument_id) = &ensemble_person.instrument_id {
+            copy_instrument(from, to, instrument_id)?;
+        }
 
         diesel::insert_into(ensemble_persons::table)
             .values(ensemble_person)

@@ -55,6 +55,12 @@ impl TagTile {
             }
             Tag::Ensemble(ensemble) => {
                 imp.title_label.set_label(ensemble.name.get());
+                if let Some(members) = ensemble.members_string() {
+                    imp.subtitle_label.set_label(&members);
+                    imp.subtitle_label.set_visible(true);
+                } else {
+                    imp.subtitle_label.set_visible(false);
+                }
             }
             Tag::Instrument(instrument) => {
                 imp.title_label.set_label(instrument.name.get());

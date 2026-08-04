@@ -30,10 +30,10 @@ diesel::table! {
 }
 
 diesel::table! {
-    ensemble_persons (ensemble_id, person_id, instrument_id) {
+    ensemble_persons (ensemble_id, person_id, sequence_number) {
         ensemble_id -> Text,
         person_id -> Text,
-        instrument_id -> Text,
+        instrument_id -> Nullable<Text>,
         sequence_number -> Integer,
     }
 }
@@ -91,7 +91,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    recording_ensembles (recording_id, ensemble_id) {
+    recording_ensembles (recording_id, ensemble_id, sequence_number) {
         recording_id -> Text,
         ensemble_id -> Text,
         role_id -> Nullable<Text>,
@@ -100,7 +100,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    recording_persons (recording_id, person_id) {
+    recording_persons (recording_id, person_id, sequence_number) {
         recording_id -> Text,
         person_id -> Text,
         role_id -> Nullable<Text>,
@@ -167,7 +167,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    work_persons (work_id, person_id) {
+    work_persons (work_id, person_id, sequence_number) {
         work_id -> Text,
         person_id -> Text,
         role_id -> Nullable<Text>,

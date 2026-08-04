@@ -453,6 +453,7 @@ impl Library {
     pub fn create_ensemble(
         &self,
         name: TranslatedString,
+        persons: Vec<(Person, Option<Instrument>)>,
         enable_updates: bool,
     ) -> Result<Ensemble> {
         let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
@@ -470,11 +471,22 @@ impl Library {
             enable_updates,
         };
 
-        // TODO: Add persons.
-
         diesel::insert_into(ensembles::table)
             .values(&ensemble_data)
             .execute(connection)?;
+
+        for (index, (person, instrument)) in persons.into_iter().enumerate() {
+            let ensemble_person_data = tables::EnsemblePerson {
+                ensemble_id: ensemble_data.ensemble_id.clone(),
+                person_id: person.person_id,
+                instrument_id: instrument.map(|i| i.instrument_id),
+                sequence_number: index as i32,
+            };
+
+            diesel::insert_into(ensemble_persons::table)
+                .values(&ensemble_person_data)
+                .execute(connection)?;
+        }
 
         let ensemble = Ensemble::from_table(ensemble_data, connection)?;
 
@@ -487,6 +499,7 @@ impl Library {
         &self,
         id: &str,
         name: TranslatedString,
+        persons: Vec<(Person, Option<Instrument>)>,
         enable_updates: bool,
     ) -> Result<()> {
         let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
@@ -503,7 +516,22 @@ impl Library {
             ))
             .execute(connection)?;
 
-        // TODO: Support updating persons.
+        diesel::delete(ensemble_persons::table)
+            .filter(ensemble_persons::ensemble_id.eq(id))
+            .execute(connection)?;
+
+        for (index, (person, instrument)) in persons.into_iter().enumerate() {
+            let ensemble_person_data = tables::EnsemblePerson {
+                ensemble_id: id.to_string(),
+                person_id: person.person_id,
+                instrument_id: instrument.map(|i| i.instrument_id),
+                sequence_number: index as i32,
+            };
+
+            diesel::insert_into(ensemble_persons::table)
+                .values(&ensemble_person_data)
+                .execute(connection)?;
+        }
 
         self.changed();
 

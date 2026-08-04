@@ -109,7 +109,7 @@ pub struct Ensemble {
 pub struct EnsemblePerson {
     pub ensemble_id: String,
     pub person_id: String,
-    pub instrument_id: String,
+    pub instrument_id: Option<String>,
     pub sequence_number: i32,
 }
 

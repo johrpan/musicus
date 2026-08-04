@@ -9,36 +9,40 @@ use gtk::{
 use once_cell::sync::Lazy;
 
 use crate::{
-    db::models::EnsemblePerformer, editor::role::RoleEditor, library::Library,
-    selector::role::RoleSelectorPopover, util::drag_widget::DragWidget,
+    db::models::{Instrument, Person},
+    editor::instrument::InstrumentEditor,
+    library::Library,
+    selector::instrument::InstrumentSelectorPopover,
+    util::drag_widget::DragWidget,
 };
 
 mod imp {
     use super::*;
 
     #[derive(Properties, Debug, Default, gtk::CompositeTemplate)]
-    #[properties(wrapper_type = super::RecordingEditorEnsembleRow)]
-    #[template(file = "data/ui/editor/recording/ensemble_row.blp")]
-    pub struct RecordingEditorEnsembleRow {
+    #[properties(wrapper_type = super::EnsembleEditorMemberRow)]
+    #[template(file = "data/ui/editor/ensemble/member_row.blp")]
+    pub struct EnsembleEditorMemberRow {
         #[property(get, construct_only)]
         pub navigation: OnceCell<adw::NavigationView>,
 
         #[property(get, construct_only)]
         pub library: OnceCell<Library>,
 
-        pub ensemble: RefCell<Option<EnsemblePerformer>>,
-        pub role_popover: OnceCell<RoleSelectorPopover>,
+        pub person: RefCell<Option<Person>>,
+        pub instrument: RefCell<Option<Instrument>>,
+        pub instrument_popover: OnceCell<InstrumentSelectorPopover>,
 
         #[template_child]
-        pub role_label: TemplateChild<gtk::Label>,
+        pub instrument_label: TemplateChild<gtk::Label>,
         #[template_child]
-        pub role_box: TemplateChild<gtk::Box>,
+        pub instrument_box: TemplateChild<gtk::Box>,
     }
 
     #[glib::object_subclass]
-    impl ObjectSubclass for RecordingEditorEnsembleRow {
-        const NAME: &'static str = "MusicusRecordingEditorEnsembleRow";
-        type Type = super::RecordingEditorEnsembleRow;
+    impl ObjectSubclass for EnsembleEditorMemberRow {
+        const NAME: &'static str = "MusicusEnsembleEditorMemberRow";
+        type Type = super::EnsembleEditorMemberRow;
         type ParentType = adw::ActionRow;
 
         fn class_init(klass: &mut Self::Class) {
@@ -52,13 +56,13 @@ mod imp {
     }
 
     #[glib::derived_properties]
-    impl ObjectImpl for RecordingEditorEnsembleRow {
+    impl ObjectImpl for EnsembleEditorMemberRow {
         fn signals() -> &'static [Signal] {
             static SIGNALS: Lazy<Vec<Signal>> = Lazy::new(|| {
                 vec![
                     Signal::builder("remove").build(),
                     Signal::builder("move")
-                        .param_types([super::RecordingEditorEnsembleRow::static_type()])
+                        .param_types([super::EnsembleEditorMemberRow::static_type()])
                         .build(),
                 ]
             });
@@ -107,63 +111,66 @@ mod imp {
 
             self.obj().add_controller(drop_target);
 
-            let role_popover = RoleSelectorPopover::new(self.library.get().unwrap());
+            let instrument_popover = InstrumentSelectorPopover::new(self.library.get().unwrap());
 
             let obj = self.obj().to_owned();
-            role_popover.connect_role_selected(move |_, role| {
-                if let Some(ensemble) = &mut *obj.imp().ensemble.borrow_mut() {
-                    obj.imp().role_label.set_label(&role.to_string());
-                    ensemble.role = Some(role);
-                }
+            instrument_popover.connect_instrument_selected(move |_, instrument| {
+                obj.set_instrument(instrument);
             });
 
             let obj = self.obj().to_owned();
-            role_popover.connect_create(move |_| {
-                let editor = RoleEditor::new(&obj.navigation(), &obj.library(), None);
+            instrument_popover.connect_create(move |_| {
+                let editor = InstrumentEditor::new(&obj.navigation(), &obj.library(), None);
 
                 editor.connect_created(clone!(
                     #[weak]
                     obj,
-                    move |_, role| {
-                        if let Some(ensemble) = &mut *obj.imp().ensemble.borrow_mut() {
-                            obj.imp().role_label.set_label(&role.to_string());
-                            ensemble.role = Some(role);
-                        };
+                    move |_, instrument| {
+                        obj.set_instrument(instrument);
                     }
                 ));
 
                 obj.navigation().push(&editor);
             });
 
-            self.role_box.append(&role_popover);
-            self.role_popover.set(role_popover).unwrap();
+            self.instrument_box.append(&instrument_popover);
+            self.instrument_popover.set(instrument_popover).unwrap();
         }
     }
 
-    impl WidgetImpl for RecordingEditorEnsembleRow {}
-    impl ListBoxRowImpl for RecordingEditorEnsembleRow {}
-    impl PreferencesRowImpl for RecordingEditorEnsembleRow {}
-    impl ActionRowImpl for RecordingEditorEnsembleRow {}
+    impl WidgetImpl for EnsembleEditorMemberRow {}
+    impl ListBoxRowImpl for EnsembleEditorMemberRow {}
+    impl PreferencesRowImpl for EnsembleEditorMemberRow {}
+    impl ActionRowImpl for EnsembleEditorMemberRow {}
 }
 
 glib::wrapper! {
-    pub struct RecordingEditorEnsembleRow(ObjectSubclass<imp::RecordingEditorEnsembleRow>)
+    pub struct EnsembleEditorMemberRow(ObjectSubclass<imp::EnsembleEditorMemberRow>)
         @extends adw::ActionRow, adw::PreferencesRow, gtk::ListBoxRow, gtk::Widget,
         @implements gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget, gtk::Actionable;
 }
 
 #[gtk::template_callbacks]
-impl RecordingEditorEnsembleRow {
+impl EnsembleEditorMemberRow {
     pub fn new(
         navigation: &adw::NavigationView,
         library: &Library,
-        ensemble: EnsemblePerformer,
+        person: Person,
+        instrument: Option<Instrument>,
     ) -> Self {
         let obj: Self = glib::Object::builder()
             .property("navigation", navigation)
             .property("library", library)
             .build();
-        obj.set_ensemble(ensemble);
+
+        obj.set_title(&person.name.get());
+        obj.imp().person.replace(Some(person));
+
+        match instrument {
+            Some(instrument) => obj.set_instrument(instrument),
+            None => obj.imp().instrument_label.set_label(&gettext("Select instrument")),
+        }
+
         obj
     }
 
@@ -184,30 +191,20 @@ impl RecordingEditorEnsembleRow {
         })
     }
 
-    pub fn ensemble(&self) -> EnsemblePerformer {
-        self.imp().ensemble.borrow().to_owned().unwrap()
+    pub fn member(&self) -> (Person, Option<Instrument>) {
+        let person = self.imp().person.borrow().clone().unwrap();
+        let instrument = self.imp().instrument.borrow().clone();
+        (person, instrument)
     }
 
-    fn set_ensemble(&self, ensemble: EnsemblePerformer) {
-        self.set_title(&ensemble.ensemble.to_string());
-
-        if let Some(members) = ensemble.ensemble.members_string() {
-            self.set_subtitle(&members);
-        }
-
-        self.imp().role_label.set_label(
-            &ensemble
-                .role
-                .as_ref()
-                .map(ToString::to_string)
-                .unwrap_or_else(|| gettext("Performer")),
-        );
-        self.imp().ensemble.replace(Some(ensemble));
+    fn set_instrument(&self, instrument: Instrument) {
+        self.imp().instrument_label.set_label(&instrument.to_string());
+        self.imp().instrument.replace(Some(instrument));
     }
 
     #[template_callback]
-    fn open_role_popover(&self) {
-        self.imp().role_popover.get().unwrap().popup();
+    fn open_instrument_popover(&self) {
+        self.imp().instrument_popover.get().unwrap().popup();
     }
 
     #[template_callback]

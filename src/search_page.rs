@@ -452,9 +452,13 @@ impl SearchPage {
                             details.push(formatx!(gettext("Performed with {}"), ensemble).unwrap());
                         }
                     }
-                    Tag::Ensemble(_) => {
+                    Tag::Ensemble(ensemble) => {
                         if let Some(instrument) = &query.instrument {
                             details.push(formatx!(gettext("Works with {}"), instrument).unwrap());
+                        }
+
+                        if let Some(members) = ensemble.members_string() {
+                            details.push(formatx!(gettext("Members: {}"), members).unwrap());
                         }
                     }
                     Tag::Instrument(_) => (),
