@@ -218,16 +218,18 @@ impl Library {
     ) -> Result<Work> {
         let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
 
-        let work = Self::create_work_priv(
-            connection,
-            name,
-            parts,
-            persons,
-            instruments,
-            None,
-            None,
-            enable_updates,
-        )?;
+        let work = connection.transaction::<Work, Error, _>(|connection| {
+            Self::create_work_priv(
+                connection,
+                name,
+                parts,
+                persons,
+                instruments,
+                None,
+                None,
+                enable_updates,
+            )
+        })?;
 
         self.changed();
 
@@ -318,17 +320,19 @@ impl Library {
     ) -> Result<()> {
         let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
 
-        Self::update_work_priv(
-            connection,
-            work_id,
-            name,
-            parts,
-            persons,
-            instruments,
-            None,
-            None,
-            enable_updates,
-        )?;
+        connection.transaction::<(), Error, _>(|connection| {
+            Self::update_work_priv(
+                connection,
+                work_id,
+                name,
+                parts,
+                persons,
+                instruments,
+                None,
+                None,
+                enable_updates,
+            )
+        })?;
 
         self.changed();
 
@@ -560,53 +564,55 @@ impl Library {
     ) -> Result<Recording> {
         let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
 
-        let recording_id = db::generate_id();
-        let now = Local::now().naive_local();
+        let recording = connection.transaction::<Recording, Error, _>(|connection| {
+            let recording_id = db::generate_id();
+            let now = Local::now().naive_local();
 
-        let recording_data = tables::Recording {
-            recording_id: recording_id.clone(),
-            work_id: work.work_id.clone(),
-            year,
-            source: Source::User,
-            created_at: now,
-            edited_at: now,
-            last_used_at: now,
-            last_played_at: None,
-            enable_updates,
-        };
-
-        diesel::insert_into(recordings::table)
-            .values(&recording_data)
-            .execute(connection)?;
-
-        for (index, performer) in performers.into_iter().enumerate() {
-            let recording_person_data = tables::RecordingPerson {
+            let recording_data = tables::Recording {
                 recording_id: recording_id.clone(),
-                person_id: performer.person.person_id,
-                role_id: performer.role.map(|r| r.role_id),
-                instrument_id: performer.instrument.map(|i| i.instrument_id),
-                sequence_number: index as i32,
+                work_id: work.work_id.clone(),
+                year,
+                source: Source::User,
+                created_at: now,
+                edited_at: now,
+                last_used_at: now,
+                last_played_at: None,
+                enable_updates,
             };
 
-            diesel::insert_into(recording_persons::table)
-                .values(&recording_person_data)
+            diesel::insert_into(recordings::table)
+                .values(&recording_data)
                 .execute(connection)?;
-        }
 
-        for (index, ensemble) in ensembles.into_iter().enumerate() {
-            let recording_ensemble_data = tables::RecordingEnsemble {
-                recording_id: recording_id.clone(),
-                ensemble_id: ensemble.ensemble.ensemble_id,
-                role_id: ensemble.role.map(|r| r.role_id),
-                sequence_number: index as i32,
-            };
+            for (index, performer) in performers.into_iter().enumerate() {
+                let recording_person_data = tables::RecordingPerson {
+                    recording_id: recording_id.clone(),
+                    person_id: performer.person.person_id,
+                    role_id: performer.role.map(|r| r.role_id),
+                    instrument_id: performer.instrument.map(|i| i.instrument_id),
+                    sequence_number: index as i32,
+                };
 
-            diesel::insert_into(recording_ensembles::table)
-                .values(&recording_ensemble_data)
-                .execute(connection)?;
-        }
+                diesel::insert_into(recording_persons::table)
+                    .values(&recording_person_data)
+                    .execute(connection)?;
+            }
 
-        let recording = Recording::from_table(recording_data, connection)?;
+            for (index, ensemble) in ensembles.into_iter().enumerate() {
+                let recording_ensemble_data = tables::RecordingEnsemble {
+                    recording_id: recording_id.clone(),
+                    ensemble_id: ensemble.ensemble.ensemble_id,
+                    role_id: ensemble.role.map(|r| r.role_id),
+                    sequence_number: index as i32,
+                };
+
+                diesel::insert_into(recording_ensembles::table)
+                    .values(&recording_ensemble_data)
+                    .execute(connection)?;
+            }
+
+            Recording::from_table(recording_data, connection)
+        })?;
 
         self.changed();
 
@@ -624,53 +630,57 @@ impl Library {
     ) -> Result<()> {
         let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
 
-        let now = Local::now().naive_local();
+        connection.transaction::<(), Error, _>(|connection| {
+            let now = Local::now().naive_local();
 
-        diesel::update(recordings::table)
-            .filter(recordings::recording_id.eq(recording_id))
-            .set((
-                recordings::work_id.eq(work.work_id),
-                recordings::year.eq(year),
-                recordings::edited_at.eq(now),
-                recordings::last_used_at.eq(now),
-                recordings::enable_updates.eq(enable_updates),
-            ))
-            .execute(connection)?;
-
-        diesel::delete(recording_persons::table)
-            .filter(recording_persons::recording_id.eq(recording_id))
-            .execute(connection)?;
-
-        for (index, performer) in performers.into_iter().enumerate() {
-            let recording_person_data = tables::RecordingPerson {
-                recording_id: recording_id.to_string(),
-                person_id: performer.person.person_id,
-                role_id: performer.role.map(|r| r.role_id),
-                instrument_id: performer.instrument.map(|i| i.instrument_id),
-                sequence_number: index as i32,
-            };
-
-            diesel::insert_into(recording_persons::table)
-                .values(&recording_person_data)
+            diesel::update(recordings::table)
+                .filter(recordings::recording_id.eq(recording_id))
+                .set((
+                    recordings::work_id.eq(work.work_id),
+                    recordings::year.eq(year),
+                    recordings::edited_at.eq(now),
+                    recordings::last_used_at.eq(now),
+                    recordings::enable_updates.eq(enable_updates),
+                ))
                 .execute(connection)?;
-        }
 
-        diesel::delete(recording_ensembles::table)
-            .filter(recording_ensembles::recording_id.eq(recording_id))
-            .execute(connection)?;
-
-        for (index, ensemble) in ensembles.into_iter().enumerate() {
-            let recording_ensemble_data = tables::RecordingEnsemble {
-                recording_id: recording_id.to_string(),
-                ensemble_id: ensemble.ensemble.ensemble_id,
-                role_id: ensemble.role.map(|r| r.role_id),
-                sequence_number: index as i32,
-            };
-
-            diesel::insert_into(recording_ensembles::table)
-                .values(&recording_ensemble_data)
+            diesel::delete(recording_persons::table)
+                .filter(recording_persons::recording_id.eq(recording_id))
                 .execute(connection)?;
-        }
+
+            for (index, performer) in performers.into_iter().enumerate() {
+                let recording_person_data = tables::RecordingPerson {
+                    recording_id: recording_id.to_string(),
+                    person_id: performer.person.person_id,
+                    role_id: performer.role.map(|r| r.role_id),
+                    instrument_id: performer.instrument.map(|i| i.instrument_id),
+                    sequence_number: index as i32,
+                };
+
+                diesel::insert_into(recording_persons::table)
+                    .values(&recording_person_data)
+                    .execute(connection)?;
+            }
+
+            diesel::delete(recording_ensembles::table)
+                .filter(recording_ensembles::recording_id.eq(recording_id))
+                .execute(connection)?;
+
+            for (index, ensemble) in ensembles.into_iter().enumerate() {
+                let recording_ensemble_data = tables::RecordingEnsemble {
+                    recording_id: recording_id.to_string(),
+                    ensemble_id: ensemble.ensemble.ensemble_id,
+                    role_id: ensemble.role.map(|r| r.role_id),
+                    sequence_number: index as i32,
+                };
+
+                diesel::insert_into(recording_ensembles::table)
+                    .values(&recording_ensemble_data)
+                    .execute(connection)?;
+            }
+
+            Ok(())
+        })?;
 
         self.changed();
 
@@ -735,37 +745,39 @@ impl Library {
     ) -> Result<Album> {
         let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
 
-        let album_id = db::generate_id();
-        let now = Local::now().naive_local();
+        let album = connection.transaction::<Album, Error, _>(|connection| {
+            let album_id = db::generate_id();
+            let now = Local::now().naive_local();
 
-        let album_data = tables::Album {
-            album_id: album_id.clone(),
-            name,
-            source: Source::User,
-            enable_updates,
-            created_at: now,
-            edited_at: now,
-            last_used_at: now,
-            last_played_at: None,
-        };
-
-        diesel::insert_into(albums::table)
-            .values(&album_data)
-            .execute(connection)?;
-
-        for (index, recording) in recordings.into_iter().enumerate() {
-            let album_recording_data = tables::AlbumRecording {
+            let album_data = tables::Album {
                 album_id: album_id.clone(),
-                recording_id: recording.recording_id,
-                sequence_number: index as i32,
+                name,
+                source: Source::User,
+                enable_updates,
+                created_at: now,
+                edited_at: now,
+                last_used_at: now,
+                last_played_at: None,
             };
 
-            diesel::insert_into(album_recordings::table)
-                .values(&album_recording_data)
+            diesel::insert_into(albums::table)
+                .values(&album_data)
                 .execute(connection)?;
-        }
 
-        let album = Album::from_table(album_data, connection)?;
+            for (index, recording) in recordings.into_iter().enumerate() {
+                let album_recording_data = tables::AlbumRecording {
+                    album_id: album_id.clone(),
+                    recording_id: recording.recording_id,
+                    sequence_number: index as i32,
+                };
+
+                diesel::insert_into(album_recordings::table)
+                    .values(&album_recording_data)
+                    .execute(connection)?;
+            }
+
+            Album::from_table(album_data, connection)
+        })?;
 
         self.changed();
 
@@ -781,33 +793,37 @@ impl Library {
     ) -> Result<()> {
         let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
 
-        let now = Local::now().naive_local();
+        connection.transaction::<(), Error, _>(|connection| {
+            let now = Local::now().naive_local();
 
-        diesel::update(albums::table)
-            .filter(albums::album_id.eq(album_id))
-            .set((
-                albums::name.eq(name),
-                albums::enable_updates.eq(enable_updates),
-                albums::edited_at.eq(now),
-                albums::last_used_at.eq(now),
-            ))
-            .execute(connection)?;
-
-        diesel::delete(album_recordings::table)
-            .filter(album_recordings::album_id.eq(album_id))
-            .execute(connection)?;
-
-        for (index, recording) in recordings.into_iter().enumerate() {
-            let album_recording_data = tables::AlbumRecording {
-                album_id: album_id.to_owned(),
-                recording_id: recording.recording_id,
-                sequence_number: index as i32,
-            };
-
-            diesel::insert_into(album_recordings::table)
-                .values(&album_recording_data)
+            diesel::update(albums::table)
+                .filter(albums::album_id.eq(album_id))
+                .set((
+                    albums::name.eq(name),
+                    albums::enable_updates.eq(enable_updates),
+                    albums::edited_at.eq(now),
+                    albums::last_used_at.eq(now),
+                ))
                 .execute(connection)?;
-        }
+
+            diesel::delete(album_recordings::table)
+                .filter(album_recordings::album_id.eq(album_id))
+                .execute(connection)?;
+
+            for (index, recording) in recordings.into_iter().enumerate() {
+                let album_recording_data = tables::AlbumRecording {
+                    album_id: album_id.to_owned(),
+                    recording_id: recording.recording_id,
+                    sequence_number: index as i32,
+                };
+
+                diesel::insert_into(album_recordings::table)
+                    .values(&album_recording_data)
+                    .execute(connection)?;
+            }
+
+            Ok(())
+        })?;
 
         self.changed();
 
@@ -855,34 +871,38 @@ impl Library {
 
         fs::copy(path, to_path)?;
 
-        let track_data = tables::Track {
-            track_id: track_id.clone(),
-            recording_id: recording_id.to_owned(),
-            recording_index,
-            medium_id: None,
-            medium_index: None,
-            path: library_path.into(),
-            created_at: now,
-            edited_at: now,
-            last_used_at: now,
-            last_played_at: None,
-        };
-
-        diesel::insert_into(tracks::table)
-            .values(&track_data)
-            .execute(connection)?;
-
-        for (index, work) in works.into_iter().enumerate() {
-            let track_work_data = tables::TrackWork {
+        connection.transaction::<(), Error, _>(|connection| {
+            let track_data = tables::Track {
                 track_id: track_id.clone(),
-                work_id: work.work_id,
-                sequence_number: index as i32,
+                recording_id: recording_id.to_owned(),
+                recording_index,
+                medium_id: None,
+                medium_index: None,
+                path: library_path.into(),
+                created_at: now,
+                edited_at: now,
+                last_used_at: now,
+                last_played_at: None,
             };
 
-            diesel::insert_into(track_works::table)
-                .values(&track_work_data)
+            diesel::insert_into(tracks::table)
+                .values(&track_data)
                 .execute(connection)?;
-        }
+
+            for (index, work) in works.into_iter().enumerate() {
+                let track_work_data = tables::TrackWork {
+                    track_id: track_id.clone(),
+                    work_id: work.work_id,
+                    sequence_number: index as i32,
+                };
+
+                diesel::insert_into(track_works::table)
+                    .values(&track_work_data)
+                    .execute(connection)?;
+            }
+
+            Ok(())
+        })?;
 
         Ok(())
     }
@@ -891,13 +911,20 @@ impl Library {
     pub fn delete_track(&self, track: &Track) -> Result<()> {
         let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
 
-        diesel::delete(track_works::table)
-            .filter(track_works::track_id.eq(&track.track_id))
-            .execute(connection)?;
+        // Delete from the database first to avoid orphan tracks in case of file system
+        // related errors.
 
-        diesel::delete(tracks::table)
-            .filter(tracks::track_id.eq(&track.track_id))
-            .execute(connection)?;
+        connection.transaction::<(), Error, _>(|connection| {
+            diesel::delete(track_works::table)
+                .filter(track_works::track_id.eq(&track.track_id))
+                .execute(connection)?;
+
+            diesel::delete(tracks::table)
+                .filter(tracks::track_id.eq(&track.track_id))
+                .execute(connection)?;
+
+            Ok(())
+        })?;
 
         let mut path = PathBuf::from(self.folder());
         path.push(&track.path);
@@ -915,32 +942,36 @@ impl Library {
     ) -> Result<()> {
         let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
 
-        let now = Local::now().naive_local();
+        connection.transaction::<(), Error, _>(|connection| {
+            let now = Local::now().naive_local();
 
-        diesel::update(tracks::table)
-            .filter(tracks::track_id.eq(track_id.to_owned()))
-            .set((
-                tracks::recording_index.eq(recording_index),
-                tracks::edited_at.eq(now),
-                tracks::last_used_at.eq(now),
-            ))
-            .execute(connection)?;
-
-        diesel::delete(track_works::table)
-            .filter(track_works::track_id.eq(track_id))
-            .execute(connection)?;
-
-        for (index, work) in works.into_iter().enumerate() {
-            let track_work_data = tables::TrackWork {
-                track_id: track_id.to_owned(),
-                work_id: work.work_id,
-                sequence_number: index as i32,
-            };
-
-            diesel::insert_into(track_works::table)
-                .values(&track_work_data)
+            diesel::update(tracks::table)
+                .filter(tracks::track_id.eq(track_id.to_owned()))
+                .set((
+                    tracks::recording_index.eq(recording_index),
+                    tracks::edited_at.eq(now),
+                    tracks::last_used_at.eq(now),
+                ))
                 .execute(connection)?;
-        }
+
+            diesel::delete(track_works::table)
+                .filter(track_works::track_id.eq(track_id))
+                .execute(connection)?;
+
+            for (index, work) in works.into_iter().enumerate() {
+                let track_work_data = tables::TrackWork {
+                    track_id: track_id.to_owned(),
+                    work_id: work.work_id,
+                    sequence_number: index as i32,
+                };
+
+                diesel::insert_into(track_works::table)
+                    .values(&track_work_data)
+                    .execute(connection)?;
+            }
+
+            Ok(())
+        })?;
 
         Ok(())
     }

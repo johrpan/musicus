@@ -7,7 +7,7 @@ use std::{
 };
 
 use adw::subclass::prelude::*;
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Error, Result};
 use chrono::prelude::*;
 use diesel::{prelude::*, SqliteConnection};
 use formatx::formatx;
@@ -330,193 +330,203 @@ fn update_metadata_from_file(
     let album_recordings =
         album_recordings::table.load::<tables::AlbumRecording>(&mut other_connection)?;
 
-    for person in persons {
-        let enable_updates = persons::table
-            .filter(persons::person_id.eq(&person.person_id))
-            .select(persons::enable_updates)
-            .first(&mut *this_connection.lock().unwrap())
-            .optional()?;
+    let mut this_connection = this_connection.lock().unwrap();
 
-        if enable_updates == Some(true) {
-            diesel::update(persons::table.filter(persons::person_id.eq(&person.person_id)))
-                .set(persons::name.eq(person.name))
-                .execute(&mut *this_connection.lock().unwrap())?;
-        }
-    }
+    this_connection.transaction::<(), Error, _>(|connection| {
+        for person in persons {
+            let enable_updates = persons::table
+                .filter(persons::person_id.eq(&person.person_id))
+                .select(persons::enable_updates)
+                .first(connection)
+                .optional()?;
 
-    for role in roles {
-        let enable_updates = roles::table
-            .filter(roles::role_id.eq(&role.role_id))
-            .select(roles::enable_updates)
-            .first(&mut *this_connection.lock().unwrap())
-            .optional()?;
-
-        if enable_updates == Some(true) {
-            diesel::update(roles::table.filter(roles::role_id.eq(&role.role_id)))
-                .set(roles::name.eq(role.name))
-                .execute(&mut *this_connection.lock().unwrap())?;
-        }
-    }
-
-    for instrument in instruments {
-        let enable_updates = instruments::table
-            .filter(instruments::instrument_id.eq(&instrument.instrument_id))
-            .select(instruments::enable_updates)
-            .first(&mut *this_connection.lock().unwrap())
-            .optional()?;
-
-        if enable_updates == Some(true) {
-            diesel::update(
-                instruments::table.filter(instruments::instrument_id.eq(&instrument.instrument_id)),
-            )
-            .set(instruments::name.eq(instrument.name))
-            .execute(&mut *this_connection.lock().unwrap())?;
-        }
-    }
-
-    for work in works {
-        let enable_updates = works::table
-            .filter(works::work_id.eq(&work.work_id))
-            .select(works::enable_updates)
-            .first(&mut *this_connection.lock().unwrap())
-            .optional()?;
-
-        if enable_updates == Some(true) {
-            diesel::update(works::table.filter(works::work_id.eq(&work.work_id)))
-                .set(works::name.eq(work.name.clone()))
-                .execute(&mut *this_connection.lock().unwrap())?;
-
-            diesel::delete(work_persons::table.filter(work_persons::work_id.eq(&work.work_id)))
-                .execute(&mut *this_connection.lock().unwrap())?;
-
-            for work_person in work_persons
-                .iter()
-                .filter(|work_person| work_person.work_id == work.work_id)
-            {
-                diesel::insert_into(work_persons::table)
-                    .values(work_person)
-                    .execute(&mut *this_connection.lock().unwrap())?;
-            }
-
-            diesel::delete(
-                work_instruments::table.filter(work_instruments::work_id.eq(&work.work_id)),
-            )
-            .execute(&mut *this_connection.lock().unwrap())?;
-
-            for work_instrument in work_instruments
-                .iter()
-                .filter(|work_instrument| work_instrument.work_id == work.work_id)
-            {
-                diesel::insert_into(work_instruments::table)
-                    .values(work_instrument)
-                    .execute(&mut *this_connection.lock().unwrap())?;
+            if enable_updates == Some(true) {
+                diesel::update(persons::table.filter(persons::person_id.eq(&person.person_id)))
+                    .set(persons::name.eq(person.name))
+                    .execute(connection)?;
             }
         }
-    }
 
-    for ensemble in ensembles {
-        let enable_updates = ensembles::table
-            .filter(ensembles::ensemble_id.eq(&ensemble.ensemble_id))
-            .select(ensembles::enable_updates)
-            .first(&mut *this_connection.lock().unwrap())
-            .optional()?;
+        for role in roles {
+            let enable_updates = roles::table
+                .filter(roles::role_id.eq(&role.role_id))
+                .select(roles::enable_updates)
+                .first(connection)
+                .optional()?;
 
-        if enable_updates == Some(true) {
-            diesel::update(
-                ensembles::table.filter(ensembles::ensemble_id.eq(&ensemble.ensemble_id)),
-            )
-            .set(ensembles::name.eq(ensemble.name.clone()))
-            .execute(&mut *this_connection.lock().unwrap())?;
-
-            diesel::delete(
-                ensemble_persons::table
-                    .filter(ensemble_persons::ensemble_id.eq(&ensemble.ensemble_id)),
-            )
-            .execute(&mut *this_connection.lock().unwrap())?;
-
-            for ensemble_person in ensemble_persons
-                .iter()
-                .filter(|ensemble_person| ensemble_person.ensemble_id == ensemble.ensemble_id)
-            {
-                diesel::insert_into(ensemble_persons::table)
-                    .values(ensemble_person)
-                    .execute(&mut *this_connection.lock().unwrap())?;
+            if enable_updates == Some(true) {
+                diesel::update(roles::table.filter(roles::role_id.eq(&role.role_id)))
+                    .set(roles::name.eq(role.name))
+                    .execute(connection)?;
             }
         }
-    }
 
-    for recording in recordings {
-        let enable_updates = recordings::table
-            .filter(recordings::recording_id.eq(&recording.recording_id))
-            .select(recordings::enable_updates)
-            .first(&mut *this_connection.lock().unwrap())
-            .optional()?;
+        for instrument in instruments {
+            let enable_updates = instruments::table
+                .filter(instruments::instrument_id.eq(&instrument.instrument_id))
+                .select(instruments::enable_updates)
+                .first(connection)
+                .optional()?;
 
-        if enable_updates == Some(true) {
-            diesel::update(
-                recordings::table.filter(recordings::recording_id.eq(&recording.recording_id)),
-            )
-            .set(recordings::year.eq(recording.year))
-            .execute(&mut *this_connection.lock().unwrap())?;
-
-            diesel::delete(
-                recording_persons::table
-                    .filter(recording_persons::recording_id.eq(&recording.recording_id)),
-            )
-            .execute(&mut *this_connection.lock().unwrap())?;
-
-            for recording_person in recording_persons
-                .iter()
-                .filter(|recording_person| recording_person.recording_id == recording.recording_id)
-            {
-                diesel::insert_into(recording_persons::table)
-                    .values(recording_person)
-                    .execute(&mut *this_connection.lock().unwrap())?;
-            }
-
-            diesel::delete(
-                recording_ensembles::table
-                    .filter(recording_ensembles::recording_id.eq(&recording.recording_id)),
-            )
-            .execute(&mut *this_connection.lock().unwrap())?;
-
-            for recording_ensemble in recording_ensembles.iter().filter(|recording_ensemble| {
-                recording_ensemble.recording_id == recording.recording_id
-            }) {
-                diesel::insert_into(recording_ensembles::table)
-                    .values(recording_ensemble)
-                    .execute(&mut *this_connection.lock().unwrap())?;
+            if enable_updates == Some(true) {
+                diesel::update(
+                    instruments::table
+                        .filter(instruments::instrument_id.eq(&instrument.instrument_id)),
+                )
+                .set(instruments::name.eq(instrument.name))
+                .execute(connection)?;
             }
         }
-    }
 
-    for album in albums {
-        let enable_updates = albums::table
-            .filter(albums::album_id.eq(&album.album_id))
-            .select(albums::enable_updates)
-            .first(&mut *this_connection.lock().unwrap())
-            .optional()?;
+        for work in works {
+            let enable_updates = works::table
+                .filter(works::work_id.eq(&work.work_id))
+                .select(works::enable_updates)
+                .first(connection)
+                .optional()?;
 
-        if enable_updates == Some(true) {
-            diesel::update(albums::table.filter(albums::album_id.eq(&album.album_id)))
-                .set(albums::name.eq(album.name.clone()))
-                .execute(&mut *this_connection.lock().unwrap())?;
+            if enable_updates == Some(true) {
+                diesel::update(works::table.filter(works::work_id.eq(&work.work_id)))
+                    .set(works::name.eq(work.name.clone()))
+                    .execute(connection)?;
 
-            diesel::delete(
-                album_recordings::table.filter(album_recordings::album_id.eq(&album.album_id)),
-            )
-            .execute(&mut *this_connection.lock().unwrap())?;
+                diesel::delete(
+                    work_persons::table.filter(work_persons::work_id.eq(&work.work_id)),
+                )
+                .execute(connection)?;
 
-            for album_recording in album_recordings
-                .iter()
-                .filter(|album_recording| album_recording.album_id == album.album_id)
-            {
-                diesel::insert_into(album_recordings::table)
-                    .values(album_recording)
-                    .execute(&mut *this_connection.lock().unwrap())?;
+                for work_person in work_persons
+                    .iter()
+                    .filter(|work_person| work_person.work_id == work.work_id)
+                {
+                    diesel::insert_into(work_persons::table)
+                        .values(work_person)
+                        .execute(connection)?;
+                }
+
+                diesel::delete(
+                    work_instruments::table.filter(work_instruments::work_id.eq(&work.work_id)),
+                )
+                .execute(connection)?;
+
+                for work_instrument in work_instruments
+                    .iter()
+                    .filter(|work_instrument| work_instrument.work_id == work.work_id)
+                {
+                    diesel::insert_into(work_instruments::table)
+                        .values(work_instrument)
+                        .execute(connection)?;
+                }
             }
         }
-    }
+
+        for ensemble in ensembles {
+            let enable_updates = ensembles::table
+                .filter(ensembles::ensemble_id.eq(&ensemble.ensemble_id))
+                .select(ensembles::enable_updates)
+                .first(connection)
+                .optional()?;
+
+            if enable_updates == Some(true) {
+                diesel::update(
+                    ensembles::table.filter(ensembles::ensemble_id.eq(&ensemble.ensemble_id)),
+                )
+                .set(ensembles::name.eq(ensemble.name.clone()))
+                .execute(connection)?;
+
+                diesel::delete(
+                    ensemble_persons::table
+                        .filter(ensemble_persons::ensemble_id.eq(&ensemble.ensemble_id)),
+                )
+                .execute(connection)?;
+
+                for ensemble_person in ensemble_persons
+                    .iter()
+                    .filter(|ensemble_person| ensemble_person.ensemble_id == ensemble.ensemble_id)
+                {
+                    diesel::insert_into(ensemble_persons::table)
+                        .values(ensemble_person)
+                        .execute(connection)?;
+                }
+            }
+        }
+
+        for recording in recordings {
+            let enable_updates = recordings::table
+                .filter(recordings::recording_id.eq(&recording.recording_id))
+                .select(recordings::enable_updates)
+                .first(connection)
+                .optional()?;
+
+            if enable_updates == Some(true) {
+                diesel::update(
+                    recordings::table
+                        .filter(recordings::recording_id.eq(&recording.recording_id)),
+                )
+                .set(recordings::year.eq(recording.year))
+                .execute(connection)?;
+
+                diesel::delete(
+                    recording_persons::table
+                        .filter(recording_persons::recording_id.eq(&recording.recording_id)),
+                )
+                .execute(connection)?;
+
+                for recording_person in recording_persons.iter().filter(|recording_person| {
+                    recording_person.recording_id == recording.recording_id
+                }) {
+                    diesel::insert_into(recording_persons::table)
+                        .values(recording_person)
+                        .execute(connection)?;
+                }
+
+                diesel::delete(
+                    recording_ensembles::table
+                        .filter(recording_ensembles::recording_id.eq(&recording.recording_id)),
+                )
+                .execute(connection)?;
+
+                for recording_ensemble in recording_ensembles.iter().filter(|recording_ensemble| {
+                    recording_ensemble.recording_id == recording.recording_id
+                }) {
+                    diesel::insert_into(recording_ensembles::table)
+                        .values(recording_ensemble)
+                        .execute(connection)?;
+                }
+            }
+        }
+
+        for album in albums {
+            let enable_updates = albums::table
+                .filter(albums::album_id.eq(&album.album_id))
+                .select(albums::enable_updates)
+                .first(connection)
+                .optional()?;
+
+            if enable_updates == Some(true) {
+                diesel::update(albums::table.filter(albums::album_id.eq(&album.album_id)))
+                    .set(albums::name.eq(album.name.clone()))
+                    .execute(connection)?;
+
+                diesel::delete(
+                    album_recordings::table
+                        .filter(album_recordings::album_id.eq(&album.album_id)),
+                )
+                .execute(connection)?;
+
+                for album_recording in album_recordings
+                    .iter()
+                    .filter(|album_recording| album_recording.album_id == album.album_id)
+                {
+                    diesel::insert_into(album_recordings::table)
+                        .values(album_recording)
+                        .execute(connection)?;
+                }
+            }
+        }
+
+        Ok(())
+    })?;
 
     Ok(())
 }
@@ -562,177 +572,183 @@ fn import_metadata_from_file(
 
     // Import metadata that is not already present.
 
-    for mut person in persons {
-        person.source = source;
-        person.created_at = now;
-        person.edited_at = now;
-        person.last_used_at = now;
-        person.last_played_at = None;
+    let mut this_connection = this_connection.lock().unwrap();
 
-        diesel::insert_into(persons::table)
-            .values(person)
-            .on_conflict_do_nothing()
-            .execute(&mut *this_connection.lock().unwrap())?;
-    }
+    this_connection.transaction::<(), Error, _>(|connection| {
+        for mut person in persons {
+            person.source = source;
+            person.created_at = now;
+            person.edited_at = now;
+            person.last_used_at = now;
+            person.last_played_at = None;
 
-    for mut role in roles {
-        role.source = source;
-        role.created_at = now;
-        role.edited_at = now;
-        role.last_used_at = now;
-
-        diesel::insert_into(roles::table)
-            .values(role)
-            .on_conflict_do_nothing()
-            .execute(&mut *this_connection.lock().unwrap())?;
-    }
-
-    for mut instrument in instruments {
-        instrument.source = source;
-        instrument.created_at = now;
-        instrument.edited_at = now;
-        instrument.last_used_at = now;
-        instrument.last_played_at = None;
-
-        diesel::insert_into(instruments::table)
-            .values(instrument)
-            .on_conflict_do_nothing()
-            .execute(&mut *this_connection.lock().unwrap())?;
-    }
-
-    for mut work in works {
-        work.source = source;
-        work.created_at = now;
-        work.edited_at = now;
-        work.last_used_at = now;
-        work.last_played_at = None;
-
-        diesel::insert_into(works::table)
-            .values(work)
-            .on_conflict_do_nothing()
-            .execute(&mut *this_connection.lock().unwrap())?;
-    }
-
-    for work_person in work_persons {
-        diesel::insert_into(work_persons::table)
-            .values(work_person)
-            .on_conflict_do_nothing()
-            .execute(&mut *this_connection.lock().unwrap())?;
-    }
-
-    for work_instrument in work_instruments {
-        diesel::insert_into(work_instruments::table)
-            .values(work_instrument)
-            .on_conflict_do_nothing()
-            .execute(&mut *this_connection.lock().unwrap())?;
-    }
-
-    for mut ensemble in ensembles {
-        ensemble.source = source;
-        ensemble.created_at = now;
-        ensemble.edited_at = now;
-        ensemble.last_used_at = now;
-        ensemble.last_played_at = None;
-
-        diesel::insert_into(ensembles::table)
-            .values(ensemble)
-            .on_conflict_do_nothing()
-            .execute(&mut *this_connection.lock().unwrap())?;
-    }
-
-    for ensemble_person in ensemble_persons {
-        diesel::insert_into(ensemble_persons::table)
-            .values(ensemble_person)
-            .on_conflict_do_nothing()
-            .execute(&mut *this_connection.lock().unwrap())?;
-    }
-
-    for mut recording in recordings {
-        recording.source = source;
-        recording.created_at = now;
-        recording.edited_at = now;
-        recording.last_used_at = now;
-        recording.last_played_at = None;
-
-        diesel::insert_into(recordings::table)
-            .values(recording)
-            .on_conflict_do_nothing()
-            .execute(&mut *this_connection.lock().unwrap())?;
-    }
-
-    for recording_person in recording_persons {
-        diesel::insert_into(recording_persons::table)
-            .values(recording_person)
-            .on_conflict_do_nothing()
-            .execute(&mut *this_connection.lock().unwrap())?;
-    }
-
-    for recording_ensemble in recording_ensembles {
-        diesel::insert_into(recording_ensembles::table)
-            .values(recording_ensemble)
-            .on_conflict_do_nothing()
-            .execute(&mut *this_connection.lock().unwrap())?;
-    }
-
-    if !ignore_tracks {
-        for mut track in tracks.clone() {
-            track.created_at = now;
-            track.edited_at = now;
-            track.last_used_at = now;
-            track.last_played_at = None;
-
-            diesel::insert_into(tracks::table)
-                .values(track)
+            diesel::insert_into(persons::table)
+                .values(person)
                 .on_conflict_do_nothing()
-                .execute(&mut *this_connection.lock().unwrap())?;
+                .execute(connection)?;
         }
 
-        for track_work in track_works {
-            diesel::insert_into(track_works::table)
-                .values(track_work)
+        for mut role in roles {
+            role.source = source;
+            role.created_at = now;
+            role.edited_at = now;
+            role.last_used_at = now;
+
+            diesel::insert_into(roles::table)
+                .values(role)
                 .on_conflict_do_nothing()
-                .execute(&mut *this_connection.lock().unwrap())?;
+                .execute(connection)?;
         }
 
-        for mut medium in mediums {
-            medium.created_at = now;
-            medium.edited_at = now;
-            medium.last_used_at = now;
-            medium.last_played_at = None;
+        for mut instrument in instruments {
+            instrument.source = source;
+            instrument.created_at = now;
+            instrument.edited_at = now;
+            instrument.last_used_at = now;
+            instrument.last_played_at = None;
 
-            diesel::insert_into(mediums::table)
-                .values(medium)
+            diesel::insert_into(instruments::table)
+                .values(instrument)
                 .on_conflict_do_nothing()
-                .execute(&mut *this_connection.lock().unwrap())?;
+                .execute(connection)?;
         }
-    }
 
-    for mut album in albums {
-        album.source = source;
-        album.created_at = now;
-        album.edited_at = now;
-        album.last_used_at = now;
-        album.last_played_at = None;
+        for mut work in works {
+            work.source = source;
+            work.created_at = now;
+            work.edited_at = now;
+            work.last_used_at = now;
+            work.last_played_at = None;
 
-        diesel::insert_into(albums::table)
-            .values(album)
-            .on_conflict_do_nothing()
-            .execute(&mut *this_connection.lock().unwrap())?;
-    }
+            diesel::insert_into(works::table)
+                .values(work)
+                .on_conflict_do_nothing()
+                .execute(connection)?;
+        }
 
-    for album_recording in album_recordings {
-        diesel::insert_into(album_recordings::table)
-            .values(album_recording)
-            .on_conflict_do_nothing()
-            .execute(&mut *this_connection.lock().unwrap())?;
-    }
+        for work_person in work_persons {
+            diesel::insert_into(work_persons::table)
+                .values(work_person)
+                .on_conflict_do_nothing()
+                .execute(connection)?;
+        }
 
-    for album_medium in album_mediums {
-        diesel::insert_into(album_mediums::table)
-            .values(album_medium)
-            .on_conflict_do_nothing()
-            .execute(&mut *this_connection.lock().unwrap())?;
-    }
+        for work_instrument in work_instruments {
+            diesel::insert_into(work_instruments::table)
+                .values(work_instrument)
+                .on_conflict_do_nothing()
+                .execute(connection)?;
+        }
+
+        for mut ensemble in ensembles {
+            ensemble.source = source;
+            ensemble.created_at = now;
+            ensemble.edited_at = now;
+            ensemble.last_used_at = now;
+            ensemble.last_played_at = None;
+
+            diesel::insert_into(ensembles::table)
+                .values(ensemble)
+                .on_conflict_do_nothing()
+                .execute(connection)?;
+        }
+
+        for ensemble_person in ensemble_persons {
+            diesel::insert_into(ensemble_persons::table)
+                .values(ensemble_person)
+                .on_conflict_do_nothing()
+                .execute(connection)?;
+        }
+
+        for mut recording in recordings {
+            recording.source = source;
+            recording.created_at = now;
+            recording.edited_at = now;
+            recording.last_used_at = now;
+            recording.last_played_at = None;
+
+            diesel::insert_into(recordings::table)
+                .values(recording)
+                .on_conflict_do_nothing()
+                .execute(connection)?;
+        }
+
+        for recording_person in recording_persons {
+            diesel::insert_into(recording_persons::table)
+                .values(recording_person)
+                .on_conflict_do_nothing()
+                .execute(connection)?;
+        }
+
+        for recording_ensemble in recording_ensembles {
+            diesel::insert_into(recording_ensembles::table)
+                .values(recording_ensemble)
+                .on_conflict_do_nothing()
+                .execute(connection)?;
+        }
+
+        if !ignore_tracks {
+            for mut track in tracks.clone() {
+                track.created_at = now;
+                track.edited_at = now;
+                track.last_used_at = now;
+                track.last_played_at = None;
+
+                diesel::insert_into(tracks::table)
+                    .values(track)
+                    .on_conflict_do_nothing()
+                    .execute(connection)?;
+            }
+
+            for track_work in track_works {
+                diesel::insert_into(track_works::table)
+                    .values(track_work)
+                    .on_conflict_do_nothing()
+                    .execute(connection)?;
+            }
+
+            for mut medium in mediums {
+                medium.created_at = now;
+                medium.edited_at = now;
+                medium.last_used_at = now;
+                medium.last_played_at = None;
+
+                diesel::insert_into(mediums::table)
+                    .values(medium)
+                    .on_conflict_do_nothing()
+                    .execute(connection)?;
+            }
+        }
+
+        for mut album in albums {
+            album.source = source;
+            album.created_at = now;
+            album.edited_at = now;
+            album.last_used_at = now;
+            album.last_played_at = None;
+
+            diesel::insert_into(albums::table)
+                .values(album)
+                .on_conflict_do_nothing()
+                .execute(connection)?;
+        }
+
+        for album_recording in album_recordings {
+            diesel::insert_into(album_recordings::table)
+                .values(album_recording)
+                .on_conflict_do_nothing()
+                .execute(connection)?;
+        }
+
+        for album_medium in album_mediums {
+            diesel::insert_into(album_mediums::table)
+                .values(album_medium)
+                .on_conflict_do_nothing()
+                .execute(connection)?;
+        }
+
+        Ok(())
+    })?;
 
     Ok(tracks)
 }
