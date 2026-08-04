@@ -1,5 +1,5 @@
 use std::{
-    cell::OnceCell,
+    cell::{OnceCell, RefCell},
     path::{Path, PathBuf},
     sync::{Arc, Mutex},
 };
@@ -14,10 +14,12 @@ use diesel::{prelude::*, SqliteConnection};
 use once_cell::sync::Lazy;
 
 use crate::db::{self, schema::*, tables};
+pub use metadata::SearchItem;
 pub use query::LibraryQuery;
 
 pub mod edit;
 pub mod exchange;
+pub mod metadata;
 pub mod query;
 
 mod imp {
@@ -29,6 +31,7 @@ mod imp {
         #[property(get, construct_only)]
         pub folder: OnceCell<String>,
         pub connection: OnceCell<Arc<Mutex<SqliteConnection>>>,
+        pub metadata_connection: RefCell<Option<Arc<Mutex<SqliteConnection>>>>,
     }
 
     #[glib::object_subclass]

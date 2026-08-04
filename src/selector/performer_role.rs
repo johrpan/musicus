@@ -3,7 +3,6 @@ use std::cell::{OnceCell, RefCell};
 use gettextrs::gettext;
 use gtk::{
     glib::{self, subclass::Signal, Properties},
-    pango,
     prelude::*,
     subclass::prelude::*,
 };
@@ -11,7 +10,7 @@ use once_cell::sync::Lazy;
 
 use crate::{
     db::models::{Instrument, Role},
-    library::Library,
+    library::{Library, SearchItem},
     util::activatable_row::ActivatableRow,
 };
 
@@ -25,8 +24,8 @@ mod imp {
         #[property(get, construct_only)]
         pub library: OnceCell<Library>,
 
-        pub roles: RefCell<Vec<Role>>,
-        pub instruments: RefCell<Vec<Instrument>>,
+        pub roles: RefCell<Vec<SearchItem<Role>>>,
+        pub instruments: RefCell<Vec<SearchItem<Instrument>>>,
 
         #[template_child]
         pub stack: TemplateChild<adw::ViewStack>,
@@ -197,8 +196,8 @@ impl PerformerRoleSelectorPopover {
 
     #[template_callback]
     fn role_activate(&self, _: &gtk::SearchEntry) {
-        if let Some(role) = self.imp().roles.borrow().first() {
-            self.select_role(role.to_owned());
+        if let Some(item) = self.imp().roles.borrow().first() {
+            self.select_role(item.to_owned());
         } else {
             self.create_role();
         }
@@ -211,8 +210,8 @@ impl PerformerRoleSelectorPopover {
 
     #[template_callback]
     fn instrument_activate(&self, _: &gtk::SearchEntry) {
-        if let Some(instrument) = self.imp().instruments.borrow().first() {
-            self.select_instrument(instrument.clone());
+        if let Some(item) = self.imp().instruments.borrow().first() {
+            self.select_instrument(item.clone());
         } else {
             self.create_instrument();
         }
@@ -230,21 +229,14 @@ impl PerformerRoleSelectorPopover {
 
         imp.role_list.remove_all();
 
-        for role in &roles {
-            let row = ActivatableRow::new(
-                &gtk::Label::builder()
-                    .label(role.to_string())
-                    .halign(gtk::Align::Start)
-                    .ellipsize(pango::EllipsizeMode::Middle)
-                    .build(),
-            );
+        for result in &roles {
+            let text = result.item.to_string();
+            let row = ActivatableRow::new(&super::item_row_child(&text, result.in_library));
 
-            row.set_tooltip_text(Some(&role.to_string()));
-
-            let role = role.clone();
+            let item = result.clone();
             let obj = self.clone();
             row.connect_activated(move |_: &ActivatableRow| {
-                obj.select_role(role.clone());
+                obj.select_role(item.clone());
             });
 
             imp.role_list.append(&row);
@@ -282,21 +274,14 @@ impl PerformerRoleSelectorPopover {
 
         imp.instrument_list.remove_all();
 
-        for instrument in &instruments {
-            let row = ActivatableRow::new(
-                &gtk::Label::builder()
-                    .label(instrument.to_string())
-                    .halign(gtk::Align::Start)
-                    .ellipsize(pango::EllipsizeMode::Middle)
-                    .build(),
-            );
+        for result in &instruments {
+            let text = result.item.to_string();
+            let row = ActivatableRow::new(&super::item_row_child(&text, result.in_library));
 
-            row.set_tooltip_text(Some(&instrument.to_string()));
-
-            let instrument = instrument.clone();
+            let item = result.clone();
             let obj = self.clone();
             row.connect_activated(move |_: &ActivatableRow| {
-                obj.select_instrument(instrument.clone());
+                obj.select_instrument(item.clone());
             });
 
             imp.instrument_list.append(&row);
@@ -322,12 +307,48 @@ impl PerformerRoleSelectorPopover {
         imp.instruments.replace(instruments);
     }
 
-    fn select_role(&self, role: Role) {
+    fn select_role(&self, item: SearchItem<Role>) {
+        let role = if item.in_library {
+            item.item
+        } else {
+            match self
+                .imp()
+                .library
+                .get()
+                .unwrap()
+                .import_metadata_role(&item.item.role_id)
+            {
+                Ok(role) => role,
+                Err(err) => {
+                    log::error!("Failed to import role from metadata database: {err:?}");
+                    return;
+                }
+            }
+        };
+
         self.emit_by_name::<()>("role-selected", &[&role]);
         self.popdown();
     }
 
-    fn select_instrument(&self, instrument: Instrument) {
+    fn select_instrument(&self, item: SearchItem<Instrument>) {
+        let instrument = if item.in_library {
+            item.item
+        } else {
+            match self
+                .imp()
+                .library
+                .get()
+                .unwrap()
+                .import_metadata_instrument(&item.item.instrument_id)
+            {
+                Ok(instrument) => instrument,
+                Err(err) => {
+                    log::error!("Failed to import instrument from metadata database: {err:?}");
+                    return;
+                }
+            }
+        };
+
         self.emit_by_name::<()>("instrument-selected", &[&instrument]);
         self.popdown();
     }

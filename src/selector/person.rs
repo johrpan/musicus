@@ -8,7 +8,11 @@ use gtk::{
 };
 use once_cell::sync::Lazy;
 
-use crate::{db::models::Person, library::Library, util::activatable_row::ActivatableRow};
+use crate::{
+    db::models::Person,
+    library::{Library, SearchItem},
+    util::activatable_row::ActivatableRow,
+};
 
 mod imp {
     use super::*;
@@ -20,7 +24,7 @@ mod imp {
         #[property(get, construct_only)]
         pub library: OnceCell<Library>,
 
-        pub persons: RefCell<Vec<Person>>,
+        pub persons: RefCell<Vec<SearchItem<Person>>>,
 
         #[template_child]
         pub search_entry: TemplateChild<gtk::SearchEntry>,
@@ -129,8 +133,8 @@ impl PersonSelectorPopover {
 
     #[template_callback]
     fn activate(&self, _: &gtk::SearchEntry) {
-        if let Some(person) = self.imp().persons.borrow().first() {
-            self.select(person.clone());
+        if let Some(item) = self.imp().persons.borrow().first() {
+            self.select(item.clone());
         } else {
             self.create();
         }
@@ -148,20 +152,14 @@ impl PersonSelectorPopover {
 
         imp.list_box.remove_all();
 
-        for person in &persons {
-            let row = ActivatableRow::new(
-                &gtk::Label::builder()
-                    .label(person.to_string())
-                    .halign(gtk::Align::Start)
-                    .build(),
-            );
+        for result in &persons {
+            let text = result.item.to_string();
+            let row = ActivatableRow::new(&super::item_row_child(&text, result.in_library));
 
-            row.set_tooltip_text(Some(&person.to_string()));
-
-            let person = person.clone();
+            let item = result.clone();
             let obj = self.clone();
             row.connect_activated(move |_: &ActivatableRow| {
-                obj.select(person.clone());
+                obj.select(item.clone());
             });
 
             imp.list_box.append(&row);
@@ -187,7 +185,25 @@ impl PersonSelectorPopover {
         imp.persons.replace(persons);
     }
 
-    fn select(&self, person: Person) {
+    fn select(&self, item: SearchItem<Person>) {
+        let person = if item.in_library {
+            item.item
+        } else {
+            match self
+                .imp()
+                .library
+                .get()
+                .unwrap()
+                .import_metadata_person(&item.item.person_id)
+            {
+                Ok(person) => person,
+                Err(err) => {
+                    log::error!("Failed to import person from metadata database: {err:?}");
+                    return;
+                }
+            }
+        };
+
         self.emit_by_name::<()>("person-selected", &[&person]);
         self.popdown();
     }

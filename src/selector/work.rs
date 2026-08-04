@@ -3,7 +3,6 @@ use std::cell::{OnceCell, RefCell};
 use gettextrs::gettext;
 use gtk::{
     glib::{self, subclass::Signal, Properties},
-    pango,
     prelude::*,
     subclass::prelude::*,
 };
@@ -11,7 +10,7 @@ use once_cell::sync::Lazy;
 
 use crate::{
     db::models::{Person, Work},
-    library::Library,
+    library::{Library, SearchItem},
     util::activatable_row::ActivatableRow,
 };
 
@@ -25,9 +24,9 @@ mod imp {
         #[property(get, construct_only)]
         pub library: OnceCell<Library>,
 
-        pub composers: RefCell<Vec<Person>>,
+        pub composers: RefCell<Vec<SearchItem<Person>>>,
         pub composer: RefCell<Option<Person>>,
-        pub works: RefCell<Vec<Work>>,
+        pub works: RefCell<Vec<SearchItem<Work>>>,
 
         #[template_child]
         pub stack: TemplateChild<gtk::Stack>,
@@ -155,8 +154,8 @@ impl WorkSelectorPopover {
 
     #[template_callback]
     fn composer_activate(&self, _: &gtk::SearchEntry) {
-        if let Some(composer) = self.imp().composers.borrow().first() {
-            self.select_composer(composer.to_owned());
+        if let Some(item) = self.imp().composers.borrow().first() {
+            self.select_composer(item.to_owned());
         } else {
             self.create();
         }
@@ -177,8 +176,8 @@ impl WorkSelectorPopover {
 
     #[template_callback]
     fn work_activate(&self, _: &gtk::SearchEntry) {
-        if let Some(work) = self.imp().works.borrow().first() {
-            self.select(work.clone());
+        if let Some(item) = self.imp().works.borrow().first() {
+            self.select(item.clone());
         } else {
             self.create();
         }
@@ -196,21 +195,14 @@ impl WorkSelectorPopover {
 
         imp.composer_list.remove_all();
 
-        for person in &persons {
-            let row = ActivatableRow::new(
-                &gtk::Label::builder()
-                    .label(person.to_string())
-                    .halign(gtk::Align::Start)
-                    .ellipsize(pango::EllipsizeMode::Middle)
-                    .build(),
-            );
+        for result in &persons {
+            let text = result.item.to_string();
+            let row = ActivatableRow::new(&super::item_row_child(&text, result.in_library));
 
-            row.set_tooltip_text(Some(&person.to_string()));
-
-            let person = person.clone();
+            let item = result.clone();
             let obj = self.clone();
             row.connect_activated(move |_: &ActivatableRow| {
-                obj.select_composer(person.clone());
+                obj.select_composer(item.clone());
             });
 
             imp.composer_list.append(&row);
@@ -248,21 +240,14 @@ impl WorkSelectorPopover {
 
         imp.work_list.remove_all();
 
-        for work in &works {
-            let row = ActivatableRow::new(
-                &gtk::Label::builder()
-                    .label(work.name.get())
-                    .halign(gtk::Align::Start)
-                    .ellipsize(pango::EllipsizeMode::Middle)
-                    .build(),
-            );
+        for result in &works {
+            let text = result.item.name.get().to_owned();
+            let row = ActivatableRow::new(&super::item_row_child(&text, result.in_library));
 
-            row.set_tooltip_text(Some(work.name.get()));
-
-            let work = work.clone();
+            let item = result.clone();
             let obj = self.clone();
             row.connect_activated(move |_: &ActivatableRow| {
-                obj.select(work.clone());
+                obj.select(item.clone());
             });
 
             imp.work_list.append(&row);
@@ -288,7 +273,25 @@ impl WorkSelectorPopover {
         imp.works.replace(works);
     }
 
-    fn select_composer(&self, person: Person) {
+    fn select_composer(&self, item: SearchItem<Person>) {
+        let person = if item.in_library {
+            item.item
+        } else {
+            match self
+                .imp()
+                .library
+                .get()
+                .unwrap()
+                .import_metadata_person(&item.item.person_id)
+            {
+                Ok(person) => person,
+                Err(err) => {
+                    log::error!("Failed to import person from metadata database: {err:?}");
+                    return;
+                }
+            }
+        };
+
         self.imp().composer_label.set_text(person.name.get());
         self.imp().work_search_entry.set_text("");
         self.imp().work_search_entry.grab_focus();
@@ -299,7 +302,25 @@ impl WorkSelectorPopover {
         self.search_works("");
     }
 
-    fn select(&self, work: Work) {
+    fn select(&self, item: SearchItem<Work>) {
+        let work = if item.in_library {
+            item.item
+        } else {
+            match self
+                .imp()
+                .library
+                .get()
+                .unwrap()
+                .import_metadata_work(&item.item.work_id)
+            {
+                Ok(work) => work,
+                Err(err) => {
+                    log::error!("Failed to import work from metadata database: {err:?}");
+                    return;
+                }
+            }
+        };
+
         self.emit_by_name::<()>("selected", &[&work]);
         self.popdown();
     }

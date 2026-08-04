@@ -1,9 +1,11 @@
+use std::collections::HashSet;
+
 use adw::subclass::prelude::*;
 use anyhow::Result;
 use chrono::prelude::*;
 use diesel::{dsl::exists, prelude::*, sql_types, QueryDsl};
 
-use super::Library;
+use super::{metadata::SearchItem, Library};
 use crate::{
     db::{models::*, schema::*, tables},
     program::Program,
@@ -716,50 +718,159 @@ impl Library {
         Ok(())
     }
 
-    pub fn search_persons(&self, search: &str) -> Result<Vec<Person>> {
+    pub fn search_persons(&self, search: &str) -> Result<Vec<SearchItem<Person>>> {
         let search = format!("%{}%", search);
         let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
 
-        let persons = persons::table
+        let persons: Vec<Person> = persons::table
             .order(persons::last_used_at.desc())
             .filter(persons::name.like(&search))
             .limit(20)
             .load(connection)?;
 
-        Ok(persons)
+        let mut results: Vec<SearchItem<Person>> = persons
+            .into_iter()
+            .map(|item| SearchItem {
+                item,
+                in_library: true,
+            })
+            .collect();
+
+        if let Some(metadata_connection) = self.metadata_connection() {
+            let metadata_connection = &mut *metadata_connection.lock().unwrap();
+
+            let metadata_persons: Vec<Person> = persons::table
+                .filter(persons::name.like(&search))
+                .limit(20)
+                .load(metadata_connection)?;
+
+            let candidate_ids: Vec<String> = metadata_persons
+                .iter()
+                .map(|p| p.person_id.clone())
+                .collect();
+            let existing: HashSet<String> = persons::table
+                .filter(persons::person_id.eq_any(&candidate_ids))
+                .select(persons::person_id)
+                .load(connection)?
+                .into_iter()
+                .collect();
+
+            for item in metadata_persons {
+                if !existing.contains(&item.person_id) {
+                    results.push(SearchItem {
+                        item,
+                        in_library: false,
+                    });
+                }
+            }
+        }
+
+        Ok(results)
     }
 
-    pub fn search_roles(&self, search: &str) -> Result<Vec<Role>> {
+    pub fn search_roles(&self, search: &str) -> Result<Vec<SearchItem<Role>>> {
         let search = format!("%{}%", search);
         let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
 
-        let roles = roles::table
+        let roles: Vec<Role> = roles::table
             .order(roles::last_used_at.desc())
             .filter(roles::name.like(&search))
             .limit(20)
             .load(connection)?;
 
-        Ok(roles)
+        let mut results: Vec<SearchItem<Role>> = roles
+            .into_iter()
+            .map(|item| SearchItem {
+                item,
+                in_library: true,
+            })
+            .collect();
+
+        if let Some(metadata_connection) = self.metadata_connection() {
+            let metadata_connection = &mut *metadata_connection.lock().unwrap();
+
+            let metadata_roles: Vec<Role> = roles::table
+                .filter(roles::name.like(&search))
+                .limit(20)
+                .load(metadata_connection)?;
+
+            let candidate_ids: Vec<String> =
+                metadata_roles.iter().map(|r| r.role_id.clone()).collect();
+            let existing: HashSet<String> = roles::table
+                .filter(roles::role_id.eq_any(&candidate_ids))
+                .select(roles::role_id)
+                .load(connection)?
+                .into_iter()
+                .collect();
+
+            for item in metadata_roles {
+                if !existing.contains(&item.role_id) {
+                    results.push(SearchItem {
+                        item,
+                        in_library: false,
+                    });
+                }
+            }
+        }
+
+        Ok(results)
     }
 
-    pub fn search_instruments(&self, search: &str) -> Result<Vec<Instrument>> {
+    pub fn search_instruments(&self, search: &str) -> Result<Vec<SearchItem<Instrument>>> {
         let search = format!("%{}%", search);
         let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
 
-        let instruments = instruments::table
+        let instruments: Vec<Instrument> = instruments::table
             .order(instruments::last_used_at.desc())
             .filter(instruments::name.like(&search))
             .limit(20)
             .load(connection)?;
 
-        Ok(instruments)
+        let mut results: Vec<SearchItem<Instrument>> = instruments
+            .into_iter()
+            .map(|item| SearchItem {
+                item,
+                in_library: true,
+            })
+            .collect();
+
+        if let Some(metadata_connection) = self.metadata_connection() {
+            let metadata_connection = &mut *metadata_connection.lock().unwrap();
+
+            let metadata_instruments: Vec<Instrument> = instruments::table
+                .filter(instruments::name.like(&search))
+                .limit(20)
+                .load(metadata_connection)?;
+
+            let candidate_ids: Vec<String> = metadata_instruments
+                .iter()
+                .map(|i| i.instrument_id.clone())
+                .collect();
+            let existing: HashSet<String> = instruments::table
+                .filter(instruments::instrument_id.eq_any(&candidate_ids))
+                .select(instruments::instrument_id)
+                .load(connection)?
+                .into_iter()
+                .collect();
+
+            for item in metadata_instruments {
+                if !existing.contains(&item.instrument_id) {
+                    results.push(SearchItem {
+                        item,
+                        in_library: false,
+                    });
+                }
+            }
+        }
+
+        Ok(results)
     }
 
-    pub fn search_works(&self, composer: &Person, search: &str) -> Result<Vec<Work>> {
+    pub fn search_works(&self, composer: &Person, search: &str) -> Result<Vec<SearchItem<Work>>> {
         let search = format!("%{}%", search);
         let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
 
-        let works: Vec<Work> = works::table
+        let works: Vec<tables::Work> = works::table
             .left_join(work_persons::table)
             .filter(
                 works::name
@@ -769,19 +880,65 @@ impl Library {
             .limit(9)
             .select(works::all_columns)
             .distinct()
-            .load::<tables::Work>(connection)?
-            .into_iter()
-            .map(|w| Work::from_table(w, connection))
-            .collect::<Result<Vec<Work>>>()?;
+            .load::<tables::Work>(connection)?;
 
-        Ok(works)
+        let mut results: Vec<SearchItem<Work>> = works
+            .into_iter()
+            .map(|w| {
+                Work::from_table(w, connection).map(|item| SearchItem {
+                    item,
+                    in_library: true,
+                })
+            })
+            .collect::<Result<Vec<SearchItem<Work>>>>()?;
+
+        if let Some(metadata_connection) = self.metadata_connection() {
+            let metadata_connection = &mut *metadata_connection.lock().unwrap();
+
+            let metadata_works: Vec<tables::Work> = works::table
+                .left_join(work_persons::table)
+                .filter(
+                    works::name
+                        .like(&search)
+                        .and(work_persons::person_id.eq(&composer.person_id)),
+                )
+                .limit(9)
+                .select(works::all_columns)
+                .distinct()
+                .load::<tables::Work>(metadata_connection)?;
+
+            let candidate_ids: Vec<String> =
+                metadata_works.iter().map(|w| w.work_id.clone()).collect();
+            let existing: HashSet<String> = works::table
+                .filter(works::work_id.eq_any(&candidate_ids))
+                .select(works::work_id)
+                .load(connection)?
+                .into_iter()
+                .collect();
+
+            for work in metadata_works {
+                if !existing.contains(&work.work_id) {
+                    let item = Work::from_table(work, metadata_connection)?;
+                    results.push(SearchItem {
+                        item,
+                        in_library: false,
+                    });
+                }
+            }
+        }
+
+        Ok(results)
     }
 
-    pub fn search_recordings(&self, work: &Work, search: &str) -> Result<Vec<Recording>> {
+    pub fn search_recordings(
+        &self,
+        work: &Work,
+        search: &str,
+    ) -> Result<Vec<SearchItem<Recording>>> {
         let search = format!("%{}%", search);
         let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
 
-        let recordings = recordings::table
+        let recordings: Vec<tables::Recording> = recordings::table
             .left_join(recording_persons::table.inner_join(persons::table))
             .left_join(recording_ensembles::table.inner_join(ensembles::table))
             .filter(
@@ -794,19 +951,66 @@ impl Library {
             .limit(9)
             .select(recordings::all_columns)
             .distinct()
-            .load::<tables::Recording>(connection)?
-            .into_iter()
-            .map(|r| Recording::from_table(r, connection))
-            .collect::<Result<Vec<Recording>>>()?;
+            .load::<tables::Recording>(connection)?;
 
-        Ok(recordings)
+        let mut results: Vec<SearchItem<Recording>> = recordings
+            .into_iter()
+            .map(|r| {
+                Recording::from_table(r, connection).map(|item| SearchItem {
+                    item,
+                    in_library: true,
+                })
+            })
+            .collect::<Result<Vec<SearchItem<Recording>>>>()?;
+
+        if let Some(metadata_connection) = self.metadata_connection() {
+            let metadata_connection = &mut *metadata_connection.lock().unwrap();
+
+            let metadata_recordings: Vec<tables::Recording> = recordings::table
+                .left_join(recording_persons::table.inner_join(persons::table))
+                .left_join(recording_ensembles::table.inner_join(ensembles::table))
+                .filter(
+                    recordings::work_id.eq(&work.work_id).and(
+                        persons::name
+                            .like(&search)
+                            .or(ensembles::name.like(&search)),
+                    ),
+                )
+                .limit(9)
+                .select(recordings::all_columns)
+                .distinct()
+                .load::<tables::Recording>(metadata_connection)?;
+
+            let candidate_ids: Vec<String> = metadata_recordings
+                .iter()
+                .map(|r| r.recording_id.clone())
+                .collect();
+            let existing: HashSet<String> = recordings::table
+                .filter(recordings::recording_id.eq_any(&candidate_ids))
+                .select(recordings::recording_id)
+                .load(connection)?
+                .into_iter()
+                .collect();
+
+            for recording in metadata_recordings {
+                if !existing.contains(&recording.recording_id) {
+                    let item = Recording::from_table(recording, metadata_connection)?;
+                    results.push(SearchItem {
+                        item,
+                        in_library: false,
+                    });
+                }
+            }
+        }
+
+        Ok(results)
     }
 
-    pub fn search_ensembles(&self, search: &str) -> Result<Vec<Ensemble>> {
+    pub fn search_ensembles(&self, search: &str) -> Result<Vec<SearchItem<Ensemble>>> {
         let search = format!("%{}%", search);
         let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
 
-        let ensembles = ensembles::table
+        let ensembles: Vec<tables::Ensemble> = ensembles::table
             .order(ensembles::last_used_at.desc())
             .left_join(ensemble_persons::table.inner_join(persons::table))
             .filter(
@@ -816,11 +1020,54 @@ impl Library {
             )
             .limit(20)
             .select(ensembles::all_columns)
-            .load::<tables::Ensemble>(connection)?
-            .into_iter()
-            .map(|e| Ensemble::from_table(e, connection))
-            .collect::<Result<Vec<Ensemble>>>()?;
+            .load::<tables::Ensemble>(connection)?;
 
-        Ok(ensembles)
+        let mut results: Vec<SearchItem<Ensemble>> = ensembles
+            .into_iter()
+            .map(|e| {
+                Ensemble::from_table(e, connection).map(|item| SearchItem {
+                    item,
+                    in_library: true,
+                })
+            })
+            .collect::<Result<Vec<SearchItem<Ensemble>>>>()?;
+
+        if let Some(metadata_connection) = self.metadata_connection() {
+            let metadata_connection = &mut *metadata_connection.lock().unwrap();
+
+            let metadata_ensembles: Vec<tables::Ensemble> = ensembles::table
+                .left_join(ensemble_persons::table.inner_join(persons::table))
+                .filter(
+                    ensembles::name
+                        .like(&search)
+                        .or(persons::name.like(&search)),
+                )
+                .limit(20)
+                .select(ensembles::all_columns)
+                .load::<tables::Ensemble>(metadata_connection)?;
+
+            let candidate_ids: Vec<String> = metadata_ensembles
+                .iter()
+                .map(|e| e.ensemble_id.clone())
+                .collect();
+            let existing: HashSet<String> = ensembles::table
+                .filter(ensembles::ensemble_id.eq_any(&candidate_ids))
+                .select(ensembles::ensemble_id)
+                .load(connection)?
+                .into_iter()
+                .collect();
+
+            for ensemble in metadata_ensembles {
+                if !existing.contains(&ensemble.ensemble_id) {
+                    let item = Ensemble::from_table(ensemble, metadata_connection)?;
+                    results.push(SearchItem {
+                        item,
+                        in_library: false,
+                    });
+                }
+            }
+        }
+
+        Ok(results)
     }
 }

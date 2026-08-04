@@ -8,7 +8,11 @@ use gtk::{
 };
 use once_cell::sync::Lazy;
 
-use crate::{db::models::Instrument, library::Library, util::activatable_row::ActivatableRow};
+use crate::{
+    db::models::Instrument,
+    library::{Library, SearchItem},
+    util::activatable_row::ActivatableRow,
+};
 
 mod imp {
     use super::*;
@@ -20,7 +24,7 @@ mod imp {
         #[property(get, construct_only)]
         pub library: OnceCell<Library>,
 
-        pub instruments: RefCell<Vec<Instrument>>,
+        pub instruments: RefCell<Vec<SearchItem<Instrument>>>,
 
         #[template_child]
         pub search_entry: TemplateChild<gtk::SearchEntry>,
@@ -129,8 +133,8 @@ impl InstrumentSelectorPopover {
 
     #[template_callback]
     fn activate(&self, _: &gtk::SearchEntry) {
-        if let Some(instrument) = self.imp().instruments.borrow().first() {
-            self.select(instrument.clone());
+        if let Some(item) = self.imp().instruments.borrow().first() {
+            self.select(item.clone());
         } else {
             self.create();
         }
@@ -153,20 +157,14 @@ impl InstrumentSelectorPopover {
 
         imp.list_box.remove_all();
 
-        for instrument in &instruments {
-            let row = ActivatableRow::new(
-                &gtk::Label::builder()
-                    .label(instrument.to_string())
-                    .halign(gtk::Align::Start)
-                    .build(),
-            );
+        for result in &instruments {
+            let text = result.item.to_string();
+            let row = ActivatableRow::new(&super::item_row_child(&text, result.in_library));
 
-            row.set_tooltip_text(Some(&instrument.to_string()));
-
-            let instrument = instrument.clone();
+            let item = result.clone();
             let obj = self.clone();
             row.connect_activated(move |_: &ActivatableRow| {
-                obj.select(instrument.clone());
+                obj.select(item.clone());
             });
 
             imp.list_box.append(&row);
@@ -192,7 +190,25 @@ impl InstrumentSelectorPopover {
         imp.instruments.replace(instruments);
     }
 
-    fn select(&self, instrument: Instrument) {
+    fn select(&self, item: SearchItem<Instrument>) {
+        let instrument = if item.in_library {
+            item.item
+        } else {
+            match self
+                .imp()
+                .library
+                .get()
+                .unwrap()
+                .import_metadata_instrument(&item.item.instrument_id)
+            {
+                Ok(instrument) => instrument,
+                Err(err) => {
+                    log::error!("Failed to import instrument from metadata database: {err:?}");
+                    return;
+                }
+            }
+        };
+
         self.emit_by_name::<()>("instrument-selected", &[&instrument]);
         self.popdown();
     }

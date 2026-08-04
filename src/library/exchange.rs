@@ -836,7 +836,7 @@ fn path_to_zip(path: impl AsRef<Path>) -> Result<String> {
         .join("/"))
 }
 
-fn metadata_file_path() -> PathBuf {
+pub fn metadata_file_path() -> PathBuf {
     glib::user_cache_dir()
         .join(config::APP_ID)
         .join("metadata.muslib")

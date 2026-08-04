@@ -8,7 +8,11 @@ use gtk::{
 };
 use once_cell::sync::Lazy;
 
-use crate::{db::models::Role, library::Library, util::activatable_row::ActivatableRow};
+use crate::{
+    db::models::Role,
+    library::{Library, SearchItem},
+    util::activatable_row::ActivatableRow,
+};
 
 mod imp {
     use super::*;
@@ -20,7 +24,7 @@ mod imp {
         #[property(get, construct_only)]
         pub library: OnceCell<Library>,
 
-        pub roles: RefCell<Vec<Role>>,
+        pub roles: RefCell<Vec<SearchItem<Role>>>,
 
         #[template_child]
         pub search_entry: TemplateChild<gtk::SearchEntry>,
@@ -138,8 +142,8 @@ impl RoleSelectorPopover {
 
     #[template_callback]
     fn activate(&self, _: &gtk::SearchEntry) {
-        if let Some(role) = self.imp().roles.borrow().first() {
-            self.select(role.clone());
+        if let Some(item) = self.imp().roles.borrow().first() {
+            self.select(item.clone());
         } else {
             self.create();
         }
@@ -163,20 +167,14 @@ impl RoleSelectorPopover {
 
         imp.list_box.remove_all();
 
-        for role in &roles {
-            let row = ActivatableRow::new(
-                &gtk::Label::builder()
-                    .label(role.to_string())
-                    .halign(gtk::Align::Start)
-                    .build(),
-            );
+        for result in &roles {
+            let text = result.item.to_string();
+            let row = ActivatableRow::new(&super::item_row_child(&text, result.in_library));
 
-            row.set_tooltip_text(Some(&role.to_string()));
-
-            let role = role.clone();
+            let item = result.clone();
             let obj = self.clone();
             row.connect_activated(move |_: &ActivatableRow| {
-                obj.select(role.clone());
+                obj.select(item.clone());
             });
 
             imp.list_box.append(&row);
@@ -202,7 +200,25 @@ impl RoleSelectorPopover {
         imp.roles.replace(roles);
     }
 
-    fn select(&self, role: Role) {
+    fn select(&self, item: SearchItem<Role>) {
+        let role = if item.in_library {
+            item.item
+        } else {
+            match self
+                .imp()
+                .library
+                .get()
+                .unwrap()
+                .import_metadata_role(&item.item.role_id)
+            {
+                Ok(role) => role,
+                Err(err) => {
+                    log::error!("Failed to import role from metadata database: {err:?}");
+                    return;
+                }
+            }
+        };
+
         self.emit_by_name::<()>("role-selected", &[&role]);
         self.popdown();
     }

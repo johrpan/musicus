@@ -8,7 +8,11 @@ use gtk::{
 };
 use once_cell::sync::Lazy;
 
-use crate::{db::models::Ensemble, library::Library, util::activatable_row::ActivatableRow};
+use crate::{
+    db::models::Ensemble,
+    library::{Library, SearchItem},
+    util::activatable_row::ActivatableRow,
+};
 
 mod imp {
     use super::*;
@@ -20,7 +24,7 @@ mod imp {
         #[property(get, construct_only)]
         pub library: OnceCell<Library>,
 
-        pub ensembles: RefCell<Vec<Ensemble>>,
+        pub ensembles: RefCell<Vec<SearchItem<Ensemble>>>,
 
         #[template_child]
         pub search_entry: TemplateChild<gtk::SearchEntry>,
@@ -129,8 +133,8 @@ impl EnsembleSelectorPopover {
 
     #[template_callback]
     fn activate(&self, _: &gtk::SearchEntry) {
-        if let Some(ensemble) = self.imp().ensembles.borrow().first() {
-            self.select(ensemble.clone());
+        if let Some(item) = self.imp().ensembles.borrow().first() {
+            self.select(item.clone());
         } else {
             self.create();
         }
@@ -148,20 +152,14 @@ impl EnsembleSelectorPopover {
 
         imp.list_box.remove_all();
 
-        for ensemble in &ensembles {
-            let row = ActivatableRow::new(
-                &gtk::Label::builder()
-                    .label(ensemble.to_string())
-                    .halign(gtk::Align::Start)
-                    .build(),
-            );
+        for result in &ensembles {
+            let text = result.item.to_string();
+            let row = ActivatableRow::new(&super::item_row_child(&text, result.in_library));
 
-            row.set_tooltip_text(Some(&ensemble.to_string()));
-
-            let ensemble = ensemble.clone();
+            let item = result.clone();
             let obj = self.clone();
             row.connect_activated(move |_: &ActivatableRow| {
-                obj.select(ensemble.clone());
+                obj.select(item.clone());
             });
 
             imp.list_box.append(&row);
@@ -187,7 +185,25 @@ impl EnsembleSelectorPopover {
         imp.ensembles.replace(ensembles);
     }
 
-    fn select(&self, ensemble: Ensemble) {
+    fn select(&self, item: SearchItem<Ensemble>) {
+        let ensemble = if item.in_library {
+            item.item
+        } else {
+            match self
+                .imp()
+                .library
+                .get()
+                .unwrap()
+                .import_metadata_ensemble(&item.item.ensemble_id)
+            {
+                Ok(ensemble) => ensemble,
+                Err(err) => {
+                    log::error!("Failed to import ensemble from metadata database: {err:?}");
+                    return;
+                }
+            }
+        };
+
         self.emit_by_name::<()>("ensemble-selected", &[&ensemble]);
         self.popdown();
     }
