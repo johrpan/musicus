@@ -61,7 +61,7 @@ CREATE TABLE recordings_old (
 );
 
 CREATE TABLE mediums_old (
-    medium_id TEXT NOT NULL PRIMARY KEY REFERENCES item_state(id),
+    medium_id TEXT NOT NULL PRIMARY KEY,
     discid TEXT NOT NULL,
     enable_updates BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMP NOT NULL DEFAULT (DATETIME('now', 'localtime')),
@@ -71,7 +71,7 @@ CREATE TABLE mediums_old (
 );
 
 CREATE TABLE albums_old (
-    album_id TEXT NOT NULL PRIMARY KEY REFERENCES item_state(id),
+    album_id TEXT NOT NULL PRIMARY KEY,
     name TEXT NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT (DATETIME('now', 'localtime')),
     edited_at TIMESTAMP NOT NULL DEFAULT (DATETIME('now', 'localtime')),

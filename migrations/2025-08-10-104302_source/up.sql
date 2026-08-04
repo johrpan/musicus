@@ -1,5 +1,5 @@
 CREATE TABLE persons_new (
-    person_id TEXT NOT NULL PRIMARY KEY REFERENCES item_state(id),
+    person_id TEXT NOT NULL PRIMARY KEY,
     name TEXT NOT NULL,
     source TEXT NOT NULL DEFAULT 'user',
     enable_updates BOOLEAN NOT NULL DEFAULT TRUE,
@@ -10,7 +10,7 @@ CREATE TABLE persons_new (
 );
 
 CREATE TABLE roles_new (
-    role_id TEXT NOT NULL PRIMARY KEY REFERENCES item_state(id),
+    role_id TEXT NOT NULL PRIMARY KEY,
     name TEXT NOT NULL,
     source TEXT NOT NULL DEFAULT 'user',
     enable_updates BOOLEAN NOT NULL DEFAULT TRUE,
@@ -20,7 +20,7 @@ CREATE TABLE roles_new (
 );
 
 CREATE TABLE instruments_new (
-    instrument_id TEXT NOT NULL PRIMARY KEY REFERENCES item_state(id),
+    instrument_id TEXT NOT NULL PRIMARY KEY,
     name TEXT NOT NULL,
     source TEXT NOT NULL DEFAULT 'user',
     enable_updates BOOLEAN NOT NULL DEFAULT TRUE,
@@ -31,7 +31,7 @@ CREATE TABLE instruments_new (
 );
 
 CREATE TABLE works_new (
-    work_id TEXT NOT NULL PRIMARY KEY REFERENCES item_state(id),
+    work_id TEXT NOT NULL PRIMARY KEY,
     parent_work_id TEXT REFERENCES works(work_id),
     sequence_number INTEGER,
     name TEXT NOT NULL,
@@ -44,7 +44,7 @@ CREATE TABLE works_new (
 );
 
 CREATE TABLE ensembles_new (
-    ensemble_id TEXT NOT NULL PRIMARY KEY REFERENCES item_state(id),
+    ensemble_id TEXT NOT NULL PRIMARY KEY,
     name TEXT NOT NULL,
     source TEXT NOT NULL DEFAULT 'user',
     enable_updates BOOLEAN NOT NULL DEFAULT TRUE,
@@ -55,7 +55,7 @@ CREATE TABLE ensembles_new (
 );
 
 CREATE TABLE recordings_new (
-    recording_id TEXT NOT NULL PRIMARY KEY REFERENCES item_state(id),
+    recording_id TEXT NOT NULL PRIMARY KEY,
     work_id TEXT NOT NULL REFERENCES works(work_id),
     year INTEGER,
     source TEXT NOT NULL DEFAULT 'user',
@@ -67,7 +67,7 @@ CREATE TABLE recordings_new (
 );
 
 CREATE TABLE mediums_new (
-    medium_id TEXT NOT NULL PRIMARY KEY REFERENCES item_state(id),
+    medium_id TEXT NOT NULL PRIMARY KEY,
     discid TEXT NOT NULL,
     source TEXT NOT NULL DEFAULT 'user',
     enable_updates BOOLEAN NOT NULL DEFAULT TRUE,
@@ -78,7 +78,7 @@ CREATE TABLE mediums_new (
 );
 
 CREATE TABLE albums_new (
-    album_id TEXT NOT NULL PRIMARY KEY REFERENCES item_state(id),
+    album_id TEXT NOT NULL PRIMARY KEY,
     name TEXT NOT NULL,
     source TEXT NOT NULL DEFAULT 'user',
     enable_updates BOOLEAN NOT NULL DEFAULT TRUE,
