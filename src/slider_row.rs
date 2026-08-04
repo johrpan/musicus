@@ -61,7 +61,8 @@ mod imp {
 
 glib::wrapper! {
     pub struct SliderRow(ObjectSubclass<imp::SliderRow>)
-        @extends gtk::Widget, gtk::ListBoxRow, adw::PreferencesRow;
+        @extends adw::PreferencesRow, gtk::ListBoxRow, gtk::Widget,
+        @implements gtk::Actionable, gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget;
 }
 
 #[gtk::template_callbacks]

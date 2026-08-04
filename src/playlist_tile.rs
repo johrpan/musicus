@@ -46,7 +46,8 @@ mod imp {
 
 glib::wrapper! {
     pub struct PlaylistTile(ObjectSubclass<imp::PlaylistTile>)
-        @extends gtk::Widget, gtk::Box;
+        @extends gtk::Box, gtk::Widget,
+        @implements gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget, gtk::Orientable;
 }
 
 impl PlaylistTile {

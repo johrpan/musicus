@@ -38,7 +38,8 @@ mod imp {
 
 glib::wrapper! {
     pub struct AlbumTile(ObjectSubclass<imp::AlbumTile>)
-        @extends gtk::Widget, gtk::FlowBoxChild;
+        @extends gtk::FlowBoxChild, gtk::Widget,
+        @implements gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget;
 }
 
 impl AlbumTile {

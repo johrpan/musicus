@@ -129,7 +129,8 @@ mod imp {
 
 glib::wrapper! {
     pub struct TracksEditor(ObjectSubclass<imp::TracksEditor>)
-        @extends gtk::Widget, adw::NavigationPage;
+        @extends adw::NavigationPage, gtk::Widget,
+        @implements gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget;
 }
 
 #[gtk::template_callbacks]

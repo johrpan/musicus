@@ -40,7 +40,8 @@ mod imp {
 
 glib::wrapper! {
     pub struct TagTile(ObjectSubclass<imp::TagTile>)
-        @extends gtk::Widget, gtk::FlowBoxChild;
+        @extends gtk::FlowBoxChild, gtk::Widget,
+        @implements gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget;
 }
 
 impl TagTile {

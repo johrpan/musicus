@@ -91,7 +91,8 @@ mod imp {
 
 glib::wrapper! {
     pub struct ProcessRow(ObjectSubclass<imp::ProcessRow>)
-        @extends gtk::Widget, gtk::ListBoxRow;
+        @extends gtk::ListBoxRow, gtk::Widget,
+        @implements gtk::Accessible, gtk::Actionable, gtk::Buildable, gtk::ConstraintTarget;
 }
 
 #[gtk::template_callbacks]

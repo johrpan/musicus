@@ -92,7 +92,8 @@ mod imp {
 
 glib::wrapper! {
     pub struct EnsembleSelectorPopover(ObjectSubclass<imp::EnsembleSelectorPopover>)
-        @extends gtk::Widget, gtk::Popover;
+        @extends gtk::Popover, gtk::Widget,
+        @implements gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget, gtk::Native, gtk::ShortcutManager;
 }
 
 #[gtk::template_callbacks]

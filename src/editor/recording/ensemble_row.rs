@@ -148,7 +148,8 @@ mod imp {
 
 glib::wrapper! {
     pub struct RecordingEditorEnsembleRow(ObjectSubclass<imp::RecordingEditorEnsembleRow>)
-        @extends gtk::Widget, gtk::ListBoxRow, adw::PreferencesRow, adw::ActionRow;
+        @extends adw::ActionRow, adw::PreferencesRow, gtk::ListBoxRow, gtk::Widget,
+        @implements gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget, gtk::Actionable;
 }
 
 #[gtk::template_callbacks]

@@ -88,7 +88,8 @@ mod imp {
 
 glib::wrapper! {
     pub struct PlaylistPage(ObjectSubclass<imp::PlaylistPage>)
-        @extends gtk::Widget, adw::Bin;
+        @extends adw::Bin, gtk::Widget,
+        @implements gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget;
 }
 
 #[gtk::template_callbacks]

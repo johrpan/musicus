@@ -54,7 +54,8 @@ mod imp {
 
 glib::wrapper! {
     pub struct ErrorDialog(ObjectSubclass<imp::ErrorDialog>)
-        @extends gtk::Widget, adw::Dialog;
+        @extends adw::Dialog, gtk::Widget,
+        @implements gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget;
 }
 
 #[gtk::template_callbacks]

@@ -52,8 +52,8 @@ mod imp {
 
 glib::wrapper! {
     pub struct TranslationEntry(ObjectSubclass<imp::TranslationEntry>)
-        @extends gtk::Widget, gtk::ListBoxRow, adw::PreferencesRow, adw::EntryRow,
-        @implements gtk::Editable;
+        @extends adw::EntryRow, adw::PreferencesRow, gtk::ListBoxRow, gtk::Widget,
+        @implements gtk::Accessible, gtk::Actionable, gtk::Buildable, gtk::ConstraintTarget, gtk::Editable;
 }
 
 #[gtk::template_callbacks]

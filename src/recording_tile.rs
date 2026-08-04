@@ -102,7 +102,7 @@ mod imp {
 
                     let obj = obj.clone();
                     glib::spawn_future_local(async move {
-                        if dialog.choose_future(&obj).await == "delete" {
+                        if dialog.choose_future(Some(&obj)).await == "delete" {
                             if let Err(err) = obj.imp().library.get().unwrap().delete_recording_and_tracks(&obj.recording().recording_id) {
                                 util::error_toast("Failed to delete recording", err, obj.imp().toast_overlay.get().unwrap());
                             }
@@ -128,7 +128,8 @@ mod imp {
 
 glib::wrapper! {
     pub struct RecordingTile(ObjectSubclass<imp::RecordingTile>)
-        @extends gtk::Widget, gtk::FlowBoxChild;
+        @extends gtk::FlowBoxChild, gtk::Widget,
+        @implements gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget;
 }
 
 impl RecordingTile {

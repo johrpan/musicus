@@ -25,7 +25,8 @@ mod imp {
 glib::wrapper! {
     /// A simple helper widget for displaying a drag icon for a widget.
     pub struct DragWidget(ObjectSubclass<imp::DragWidget>)
-        @extends gtk::Widget, adw::Bin;
+        @extends adw::Bin, gtk::Widget,
+        @implements gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget;
 }
 
 impl DragWidget {

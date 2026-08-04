@@ -82,7 +82,8 @@ glib::wrapper! {
     /// A simple helper widget for connecting a signal handler to a single [`gtk::ListBoxRow`] for
     /// handling activation.
     pub struct ActivatableRow(ObjectSubclass<imp::ActivatableRow>)
-        @extends gtk::Widget, gtk::ListBoxRow;
+        @extends gtk::ListBoxRow, gtk::Widget,
+        @implements gtk::Actionable, gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget;
 }
 
 impl ActivatableRow {

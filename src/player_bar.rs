@@ -193,7 +193,8 @@ mod imp {
 
 glib::wrapper! {
     pub struct PlayerBar(ObjectSubclass<imp::PlayerBar>)
-        @extends gtk::Widget, adw::Bin;
+        @extends gtk::Box, gtk::Widget,
+        @implements gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget, gtk::Orientable;
 }
 
 #[gtk::template_callbacks]

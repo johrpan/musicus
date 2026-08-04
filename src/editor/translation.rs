@@ -47,7 +47,8 @@ mod imp {
 
 glib::wrapper! {
     pub struct TranslationEditor(ObjectSubclass<imp::TranslationEditor>)
-        @extends gtk::Widget, adw::PreferencesGroup;
+        @extends adw::Bin, gtk::Widget,
+        @implements gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget;
 }
 
 #[gtk::template_callbacks]

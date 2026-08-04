@@ -221,7 +221,7 @@ mod imp {
 
                 let obj = self.obj().to_owned();
                 glib::spawn_future_local(async move {
-                    if dialog.choose_future(&obj).await == "close" {
+                    if dialog.choose_future(Some(&obj)).await == "close" {
                         obj.destroy();
                     }
                 });
@@ -243,8 +243,8 @@ mod imp {
 
 glib::wrapper! {
     pub struct Window(ObjectSubclass<imp::Window>)
-        @extends gtk::Widget, gtk::Window, gtk::ApplicationWindow, adw::ApplicationWindow,
-        @implements gio::ActionGroup, gio::ActionMap;
+        @extends adw::ApplicationWindow, gtk::ApplicationWindow, gtk::Window, gtk::Widget,
+        @implements gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget, gio::ActionGroup, gio::ActionMap, gtk::Native, gtk::Root, gtk::ShortcutManager;
 }
 
 #[gtk::template_callbacks]

@@ -96,7 +96,8 @@ mod imp {
 
 glib::wrapper! {
     pub struct ProgramTile(ObjectSubclass<imp::ProgramTile>)
-        @extends gtk::Widget, gtk::FlowBoxChild;
+        @extends gtk::FlowBoxChild, gtk::Widget,
+        @implements gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget;
 }
 
 #[gtk::template_callbacks]

@@ -85,7 +85,8 @@ mod imp {
 
 glib::wrapper! {
     pub struct TracksEditorPartsPopover(ObjectSubclass<imp::TracksEditorPartsPopover>)
-        @extends gtk::Widget, gtk::Popover;
+        @extends gtk::Popover, gtk::Widget,
+        @implements gtk::ShortcutManager, gtk::Native, gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget;
 }
 
 #[gtk::template_callbacks]

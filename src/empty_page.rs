@@ -60,7 +60,8 @@ mod imp {
 
 glib::wrapper! {
     pub struct EmptyPage(ObjectSubclass<imp::EmptyPage>)
-        @extends gtk::Widget, adw::NavigationPage;
+        @extends adw::NavigationPage, gtk::Widget,
+        @implements gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget;
 }
 
 #[gtk::template_callbacks]
@@ -104,7 +105,7 @@ impl EmptyPage {
 
         let obj = self.to_owned();
         glib::spawn_future_local(async move {
-            if dialog.choose_future(&obj).await == "continue" {
+            if dialog.choose_future(Some(&obj)).await == "continue" {
                 obj.imp().download_button.set_visible(false);
 
                 let settings = gio::Settings::new(config::APP_ID);
