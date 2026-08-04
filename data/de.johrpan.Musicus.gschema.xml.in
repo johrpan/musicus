@@ -64,7 +64,7 @@
       <default>'https://musicus.johrpan.de/musicus_metadata_latest.musdb'</default>
       <summary>Custom URL for metadata downloads</summary>
     </key>
-    <key name="last-metadata-download-time" type="i">
+    <key name="last-metadata-download-time" type="x">
       <default>0</default>
       <summary>Last metadata download (Unix timestamp)</summary>
     </key>
