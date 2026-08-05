@@ -2,14 +2,16 @@ use std::cell::OnceCell;
 
 use adw::subclass::prelude::*;
 use gtk::{
-    glib,
+    gio, glib,
     glib::{subclass::Signal, Properties},
     prelude::*,
     ListScrollFlags,
 };
 use once_cell::sync::Lazy;
 
-use crate::{player::Player, playlist_tile::PlaylistTile};
+use crate::{
+    player::Player, playlist_tile::PlaylistTile, program::Program, program_section::ProgramSection,
+};
 
 mod imp {
     use super::*;
@@ -21,6 +23,10 @@ mod imp {
     pub struct PlaylistPage {
         #[property(get, construct_only)]
         pub player: OnceCell<Player>,
+
+        /// Contains the active program, if there is one, so that it is shown as the last row
+        /// after the playlist items.
+        pub program_model: OnceCell<gio::ListStore>,
 
         #[template_child]
         pub playlist: TemplateChild<gtk::ListView>,
@@ -54,36 +60,90 @@ mod imp {
         fn constructed(&self) {
             self.parent_constructed();
 
+            let player = self.player.get().unwrap();
+
+            let program_model = gio::ListStore::new::<Program>();
+            let models = gio::ListStore::with_type(gio::ListModel::static_type());
+            models.append(&player.playlist());
+            models.append(&program_model);
+            self.program_model.set(program_model).unwrap();
+
             self.playlist.set_model(Some(&gtk::NoSelection::new(Some(
-                self.player.get().unwrap().playlist(),
+                gtk::FlattenListModel::new(Some(models)),
             ))));
 
             let factory = gtk::SignalListItemFactory::new();
 
-            factory.connect_setup(|_, item| {
+            let player = player.to_owned();
+            factory.connect_bind(move |_, item| {
                 let item = item.downcast_ref::<gtk::ListItem>().unwrap();
-                item.set_child(Some(&PlaylistTile::new()));
-            });
 
-            factory.connect_bind(|_, item| {
-                let item = item.downcast_ref::<gtk::ListItem>().unwrap();
-                let tile = item.child().and_downcast::<PlaylistTile>().unwrap();
-                let playlist_item = item.item().and_downcast::<PlaylistItem>().unwrap();
-                tile.set_item(Some(&playlist_item));
+                if let Some(playlist_item) = item.item().and_downcast::<PlaylistItem>() {
+                    let tile = match item.child().and_downcast::<PlaylistTile>() {
+                        Some(tile) => tile,
+                        None => {
+                            let tile = PlaylistTile::new();
+                            item.set_child(Some(&tile));
+                            tile
+                        }
+                    };
+
+                    tile.set_item(Some(&playlist_item));
+
+                    // The list item may have been used for the program before.
+                    item.set_activatable(true);
+                    item.set_selectable(true);
+                } else if let Some(program) = item.item().and_downcast::<Program>() {
+                    let section = match item.child().and_downcast::<ProgramSection>() {
+                        Some(section) => section,
+                        None => {
+                            let section = ProgramSection::new(&player);
+                            item.set_child(Some(&section));
+                            section
+                        }
+                    };
+
+                    section.set_program(&program);
+
+                    // The program is not a playlist item that could be played.
+                    item.set_activatable(false);
+                    item.set_selectable(false);
+                }
             });
 
             factory.connect_unbind(|_, item| {
                 let item = item.downcast_ref::<gtk::ListItem>().unwrap();
-                let tile = item.child().and_downcast::<PlaylistTile>().unwrap();
-                tile.set_item(None);
+                if let Some(tile) = item.child().and_downcast::<PlaylistTile>() {
+                    tile.set_item(None);
+                }
             });
 
             self.playlist.set_factory(Some(&factory));
+
+            self.update_program();
+
+            let obj = self.obj().to_owned();
+            self.player
+                .get()
+                .unwrap()
+                .connect_program_notify(move |_| obj.imp().update_program());
         }
     }
 
     impl WidgetImpl for PlaylistPage {}
     impl BinImpl for PlaylistPage {}
+
+    impl PlaylistPage {
+        /// Show the active program after the playlist items or nothing, if there is none.
+        fn update_program(&self) {
+            let program_model = self.program_model.get().unwrap();
+            program_model.remove_all();
+
+            if let Some(program) = self.player.get().unwrap().program() {
+                program_model.append(&program);
+            }
+        }
+    }
 }
 
 glib::wrapper! {

@@ -4,10 +4,14 @@ use anyhow::Result;
 use chrono::prelude::*;
 use diesel::{dsl::exists, prelude::*, sql_types, QueryDsl};
 
+use formatx::formatx;
+use gettextrs::gettext;
+
 use super::{metadata::SearchItem, Library};
 use crate::{
     db::{self, models::*, schema::*, tables},
     program::Program,
+    tag_tile::Tag,
 };
 
 #[derive(Clone, Default, Debug)]
@@ -26,6 +30,84 @@ impl LibraryQuery {
             && self.ensemble.is_none()
             && self.instrument.is_none()
             && self.work.is_none()
+    }
+
+    /// The item that the query is mainly about, if there is one.
+    pub fn highlight(&self) -> Option<Tag> {
+        if let Some(work) = &self.work {
+            Some(Tag::Work(work.to_owned()))
+        } else if let Some(person) = &self.composer {
+            Some(Tag::Composer(person.to_owned()))
+        } else if let Some(person) = &self.performer {
+            Some(Tag::Performer(person.to_owned()))
+        } else if let Some(ensemble) = &self.ensemble {
+            Some(Tag::Ensemble(ensemble.to_owned()))
+        } else if let Some(instrument) = &self.instrument {
+            Some(Tag::Instrument(instrument.to_owned()))
+        } else {
+            None
+        }
+    }
+
+    /// A short name for what the query selects, based on its [`Self::highlight`].
+    pub fn title(&self) -> Option<String> {
+        Some(match self.highlight()? {
+            Tag::Work(work) => work.name.get().to_owned(),
+            Tag::Composer(person) | Tag::Performer(person) => person.name.get().to_owned(),
+            Tag::Ensemble(ensemble) => ensemble.name.get().to_owned(),
+            Tag::Instrument(instrument) => {
+                formatx!(gettext("Music for {}"), instrument.name.get()).unwrap()
+            }
+        })
+    }
+
+    /// The parts of the query that are not already covered by its [`Self::title`].
+    pub fn description(&self) -> Option<String> {
+        let mut details = Vec::new();
+
+        match self.highlight()? {
+            Tag::Work(work) => return work.composers_string(),
+            Tag::Composer(_) => {
+                if let Some(instrument) = &self.instrument {
+                    details.push(formatx!(gettext("Works with {}"), instrument).unwrap());
+                }
+
+                if let (Some(person), Some(ensemble)) = (&self.performer, &self.ensemble) {
+                    details.push(
+                        formatx!(gettext("Performed by {} and {}"), person, ensemble).unwrap(),
+                    );
+                } else if let Some(person) = &self.performer {
+                    details.push(formatx!(gettext("Performed by {}"), person).unwrap());
+                } else if let Some(ensemble) = &self.ensemble {
+                    details.push(formatx!(gettext("Performed by {}"), ensemble).unwrap());
+                }
+            }
+            Tag::Performer(_) => {
+                if let Some(instrument) = &self.instrument {
+                    details.push(formatx!(gettext("Works with {}"), instrument).unwrap());
+                }
+
+                if let Some(ensemble) = &self.ensemble {
+                    details.push(formatx!(gettext("Performed with {}"), ensemble).unwrap());
+                }
+            }
+            Tag::Ensemble(ensemble) => {
+                if let Some(instrument) = &self.instrument {
+                    details.push(formatx!(gettext("Works with {}"), instrument).unwrap());
+                }
+
+                if let Some(members) = ensemble.members_string() {
+                    details.push(formatx!(gettext("Members: {}"), members).unwrap());
+                }
+            }
+            Tag::Instrument(_) => (),
+        }
+
+        if details.is_empty() {
+            None
+        } else {
+            Some(details.join(", "))
+        }
     }
 }
 

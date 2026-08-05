@@ -4,6 +4,7 @@ use std::{
 };
 
 use anyhow::Result;
+use gettextrs::gettext;
 use gtk::{gio, glib, glib::Properties, prelude::*, subclass::prelude::*};
 use serde::{Deserialize, Serialize};
 
@@ -86,6 +87,16 @@ impl Program {
         let settings = gio::Settings::new(config::APP_ID);
 
         glib::Object::builder()
+            .property(
+                "title",
+                query.title().unwrap_or_else(|| gettext("Whole library")),
+            )
+            .property(
+                "description",
+                query
+                    .description()
+                    .unwrap_or_else(|| gettext("Randomly selected music")),
+            )
             .property(
                 "composer-id",
                 query.composer.as_ref().map(|p| p.person_id.clone()),

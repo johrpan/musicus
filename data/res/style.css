@@ -64,6 +64,15 @@
   font-weight: bold;
 }
 
+.program-section-tile {
+  padding: 12px
+}
+
+.program-section-tile .title {
+  font-size: larger;
+  font-weight: bold;
+}
+
 .program-design-button {
   min-width: 24px;
   min-height: 24px;

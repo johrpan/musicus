@@ -1,8 +1,6 @@
 use std::cell::{OnceCell, RefCell};
 
 use adw::subclass::{navigation_page::NavigationPageImpl, prelude::*};
-use formatx::formatx;
-use gettextrs::gettext;
 use gtk::{
     gio,
     glib::{self, Properties},
@@ -391,87 +389,19 @@ impl SearchPage {
         imp.header_bar.set_show_title(query.is_empty());
         imp.header_box.set_visible(!query.is_empty());
 
-        let highlight = if let Some(work) = &query.work {
-            imp.title_label.set_text(work.name.get());
-            if let Some(composers) = work.composers_string() {
-                imp.subtitle_label.set_text(&composers);
-                imp.subtitle_label.set_visible(true);
-            } else {
-                imp.subtitle_label.set_visible(false);
-            }
-            Some(Tag::Work(work.to_owned()))
-        } else if let Some(person) = &query.composer {
-            imp.title_label.set_text(person.name.get());
-            imp.subtitle_label.set_visible(false);
-            Some(Tag::Composer(person.to_owned()))
-        } else if let Some(person) = &query.performer {
-            imp.title_label.set_text(person.name.get());
-            imp.subtitle_label.set_visible(false);
-            Some(Tag::Performer(person.to_owned()))
-        } else if let Some(ensemble) = &query.ensemble {
-            imp.title_label.set_text(ensemble.name.get());
-            imp.subtitle_label.set_visible(false);
-            Some(Tag::Ensemble(ensemble.to_owned()))
-        } else if let Some(instrument) = &query.instrument {
-            imp.title_label
-                .set_text(&formatx!(gettext("Music for {}"), &instrument.name.get()).unwrap());
-            imp.subtitle_label.set_visible(false);
-            Some(Tag::Instrument(instrument.to_owned()))
-        } else {
-            None
-        };
-
-        if let Some(highlight) = &highlight {
-            if !matches!(highlight, Tag::Work(_)) {
-                let mut details = Vec::new();
-
-                match highlight {
-                    Tag::Composer(_) => {
-                        if let Some(instrument) = &query.instrument {
-                            details.push(formatx!(gettext("Works with {}"), instrument).unwrap());
-                        }
-
-                        if let (Some(person), Some(ensemble)) = (&query.performer, &query.ensemble)
-                        {
-                            details.push(
-                                formatx!(gettext("Performed by {} and {}"), person, ensemble)
-                                    .unwrap(),
-                            );
-                        } else if let Some(person) = &query.performer {
-                            details.push(formatx!(gettext("Performed by {}"), person).unwrap());
-                        } else if let Some(ensemble) = &query.ensemble {
-                            details.push(formatx!(gettext("Performed by {}"), ensemble).unwrap());
-                        }
-                    }
-                    Tag::Performer(_) => {
-                        if let Some(instrument) = &query.instrument {
-                            details.push(formatx!(gettext("Works with {}"), instrument).unwrap());
-                        }
-
-                        if let Some(ensemble) = &query.ensemble {
-                            details.push(formatx!(gettext("Performed with {}"), ensemble).unwrap());
-                        }
-                    }
-                    Tag::Ensemble(ensemble) => {
-                        if let Some(instrument) = &query.instrument {
-                            details.push(formatx!(gettext("Works with {}"), instrument).unwrap());
-                        }
-
-                        if let Some(members) = ensemble.members_string() {
-                            details.push(formatx!(gettext("Members: {}"), members).unwrap());
-                        }
-                    }
-                    Tag::Instrument(_) => (),
-                    // Already covered.
-                    Tag::Work(_) => unreachable!(),
-                }
-
-                imp.subtitle_label.set_visible(!details.is_empty());
-                imp.subtitle_label.set_text(&details.join(", "));
-            }
+        if let Some(title) = query.title() {
+            imp.title_label.set_text(&title);
         }
 
-        imp.highlight.replace(highlight);
+        match query.description() {
+            Some(description) => {
+                imp.subtitle_label.set_text(&description);
+                imp.subtitle_label.set_visible(true);
+            }
+            None => imp.subtitle_label.set_visible(false),
+        }
+
+        imp.highlight.replace(query.highlight());
 
         if results.is_empty() {
             imp.stack.set_visible_child_name("empty");

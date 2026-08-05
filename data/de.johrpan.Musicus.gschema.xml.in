@@ -39,7 +39,7 @@
     </key>
     <key name="program1" type="s">
       <!-- Translators: Configuration for the default programs in JSON. Please only translate the values of "title" and "description". -->
-      <default l10n="messages">'{"title":"Just play some music","description":"Randomly select some music. Customize programs using the button in the top right.","design":"Slate","prefer_recently_added":0.0,"prefer_least_recently_played":0.1,"avoid_repeated_composers":60,"avoid_repeated_instruments":60,"play_full_recordings":true}'</default>
+      <default l10n="messages">'{"title":"Just play some music","description":"Randomly select some music from across the whole library.","design":"Slate","prefer_recently_added":0.0,"prefer_least_recently_played":0.1,"avoid_repeated_composers":60,"avoid_repeated_instruments":60,"play_full_recordings":true}'</default>
       <summary>Default settings for program 1</summary>
     </key>
     <key name="program2" type="s">

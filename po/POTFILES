@@ -4,6 +4,7 @@ data/ui/album_tile.blp
 data/ui/player_bar.blp
 data/ui/playlist_page.blp
 data/ui/playlist_tile.blp
+data/ui/program_section.blp
 data/ui/program_tile.blp
 data/ui/search_tag.blp
 data/ui/tag_tile.blp
@@ -76,6 +77,7 @@ src/playlist_item.rs
 src/playlist_page.rs
 src/playlist_tile.rs
 src/program.rs
+src/program_section.rs
 src/program_tile.rs
 src/search_tag.rs
 src/tag_tile.rs

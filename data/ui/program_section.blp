@@ -1,0 +1,67 @@
+using Gtk 4.0;
+using Adw 1;
+
+template $MusicusProgramSection: Adw.Bin {
+  Gtk.Box {
+    orientation: vertical;
+    spacing: 12;
+    margin-top: 60;
+
+    Gtk.Label {
+      label: _("Currently playing");
+      xalign: 0.0;
+
+      styles [
+        "heading"
+      ]
+    }
+
+    Adw.Bin card {
+      styles [
+        "program-section-tile",
+        "card",
+      ]
+
+      Gtk.Box {
+        spacing: 6;
+
+        Gtk.Box {
+          orientation: vertical;
+          spacing: 6;
+          margin-top: 6;
+          margin-bottom: 6;
+          margin-start: 6;
+
+          Gtk.Label title_label {
+            hexpand: true;
+            xalign: 0.0;
+            wrap: true;
+            max-width-chars: 0;
+
+            styles [
+              "title",
+            ]
+          }
+
+          Gtk.Label description_label {
+            xalign: 0.0;
+            wrap: true;
+            max-width-chars: 0;
+          }
+        }
+
+        Gtk.Button cancel_button {
+          valign: start;
+          icon-name: "window-close-symbolic";
+          tooltip-text: _("Cancel program");
+          clicked => $cancel() swapped;
+
+          styles [
+            "flat",
+            "circular",
+          ]
+        }
+      }
+    }
+  }
+}

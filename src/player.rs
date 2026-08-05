@@ -327,6 +327,13 @@ impl Player {
         }
     }
 
+    /// Stop generating new playlist items from the current program. Neither the current playback
+    /// nor the items that are already part of the playlist will be affected.
+    pub fn cancel_program(&self) {
+        self.imp().program.replace(None);
+        self.notify_program();
+    }
+
     pub fn play_pause(&self) {
         if self.playing() {
             self.pause();

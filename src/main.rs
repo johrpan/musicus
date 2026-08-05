@@ -17,6 +17,7 @@ mod process;
 mod process_manager;
 mod process_row;
 mod program;
+mod program_section;
 mod program_tile;
 mod recording_tile;
 mod search_page;
