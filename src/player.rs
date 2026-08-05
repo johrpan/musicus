@@ -222,24 +222,62 @@ impl Player {
             return Vec::new();
         }
 
+        let tracks = tracks
+            .iter()
+            .enumerate()
+            .map(|(index, track)| (track, index + 1))
+            .collect::<Vec<(&Track, usize)>>();
+
+        let part_titles = tracks.len() > 1;
+        self.tracks_to_playlist(recording, &tracks, part_titles)
+    }
+
+    /// Create playlist items for one randomly selected track of `recording`.
+    pub fn recording_to_playlist_single_track(&self, recording: &Recording) -> Vec<PlaylistItem> {
+        let tracks = &self
+            .library()
+            .unwrap()
+            .tracks_for_recording(&recording.recording_id)
+            .unwrap();
+
+        if tracks.is_empty() {
+            log::warn!("Recording without tracks: {}.", &recording.recording_id);
+            return Vec::new();
+        }
+
+        let index = glib::random_int_range(0, tracks.len() as i32) as usize;
+
+        // The track is presented as a part of the recording, unless it is the only one.
+        let part_titles = tracks.len() > 1;
+
+        self.tracks_to_playlist(recording, &[(&tracks[index], index + 1)], part_titles)
+    }
+
+    /// Create playlist items for the provided tracks of `recording`. Each track is accompanied by
+    /// its one based number within the recording. The first item will be marked as the title item.
+    /// If `part_titles` is set, the items will be titled by their respective part of the work.
+    fn tracks_to_playlist(
+        &self,
+        recording: &Recording,
+        tracks: &[(&Track, usize)],
+        part_titles: bool,
+    ) -> Vec<PlaylistItem> {
         let performances = recording.performers_string();
 
         let mut items = Vec::new();
 
-        if tracks.len() == 1 {
+        if !part_titles {
+            let (track, _) = tracks[0];
             items.push(PlaylistItem::new(
                 true,
                 recording.work.composers_string(),
                 recording.work.name.get(),
                 Some(&performances),
                 None,
-                self.library_path_to_file_path(&tracks[0].path),
-                &tracks[0].track_id,
+                self.library_path_to_file_path(&track.path),
+                &track.track_id,
             ));
         } else {
-            let mut tracks = tracks.iter();
-            let first_track = tracks.next().unwrap();
-
             let track_title = |track: &Track, number: usize| -> String {
                 let title = track
                     .works
@@ -255,24 +293,13 @@ impl Player {
                 }
             };
 
-            items.push(PlaylistItem::new(
-                true,
-                recording.work.composers_string(),
-                recording.work.name.get(),
-                Some(&performances),
-                Some(&track_title(first_track, 1)),
-                self.library_path_to_file_path(&first_track.path),
-                &first_track.track_id,
-            ));
-
-            for (index, track) in tracks.enumerate() {
+            for (index, (track, number)) in tracks.iter().enumerate() {
                 items.push(PlaylistItem::new(
-                    false,
+                    index == 0,
                     recording.work.composers_string(),
                     recording.work.name.get(),
                     Some(&performances),
-                    // track number = track index + 1 (first track) + 1 (zero based)
-                    Some(&track_title(track, index + 2)),
+                    Some(&track_title(track, *number)),
                     self.library_path_to_file_path(&track.path),
                     &track.track_id,
                 ));
@@ -485,7 +512,12 @@ impl Player {
             .generate_recording(program)
             .context("Failed to generate playlist items from program")?;
 
-        let playlist = self.recording_to_playlist(&recording);
+        let playlist = if program.play_full_recordings() {
+            self.recording_to_playlist(&recording)
+        } else {
+            self.recording_to_playlist_single_track(&recording)
+        };
+
         self.append(playlist)
     }
 
