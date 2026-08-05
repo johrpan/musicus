@@ -1,7 +1,7 @@
 use std::{
     cell::{OnceCell, RefCell},
     path::{Path, PathBuf},
-    sync::{Arc, Mutex},
+    sync::{Arc, Mutex, MutexGuard},
 };
 
 use adw::{
@@ -65,10 +65,14 @@ impl Library {
         Ok(obj)
     }
 
+    fn conn(&self) -> MutexGuard<'_, SqliteConnection> {
+        db::lock_connection(self.imp().connection.get().unwrap())
+    }
+
     /// Whether this library is empty. The library is considered empty, if
     /// there are no tracks.
     pub fn is_empty(&self) -> Result<bool> {
-        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
+        let connection = &mut *self.conn();
         Ok(tracks::table
             .first::<tables::Track>(connection)
             .optional()?

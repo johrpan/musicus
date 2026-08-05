@@ -2,7 +2,11 @@ pub mod models;
 pub mod schema;
 pub mod tables;
 
-use std::{collections::HashMap, fmt::Display};
+use std::{
+    collections::HashMap,
+    fmt::Display,
+    sync::{Mutex, MutexGuard},
+};
 
 use anyhow::{anyhow, Result};
 use diesel::{
@@ -41,6 +45,10 @@ pub fn connect(file_name: &str) -> Result<SqliteConnection> {
 /// Generate a random string suitable as an item ID.
 pub fn generate_id() -> String {
     uuid::Uuid::new_v4().simple().to_string()
+}
+
+pub fn lock_connection(connection: &Mutex<SqliteConnection>) -> MutexGuard<'_, SqliteConnection> {
+    connection.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
 }
 
 /// A single translated string value.

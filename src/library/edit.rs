@@ -4,7 +4,6 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use adw::subclass::prelude::*;
 use anyhow::{Error, Result};
 use chrono::prelude::*;
 use diesel::{prelude::*, QueryDsl, SqliteConnection};
@@ -20,7 +19,7 @@ use crate::db::{
 
 impl Library {
     pub fn create_person(&self, name: TranslatedString, enable_updates: bool) -> Result<Person> {
-        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
+        let connection = &mut *self.conn();
 
         let now = Local::now().naive_local();
 
@@ -50,7 +49,7 @@ impl Library {
         name: TranslatedString,
         enable_updates: bool,
     ) -> Result<()> {
-        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
+        let connection = &mut *self.conn();
 
         let now = Local::now().naive_local();
 
@@ -70,7 +69,7 @@ impl Library {
     }
 
     pub fn delete_person(&self, person_id: &str) -> Result<()> {
-        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
+        let connection = &mut *self.conn();
 
         diesel::delete(persons::table)
             .filter(persons::person_id.eq(person_id))
@@ -86,7 +85,7 @@ impl Library {
         name: TranslatedString,
         enable_updates: bool,
     ) -> Result<Instrument> {
-        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
+        let connection = &mut *self.conn();
 
         let now = Local::now().naive_local();
 
@@ -116,7 +115,7 @@ impl Library {
         name: TranslatedString,
         enable_updates: bool,
     ) -> Result<()> {
-        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
+        let connection = &mut *self.conn();
 
         let now = Local::now().naive_local();
 
@@ -136,7 +135,7 @@ impl Library {
     }
 
     pub fn delete_instrument(&self, instrument_id: &str) -> Result<()> {
-        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
+        let connection = &mut *self.conn();
 
         diesel::delete(instruments::table)
             .filter(instruments::instrument_id.eq(instrument_id))
@@ -148,7 +147,7 @@ impl Library {
     }
 
     pub fn create_role(&self, name: TranslatedString, enable_updates: bool) -> Result<Role> {
-        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
+        let connection = &mut *self.conn();
 
         let now = Local::now().naive_local();
 
@@ -177,7 +176,7 @@ impl Library {
         name: TranslatedString,
         enable_updates: bool,
     ) -> Result<()> {
-        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
+        let connection = &mut *self.conn();
 
         let now = Local::now().naive_local();
 
@@ -197,7 +196,7 @@ impl Library {
     }
 
     pub fn delete_role(&self, role_id: &str) -> Result<()> {
-        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
+        let connection = &mut *self.conn();
 
         diesel::delete(roles::table)
             .filter(roles::role_id.eq(role_id))
@@ -216,7 +215,7 @@ impl Library {
         instruments: Vec<Instrument>,
         enable_updates: bool,
     ) -> Result<Work> {
-        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
+        let connection = &mut *self.conn();
 
         let work = connection.transaction::<Work, Error, _>(|connection| {
             Self::create_work_priv(
@@ -318,7 +317,7 @@ impl Library {
         instruments: Vec<Instrument>,
         enable_updates: bool,
     ) -> Result<()> {
-        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
+        let connection = &mut *self.conn();
 
         connection.transaction::<(), Error, _>(|connection| {
             Self::update_work_priv(
@@ -443,7 +442,7 @@ impl Library {
     }
 
     pub fn delete_work(&self, work_id: &str) -> Result<()> {
-        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
+        let connection = &mut *self.conn();
 
         diesel::delete(works::table)
             .filter(works::work_id.eq(work_id))
@@ -460,7 +459,7 @@ impl Library {
         persons: Vec<(Person, Option<Instrument>)>,
         enable_updates: bool,
     ) -> Result<Ensemble> {
-        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
+        let connection = &mut *self.conn();
 
         let now = Local::now().naive_local();
 
@@ -506,7 +505,7 @@ impl Library {
         persons: Vec<(Person, Option<Instrument>)>,
         enable_updates: bool,
     ) -> Result<()> {
-        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
+        let connection = &mut *self.conn();
 
         let now = Local::now().naive_local();
 
@@ -543,7 +542,7 @@ impl Library {
     }
 
     pub fn delete_ensemble(&self, ensemble_id: &str) -> Result<()> {
-        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
+        let connection = &mut *self.conn();
 
         diesel::delete(ensembles::table)
             .filter(ensembles::ensemble_id.eq(ensemble_id))
@@ -562,7 +561,7 @@ impl Library {
         ensembles: Vec<EnsemblePerformer>,
         enable_updates: bool,
     ) -> Result<Recording> {
-        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
+        let connection = &mut *self.conn();
 
         let recording = connection.transaction::<Recording, Error, _>(|connection| {
             let recording_id = db::generate_id();
@@ -628,7 +627,7 @@ impl Library {
         ensembles: Vec<EnsemblePerformer>,
         enable_updates: bool,
     ) -> Result<()> {
-        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
+        let connection = &mut *self.conn();
 
         connection.transaction::<(), Error, _>(|connection| {
             let now = Local::now().naive_local();
@@ -688,7 +687,7 @@ impl Library {
     }
 
     pub fn delete_recording(&self, recording_id: &str) -> Result<()> {
-        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
+        let connection = &mut *self.conn();
 
         diesel::delete(recordings::table)
             .filter(recordings::recording_id.eq(recording_id))
@@ -700,7 +699,7 @@ impl Library {
     }
 
     pub fn delete_recording_and_tracks(&self, recording_id: &str) -> Result<()> {
-        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
+        let connection = &mut *self.conn();
 
         let tracks = tracks::table
             .filter(tracks::recording_id.eq(recording_id))
@@ -743,7 +742,7 @@ impl Library {
         recordings: Vec<Recording>,
         enable_updates: bool,
     ) -> Result<Album> {
-        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
+        let connection = &mut *self.conn();
 
         let album = connection.transaction::<Album, Error, _>(|connection| {
             let album_id = db::generate_id();
@@ -791,7 +790,7 @@ impl Library {
         recordings: Vec<Recording>,
         enable_updates: bool,
     ) -> Result<()> {
-        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
+        let connection = &mut *self.conn();
 
         connection.transaction::<(), Error, _>(|connection| {
             let now = Local::now().naive_local();
@@ -831,7 +830,7 @@ impl Library {
     }
 
     pub fn delete_album(&self, album_id: &str) -> Result<()> {
-        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
+        let connection = &mut *self.conn();
 
         diesel::delete(albums::table)
             .filter(albums::album_id.eq(album_id))
@@ -851,7 +850,7 @@ impl Library {
         recording_index: i32,
         works: Vec<Work>,
     ) -> Result<()> {
-        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
+        let connection = &mut *self.conn();
 
         let track_id = db::generate_id();
         let now = Local::now().naive_local();
@@ -909,7 +908,7 @@ impl Library {
 
     // TODO: Support mediums, think about albums.
     pub fn delete_track(&self, track: &Track) -> Result<()> {
-        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
+        let connection = &mut *self.conn();
 
         // Delete from the database first to avoid orphan tracks in case of file system
         // related errors.
@@ -940,7 +939,7 @@ impl Library {
         recording_index: i32,
         works: Vec<Work>,
     ) -> Result<()> {
-        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
+        let connection = &mut *self.conn();
 
         connection.transaction::<(), Error, _>(|connection| {
             let now = Local::now().naive_local();

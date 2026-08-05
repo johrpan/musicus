@@ -1,13 +1,12 @@
 use std::collections::HashSet;
 
-use adw::subclass::prelude::*;
 use anyhow::Result;
 use chrono::prelude::*;
 use diesel::{dsl::exists, prelude::*, sql_types, QueryDsl};
 
 use super::{metadata::SearchItem, Library};
 use crate::{
-    db::{models::*, schema::*, tables},
+    db::{self, models::*, schema::*, tables},
     program::Program,
 };
 
@@ -56,7 +55,7 @@ impl LibraryResults {
 impl Library {
     pub fn search(&self, query: &LibraryQuery, search: &str) -> Result<LibraryResults> {
         let search = format!("%{}%", search);
-        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
+        let connection = &mut *self.conn();
 
         Ok(match query {
             LibraryQuery { work: None, .. } => {
@@ -438,7 +437,7 @@ impl Library {
     }
 
     pub fn generate_recording(&self, program: &Program) -> Result<Recording> {
-        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
+        let connection = &mut *self.conn();
 
         let composer_id = program.composer_id();
         let performer_id = program.performer_id();
@@ -580,7 +579,7 @@ impl Library {
     }
 
     pub fn tracks_for_recording(&self, recording_id: &str) -> Result<Vec<Track>> {
-        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
+        let connection = &mut *self.conn();
 
         let tracks = tracks::table
             .order(tracks::recording_index)
@@ -595,7 +594,7 @@ impl Library {
     }
 
     pub fn track_played(&self, track_id: &str) -> Result<()> {
-        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
+        let connection = &mut *self.conn();
 
         let now = Local::now().naive_local();
 
@@ -720,7 +719,7 @@ impl Library {
 
     pub fn search_persons(&self, search: &str) -> Result<Vec<SearchItem<Person>>> {
         let search = format!("%{}%", search);
-        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
+        let connection = &mut *self.conn();
 
         let persons: Vec<Person> = persons::table
             .order(persons::last_used_at.desc())
@@ -737,7 +736,7 @@ impl Library {
             .collect();
 
         if let Some(metadata_connection) = self.metadata_connection() {
-            let metadata_connection = &mut *metadata_connection.lock().unwrap();
+            let metadata_connection = &mut *db::lock_connection(&metadata_connection);
 
             let metadata_persons: Vec<Person> = persons::table
                 .filter(persons::name.like(&search))
@@ -770,7 +769,7 @@ impl Library {
 
     pub fn search_roles(&self, search: &str) -> Result<Vec<SearchItem<Role>>> {
         let search = format!("%{}%", search);
-        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
+        let connection = &mut *self.conn();
 
         let roles: Vec<Role> = roles::table
             .order(roles::last_used_at.desc())
@@ -787,7 +786,7 @@ impl Library {
             .collect();
 
         if let Some(metadata_connection) = self.metadata_connection() {
-            let metadata_connection = &mut *metadata_connection.lock().unwrap();
+            let metadata_connection = &mut *db::lock_connection(&metadata_connection);
 
             let metadata_roles: Vec<Role> = roles::table
                 .filter(roles::name.like(&search))
@@ -818,7 +817,7 @@ impl Library {
 
     pub fn search_instruments(&self, search: &str) -> Result<Vec<SearchItem<Instrument>>> {
         let search = format!("%{}%", search);
-        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
+        let connection = &mut *self.conn();
 
         let instruments: Vec<Instrument> = instruments::table
             .order(instruments::last_used_at.desc())
@@ -835,7 +834,7 @@ impl Library {
             .collect();
 
         if let Some(metadata_connection) = self.metadata_connection() {
-            let metadata_connection = &mut *metadata_connection.lock().unwrap();
+            let metadata_connection = &mut *db::lock_connection(&metadata_connection);
 
             let metadata_instruments: Vec<Instrument> = instruments::table
                 .filter(instruments::name.like(&search))
@@ -868,7 +867,7 @@ impl Library {
 
     pub fn search_works(&self, composer: &Person, search: &str) -> Result<Vec<SearchItem<Work>>> {
         let search = format!("%{}%", search);
-        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
+        let connection = &mut *self.conn();
 
         let works: Vec<tables::Work> = works::table
             .left_join(work_persons::table)
@@ -893,7 +892,7 @@ impl Library {
             .collect::<Result<Vec<SearchItem<Work>>>>()?;
 
         if let Some(metadata_connection) = self.metadata_connection() {
-            let metadata_connection = &mut *metadata_connection.lock().unwrap();
+            let metadata_connection = &mut *db::lock_connection(&metadata_connection);
 
             let metadata_works: Vec<tables::Work> = works::table
                 .left_join(work_persons::table)
@@ -936,7 +935,7 @@ impl Library {
         search: &str,
     ) -> Result<Vec<SearchItem<Recording>>> {
         let search = format!("%{}%", search);
-        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
+        let connection = &mut *self.conn();
 
         let recordings: Vec<tables::Recording> = recordings::table
             .left_join(recording_persons::table.inner_join(persons::table))
@@ -964,7 +963,7 @@ impl Library {
             .collect::<Result<Vec<SearchItem<Recording>>>>()?;
 
         if let Some(metadata_connection) = self.metadata_connection() {
-            let metadata_connection = &mut *metadata_connection.lock().unwrap();
+            let metadata_connection = &mut *db::lock_connection(&metadata_connection);
 
             let metadata_recordings: Vec<tables::Recording> = recordings::table
                 .left_join(recording_persons::table.inner_join(persons::table))
@@ -1008,7 +1007,7 @@ impl Library {
 
     pub fn search_ensembles(&self, search: &str) -> Result<Vec<SearchItem<Ensemble>>> {
         let search = format!("%{}%", search);
-        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
+        let connection = &mut *self.conn();
 
         let ensembles: Vec<tables::Ensemble> = ensembles::table
             .order(ensembles::last_used_at.desc())
@@ -1033,7 +1032,7 @@ impl Library {
             .collect::<Result<Vec<SearchItem<Ensemble>>>>()?;
 
         if let Some(metadata_connection) = self.metadata_connection() {
-            let metadata_connection = &mut *metadata_connection.lock().unwrap();
+            let metadata_connection = &mut *db::lock_connection(&metadata_connection);
 
             let metadata_ensembles: Vec<tables::Ensemble> = ensembles::table
                 .left_join(ensemble_persons::table.inner_join(persons::table))

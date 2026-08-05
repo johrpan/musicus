@@ -71,7 +71,7 @@ impl Library {
             "Exporting library to ZIP at {}",
             path.as_ref().to_string_lossy()
         );
-        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
+        let connection = &mut *self.conn();
 
         let path = path.as_ref().to_owned();
         let library_folder = PathBuf::from(&self.folder());
@@ -330,7 +330,7 @@ fn update_metadata_from_file(
     let album_recordings =
         album_recordings::table.load::<tables::AlbumRecording>(&mut other_connection)?;
 
-    let mut this_connection = this_connection.lock().unwrap();
+    let mut this_connection = db::lock_connection(&this_connection);
 
     this_connection.transaction::<(), Error, _>(|connection| {
         for person in persons {
@@ -572,7 +572,7 @@ fn import_metadata_from_file(
 
     // Import metadata that is not already present.
 
-    let mut this_connection = this_connection.lock().unwrap();
+    let mut this_connection = db::lock_connection(&this_connection);
 
     this_connection.transaction::<(), Error, _>(|connection| {
         for mut person in persons {

@@ -47,8 +47,8 @@ impl Library {
         let metadata_connection = self
             .metadata_connection()
             .ok_or_else(|| anyhow!("No metadata database available"))?;
-        let metadata_connection = &mut *metadata_connection.lock().unwrap();
-        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
+        let metadata_connection = &mut *db::lock_connection(&metadata_connection);
+        let connection = &mut *self.conn();
 
         copy_person(metadata_connection, connection, person_id)?;
 
@@ -65,8 +65,8 @@ impl Library {
         let metadata_connection = self
             .metadata_connection()
             .ok_or_else(|| anyhow!("No metadata database available"))?;
-        let metadata_connection = &mut *metadata_connection.lock().unwrap();
-        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
+        let metadata_connection = &mut *db::lock_connection(&metadata_connection);
+        let connection = &mut *self.conn();
 
         copy_role(metadata_connection, connection, role_id)?;
 
@@ -83,8 +83,8 @@ impl Library {
         let metadata_connection = self
             .metadata_connection()
             .ok_or_else(|| anyhow!("No metadata database available"))?;
-        let metadata_connection = &mut *metadata_connection.lock().unwrap();
-        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
+        let metadata_connection = &mut *db::lock_connection(&metadata_connection);
+        let connection = &mut *self.conn();
 
         copy_instrument(metadata_connection, connection, instrument_id)?;
 
@@ -101,8 +101,8 @@ impl Library {
         let metadata_connection = self
             .metadata_connection()
             .ok_or_else(|| anyhow!("No metadata database available"))?;
-        let metadata_connection = &mut *metadata_connection.lock().unwrap();
-        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
+        let metadata_connection = &mut *db::lock_connection(&metadata_connection);
+        let connection = &mut *self.conn();
 
         copy_ensemble(metadata_connection, connection, ensemble_id)?;
 
@@ -121,8 +121,8 @@ impl Library {
         let metadata_connection = self
             .metadata_connection()
             .ok_or_else(|| anyhow!("No metadata database available"))?;
-        let metadata_connection = &mut *metadata_connection.lock().unwrap();
-        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
+        let metadata_connection = &mut *db::lock_connection(&metadata_connection);
+        let connection = &mut *self.conn();
 
         copy_work(metadata_connection, connection, work_id)?;
 
@@ -141,8 +141,8 @@ impl Library {
         let metadata_connection = self
             .metadata_connection()
             .ok_or_else(|| anyhow!("No metadata database available"))?;
-        let metadata_connection = &mut *metadata_connection.lock().unwrap();
-        let connection = &mut *self.imp().connection.get().unwrap().lock().unwrap();
+        let metadata_connection = &mut *db::lock_connection(&metadata_connection);
+        let connection = &mut *self.conn();
 
         copy_recording(metadata_connection, connection, recording_id)?;
 
