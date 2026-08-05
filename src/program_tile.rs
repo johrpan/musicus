@@ -7,7 +7,7 @@ use gtk::{
     subclass::prelude::*,
 };
 
-use crate::{config, editor::program::ProgramEditor, program::Program};
+use crate::{config, editor::default_program::DefaultProgramEditor, program::Program};
 
 mod imp {
     use super::*;
@@ -113,7 +113,7 @@ impl ProgramTile {
 
     #[template_callback]
     fn edit_button_clicked(&self) {
-        let editor = ProgramEditor::new(&self.navigation(), Some(&self.program()));
+        let editor = DefaultProgramEditor::new(&self.navigation(), Some(&self.program()));
 
         editor.connect_save(clone!(
             #[weak(rename_to = obj)]

@@ -50,6 +50,18 @@ template $MusicusProgramSection: Adw.Bin {
           }
         }
 
+        Gtk.Button edit_button {
+          valign: start;
+          icon-name: "document-edit-symbolic";
+          tooltip-text: _("Customize program");
+          clicked => $edit() swapped;
+
+          styles [
+            "flat",
+            "circular",
+          ]
+        }
+
         Gtk.Button cancel_button {
           valign: start;
           icon-name: "window-close-symbolic";

@@ -1,16 +1,9 @@
-use std::{cell::OnceCell, str::FromStr};
+use std::cell::OnceCell;
 
 use adw::{prelude::*, subclass::prelude::*};
-use gtk::{
-    gio,
-    glib::{self, subclass::Signal},
-};
-use once_cell::sync::Lazy;
+use gtk::glib;
 
-use crate::{
-    program::{Program, ProgramDesign},
-    slider_row::SliderRow,
-};
+use crate::{editor::program_settings::ProgramSettings, program::Program};
 
 mod imp {
     use super::*;
@@ -18,33 +11,20 @@ mod imp {
     #[derive(Debug, Default, gtk::CompositeTemplate)]
     #[template(file = "data/ui/editor/program.blp")]
     pub struct ProgramEditor {
-        pub navigation: OnceCell<adw::NavigationView>,
-        pub action_group: OnceCell<gio::SimpleActionGroup>,
+        pub program: OnceCell<Program>,
 
         #[template_child]
-        pub title_row: TemplateChild<adw::EntryRow>,
-        #[template_child]
-        pub description_row: TemplateChild<adw::EntryRow>,
-        #[template_child]
-        pub prefer_least_recently_played_adjustment: TemplateChild<gtk::Adjustment>,
-        #[template_child]
-        pub prefer_recently_added_adjustment: TemplateChild<gtk::Adjustment>,
-        #[template_child]
-        pub avoid_repeated_composers_adjustment: TemplateChild<gtk::Adjustment>,
-        #[template_child]
-        pub avoid_repeated_instruments_adjustment: TemplateChild<gtk::Adjustment>,
-        #[template_child]
-        pub play_full_recordings_row: TemplateChild<adw::SwitchRow>,
+        pub settings: TemplateChild<ProgramSettings>,
     }
 
     #[glib::object_subclass]
     impl ObjectSubclass for ProgramEditor {
         const NAME: &'static str = "MusicusProgramEditor";
         type Type = super::ProgramEditor;
-        type ParentType = adw::NavigationPage;
+        type ParentType = adw::Dialog;
 
         fn class_init(klass: &mut Self::Class) {
-            SliderRow::static_type();
+            ProgramSettings::static_type();
             klass.bind_template();
             klass.bind_template_instance_callbacks();
         }
@@ -54,129 +34,35 @@ mod imp {
         }
     }
 
-    impl ObjectImpl for ProgramEditor {
-        fn signals() -> &'static [Signal] {
-            static SIGNALS: Lazy<Vec<Signal>> = Lazy::new(|| {
-                vec![Signal::builder("save")
-                    .param_types([Program::static_type()])
-                    .build()]
-            });
-
-            SIGNALS.as_ref()
-        }
-
-        fn constructed(&self) {
-            self.parent_constructed();
-
-            let set_design_action = gio::ActionEntry::builder("set-design")
-                .parameter_type(Some(glib::VariantTy::STRING))
-                .state(glib::Variant::from("program-1"))
-                .build();
-
-            let actions = gio::SimpleActionGroup::new();
-            actions.add_action_entries([set_design_action]);
-            self.obj().insert_action_group("program", Some(&actions));
-            self.action_group.set(actions).unwrap();
-        }
-    }
-
+    impl ObjectImpl for ProgramEditor {}
     impl WidgetImpl for ProgramEditor {}
-    impl NavigationPageImpl for ProgramEditor {}
+    impl AdwDialogImpl for ProgramEditor {}
 }
 
 glib::wrapper! {
+    /// A dialog for changing how the recordings for a program that is already playing are
+    /// selected.
+    ///
+    /// Only the settings for random selection can be changed. Everything else, including the
+    /// program's appearance and the items it is restricted to, stays the same.
     pub struct ProgramEditor(ObjectSubclass<imp::ProgramEditor>)
-        @extends adw::NavigationPage, gtk::Widget,
+        @extends adw::Dialog, gtk::Widget,
         @implements gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget;
 }
 
 #[gtk::template_callbacks]
 impl ProgramEditor {
-    pub fn new(navigation: &adw::NavigationView, program: Option<&Program>) -> Self {
+    pub fn new(program: &Program) -> Self {
         let obj: Self = glib::Object::new();
-
-        if let Some(program) = program {
-            if let Some(title) = program.title() {
-                obj.imp().title_row.set_text(&title);
-            }
-
-            if let Some(description) = program.description() {
-                obj.imp().description_row.set_text(&description);
-            }
-
-            if let Err(err) = obj.activate_action(
-                "program.set-design",
-                Some(&glib::Variant::from(&program.design().to_string())),
-            ) {
-                log::warn!("Failed to initialize program design buttons: {err:?}");
-            }
-
-            obj.imp()
-                .prefer_least_recently_played_adjustment
-                .set_value(program.prefer_least_recently_played() * 100.0);
-
-            obj.imp()
-                .prefer_recently_added_adjustment
-                .set_value(program.prefer_recently_added() * 100.0);
-
-            obj.imp()
-                .avoid_repeated_composers_adjustment
-                .set_value(program.avoid_repeated_composers() as f64);
-
-            obj.imp()
-                .avoid_repeated_instruments_adjustment
-                .set_value(program.avoid_repeated_instruments() as f64);
-
-            obj.imp()
-                .play_full_recordings_row
-                .set_active(program.play_full_recordings());
-        }
-
-        obj.imp().navigation.set(navigation.to_owned()).unwrap();
+        obj.imp().settings.load(program);
+        obj.imp().program.set(program.to_owned()).unwrap();
         obj
     }
 
-    pub fn connect_save<F: Fn(&Self, Program) + 'static>(&self, f: F) -> glib::SignalHandlerId {
-        self.connect_local("save", true, move |values| {
-            let obj = values[0].get::<Self>().unwrap();
-            let program = values[1].get::<Program>().unwrap();
-            f(&obj, program);
-            None
-        })
-    }
-
     #[template_callback]
-    fn save(&self) {
-        let program = Program::new(
-            &self.imp().title_row.text(),
-            &self.imp().description_row.text(),
-            ProgramDesign::from_str(
-                &self
-                    .imp()
-                    .action_group
-                    .get()
-                    .unwrap()
-                    .action_state("set-design")
-                    .map(|v| v.get::<String>().unwrap_or_default())
-                    .unwrap_or_default(),
-            )
-            .unwrap_or_default(),
-        );
-
-        program.set_prefer_least_recently_played(
-            self.imp().prefer_least_recently_played_adjustment.value() / 100.0,
-        );
-        program
-            .set_prefer_recently_added(self.imp().prefer_recently_added_adjustment.value() / 100.0);
-        program.set_avoid_repeated_composers(
-            self.imp().avoid_repeated_composers_adjustment.value() as i32,
-        );
-        program.set_avoid_repeated_instruments(
-            self.imp().avoid_repeated_instruments_adjustment.value() as i32,
-        );
-        program.set_play_full_recordings(self.imp().play_full_recordings_row.is_active());
-
-        self.emit_by_name::<()>("save", &[&program]);
-        self.imp().navigation.get().unwrap().pop();
+    fn apply(&self) {
+        let imp = self.imp();
+        imp.settings.apply(imp.program.get().unwrap());
+        self.close();
     }
 }

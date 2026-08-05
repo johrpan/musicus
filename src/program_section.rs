@@ -1,9 +1,9 @@
-use std::cell::OnceCell;
+use std::cell::{OnceCell, RefCell};
 
-use adw::subclass::prelude::*;
-use gtk::{glib, prelude::*};
+use adw::{prelude::*, subclass::prelude::*};
+use gtk::glib;
 
-use crate::{player::Player, program::Program};
+use crate::{editor::program::ProgramEditor, player::Player, program::Program};
 
 mod imp {
     use super::*;
@@ -12,6 +12,7 @@ mod imp {
     #[template(file = "data/ui/program_section.blp")]
     pub struct ProgramSection {
         pub player: OnceCell<Player>,
+        pub program: RefCell<Option<Program>>,
 
         #[template_child]
         pub card: TemplateChild<adw::Bin>,
@@ -71,6 +72,17 @@ impl ProgramSection {
         let description = program.description().unwrap_or_default();
         imp.description_label.set_label(&description);
         imp.description_label.set_visible(!description.is_empty());
+
+        imp.program.replace(Some(program.to_owned()));
+    }
+
+    #[template_callback]
+    fn edit(&self) {
+        let program = self.imp().program.borrow().to_owned();
+
+        if let Some(program) = program {
+            ProgramEditor::new(&program).present(Some(self));
+        }
     }
 
     #[template_callback]

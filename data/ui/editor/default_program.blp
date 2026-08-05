@@ -1,0 +1,220 @@
+using Gtk 4.0;
+using Adw 1;
+
+template $MusicusDefaultProgramEditor: Adw.NavigationPage {
+  title: _("Program");
+
+  Adw.ToolbarView {
+    [top]
+    Adw.HeaderBar header_bar {}
+
+    Gtk.ScrolledWindow {
+      Adw.Clamp {
+        Gtk.Box {
+          orientation: vertical;
+          margin-bottom: 24;
+          margin-start: 12;
+          margin-end: 12;
+
+          Gtk.Label {
+            label: _("Appearance");
+            xalign: 0;
+            margin-top: 24;
+
+            styles [
+              "heading",
+            ]
+          }
+
+          Gtk.ListBox {
+            selection-mode: none;
+            margin-top: 12;
+
+            styles [
+              "boxed-list",
+            ]
+
+            Adw.EntryRow title_row {
+              title: _("Title");
+            }
+
+            Adw.EntryRow description_row {
+              title: _("Description");
+            }
+
+            Adw.PreferencesRow design_row {
+              title: _("Design");
+              activatable: false;
+              focusable: false;
+
+              Gtk.Box {
+                orientation: vertical;
+                spacing: 8;
+                margin-start: 12;
+                margin-end: 12;
+                margin-top: 6;
+                margin-bottom: 6;
+
+                Gtk.Label {
+                  label: _("Design");
+                  xalign: 0.0;
+
+                  styles [
+                    "subtitle",
+                  ]
+                }
+
+                Gtk.Box {
+                  spacing: 6;
+
+                  Gtk.ToggleButton {
+                    action-name: "program.set-design";
+                    action-target: "'default'";
+
+                    styles [
+                      "program-design-button",
+                      "default",
+                      "circular",
+                    ]
+                  }
+
+                  Gtk.ToggleButton {
+                    action-name: "program.set-design";
+                    action-target: "'blue'";
+
+                    styles [
+                      "program-design-button",
+                      "blue",
+                      "circular",
+                    ]
+                  }
+
+                  Gtk.ToggleButton {
+                    action-name: "program.set-design";
+                    action-target: "'teal'";
+
+                    styles [
+                      "program-design-button",
+                      "teal",
+                      "circular",
+                    ]
+                  }
+
+                  Gtk.ToggleButton {
+                    action-name: "program.set-design";
+                    action-target: "'green'";
+
+                    styles [
+                      "program-design-button",
+                      "green",
+                      "circular",
+                    ]
+                  }
+
+                  Gtk.ToggleButton {
+                    action-name: "program.set-design";
+                    action-target: "'yellow'";
+
+                    styles [
+                      "program-design-button",
+                      "yellow",
+                      "circular",
+                    ]
+                  }
+
+                  Gtk.ToggleButton {
+                    action-name: "program.set-design";
+                    action-target: "'orange'";
+
+                    styles [
+                      "program-design-button",
+                      "orange",
+                      "circular",
+                    ]
+                  }
+
+                  Gtk.ToggleButton {
+                    action-name: "program.set-design";
+                    action-target: "'red'";
+
+                    styles [
+                      "program-design-button",
+                      "red",
+                      "circular",
+                    ]
+                  }
+
+                  Gtk.ToggleButton {
+                    action-name: "program.set-design";
+                    action-target: "'pink'";
+
+                    styles [
+                      "program-design-button",
+                      "pink",
+                      "circular",
+                    ]
+                  }
+
+                  Gtk.ToggleButton {
+                    action-name: "program.set-design";
+                    action-target: "'purple'";
+
+                    styles [
+                      "program-design-button",
+                      "purple",
+                      "circular",
+                    ]
+                  }
+
+                  Gtk.ToggleButton {
+                    action-name: "program.set-design";
+                    action-target: "'slate'";
+
+                    styles [
+                      "program-design-button",
+                      "slate",
+                      "circular",
+                    ]
+                  }
+                }
+              }
+            }
+          }
+
+          Gtk.Label {
+            label: _("Settings");
+            xalign: 0;
+            margin-top: 24;
+
+            styles [
+              "heading",
+            ]
+          }
+
+          $MusicusProgramSettings settings {
+            margin-top: 12;
+          }
+
+          Gtk.ListBox {
+            selection-mode: none;
+            margin-top: 24;
+
+            styles [
+              "boxed-list",
+            ]
+
+            Adw.ButtonRow save_row {
+              title: _("_Save program");
+              use-underline: true;
+              activated => $save() swapped;
+
+              styles [
+                "suggested-action",
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
+}

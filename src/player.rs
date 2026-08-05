@@ -34,7 +34,7 @@ mod imp {
         pub active: Cell<bool>,
         #[property(get, set)]
         pub playing: Cell<bool>,
-        #[property(get, set)]
+        #[property(get, set = Self::set_program)]
         pub program: RefCell<Option<Program>>,
         #[property(get, construct_only)]
         pub playlist: OnceCell<gio::ListStore>,
@@ -51,6 +51,15 @@ mod imp {
     }
 
     impl Player {
+        /// Set the program to play from.
+        ///
+        /// The player will always use its own copy of the program. Otherwise, changing the
+        /// settings of the program that is currently playing would also change the program it
+        /// was started from, such as one of the default programs.
+        pub fn set_program(&self, program: Option<Program>) {
+            self.program.replace(program.map(|p| p.duplicate()));
+        }
+
         pub fn set_current_index(&self, index: u32) {
             let playlist = self.playlist.get().unwrap();
 

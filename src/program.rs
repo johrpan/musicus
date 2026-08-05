@@ -139,6 +139,35 @@ impl Program {
             .build()
     }
 
+    /// Create an independent copy of the program.
+    ///
+    /// This is used to make sure that programs that are being played are never the same object
+    /// as the ones that they were started from, which could be changed inadvertently.
+    pub fn duplicate(&self) -> Self {
+        glib::Object::builder()
+            .property("title", self.title())
+            .property("description", self.description())
+            .property("design", self.design())
+            .property("composer-id", self.composer_id())
+            .property("performer-id", self.performer_id())
+            .property("ensemble-id", self.ensemble_id())
+            .property("instrument-id", self.instrument_id())
+            .property("work-id", self.work_id())
+            .property("album-id", self.album_id())
+            .property("prefer-recently-added", self.prefer_recently_added())
+            .property(
+                "prefer-least-recently-played",
+                self.prefer_least_recently_played(),
+            )
+            .property("avoid-repeated-composers", self.avoid_repeated_composers())
+            .property(
+                "avoid-repeated-instruments",
+                self.avoid_repeated_instruments(),
+            )
+            .property("play-full-recordings", self.play_full_recordings())
+            .build()
+    }
+
     pub fn deserialize(input: &str) -> Result<Self> {
         let data: imp::Program = serde_json::from_str(input)?;
 

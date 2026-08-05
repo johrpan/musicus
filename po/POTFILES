@@ -21,7 +21,9 @@ data/ui/editor/work/instrument_row.blp
 data/ui/editor/translation.blp
 data/ui/editor/album/recording_row.blp
 data/ui/editor/album.blp
+data/ui/editor/default_program.blp
 data/ui/editor/program.blp
+data/ui/editor/program_settings.blp
 data/ui/editor/tracks.blp
 data/ui/editor/ensemble.blp
 data/ui/editor/instrument.blp
@@ -63,7 +65,9 @@ src/editor/tracks/track_row.rs
 src/editor/album.rs
 src/editor/translation.rs
 src/editor/album/recording_row.rs
+src/editor/default_program.rs
 src/editor/program.rs
+src/editor/program_settings.rs
 src/editor/tracks.rs
 src/editor/ensemble.rs
 src/editor/instrument.rs

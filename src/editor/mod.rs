@@ -1,8 +1,10 @@
 pub mod album;
+pub mod default_program;
 pub mod ensemble;
 pub mod instrument;
 pub mod person;
 pub mod program;
+pub mod program_settings;
 pub mod recording;
 pub mod role;
 pub mod tracks;
