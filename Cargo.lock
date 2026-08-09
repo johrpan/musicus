@@ -964,6 +964,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "gettext-rs"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9df5e3fa8c077b15fdfa8ce130e2bc73d663b8aaa6d51b71421b8659980b1d80"
+dependencies = [
+ "gettext-sys",
+ "locale_config",
+]
+
+[[package]]
 name = "gettext-sys"
 version = "0.26.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1907,25 +1917,41 @@ dependencies = [
  "anyhow",
  "async-channel",
  "chrono",
- "diesel",
- "diesel_migrations",
  "formatx",
  "fragile",
- "futures-util",
- "gettext-rs",
+ "gettext-rs 0.7.7",
  "glib",
  "gstreamer-play",
  "gtk4",
  "libadwaita",
  "log",
  "mpris-server",
+ "musicus-library",
+ "once_cell",
+ "serde",
+ "serde_json",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "musicus-library"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-channel",
+ "chrono",
+ "diesel",
+ "diesel_migrations",
+ "formatx",
+ "futures-util",
+ "gettext-rs 0.8.0",
+ "log",
  "once_cell",
  "reqwest",
  "serde",
  "serde_json",
  "tempfile",
  "tokio",
- "tracing-subscriber",
  "uuid",
  "zip",
 ]

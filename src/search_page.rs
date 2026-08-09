@@ -7,20 +7,21 @@ use gtk::{
     prelude::*,
 };
 
+use musicus_library::db::models::*;
+
 use crate::{
     album_page::AlbumPage,
     album_tile::AlbumTile,
-    db::models::*,
     editor::{
         ensemble::EnsembleEditor, instrument::InstrumentEditor, person::PersonEditor,
         work::WorkEditor,
     },
-    library::{Library, LibraryQuery},
+    library::{Library, LibraryQuery, Tag},
     player::Player,
     program::Program,
     program_tile::ProgramTile,
     recording_tile::RecordingTile,
-    tag_tile::{Tag, TagTile},
+    tag_tile::TagTile,
     util,
 };
 

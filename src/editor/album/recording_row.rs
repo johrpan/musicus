@@ -7,7 +7,9 @@ use gtk::{
 };
 use once_cell::sync::Lazy;
 
-use crate::{db::models::Recording, util::drag_widget::DragWidget};
+use musicus_library::db::models::Recording;
+
+use crate::util::drag_widget::DragWidget;
 
 mod imp {
     use super::*;

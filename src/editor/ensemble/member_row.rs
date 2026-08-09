@@ -8,8 +8,9 @@ use gtk::{
 };
 use once_cell::sync::Lazy;
 
+use musicus_library::db::models::{Instrument, Person};
+
 use crate::{
-    db::models::{Instrument, Person},
     editor::instrument::InstrumentEditor,
     library::Library,
     selector::instrument::InstrumentSelectorPopover,

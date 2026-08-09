@@ -8,8 +8,9 @@ use gtk::{
 };
 use once_cell::sync::Lazy;
 
+use musicus_library::db::models::{Person, Recording, Work};
+
 use crate::{
-    db::models::{Person, Recording, Work},
     library::{Library, SearchItem},
     util::activatable_row::ActivatableRow,
 };
@@ -103,7 +104,7 @@ mod imp {
             static SIGNALS: Lazy<Vec<Signal>> = Lazy::new(|| {
                 vec![
                     Signal::builder("selected")
-                        .param_types([Recording::static_type()])
+                        .param_types([glib::BoxedAnyObject::static_type()])
                         .build(),
                     Signal::builder("create").build(),
                 ]
@@ -151,7 +152,7 @@ impl RecordingSelectorPopover {
     ) -> glib::SignalHandlerId {
         self.connect_local("selected", true, move |values| {
             let obj = values[0].get::<Self>().unwrap();
-            let recording = values[1].get::<Recording>().unwrap();
+            let recording = values[1].get::<glib::BoxedAnyObject>().unwrap().borrow::<Recording>().clone();
             f(&obj, recording);
             None
         })
@@ -443,7 +444,7 @@ impl RecordingSelectorPopover {
             }
         };
 
-        self.emit_by_name::<()>("selected", &[&recording]);
+        self.emit_by_name::<()>("selected", &[&glib::BoxedAnyObject::new(recording.clone())]);
         self.popdown();
     }
 

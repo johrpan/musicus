@@ -14,12 +14,9 @@ use diesel::{
     sql_types::Text,
     sqlite::Sqlite,
 };
-use gtk::glib::{self, Boxed};
-
 use super::{schema::*, TranslatedString};
 
-#[derive(Boxed, Insertable, Queryable, Selectable, Clone, Debug)]
-#[boxed_type(name = "MusicusPerson")]
+#[derive(Insertable, Queryable, Selectable, Clone, Debug)]
 #[diesel(check_for_backend(Sqlite))]
 pub struct Person {
     pub person_id: String,
@@ -32,8 +29,7 @@ pub struct Person {
     pub last_played_at: Option<NaiveDateTime>,
 }
 
-#[derive(Boxed, Insertable, Queryable, Selectable, Clone, Debug)]
-#[boxed_type(name = "MusicusRole")]
+#[derive(Insertable, Queryable, Selectable, Clone, Debug)]
 #[diesel(check_for_backend(Sqlite))]
 pub struct Role {
     pub role_id: String,
@@ -45,8 +41,7 @@ pub struct Role {
     pub last_used_at: NaiveDateTime,
 }
 
-#[derive(Boxed, Insertable, Queryable, Selectable, Clone, Debug)]
-#[boxed_type(name = "MusicusInstrument", nullable)]
+#[derive(Insertable, Queryable, Selectable, Clone, Debug)]
 #[diesel(check_for_backend(Sqlite))]
 pub struct Instrument {
     pub instrument_id: String,

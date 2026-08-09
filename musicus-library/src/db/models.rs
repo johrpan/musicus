@@ -5,14 +5,12 @@ use std::{collections::HashSet, fmt::Display, path::PathBuf};
 
 use anyhow::Result;
 use diesel::prelude::*;
-use gtk::glib::{self, Boxed};
 // Re-exports for tables that don't need additional information.
 pub use tables::{Instrument, Person, Role};
 
 use super::{schema::*, tables, TranslatedString};
 
-#[derive(Boxed, Clone, Debug)]
-#[boxed_type(name = "MusicusWork")]
+#[derive(Clone, Debug)]
 pub struct Work {
     pub work_id: String,
     pub name: TranslatedString,
@@ -28,8 +26,7 @@ pub struct Composer {
     pub role: Option<Role>,
 }
 
-#[derive(Boxed, Clone, Debug)]
-#[boxed_type(name = "MusicusEnsemble")]
+#[derive(Clone, Debug)]
 pub struct Ensemble {
     pub ensemble_id: String,
     pub name: TranslatedString,
@@ -37,8 +34,7 @@ pub struct Ensemble {
     pub enable_updates: bool,
 }
 
-#[derive(Boxed, Clone, Debug)]
-#[boxed_type(name = "MusicusRecording")]
+#[derive(Clone, Debug)]
 pub struct Recording {
     pub recording_id: String,
     pub work: Work,
@@ -68,8 +64,7 @@ pub struct Track {
     pub works: Vec<Work>,
 }
 
-#[derive(Boxed, Clone, Debug)]
-#[boxed_type(name = "MusicusAlbum")]
+#[derive(Clone, Debug)]
 pub struct Album {
     pub album_id: String,
     pub name: TranslatedString,

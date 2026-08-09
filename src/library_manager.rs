@@ -8,9 +8,11 @@ use gtk::{
     glib::{self, clone},
 };
 
+use musicus_library::db::tables::Source;
+
 use crate::{
-    config, db::tables::Source, library::Library, process::Process,
-    process_manager::ProcessManager, process_row::ProcessRow, window::Window,
+    config, library::Library, process::Process, process_manager::ProcessManager,
+    process_row::ProcessRow, window::Window,
 };
 
 mod imp {

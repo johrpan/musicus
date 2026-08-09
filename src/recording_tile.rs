@@ -4,9 +4,9 @@ use adw::prelude::*;
 use gettextrs::gettext;
 use gtk::{gio, glib, subclass::prelude::*};
 
-use crate::{
-    db::models::Recording, editor::recording::RecordingEditor, library::Library, player::Player,
-};
+use musicus_library::db::models::Recording;
+
+use crate::{editor::recording::RecordingEditor, library::Library, player::Player};
 
 mod imp {
     use super::*;

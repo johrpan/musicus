@@ -5,7 +5,7 @@ pub mod tables;
 use std::{
     collections::HashMap,
     fmt::Display,
-    sync::{Mutex, MutexGuard},
+    sync::{Mutex, MutexGuard, OnceLock},
 };
 
 use anyhow::{anyhow, Result};
@@ -21,10 +21,20 @@ use diesel::{
 use diesel_migrations::{EmbeddedMigrations, MigrationHarness};
 use serde::{Deserialize, Serialize};
 
-use crate::util;
-
 // This makes the SQL migration scripts accessible from the code.
-const MIGRATIONS: EmbeddedMigrations = diesel_migrations::embed_migrations!();
+const MIGRATIONS: EmbeddedMigrations = diesel_migrations::embed_migrations!("../migrations");
+
+/// The user's preferred language code, used to pick the best translation out of a
+/// [`TranslatedString`]. Set once at application startup via [`set_language`].
+static LANG: OnceLock<String> = OnceLock::new();
+
+/// Set the user's preferred language code. This should be called once, early during
+/// application startup, before any [`TranslatedString::get`] calls happen.
+pub fn set_language(lang: impl Into<String>) {
+    if LANG.set(lang.into()).is_err() {
+        log::warn!("set_language was called more than once; ignoring further calls");
+    }
+}
 
 /// Connect to a Musicus database and apply any pending migrations.
 pub fn connect(file_name: &str) -> Result<SqliteConnection> {
@@ -63,7 +73,7 @@ impl TranslatedString {
     /// generic translation exists (which is a bug in the data), an empty string is
     /// returned and a warning is logged.
     pub fn get(&self) -> &str {
-        match self.0.get(&*util::LANG) {
+        match LANG.get().and_then(|lang| self.0.get(lang)) {
             Some(s) => s,
             None => match self.0.get("generic") {
                 Some(s) => s,

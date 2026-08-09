@@ -12,12 +12,10 @@ use gtk::{
 };
 use once_cell::sync::Lazy;
 
+use musicus_library::db::models::{Recording, Track, Work};
+
 use super::parts_popover::TracksEditorPartsPopover;
-use crate::{
-    db::models::{Recording, Track, Work},
-    library::Library,
-    util::drag_widget::DragWidget,
-};
+use crate::{library::Library, util::drag_widget::DragWidget};
 
 mod imp {
     use super::*;

@@ -11,11 +11,12 @@ use gtk::glib::{self, clone, subclass::Signal, Properties};
 use once_cell::sync::Lazy;
 use part_row::WorkEditorPartRow;
 
+use musicus_library::db::{
+    self,
+    models::{Composer, Instrument, Person, Work},
+};
+
 use crate::{
-    db::{
-        self,
-        models::{Composer, Instrument, Person, Work},
-    },
     editor::{instrument::InstrumentEditor, person::PersonEditor, translation::TranslationEditor},
     library::Library,
     selector::{instrument::InstrumentSelectorPopover, person::PersonSelectorPopover},
@@ -88,7 +89,7 @@ mod imp {
         fn signals() -> &'static [Signal] {
             static SIGNALS: Lazy<Vec<Signal>> = Lazy::new(|| {
                 vec![Signal::builder("created")
-                    .param_types([Work::static_type()])
+                    .param_types([glib::BoxedAnyObject::static_type()])
                     .build()]
             });
 
@@ -206,7 +207,7 @@ impl WorkEditor {
     pub fn connect_created<F: Fn(&Self, Work) + 'static>(&self, f: F) -> glib::SignalHandlerId {
         self.connect_local("created", true, move |values| {
             let obj = values[0].get::<Self>().unwrap();
-            let work = values[1].get::<Work>().unwrap();
+            let work = values[1].get::<glib::BoxedAnyObject>().unwrap().borrow::<Work>().clone();
             f(&obj, work);
             None
         })
@@ -390,7 +391,7 @@ impl WorkEditor {
                 enable_updates,
             };
 
-            self.emit_by_name::<()>("created", &[&part]);
+            self.emit_by_name::<()>("created", &[&glib::BoxedAnyObject::new(part.clone())]);
         } else if let Some(work_id) = self.imp().work_id.get() {
             library
                 .update_work(work_id, name, parts, composers, instruments, enable_updates)
@@ -399,7 +400,7 @@ impl WorkEditor {
             let work = library
                 .create_work(name, parts, composers, instruments, enable_updates)
                 .unwrap();
-            self.emit_by_name::<()>("created", &[&work]);
+            self.emit_by_name::<()>("created", &[&glib::BoxedAnyObject::new(work.clone())]);
         }
 
         self.imp().navigation.get().unwrap().pop();

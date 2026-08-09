@@ -8,8 +8,10 @@ use gtk::{
 };
 use once_cell::sync::Lazy;
 
+use musicus_library::db::models::Performer;
+
 use crate::{
-    db::models::Performer, editor::role::RoleEditor, library::Library,
+    editor::role::RoleEditor, library::Library,
     selector::performer_role::PerformerRoleSelectorPopover, util::drag_widget::DragWidget,
 };
 

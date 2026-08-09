@@ -2,7 +2,7 @@ use std::cell::OnceCell;
 
 use gtk::{glib, subclass::prelude::*};
 
-use crate::db::models::Album;
+use musicus_library::db::models::Album;
 
 mod imp {
     use super::*;

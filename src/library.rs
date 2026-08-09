@@ -1,37 +1,18 @@
-use std::{
-    cell::{OnceCell, RefCell},
-    path::{Path, PathBuf},
-    sync::{Arc, Mutex, MutexGuard},
-};
+use std::{cell::OnceCell, ops::Deref, path::Path, sync::LazyLock};
 
-use adw::{
-    glib::{self, subclass::Signal, Properties},
-    prelude::*,
-    subclass::prelude::*,
-};
-use anyhow::{anyhow, Context, Result};
-use diesel::{prelude::*, SqliteConnection};
-use once_cell::sync::Lazy;
+use adw::{glib, prelude::*, subclass::prelude::*};
+use anyhow::{anyhow, Result};
 
-use crate::db::{self, schema::*, tables};
-pub use metadata::SearchItem;
-pub use query::LibraryQuery;
+pub use musicus_library::library::{GenerateRecordingParams, LibraryQuery, SearchItem, Tag};
 
-pub mod edit;
-pub mod exchange;
-pub mod metadata;
-pub mod query;
+use crate::config;
 
 mod imp {
     use super::*;
 
-    #[derive(Properties, Default)]
-    #[properties(wrapper_type = super::Library)]
+    #[derive(Default)]
     pub struct Library {
-        #[property(get, construct_only)]
-        pub folder: OnceCell<String>,
-        pub connection: OnceCell<Arc<Mutex<SqliteConnection>>>,
-        pub metadata_connection: RefCell<Option<Arc<Mutex<SqliteConnection>>>>,
+        pub inner: OnceCell<musicus_library::Library>,
     }
 
     #[glib::object_subclass]
@@ -40,11 +21,10 @@ mod imp {
         type Type = super::Library;
     }
 
-    #[glib::derived_properties]
     impl ObjectImpl for Library {
-        fn signals() -> &'static [Signal] {
-            static SIGNALS: Lazy<Vec<Signal>> =
-                Lazy::new(|| vec![Signal::builder("changed").build()]);
+        fn signals() -> &'static [glib::subclass::Signal] {
+            static SIGNALS: LazyLock<Vec<glib::subclass::Signal>> =
+                LazyLock::new(|| vec![glib::subclass::Signal::builder("changed").build()]);
 
             SIGNALS.as_ref()
         }
@@ -55,28 +35,34 @@ glib::wrapper! {
     pub struct Library(ObjectSubclass<imp::Library>);
 }
 
+impl Deref for Library {
+    type Target = musicus_library::Library;
+
+    fn deref(&self) -> &Self::Target {
+        self.imp().inner.get().unwrap()
+    }
+}
+
 impl Library {
     pub fn new(path: impl AsRef<Path>) -> Result<Self> {
-        let obj: Self = glib::Object::builder()
-            .property("folder", path.as_ref().to_str().unwrap())
-            .build();
+        let metadata_cache_dir = glib::user_cache_dir().join(config::APP_ID);
+        let inner = musicus_library::Library::new(path, metadata_cache_dir)?;
+        let changed_rx = inner.subscribe_changed();
 
-        obj.init()?;
+        let obj: Self = glib::Object::new();
+        obj.imp()
+            .inner
+            .set(inner)
+            .map_err(|_| anyhow!("Library already initialized"))?;
+
+        let obj_clone = obj.clone();
+        glib::spawn_future_local(async move {
+            while changed_rx.recv().await.is_ok() {
+                obj_clone.emit_by_name::<()>("changed", &[]);
+            }
+        });
+
         Ok(obj)
-    }
-
-    fn conn(&self) -> MutexGuard<'_, SqliteConnection> {
-        db::lock_connection(self.imp().connection.get().unwrap())
-    }
-
-    /// Whether this library is empty. The library is considered empty, if
-    /// there are no tracks.
-    pub fn is_empty(&self) -> Result<bool> {
-        let connection = &mut *self.conn();
-        Ok(tracks::table
-            .first::<tables::Track>(connection)
-            .optional()?
-            .is_none())
     }
 
     pub fn connect_changed<F: Fn(&Self) + 'static>(&self, f: F) -> glib::SignalHandlerId {
@@ -85,33 +71,5 @@ impl Library {
             f(&obj);
             None
         })
-    }
-
-    pub fn changed(&self) {
-        let obj = self.clone();
-        // Note: This is a dirty hack to let the calling function return before
-        // signal handlers are called. This is neccessary because RefCells
-        // may still be borrowed otherwise.
-        glib::spawn_future_local(async move {
-            obj.emit_by_name::<()>("changed", &[]);
-        });
-    }
-
-    fn init(&self) -> Result<()> {
-        let db_path = PathBuf::from(&self.folder()).join("musicus.db");
-
-        let connection = db::connect(
-            db_path
-                .to_str()
-                .ok_or_else(|| anyhow!("Failed to convert libary path to string"))?,
-        )
-        .context("Failed to connect to music library database")?;
-
-        self.imp()
-            .connection
-            .set(Arc::new(Mutex::new(connection)))
-            .map_err(|_| anyhow!("Library already initialized"))?;
-
-        Ok(())
     }
 }

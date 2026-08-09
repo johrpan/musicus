@@ -2,7 +2,6 @@ mod album_page;
 mod album_tile;
 mod application;
 mod config;
-mod db;
 mod editor;
 mod empty_page;
 mod library;
@@ -38,6 +37,8 @@ fn main() -> glib::ExitCode {
     tracing_subscriber::fmt::init();
     gtk::init().expect("Failed to initialize GTK!");
     gst::init().expect("Failed to initialize GStreamer!");
+
+    musicus_library::db::set_language(&*util::LANG);
 
     glib::set_application_name(config::NAME);
     gtk::Window::set_default_icon_name(config::APP_ID);

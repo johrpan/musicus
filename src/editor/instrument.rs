@@ -5,7 +5,9 @@ use gettextrs::gettext;
 use gtk::glib::{self, subclass::Signal};
 use once_cell::sync::Lazy;
 
-use crate::{db::models::Instrument, editor::translation::TranslationEditor, library::Library};
+use musicus_library::db::models::Instrument;
+
+use crate::{editor::translation::TranslationEditor, library::Library};
 
 mod imp {
 
@@ -47,7 +49,7 @@ mod imp {
         fn signals() -> &'static [Signal] {
             static SIGNALS: Lazy<Vec<Signal>> = Lazy::new(|| {
                 vec![Signal::builder("created")
-                    .param_types([Instrument::static_type()])
+                    .param_types([glib::BoxedAnyObject::static_type()])
                     .build()]
             });
 
@@ -98,7 +100,7 @@ impl InstrumentEditor {
     ) -> glib::SignalHandlerId {
         self.connect_local("created", true, move |values| {
             let obj = values[0].get::<Self>().unwrap();
-            let instrument = values[1].get::<Instrument>().unwrap();
+            let instrument = values[1].get::<glib::BoxedAnyObject>().unwrap().borrow::<Instrument>().clone();
             f(&obj, instrument);
             None
         })
@@ -116,7 +118,7 @@ impl InstrumentEditor {
                 .unwrap();
         } else {
             let instrument = library.create_instrument(name, enable_updates).unwrap();
-            self.emit_by_name::<()>("created", &[&instrument]);
+            self.emit_by_name::<()>("created", &[&glib::BoxedAnyObject::new(instrument.clone())]);
         }
 
         self.imp().navigation.get().unwrap().pop();

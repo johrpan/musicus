@@ -14,10 +14,11 @@ use gtk::{
 };
 use once_cell::sync::Lazy;
 
+use musicus_library::db::models::{Recording, Track};
+
 use crate::{
     config,
-    db::models::{Recording, Track},
-    library::Library,
+    library::{GenerateRecordingParams, Library},
     playlist_item::PlaylistItem,
     program::Program,
 };
@@ -506,10 +507,23 @@ impl Player {
     /// Generate new playlist items based on `program` and return the index of the first newly
     /// added item if successful.
     fn generate_items(&self, program: &Program) -> Result<u32> {
+        let params = GenerateRecordingParams {
+            composer_id: program.composer_id(),
+            performer_id: program.performer_id(),
+            ensemble_id: program.ensemble_id(),
+            instrument_id: program.instrument_id(),
+            work_id: program.work_id(),
+            album_id: program.album_id(),
+            prefer_recently_added: program.prefer_recently_added(),
+            prefer_least_recently_played: program.prefer_least_recently_played(),
+            avoid_repeated_composers: program.avoid_repeated_composers(),
+            avoid_repeated_instruments: program.avoid_repeated_instruments(),
+        };
+
         let recording = self
             .library()
             .unwrap()
-            .generate_recording(program)
+            .generate_recording(&params)
             .context("Failed to generate playlist items from program")?;
 
         let playlist = if program.play_full_recordings() {

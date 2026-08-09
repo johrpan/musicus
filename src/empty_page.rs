@@ -9,9 +9,11 @@ use glib::clone;
 use gtk::{gio, glib, glib::subclass::Signal};
 use once_cell::sync::Lazy;
 
+use musicus_library::db::tables::Source;
+
 use crate::{
-    config, db::tables::Source, library::Library, process::Process,
-    process_manager::ProcessManager, process_row::ProcessRow,
+    config, library::Library, process::Process, process_manager::ProcessManager,
+    process_row::ProcessRow,
 };
 
 mod imp {

@@ -6,7 +6,6 @@ use std::{
     thread,
 };
 
-use adw::subclass::prelude::*;
 use anyhow::{anyhow, Error, Result};
 use chrono::prelude::*;
 use diesel::{prelude::*, SqliteConnection};
@@ -19,7 +18,6 @@ use zip::{write::SimpleFileOptions, ZipWriter};
 
 use super::Library;
 use crate::{
-    config,
     db::{
         self,
         schema::*,
@@ -41,7 +39,7 @@ impl Library {
         );
         let path = path.as_ref().to_owned();
         let library_folder = PathBuf::from(&self.folder());
-        let this_connection = self.imp().connection.get().unwrap().clone();
+        let this_connection = self.connection.clone();
 
         let (sender, receiver) = async_channel::unbounded::<ProcessMsg>();
         thread::spawn(move || {
@@ -101,7 +99,7 @@ impl Library {
         log::info!("Importing library from URL {url}");
         let url = url.to_owned();
         let library_folder = PathBuf::from(&self.folder());
-        let this_connection = self.imp().connection.get().unwrap().clone();
+        let this_connection = self.connection.clone();
 
         let (sender, receiver) = async_channel::unbounded::<ProcessMsg>();
 
@@ -124,13 +122,14 @@ impl Library {
         log::info!("Importing metadata from URL {url}");
 
         let url = url.to_owned();
-        let this_connection = self.imp().connection.get().unwrap().clone();
+        let this_connection = self.connection.clone();
+        let cache_dir = self.metadata_cache_dir.clone();
 
         let (sender, receiver) = async_channel::unbounded::<ProcessMsg>();
 
         thread::spawn(move || {
             if let Err(err) = sender.send_blocking(ProcessMsg::Result(
-                import_metadata_from_url_priv(url, this_connection, &sender),
+                import_metadata_from_url_priv(url, cache_dir, this_connection, &sender),
             )) {
                 log::error!("Failed to send library action result: {err:?}");
             }
@@ -232,6 +231,7 @@ fn add_file_to_zip(
 
 fn import_metadata_from_url_priv(
     url: String,
+    cache_dir: PathBuf,
     this_connection: Arc<Mutex<SqliteConnection>>,
     sender: &async_channel::Sender<ProcessMsg>,
 ) -> Result<()> {
@@ -243,7 +243,7 @@ fn import_metadata_from_url_priv(
         formatx!(gettext("Downloading {}"), &url).unwrap(),
     ));
 
-    let db_path = metadata_file_path();
+    let db_path = metadata_file_path(&cache_dir);
 
     match runtime.block_on(download_file(&url, &db_path, sender)) {
         Ok(()) => {
@@ -852,8 +852,6 @@ fn path_to_zip(path: impl AsRef<Path>) -> Result<String> {
         .join("/"))
 }
 
-pub fn metadata_file_path() -> PathBuf {
-    glib::user_cache_dir()
-        .join(config::APP_ID)
-        .join("metadata.muslib")
+pub fn metadata_file_path(cache_dir: &Path) -> PathBuf {
+    cache_dir.join("metadata.muslib")
 }

@@ -8,8 +8,9 @@ use gtk::glib::{self, clone, subclass::Signal};
 use member_row::EnsembleEditorMemberRow;
 use once_cell::sync::Lazy;
 
+use musicus_library::db::models::{Ensemble, Instrument, Person};
+
 use crate::{
-    db::models::{Ensemble, Instrument, Person},
     editor::{person::PersonEditor, translation::TranslationEditor},
     library::Library,
     selector::person::PersonSelectorPopover,
@@ -61,7 +62,7 @@ mod imp {
         fn signals() -> &'static [Signal] {
             static SIGNALS: Lazy<Vec<Signal>> = Lazy::new(|| {
                 vec![Signal::builder("created")
-                    .param_types([Ensemble::static_type()])
+                    .param_types([glib::BoxedAnyObject::static_type()])
                     .build()]
             });
 
@@ -142,7 +143,7 @@ impl EnsembleEditor {
     pub fn connect_created<F: Fn(&Self, Ensemble) + 'static>(&self, f: F) -> glib::SignalHandlerId {
         self.connect_local("created", true, move |values| {
             let obj = values[0].get::<Self>().unwrap();
-            let ensemble = values[1].get::<Ensemble>().unwrap();
+            let ensemble = values[1].get::<glib::BoxedAnyObject>().unwrap().borrow::<Ensemble>().clone();
             f(&obj, ensemble);
             None
         })
@@ -217,7 +218,7 @@ impl EnsembleEditor {
             let ensemble = library
                 .create_ensemble(name, persons, enable_updates)
                 .unwrap();
-            self.emit_by_name::<()>("created", &[&ensemble]);
+            self.emit_by_name::<()>("created", &[&glib::BoxedAnyObject::new(ensemble.clone())]);
         }
 
         self.imp().navigation.get().unwrap().pop();

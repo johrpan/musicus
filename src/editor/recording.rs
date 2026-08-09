@@ -10,8 +10,9 @@ use gtk::glib::{self, clone, subclass::Signal, Properties};
 use once_cell::sync::Lazy;
 use performer_row::RecordingEditorPerformerRow;
 
+use musicus_library::db::models::{Ensemble, EnsemblePerformer, Performer, Person, Recording, Work};
+
 use crate::{
-    db::models::{Ensemble, EnsemblePerformer, Performer, Person, Recording, Work},
     editor::{ensemble::EnsembleEditor, person::PersonEditor, work::WorkEditor},
     library::Library,
     selector::{
@@ -83,7 +84,7 @@ mod imp {
         fn signals() -> &'static [Signal] {
             static SIGNALS: Lazy<Vec<Signal>> = Lazy::new(|| {
                 vec![Signal::builder("created")
-                    .param_types([Recording::static_type()])
+                    .param_types([glib::BoxedAnyObject::static_type()])
                     .build()]
             });
 
@@ -225,7 +226,7 @@ impl RecordingEditor {
     ) -> glib::SignalHandlerId {
         self.connect_local("created", true, move |values| {
             let obj = values[0].get::<Self>().unwrap();
-            let recording = values[1].get::<Recording>().unwrap();
+            let recording = values[1].get::<glib::BoxedAnyObject>().unwrap().borrow::<Recording>().clone();
             f(&obj, recording);
             None
         })
@@ -392,7 +393,7 @@ impl RecordingEditor {
                 let recording = library
                     .create_recording(work, Some(year), performers, ensembles, enable_updates)
                     .unwrap();
-                self.emit_by_name::<()>("created", &[&recording]);
+                self.emit_by_name::<()>("created", &[&glib::BoxedAnyObject::new(recording.clone())]);
             }
 
             self.imp().navigation.get().unwrap().pop();

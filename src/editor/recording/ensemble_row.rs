@@ -8,9 +8,11 @@ use gtk::{
 };
 use once_cell::sync::Lazy;
 
+use musicus_library::db::models::EnsemblePerformer;
+
 use crate::{
-    db::models::EnsemblePerformer, editor::role::RoleEditor, library::Library,
-    selector::role::RoleSelectorPopover, util::drag_widget::DragWidget,
+    editor::role::RoleEditor, library::Library, selector::role::RoleSelectorPopover,
+    util::drag_widget::DragWidget,
 };
 
 mod imp {

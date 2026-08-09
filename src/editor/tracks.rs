@@ -16,12 +16,11 @@ use gtk::{
 use once_cell::sync::Lazy;
 use track_row::{TrackLocation, TracksEditorTrackData, TracksEditorTrackRow};
 
+use musicus_library::db::models::{Recording, Track, Work};
+
 use crate::{
-    db::models::{Recording, Track, Work},
-    editor::recording::RecordingEditor,
-    library::Library,
-    selector::recording::RecordingSelectorPopover,
-    util,
+    editor::recording::RecordingEditor, library::Library,
+    selector::recording::RecordingSelectorPopover, util,
 };
 
 mod imp {
@@ -76,7 +75,7 @@ mod imp {
         fn signals() -> &'static [Signal] {
             static SIGNALS: Lazy<Vec<Signal>> = Lazy::new(|| {
                 vec![Signal::builder("created")
-                    .param_types([Recording::static_type()])
+                    .param_types([glib::BoxedAnyObject::static_type()])
                     .build()]
             });
 

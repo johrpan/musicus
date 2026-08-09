@@ -1,6 +1,5 @@
 use std::sync::{Arc, Mutex};
 
-use adw::subclass::prelude::*;
 use anyhow::{anyhow, Result};
 use chrono::prelude::*;
 use diesel::{prelude::*, SqliteConnection};
@@ -23,10 +22,10 @@ pub struct SearchItem<T> {
 
 impl Library {
     pub fn metadata_connection(&self) -> Option<Arc<Mutex<SqliteConnection>>> {
-        let mut metadata_connection = self.imp().metadata_connection.borrow_mut();
+        let mut metadata_connection = self.metadata_connection.borrow_mut();
 
         if metadata_connection.is_none() {
-            let path = exchange::metadata_file_path();
+            let path = exchange::metadata_file_path(&self.metadata_cache_dir);
 
             if path.exists() {
                 match db::connect(path.to_str()?) {

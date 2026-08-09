@@ -8,8 +8,9 @@ use gtk::{
 };
 use once_cell::sync::Lazy;
 
+use musicus_library::db::models::Instrument;
+
 use crate::{
-    db::models::Instrument,
     library::{Library, SearchItem},
     util::activatable_row::ActivatableRow,
 };
@@ -70,7 +71,7 @@ mod imp {
             static SIGNALS: Lazy<Vec<Signal>> = Lazy::new(|| {
                 vec![
                     Signal::builder("instrument-selected")
-                        .param_types([Instrument::static_type()])
+                        .param_types([glib::BoxedAnyObject::static_type()])
                         .build(),
                     Signal::builder("create").build(),
                 ]
@@ -112,7 +113,7 @@ impl InstrumentSelectorPopover {
     ) -> glib::SignalHandlerId {
         self.connect_local("instrument-selected", true, move |values| {
             let obj = values[0].get::<Self>().unwrap();
-            let instrument = values[1].get::<Instrument>().unwrap();
+            let instrument = values[1].get::<glib::BoxedAnyObject>().unwrap().borrow::<Instrument>().clone();
             f(&obj, instrument);
             None
         })
@@ -209,7 +210,7 @@ impl InstrumentSelectorPopover {
             }
         };
 
-        self.emit_by_name::<()>("instrument-selected", &[&instrument]);
+        self.emit_by_name::<()>("instrument-selected", &[&glib::BoxedAnyObject::new(instrument.clone())]);
         self.popdown();
     }
 

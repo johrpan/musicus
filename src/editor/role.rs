@@ -5,7 +5,9 @@ use gettextrs::gettext;
 use gtk::glib::{self, subclass::Signal};
 use once_cell::sync::Lazy;
 
-use crate::{db::models::Role, editor::translation::TranslationEditor, library::Library};
+use musicus_library::db::models::Role;
+
+use crate::{editor::translation::TranslationEditor, library::Library};
 
 mod imp {
     use super::*;
@@ -46,7 +48,7 @@ mod imp {
         fn signals() -> &'static [Signal] {
             static SIGNALS: Lazy<Vec<Signal>> = Lazy::new(|| {
                 vec![Signal::builder("created")
-                    .param_types([Role::static_type()])
+                    .param_types([glib::BoxedAnyObject::static_type()])
                     .build()]
             });
 
@@ -85,7 +87,7 @@ impl RoleEditor {
     pub fn connect_created<F: Fn(&Self, Role) + 'static>(&self, f: F) -> glib::SignalHandlerId {
         self.connect_local("created", true, move |values| {
             let obj = values[0].get::<Self>().unwrap();
-            let role = values[1].get::<Role>().unwrap();
+            let role = values[1].get::<glib::BoxedAnyObject>().unwrap().borrow::<Role>().clone();
             f(&obj, role);
             None
         })
@@ -101,7 +103,7 @@ impl RoleEditor {
             library.update_role(role_id, name, enable_updates).unwrap();
         } else {
             let role = library.create_role(name, enable_updates).unwrap();
-            self.emit_by_name::<()>("created", &[&role]);
+            self.emit_by_name::<()>("created", &[&glib::BoxedAnyObject::new(role.clone())]);
         }
 
         self.imp().navigation.get().unwrap().pop();

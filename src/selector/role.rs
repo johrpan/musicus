@@ -8,8 +8,9 @@ use gtk::{
 };
 use once_cell::sync::Lazy;
 
+use musicus_library::db::models::Role;
+
 use crate::{
-    db::models::Role,
     library::{Library, SearchItem},
     util::activatable_row::ActivatableRow,
 };
@@ -71,7 +72,7 @@ mod imp {
                 vec![
                     Signal::builder("reset").build(),
                     Signal::builder("role-selected")
-                        .param_types([Role::static_type()])
+                        .param_types([glib::BoxedAnyObject::static_type()])
                         .build(),
                     Signal::builder("create").build(),
                 ]
@@ -121,7 +122,7 @@ impl RoleSelectorPopover {
     ) -> glib::SignalHandlerId {
         self.connect_local("role-selected", true, move |values| {
             let obj = values[0].get::<Self>().unwrap();
-            let role = values[1].get::<Role>().unwrap();
+            let role = values[1].get::<glib::BoxedAnyObject>().unwrap().borrow::<Role>().clone();
             f(&obj, role);
             None
         })
@@ -219,7 +220,7 @@ impl RoleSelectorPopover {
             }
         };
 
-        self.emit_by_name::<()>("role-selected", &[&role]);
+        self.emit_by_name::<()>("role-selected", &[&glib::BoxedAnyObject::new(role.clone())]);
         self.popdown();
     }
 

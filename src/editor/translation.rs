@@ -3,7 +3,9 @@ use std::{cell::RefCell, collections::HashMap};
 use adw::{prelude::*, subclass::prelude::*};
 use gtk::glib;
 
-use crate::{db::TranslatedString, editor::translation_entry::TranslationEntry, util};
+use musicus_library::db::TranslatedString;
+
+use crate::{editor::translation_entry::TranslationEntry, util};
 
 mod imp {
     use super::*;

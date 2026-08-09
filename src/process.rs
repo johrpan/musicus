@@ -1,11 +1,11 @@
 use std::cell::{Cell, OnceCell, RefCell};
 
-use anyhow::Result;
 use gtk::{
     glib::{self, Properties},
     prelude::*,
     subclass::prelude::*,
 };
+pub use musicus_library::process::ProcessMsg;
 
 mod imp {
     use super::*;
@@ -71,11 +71,4 @@ impl Process {
 
         obj
     }
-}
-
-#[derive(Debug)]
-pub enum ProcessMsg {
-    Message(String),
-    Progress(f64),
-    Result(Result<()>),
 }

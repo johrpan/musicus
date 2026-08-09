@@ -7,9 +7,11 @@ use gtk::{
     prelude::*,
 };
 
+use musicus_library::db::models::*;
+
 use crate::{
-    db::models::*, editor::album::AlbumEditor, library::Library, player::Player,
-    playlist_item::PlaylistItem, recording_tile::RecordingTile, util,
+    editor::album::AlbumEditor, library::Library, player::Player, playlist_item::PlaylistItem,
+    recording_tile::RecordingTile, util,
 };
 
 mod imp {

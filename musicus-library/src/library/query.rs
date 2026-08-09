@@ -8,11 +8,33 @@ use formatx::formatx;
 use gettextrs::gettext;
 
 use super::{metadata::SearchItem, Library};
-use crate::{
-    db::{self, models::*, schema::*, tables},
-    program::Program,
-    tag_tile::Tag,
-};
+use crate::db::{self, models::*, schema::*, tables};
+
+/// A single item that a [`LibraryQuery`] can be about, or that search results can be
+/// tagged/highlighted with.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Tag {
+    Composer(Person),
+    Performer(Person),
+    Ensemble(Ensemble),
+    Instrument(Instrument),
+    Work(Work),
+}
+
+/// Parameters for [`Library::generate_recording`], describing a playback "program".
+#[derive(Clone, Default, Debug)]
+pub struct GenerateRecordingParams {
+    pub composer_id: Option<String>,
+    pub performer_id: Option<String>,
+    pub ensemble_id: Option<String>,
+    pub instrument_id: Option<String>,
+    pub work_id: Option<String>,
+    pub album_id: Option<String>,
+    pub prefer_recently_added: f64,
+    pub prefer_least_recently_played: f64,
+    pub avoid_repeated_composers: i32,
+    pub avoid_repeated_instruments: i32,
+}
 
 #[derive(Clone, Default, Debug)]
 pub struct LibraryQuery {
@@ -518,15 +540,15 @@ impl Library {
         })
     }
 
-    pub fn generate_recording(&self, program: &Program) -> Result<Recording> {
+    pub fn generate_recording(&self, params: &GenerateRecordingParams) -> Result<Recording> {
         let connection = &mut *self.conn();
 
-        let composer_id = program.composer_id();
-        let performer_id = program.performer_id();
-        let ensemble_id = program.ensemble_id();
-        let instrument_id = program.instrument_id();
-        let work_id = program.work_id();
-        let album_id = program.album_id();
+        let composer_id = params.composer_id.clone();
+        let performer_id = params.performer_id.clone();
+        let ensemble_id = params.ensemble_id.clone();
+        let instrument_id = params.instrument_id.clone();
+        let work_id = params.work_id.clone();
+        let album_id = params.album_id.clone();
 
         let mut query = recordings::table
             .inner_join(
@@ -617,9 +639,9 @@ impl Library {
                 SELECT (RANDOM() / 9223372036854775808.0 + 1.0) / 2.0 * MIN(
                         (
                             EXP(10.0 * ")
-                                .bind::<sql_types::Double, _>(program.prefer_least_recently_played())
+                                .bind::<sql_types::Double, _>(params.prefer_least_recently_played)
                                 .sql(" * (least_recently_played - 1.0)) + EXP(10.0 * ")
-                                .bind::<sql_types::Double, _>(program.prefer_recently_added())
+                                .bind::<sql_types::Double, _>(params.prefer_recently_added)
                                 .sql(" * (recently_created - 1.0))
                         ) / 2.0,
                         FIRST_VALUE(
@@ -628,14 +650,14 @@ impl Library {
                                     (
                                         UNIXEPOCH('now', 'localtime') - UNIXEPOCH(instruments.last_played_at)
                                     ) * 1.0 / ")
-                                        .bind::<sql_types::Integer, _>(program.avoid_repeated_instruments())
+                                        .bind::<sql_types::Integer, _>(params.avoid_repeated_instruments)
                                         .sql(",
                                     1.0
                                 ),
                                 IFNULL(
                                     (
                                         UNIXEPOCH('now', 'localtime') - UNIXEPOCH(persons.last_played_at)
-                                    ) * 1.0 / ").bind::<sql_types::Integer, _>(program.avoid_repeated_composers()).sql(",
+                                    ) * 1.0 / ").bind::<sql_types::Integer, _>(params.avoid_repeated_composers).sql(",
                                     1.0
                                 ),
                                 1.0

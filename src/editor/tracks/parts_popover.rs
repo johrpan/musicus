@@ -7,7 +7,9 @@ use gtk::{
 };
 use once_cell::sync::Lazy;
 
-use crate::{db::models::Work, util::activatable_row::ActivatableRow};
+use musicus_library::db::models::Work;
+
+use crate::util::activatable_row::ActivatableRow;
 
 mod imp {
     use super::*;
@@ -59,7 +61,7 @@ mod imp {
             static SIGNALS: Lazy<Vec<Signal>> = Lazy::new(|| {
                 vec![
                     Signal::builder("part-selected")
-                        .param_types([Work::static_type()])
+                        .param_types([glib::BoxedAnyObject::static_type()])
                         .build(),
                     Signal::builder("create").build(),
                 ]
@@ -104,7 +106,7 @@ impl TracksEditorPartsPopover {
     ) -> glib::SignalHandlerId {
         self.connect_local("part-selected", true, move |values| {
             let obj = values[0].get::<Self>().unwrap();
-            let role = values[1].get::<Work>().unwrap();
+            let role = values[1].get::<glib::BoxedAnyObject>().unwrap().borrow::<Work>().clone();
             f(&obj, role);
             None
         })
@@ -164,7 +166,7 @@ impl TracksEditorPartsPopover {
     }
 
     fn select(&self, part: Work) {
-        self.emit_by_name::<()>("part-selected", &[&part]);
+        self.emit_by_name::<()>("part-selected", &[&glib::BoxedAnyObject::new(part.clone())]);
         self.popdown();
     }
 }

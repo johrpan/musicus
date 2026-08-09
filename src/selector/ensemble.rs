@@ -8,8 +8,9 @@ use gtk::{
 };
 use once_cell::sync::Lazy;
 
+use musicus_library::db::models::Ensemble;
+
 use crate::{
-    db::models::Ensemble,
     library::{Library, SearchItem},
     util::activatable_row::ActivatableRow,
 };
@@ -70,7 +71,7 @@ mod imp {
             static SIGNALS: Lazy<Vec<Signal>> = Lazy::new(|| {
                 vec![
                     Signal::builder("ensemble-selected")
-                        .param_types([Ensemble::static_type()])
+                        .param_types([glib::BoxedAnyObject::static_type()])
                         .build(),
                     Signal::builder("create").build(),
                 ]
@@ -112,7 +113,7 @@ impl EnsembleSelectorPopover {
     ) -> glib::SignalHandlerId {
         self.connect_local("ensemble-selected", true, move |values| {
             let obj = values[0].get::<Self>().unwrap();
-            let ensemble = values[1].get::<Ensemble>().unwrap();
+            let ensemble = values[1].get::<glib::BoxedAnyObject>().unwrap().borrow::<Ensemble>().clone();
             f(&obj, ensemble);
             None
         })
@@ -204,7 +205,7 @@ impl EnsembleSelectorPopover {
             }
         };
 
-        self.emit_by_name::<()>("ensemble-selected", &[&ensemble]);
+        self.emit_by_name::<()>("ensemble-selected", &[&glib::BoxedAnyObject::new(ensemble.clone())]);
         self.popdown();
     }
 

@@ -2,7 +2,7 @@ use std::cell::OnceCell;
 
 use gtk::{glib, prelude::*, subclass::prelude::*};
 
-use crate::db::models::{Ensemble, Instrument, Person, Work};
+use crate::library::Tag;
 
 mod imp {
     use super::*;
@@ -84,13 +84,4 @@ impl TagTile {
     pub fn tag(&self) -> &Tag {
         self.imp().tag.get().unwrap()
     }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Tag {
-    Composer(Person),
-    Performer(Person),
-    Ensemble(Ensemble),
-    Instrument(Instrument),
-    Work(Work),
 }
