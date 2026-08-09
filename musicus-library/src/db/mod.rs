@@ -2,6 +2,9 @@ pub mod models;
 pub mod schema;
 pub mod tables;
 
+#[cfg(test)]
+mod migration_tests;
+
 use std::{
     collections::HashMap,
     fmt::Display,
@@ -111,5 +114,85 @@ where
         let text = serde_json::to_string(self)?;
         out.set_value(text);
         Ok(IsNull::No)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use chrono::Local;
+
+    use super::*;
+
+    fn migrated_conn() -> SqliteConnection {
+        let mut conn = SqliteConnection::establish(":memory:").unwrap();
+        conn.run_pending_migrations(MIGRATIONS).unwrap();
+        conn
+    }
+
+    #[test]
+    fn fresh_schema_applies_all_migrations() {
+        let mut conn = migrated_conn();
+
+        assert!(!conn.has_pending_migration(MIGRATIONS).unwrap());
+        assert_eq!(conn.applied_migrations().unwrap().len(), 6);
+
+        assert_eq!(
+            schema::persons::table
+                .count()
+                .get_result::<i64>(&mut conn)
+                .unwrap(),
+            0
+        );
+    }
+
+    #[test]
+    fn translated_string_locale_fallback() {
+        set_language("de");
+
+        let mut translations = HashMap::new();
+        translations.insert("de".to_string(), "Hallo".to_string());
+        translations.insert("generic".to_string(), "Hello".to_string());
+        assert_eq!(TranslatedString(translations).get(), "Hallo");
+
+        let mut generic_only = HashMap::new();
+        generic_only.insert("generic".to_string(), "Hello".to_string());
+        assert_eq!(TranslatedString(generic_only).get(), "Hello");
+
+        assert_eq!(TranslatedString(HashMap::new()).get(), "");
+    }
+
+    #[test]
+    fn translated_string_round_trips_through_sqlite() {
+        let mut conn = migrated_conn();
+        let now = Local::now().naive_local();
+
+        let mut name = HashMap::new();
+        name.insert("generic".to_string(), "Ludwig van Beethoven".to_string());
+        name.insert("de".to_string(), "Ludwig van Beethoven".to_string());
+        let translated = TranslatedString(name);
+
+        diesel::insert_into(schema::persons::table)
+            .values((
+                schema::persons::person_id.eq("test-person"),
+                schema::persons::name.eq(&translated),
+                schema::persons::source.eq("user"),
+                schema::persons::enable_updates.eq(true),
+                schema::persons::created_at.eq(now),
+                schema::persons::edited_at.eq(now),
+                schema::persons::last_used_at.eq(now),
+            ))
+            .execute(&mut conn)
+            .unwrap();
+
+        let loaded: TranslatedString = schema::persons::table
+            .filter(schema::persons::person_id.eq("test-person"))
+            .select(schema::persons::name)
+            .first(&mut conn)
+            .unwrap();
+
+        assert_eq!(
+            loaded.0.get("de"),
+            Some(&"Ludwig van Beethoven".to_string())
+        );
     }
 }

@@ -855,3 +855,142 @@ fn path_to_zip(path: impl AsRef<Path>) -> Result<String> {
 pub fn metadata_file_path(cache_dir: &Path) -> PathBuf {
     cache_dir.join("metadata.muslib")
 }
+
+#[cfg(test)]
+mod tests {
+    use tempfile::TempDir;
+
+    use super::*;
+    use crate::db::TranslatedString;
+
+    /// Drain a process channel until it reports a result, returning that result.
+    fn wait_for_result(receiver: async_channel::Receiver<ProcessMsg>) -> Result<()> {
+        loop {
+            match receiver.recv_blocking() {
+                Ok(ProcessMsg::Result(result)) => return result,
+                Ok(_) => continue,
+                Err(_) => return Err(anyhow!("process channel closed without a result")),
+            }
+        }
+    }
+
+    fn translated(name: &str) -> TranslatedString {
+        let mut translations = std::collections::HashMap::new();
+        translations.insert("generic".to_string(), name.to_string());
+        TranslatedString(translations)
+    }
+
+    /// Populate `library` with one person, one work, one recording, and one track (backed
+    /// by a small placeholder audio file), returning the created recording.
+    fn populate(library: &Library, track_source: &Path) -> crate::db::models::Recording {
+        let person = library
+            .create_person(translated("Ludwig van Beethoven"), true)
+            .unwrap();
+
+        let work = library
+            .create_work(
+                translated("Symphony No. 5"),
+                Vec::new(),
+                vec![crate::db::models::Composer {
+                    person,
+                    role: None,
+                }],
+                Vec::new(),
+                true,
+            )
+            .unwrap();
+
+        let recording = library
+            .create_recording(work.clone(), None, Vec::new(), Vec::new(), true)
+            .unwrap();
+
+        library
+            .import_track(track_source, &recording.recording_id, 0, vec![work])
+            .unwrap();
+
+        recording
+    }
+
+    #[test]
+    fn library_round_trips_through_zip_export_and_import() {
+        let source_dir = TempDir::new().unwrap();
+        let source_cache_dir = TempDir::new().unwrap();
+        let source = Library::new(source_dir.path(), source_cache_dir.path()).unwrap();
+
+        let track_source_file = source_dir.path().join("source_track.mp3");
+        fs::write(&track_source_file, b"not actually audio").unwrap();
+
+        let recording = populate(&source, &track_source_file);
+
+        let zip_path = source_dir.path().join("export.muslib");
+        let receiver = source.export_library_to_zip(&zip_path).unwrap();
+        wait_for_result(receiver).unwrap();
+
+        let dest_dir = TempDir::new().unwrap();
+        let dest_cache_dir = TempDir::new().unwrap();
+        let dest = Library::new(dest_dir.path(), dest_cache_dir.path()).unwrap();
+
+        let receiver = dest
+            .import_library_from_zip(&zip_path, Source::Import)
+            .unwrap();
+        wait_for_result(receiver).unwrap();
+
+        let persons = dest.search_persons("Beethoven").unwrap();
+        assert_eq!(persons.len(), 1);
+        assert_eq!(persons[0].item.name.get(), "Ludwig van Beethoven");
+
+        let tracks = dest.tracks_for_recording(&recording.recording_id).unwrap();
+        assert_eq!(tracks.len(), 1);
+        assert_eq!(
+            fs::read(dest_dir.path().join(&tracks[0].path)).unwrap(),
+            b"not actually audio"
+        );
+    }
+
+    #[test]
+    fn metadata_import_respects_enable_updates() {
+        let dest_dir = TempDir::new().unwrap();
+        let dest_cache_dir = TempDir::new().unwrap();
+        let dest = Library::new(dest_dir.path(), dest_cache_dir.path()).unwrap();
+
+        // enable_updates = false: this person should not be overwritten by a metadata import.
+        let person = dest
+            .create_person(translated("Original Name"), false)
+            .unwrap();
+
+        // A separate "remote" metadata database with a same-ID person under a different name.
+        let remote_dir = TempDir::new().unwrap();
+        let remote_db_path = remote_dir.path().join("musicus.db");
+        let mut remote_connection = db::connect(remote_db_path.to_str().unwrap()).unwrap();
+        let now = Local::now().naive_local();
+        diesel::insert_into(persons::table)
+            .values(tables::Person {
+                person_id: person.person_id.clone(),
+                name: translated("Renamed"),
+                source: Source::User,
+                enable_updates: true,
+                created_at: now,
+                edited_at: now,
+                last_used_at: now,
+                last_played_at: None,
+            })
+            .execute(&mut remote_connection)
+            .unwrap();
+
+        update_metadata_from_file(&remote_db_path, dest.connection.clone()).unwrap();
+
+        let after_disabled = dest.search_persons("Original Name").unwrap();
+        assert_eq!(after_disabled.len(), 1, "name must stay unchanged");
+
+        // Re-enable updates for this person, then re-run the same import.
+        diesel::update(persons::table.filter(persons::person_id.eq(&person.person_id)))
+            .set(persons::enable_updates.eq(true))
+            .execute(&mut *dest.conn())
+            .unwrap();
+
+        update_metadata_from_file(&remote_db_path, dest.connection.clone()).unwrap();
+
+        let after_enabled = dest.search_persons("Renamed").unwrap();
+        assert_eq!(after_enabled.len(), 1, "name should now be updated");
+    }
+}
