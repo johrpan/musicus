@@ -395,4 +395,4 @@ CREATE INDEX track_works_work_id ON track_works (work_id);
 CREATE INDEX album_recordings_recording_id ON album_recordings (recording_id);
 CREATE INDEX album_mediums_medium_id ON album_mediums (medium_id);
 
-UPDATE library_meta SET schema_version = 2, updated_at = DATETIME('now') WHERE id = 1;
+UPDATE meta SET schema_version = 2, updated_at = DATETIME('now') WHERE id = 1;
