@@ -17,7 +17,7 @@ use musicus_library::db::models::{
 use crate::{
     editor::{ensemble::EnsembleEditor, simple_entity::SimpleEntityEditor, work::WorkEditor},
     library::Library,
-    selector::{work::WorkSelectorPopover, SelectorPopover},
+    selector::{work::WorkSelectorPopover, RecordingPrefill, SelectorPopover},
 };
 
 mod imp {
@@ -102,8 +102,9 @@ mod imp {
             });
 
             let obj = self.obj().clone();
-            work_selector_popover.connect_create(move |_| {
+            work_selector_popover.connect_create(move |_, prefill| {
                 let editor = WorkEditor::new(&obj.navigation(), &obj.library(), None, false);
+                editor.prefill(&prefill);
 
                 editor.connect_created(clone!(
                     #[weak]
@@ -129,8 +130,9 @@ mod imp {
             });
 
             let obj = self.obj().clone();
-            persons_popover.connect_create(move |_| {
+            persons_popover.connect_create(move |_, search| {
                 let editor = SimpleEntityEditor::person(&obj.navigation(), &obj.library(), None);
+                editor.set_name(&search);
 
                 editor.connect_created(clone!(
                     #[weak]
@@ -154,8 +156,9 @@ mod imp {
             });
 
             let obj = self.obj().clone();
-            ensembles_popover.connect_create(move |_| {
+            ensembles_popover.connect_create(move |_, search| {
                 let editor = EnsembleEditor::new(&obj.navigation(), &obj.library(), None);
+                editor.set_name(&search);
 
                 editor.connect_created(clone!(
                     #[weak]
@@ -218,6 +221,12 @@ impl RecordingEditor {
         }
 
         obj
+    }
+
+    pub fn prefill(&self, prefill: &RecordingPrefill) {
+        if let Some(work) = &prefill.work {
+            self.set_work(work.to_owned());
+        }
     }
 
     pub fn connect_created<F: Fn(&Self, Recording) + 'static>(

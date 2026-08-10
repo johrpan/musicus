@@ -82,7 +82,9 @@ mod imp {
                     Signal::builder("selected")
                         .param_types([glib::BoxedAnyObject::static_type()])
                         .build(),
-                    Signal::builder("create").build(),
+                    Signal::builder("create")
+                        .param_types([String::static_type()])
+                        .build(),
                     Signal::builder("reset").build(),
                 ]
             });
@@ -162,10 +164,11 @@ impl SelectorPopover {
         })
     }
 
-    pub fn connect_create<F: Fn(&Self) + 'static>(&self, f: F) -> glib::SignalHandlerId {
+    pub fn connect_create<F: Fn(&Self, String) + 'static>(&self, f: F) -> glib::SignalHandlerId {
         self.connect_local("create", true, move |values| {
             let obj = values[0].get::<Self>().unwrap();
-            f(&obj);
+            let search = values[1].get::<String>().unwrap();
+            f(&obj, search);
             None
         })
     }
@@ -276,7 +279,8 @@ impl SelectorPopover {
     }
 
     fn create(&self) {
-        self.emit_by_name::<()>("create", &[]);
+        let search = self.imp().search_entry.text().to_string();
+        self.emit_by_name::<()>("create", &[&search]);
         self.popdown();
     }
 }

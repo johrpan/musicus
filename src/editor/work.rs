@@ -19,7 +19,7 @@ use musicus_library::db::{
 use crate::{
     editor::{simple_entity::SimpleEntityEditor, translation::TranslationEditor},
     library::Library,
-    selector::SelectorPopover,
+    selector::{SelectorPopover, WorkPrefill},
 };
 use instrument_row::InstrumentRow;
 
@@ -107,8 +107,9 @@ mod imp {
             });
 
             let obj = self.obj().clone();
-            persons_popover.connect_create(move |_| {
+            persons_popover.connect_create(move |_, search| {
                 let editor = SimpleEntityEditor::person(&obj.navigation(), &obj.library(), None);
+                editor.set_name(&search);
 
                 editor.connect_created(clone!(
                     #[weak]
@@ -132,9 +133,10 @@ mod imp {
             });
 
             let obj = self.obj().clone();
-            instruments_popover.connect_create(move |_| {
+            instruments_popover.connect_create(move |_, search| {
                 let editor =
                     SimpleEntityEditor::instrument(&obj.navigation(), &obj.library(), None);
+                editor.set_name(&search);
 
                 editor.connect_created(clone!(
                     #[weak]
@@ -203,6 +205,14 @@ impl WorkEditor {
         }
 
         obj
+    }
+
+    pub fn prefill(&self, prefill: &WorkPrefill) {
+        self.imp().name_editor.set_generic(&prefill.name);
+
+        if let Some(composer) = &prefill.composer {
+            self.add_composer(composer.to_owned());
+        }
     }
 
     pub fn connect_created<F: Fn(&Self, Work) + 'static>(&self, f: F) -> glib::SignalHandlerId {

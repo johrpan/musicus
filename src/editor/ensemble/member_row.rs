@@ -118,9 +118,10 @@ mod imp {
             });
 
             let obj = self.obj().to_owned();
-            instrument_popover.connect_create(move |_| {
+            instrument_popover.connect_create(move |_, search| {
                 let editor =
                     SimpleEntityEditor::instrument(&obj.navigation(), &obj.library(), None);
+                editor.set_name(&search);
 
                 editor.connect_created(clone!(
                     #[weak]

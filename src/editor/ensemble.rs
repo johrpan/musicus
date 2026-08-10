@@ -100,12 +100,14 @@ impl EnsembleEditor {
         });
 
         let this = obj.clone();
-        persons_popover.connect_create(move |_| {
+        persons_popover.connect_create(move |_, search| {
             let editor = SimpleEntityEditor::person(
                 this.imp().navigation.get().unwrap(),
                 this.imp().library.get().unwrap(),
                 None,
             );
+
+            editor.set_name(&search);
 
             editor.connect_created(clone!(
                 #[weak]
@@ -138,6 +140,10 @@ impl EnsembleEditor {
         }
 
         obj
+    }
+
+    pub fn set_name(&self, name: &str) {
+        self.imp().name_editor.set_generic(name);
     }
 
     pub fn connect_created<F: Fn(&Self, Ensemble) + 'static>(&self, f: F) -> glib::SignalHandlerId {
