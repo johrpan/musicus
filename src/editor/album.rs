@@ -205,14 +205,27 @@ impl AlbumEditor {
 
         let enable_updates = self.imp().enable_updates_row.is_active();
 
+        if !crate::editor::require_name(self, &name) {
+            return;
+        }
+
         if let Some(album_id) = self.imp().album_id.get() {
-            library
-                .update_album(album_id, name, recordings, enable_updates)
-                .unwrap();
+            if crate::editor::handle_save(
+                self,
+                library.update_album(album_id, name, recordings, enable_updates),
+            )
+            .is_none()
+            {
+                return;
+            }
         } else {
-            let album = library
-                .create_album(name, recordings, enable_updates)
-                .unwrap();
+            let Some(album) = crate::editor::handle_save(
+                self,
+                library.create_album(name, recordings, enable_updates),
+            ) else {
+                return;
+            };
+
             self.emit_by_name::<()>("created", &[&glib::BoxedAnyObject::new(album.clone())]);
         }
 
