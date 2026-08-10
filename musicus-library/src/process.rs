@@ -12,6 +12,9 @@ use anyhow::{bail, Result};
 #[derive(Debug)]
 pub enum ProcessMsg {
     Message(String),
+    /// A problem that did not stop the operation but that the user should see
+    /// anyway, and still see once it has finished.
+    Warning(String),
     Progress(f64),
     Result(Result<()>),
     /// The operation stopped because cancellation was requested.

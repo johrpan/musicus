@@ -28,6 +28,8 @@ mod imp {
         #[template_child]
         pub success_label: TemplateChild<gtk::Label>,
         #[template_child]
+        pub warning_label: TemplateChild<gtk::Label>,
+        #[template_child]
         pub error_label: TemplateChild<gtk::Label>,
         #[template_child]
         pub cancelled_label: TemplateChild<gtk::Label>,
@@ -77,6 +79,11 @@ mod imp {
 
             let obj = self.obj().to_owned();
             self.obj().process().connect_message_notify(move |_| {
+                obj.update();
+            });
+
+            let obj = self.obj().to_owned();
+            self.obj().process().connect_warning_notify(move |_| {
                 obj.update();
             });
 
@@ -137,6 +144,18 @@ impl ProcessRow {
             }
             None => {
                 self.imp().message_label.set_visible(false);
+            }
+        }
+
+        // Unlike the message, a warning stays visible once it has been
+        // reported, including after the process has finished.
+        match self.process().warning() {
+            Some(warning) => {
+                self.imp().warning_label.set_visible(true);
+                self.imp().warning_label.set_label(&warning);
+            }
+            None => {
+                self.imp().warning_label.set_visible(false);
             }
         }
 

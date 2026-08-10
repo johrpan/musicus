@@ -45,6 +45,17 @@ template $MusicusProcessRow: Gtk.ListBoxRow {
           ]
         }
 
+        Gtk.Label warning_label {
+          wrap: true;
+          xalign: 0.0;
+          visible: false;
+
+          styles [
+            "warning",
+            "caption",
+          ]
+        }
+
         Gtk.Label error_label {
           wrap: true;
           visible: false;

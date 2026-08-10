@@ -59,7 +59,7 @@ translation files whenever translatable strings have been changed.
     EOF
 
     find data/ui -name "*.blp" >> po/POTFILES
-    find src -name "*.rs" -a ! -name "config.rs" >> po/POTFILES
+    find src musicus-library/src -name "*.rs" -a ! -name "config.rs" >> po/POTFILES
     ```
 
 2. Update `po/template.pot`
