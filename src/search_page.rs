@@ -367,7 +367,14 @@ impl SearchPage {
         let query = self.imp().query.get().unwrap();
 
         let imp = self.imp();
-        let results = self.library().search(query, search).unwrap();
+
+        let results = match self.library().search(query, search) {
+            Ok(results) => results,
+            Err(err) => {
+                util::error_toast("Search failed", err, &self.toast_overlay());
+                return;
+            }
+        };
 
         for flowbox in [
             &imp.composers_flow_box,
