@@ -96,9 +96,11 @@ mod imp {
             });
 
             let obj = self.obj().clone();
-            recordings_popover.connect_create(move |_| {
+            recordings_popover.connect_create(move |_, prefill| {
                 let editor =
                     RecordingEditor::new(obj.imp().navigation.get().unwrap(), &obj.library(), None);
+
+                editor.prefill(&prefill);
 
                 editor.connect_created(clone!(
                     #[weak]

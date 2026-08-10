@@ -140,8 +140,9 @@ mod imp {
             });
 
             let obj = self.obj().to_owned();
-            role_popover.connect_create_role(move |_| {
+            role_popover.connect_create_role(move |_, search| {
                 let editor = SimpleEntityEditor::role(&obj.navigation(), &obj.library(), None);
+                editor.set_name(&search);
 
                 editor.connect_created(clone!(
                     #[weak]
@@ -159,9 +160,10 @@ mod imp {
             });
 
             let obj = self.obj().to_owned();
-            role_popover.connect_create_instrument(move |_| {
+            role_popover.connect_create_instrument(move |_, search| {
                 let editor =
                     SimpleEntityEditor::instrument(&obj.navigation(), &obj.library(), None);
+                editor.set_name(&search);
 
                 editor.connect_created(clone!(
                     #[weak]

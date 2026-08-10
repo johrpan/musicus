@@ -10,7 +10,7 @@ use once_cell::sync::Lazy;
 
 use musicus_library::db::models::{Person, Work};
 
-use super::connect_keynav;
+use super::{connect_keynav, WorkPrefill};
 use crate::{
     library::{Library, SearchItem},
     util::activatable_row::ActivatableRow,
@@ -97,7 +97,9 @@ mod imp {
                     Signal::builder("selected")
                         .param_types([glib::BoxedAnyObject::static_type()])
                         .build(),
-                    Signal::builder("create").build(),
+                    Signal::builder("create")
+                        .param_types([glib::BoxedAnyObject::static_type()])
+                        .build(),
                 ]
             });
 
@@ -134,10 +136,18 @@ impl WorkSelectorPopover {
         })
     }
 
-    pub fn connect_create<F: Fn(&Self) + 'static>(&self, f: F) -> glib::SignalHandlerId {
+    pub fn connect_create<F: Fn(&Self, WorkPrefill) + 'static>(
+        &self,
+        f: F,
+    ) -> glib::SignalHandlerId {
         self.connect_local("create", true, move |values| {
             let obj = values[0].get::<Self>().unwrap();
-            f(&obj);
+            let prefill = values[1]
+                .get::<glib::BoxedAnyObject>()
+                .unwrap()
+                .borrow::<WorkPrefill>()
+                .clone();
+            f(&obj, prefill);
             None
         })
     }
@@ -152,7 +162,8 @@ impl WorkSelectorPopover {
         if let Some(item) = self.imp().composers.borrow().first() {
             self.select_composer(item.to_owned());
         } else {
-            self.create();
+            // The text within the composer pane is a composer's name and not a work's.
+            self.create(WorkPrefill::default());
         }
     }
 
@@ -174,7 +185,7 @@ impl WorkSelectorPopover {
         if let Some(item) = self.imp().works.borrow().first() {
             self.select(item.clone());
         } else {
-            self.create();
+            self.create(self.work_prefill());
         }
     }
 
@@ -215,7 +226,7 @@ impl WorkSelectorPopover {
         let create_row = ActivatableRow::new(&create_box);
         let obj = self.clone();
         create_row.connect_activated(move |_: &ActivatableRow| {
-            obj.create();
+            obj.create(WorkPrefill::default());
         });
 
         imp.composer_list.append(&create_row);
@@ -260,7 +271,7 @@ impl WorkSelectorPopover {
         let create_row = ActivatableRow::new(&create_box);
         let obj = self.clone();
         create_row.connect_activated(move |_: &ActivatableRow| {
-            obj.create();
+            obj.create(obj.work_prefill());
         });
 
         imp.work_list.append(&create_row);
@@ -320,8 +331,15 @@ impl WorkSelectorPopover {
         self.popdown();
     }
 
-    fn create(&self) {
-        self.emit_by_name::<()>("create", &[]);
+    fn work_prefill(&self) -> WorkPrefill {
+        WorkPrefill {
+            composer: self.imp().composer.borrow().clone(),
+            name: self.imp().work_search_entry.text().to_string(),
+        }
+    }
+
+    fn create(&self, prefill: WorkPrefill) {
+        self.emit_by_name::<()>("create", &[&glib::BoxedAnyObject::new(prefill)]);
         self.popdown();
     }
 }

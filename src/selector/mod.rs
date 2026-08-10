@@ -13,6 +13,23 @@ use gtk::{
     prelude::*,
 };
 
+use musicus_library::db::models::{Person, Work};
+
+/// Information the user already provided in a selector before choosing to create a new
+/// work, so that the editor can start out pre-filled.
+#[derive(Debug, Default, Clone)]
+pub struct WorkPrefill {
+    pub composer: Option<Person>,
+    pub name: String,
+}
+
+/// Information the user already provided in a selector before choosing to create a new
+/// recording, so that the editor can start out pre-filled.
+#[derive(Debug, Default, Clone)]
+pub struct RecordingPrefill {
+    pub work: Option<Work>,
+}
+
 /// Let the up and down keys move the focus between a selector's search entry and its result list.
 pub fn connect_keynav(search_entry: &gtk::SearchEntry, list_box: &gtk::ListBox) {
     let controller = gtk::EventControllerKey::new();

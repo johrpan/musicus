@@ -101,8 +101,12 @@ mod imp {
                     Signal::builder("instrument-selected")
                         .param_types([glib::BoxedAnyObject::static_type()])
                         .build(),
-                    Signal::builder("create-role").build(),
-                    Signal::builder("create-instrument").build(),
+                    Signal::builder("create-role")
+                        .param_types([String::static_type()])
+                        .build(),
+                    Signal::builder("create-instrument")
+                        .param_types([String::static_type()])
+                        .build(),
                 ]
             });
 
@@ -166,18 +170,26 @@ impl PerformerRoleSelectorPopover {
         })
     }
 
-    pub fn connect_create_role<F: Fn(&Self) + 'static>(&self, f: F) -> glib::SignalHandlerId {
+    pub fn connect_create_role<F: Fn(&Self, String) + 'static>(
+        &self,
+        f: F,
+    ) -> glib::SignalHandlerId {
         self.connect_local("create-role", true, move |values| {
             let obj = values[0].get::<Self>().unwrap();
-            f(&obj);
+            let search = values[1].get::<String>().unwrap();
+            f(&obj, search);
             None
         })
     }
 
-    pub fn connect_create_instrument<F: Fn(&Self) + 'static>(&self, f: F) -> glib::SignalHandlerId {
+    pub fn connect_create_instrument<F: Fn(&Self, String) + 'static>(
+        &self,
+        f: F,
+    ) -> glib::SignalHandlerId {
         self.connect_local("create-instrument", true, move |values| {
             let obj = values[0].get::<Self>().unwrap();
-            f(&obj);
+            let search = values[1].get::<String>().unwrap();
+            f(&obj, search);
             None
         })
     }
@@ -356,12 +368,14 @@ impl PerformerRoleSelectorPopover {
     }
 
     fn create_role(&self) {
-        self.emit_by_name::<()>("create-role", &[]);
+        let search = self.imp().role_search_entry.text().to_string();
+        self.emit_by_name::<()>("create-role", &[&search]);
         self.popdown();
     }
 
     fn create_instrument(&self) {
-        self.emit_by_name::<()>("create-instrument", &[]);
+        let search = self.imp().instrument_search_entry.text().to_string();
+        self.emit_by_name::<()>("create-instrument", &[&search]);
         self.popdown();
     }
 }

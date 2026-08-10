@@ -10,7 +10,7 @@ use once_cell::sync::Lazy;
 
 use musicus_library::db::models::{Person, Recording, Work};
 
-use super::connect_keynav;
+use super::{connect_keynav, RecordingPrefill};
 use crate::{
     library::{Library, SearchItem},
     util::activatable_row::ActivatableRow,
@@ -111,7 +111,9 @@ mod imp {
                     Signal::builder("selected")
                         .param_types([glib::BoxedAnyObject::static_type()])
                         .build(),
-                    Signal::builder("create").build(),
+                    Signal::builder("create")
+                        .param_types([glib::BoxedAnyObject::static_type()])
+                        .build(),
                 ]
             });
 
@@ -151,10 +153,18 @@ impl RecordingSelectorPopover {
         })
     }
 
-    pub fn connect_create<F: Fn(&Self) + 'static>(&self, f: F) -> glib::SignalHandlerId {
+    pub fn connect_create<F: Fn(&Self, RecordingPrefill) + 'static>(
+        &self,
+        f: F,
+    ) -> glib::SignalHandlerId {
         self.connect_local("create", true, move |values| {
             let obj = values[0].get::<Self>().unwrap();
-            f(&obj);
+            let prefill = values[1]
+                .get::<glib::BoxedAnyObject>()
+                .unwrap()
+                .borrow::<RecordingPrefill>()
+                .clone();
+            f(&obj, prefill);
             None
         })
     }
@@ -169,7 +179,7 @@ impl RecordingSelectorPopover {
         if let Some(item) = self.imp().composers.borrow().first() {
             self.select_composer(item.to_owned());
         } else {
-            self.create();
+            self.create(RecordingPrefill::default());
         }
     }
 
@@ -191,7 +201,7 @@ impl RecordingSelectorPopover {
         if let Some(item) = self.imp().works.borrow().first() {
             self.select_work(item.to_owned());
         } else {
-            self.create();
+            self.create(RecordingPrefill::default());
         }
     }
 
@@ -211,7 +221,7 @@ impl RecordingSelectorPopover {
         if let Some(item) = self.imp().recordings.borrow().first() {
             self.select(item.to_owned());
         } else {
-            self.create();
+            self.create(self.recording_prefill());
         }
     }
 
@@ -252,7 +262,7 @@ impl RecordingSelectorPopover {
         let create_row = ActivatableRow::new(&create_box);
         let obj = self.clone();
         create_row.connect_activated(move |_: &ActivatableRow| {
-            obj.create();
+            obj.create(RecordingPrefill::default());
         });
 
         imp.composer_list.append(&create_row);
@@ -297,7 +307,7 @@ impl RecordingSelectorPopover {
         let create_row = ActivatableRow::new(&create_box);
         let obj = self.clone();
         create_row.connect_activated(move |_: &ActivatableRow| {
-            obj.create();
+            obj.create(RecordingPrefill::default());
         });
 
         imp.work_list.append(&create_row);
@@ -347,7 +357,7 @@ impl RecordingSelectorPopover {
         let create_row = ActivatableRow::new(&create_box);
         let obj = self.clone();
         create_row.connect_activated(move |_: &ActivatableRow| {
-            obj.create();
+            obj.create(obj.recording_prefill());
         });
 
         imp.recording_list.append(&create_row);
@@ -441,8 +451,14 @@ impl RecordingSelectorPopover {
         self.popdown();
     }
 
-    fn create(&self) {
-        self.emit_by_name::<()>("create", &[]);
+    fn recording_prefill(&self) -> RecordingPrefill {
+        RecordingPrefill {
+            work: self.imp().work.borrow().clone(),
+        }
+    }
+
+    fn create(&self, prefill: RecordingPrefill) {
+        self.emit_by_name::<()>("create", &[&glib::BoxedAnyObject::new(prefill)]);
         self.popdown();
     }
 }

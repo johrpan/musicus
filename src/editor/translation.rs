@@ -59,6 +59,10 @@ impl TranslationEditor {
         glib::Object::new()
     }
 
+    pub fn set_generic(&self, name: &str) {
+        self.imp().entry_row.set_text(name);
+    }
+
     pub fn set_translation(&self, translation: &TranslatedString) {
         let mut translation = translation.0.clone();
 

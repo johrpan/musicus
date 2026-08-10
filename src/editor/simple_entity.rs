@@ -213,6 +213,10 @@ impl SimpleEntityEditor {
         Self::new::<RoleKind>(navigation, library, role)
     }
 
+    pub fn set_name(&self, name: &str) {
+        self.imp().name_editor.set_generic(name);
+    }
+
     pub fn connect_created<T: Clone + 'static, F: Fn(&Self, T) + 'static>(
         &self,
         f: F,
