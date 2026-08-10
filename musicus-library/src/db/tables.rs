@@ -3,6 +3,7 @@
 
 use std::path::{Path, PathBuf};
 
+use super::{schema::*, TranslatedString};
 use anyhow::{anyhow, Result};
 use chrono::NaiveDateTime;
 use diesel::{
@@ -14,7 +15,6 @@ use diesel::{
     sql_types::Text,
     sqlite::Sqlite,
 };
-use super::{schema::*, TranslatedString};
 
 #[derive(Insertable, Queryable, Selectable, Clone, Debug)]
 #[diesel(check_for_backend(Sqlite))]

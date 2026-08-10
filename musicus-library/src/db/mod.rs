@@ -61,7 +61,9 @@ pub fn generate_id() -> String {
 }
 
 pub fn lock_connection(connection: &Mutex<SqliteConnection>) -> MutexGuard<'_, SqliteConnection> {
-    connection.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
+    connection
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
 }
 
 /// A single translated string value.

@@ -390,10 +390,8 @@ fn update_metadata_from_file(
                     .set(works::name.eq(work.name.clone()))
                     .execute(connection)?;
 
-                diesel::delete(
-                    work_persons::table.filter(work_persons::work_id.eq(&work.work_id)),
-                )
-                .execute(connection)?;
+                diesel::delete(work_persons::table.filter(work_persons::work_id.eq(&work.work_id)))
+                    .execute(connection)?;
 
                 for work_person in work_persons
                     .iter()
@@ -460,8 +458,7 @@ fn update_metadata_from_file(
 
             if enable_updates == Some(true) {
                 diesel::update(
-                    recordings::table
-                        .filter(recordings::recording_id.eq(&recording.recording_id)),
+                    recordings::table.filter(recordings::recording_id.eq(&recording.recording_id)),
                 )
                 .set(recordings::year.eq(recording.year))
                 .execute(connection)?;
@@ -509,8 +506,7 @@ fn update_metadata_from_file(
                     .execute(connection)?;
 
                 diesel::delete(
-                    album_recordings::table
-                        .filter(album_recordings::album_id.eq(&album.album_id)),
+                    album_recordings::table.filter(album_recordings::album_id.eq(&album.album_id)),
                 )
                 .execute(connection)?;
 
@@ -891,10 +887,7 @@ mod tests {
             .create_work(
                 translated("Symphony No. 5"),
                 Vec::new(),
-                vec![crate::db::models::Composer {
-                    person,
-                    role: None,
-                }],
+                vec![crate::db::models::Composer { person, role: None }],
                 Vec::new(),
                 true,
             )
