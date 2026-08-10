@@ -11,7 +11,9 @@ use std::{
     sync::{Mutex, MutexGuard, OnceLock},
 };
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::{anyhow, Result};
+
+use crate::error::LibraryError;
 use diesel::{
     backend::Backend,
     deserialize::{self, FromSql, FromSqlRow},
@@ -89,17 +91,16 @@ fn schema_version(connection: &mut SqliteConnection) -> Result<Option<i32>> {
 ///
 /// Fails if the database was written by a newer version of Musicus, rather than
 /// migrating or reading a schema this build does not understand.
-pub fn connect(file_name: &str) -> Result<SqliteConnection> {
+pub fn connect(file_name: &str) -> Result<SqliteConnection, LibraryError> {
     log::info!("Opening database file '{}'", file_name);
-    let mut connection = SqliteConnection::establish(file_name)?;
+    let mut connection = SqliteConnection::establish(file_name).map_err(anyhow::Error::from)?;
 
     if let Some(version) = schema_version(&mut connection)? {
         if version > SCHEMA_VERSION {
-            bail!(
-                "This library was created by a newer version of Musicus \
-                 (library schema version {version}, this version supports {SCHEMA_VERSION}). \
-                 Please update Musicus to open it."
-            );
+            return Err(LibraryError::SchemaTooNew {
+                found: version,
+                supported: SCHEMA_VERSION,
+            });
         }
     }
 

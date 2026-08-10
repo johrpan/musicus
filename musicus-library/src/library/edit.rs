@@ -15,6 +15,7 @@ use crate::db::{
     tables::{self, Source},
     TranslatedString,
 };
+use crate::error::{EntityKind, LibraryError};
 
 impl Library {
     pub fn create_person(&self, name: TranslatedString, enable_updates: bool) -> Result<Person> {
@@ -67,12 +68,13 @@ impl Library {
         Ok(())
     }
 
-    pub fn delete_person(&self, person_id: &str) -> Result<()> {
+    pub fn delete_person(&self, person_id: &str) -> Result<(), LibraryError> {
         let connection = &mut *self.conn();
 
         diesel::delete(persons::table)
             .filter(persons::person_id.eq(person_id))
-            .execute(connection)?;
+            .execute(connection)
+            .map_err(|err| LibraryError::from_delete(EntityKind::Person, err))?;
 
         self.changed();
 
@@ -133,12 +135,13 @@ impl Library {
         Ok(())
     }
 
-    pub fn delete_instrument(&self, instrument_id: &str) -> Result<()> {
+    pub fn delete_instrument(&self, instrument_id: &str) -> Result<(), LibraryError> {
         let connection = &mut *self.conn();
 
         diesel::delete(instruments::table)
             .filter(instruments::instrument_id.eq(instrument_id))
-            .execute(connection)?;
+            .execute(connection)
+            .map_err(|err| LibraryError::from_delete(EntityKind::Instrument, err))?;
 
         self.changed();
 
@@ -194,12 +197,13 @@ impl Library {
         Ok(())
     }
 
-    pub fn delete_role(&self, role_id: &str) -> Result<()> {
+    pub fn delete_role(&self, role_id: &str) -> Result<(), LibraryError> {
         let connection = &mut *self.conn();
 
         diesel::delete(roles::table)
             .filter(roles::role_id.eq(role_id))
-            .execute(connection)?;
+            .execute(connection)
+            .map_err(|err| LibraryError::from_delete(EntityKind::Role, err))?;
 
         self.changed();
 
@@ -440,12 +444,13 @@ impl Library {
         Ok(())
     }
 
-    pub fn delete_work(&self, work_id: &str) -> Result<()> {
+    pub fn delete_work(&self, work_id: &str) -> Result<(), LibraryError> {
         let connection = &mut *self.conn();
 
         diesel::delete(works::table)
             .filter(works::work_id.eq(work_id))
-            .execute(connection)?;
+            .execute(connection)
+            .map_err(|err| LibraryError::from_delete(EntityKind::Work, err))?;
 
         self.changed();
 
@@ -546,12 +551,13 @@ impl Library {
         Ok(())
     }
 
-    pub fn delete_ensemble(&self, ensemble_id: &str) -> Result<()> {
+    pub fn delete_ensemble(&self, ensemble_id: &str) -> Result<(), LibraryError> {
         let connection = &mut *self.conn();
 
         diesel::delete(ensembles::table)
             .filter(ensembles::ensemble_id.eq(ensemble_id))
-            .execute(connection)?;
+            .execute(connection)
+            .map_err(|err| LibraryError::from_delete(EntityKind::Ensemble, err))?;
 
         self.changed();
 
@@ -691,12 +697,13 @@ impl Library {
         Ok(())
     }
 
-    pub fn delete_recording(&self, recording_id: &str) -> Result<()> {
+    pub fn delete_recording(&self, recording_id: &str) -> Result<(), LibraryError> {
         let connection = &mut *self.conn();
 
         diesel::delete(recordings::table)
             .filter(recordings::recording_id.eq(recording_id))
-            .execute(connection)?;
+            .execute(connection)
+            .map_err(|err| LibraryError::from_delete(EntityKind::Recording, err))?;
 
         self.changed();
 
@@ -841,12 +848,13 @@ impl Library {
         Ok(())
     }
 
-    pub fn delete_album(&self, album_id: &str) -> Result<()> {
+    pub fn delete_album(&self, album_id: &str) -> Result<(), LibraryError> {
         let connection = &mut *self.conn();
 
         diesel::delete(albums::table)
             .filter(albums::album_id.eq(album_id))
-            .execute(connection)?;
+            .execute(connection)
+            .map_err(|err| LibraryError::from_delete(EntityKind::Album, err))?;
 
         self.changed();
 
@@ -1042,10 +1050,10 @@ mod tests {
     ///
     /// Every public mutator must notify subscribers, otherwise the UI silently
     /// keeps showing stale data.
-    fn assert_notifies<T>(
+    fn assert_notifies<T, E: std::fmt::Debug>(
         library: &Library,
         what: &str,
-        operation: impl FnOnce() -> Result<T>,
+        operation: impl FnOnce() -> Result<T, E>,
     ) -> T {
         let receiver = library.subscribe_changed();
         let value = operation().unwrap_or_else(|err| panic!("{what} failed: {err:?}"));
@@ -1185,6 +1193,40 @@ mod tests {
         assert_notifies(&library, "delete_person", || {
             library.delete_person(&person.person_id)
         });
+    }
+
+    /// Deleting something still in use must be reported as such, not as an
+    /// opaque foreign key error that the UI can only show verbatim.
+    #[test]
+    fn deleting_a_referenced_item_reports_that_it_is_still_used() {
+        let dir = TempDir::new().unwrap();
+        let cache_dir = TempDir::new().unwrap();
+        let library = library(&dir, &cache_dir);
+
+        let person = library
+            .create_person(translated("Beethoven"), true)
+            .unwrap();
+        let work = library
+            .create_work(
+                translated("Symphony No. 5"),
+                Vec::new(),
+                vec![Composer {
+                    person: person.clone(),
+                    role: None,
+                }],
+                Vec::new(),
+                true,
+            )
+            .unwrap();
+
+        assert!(matches!(
+            library.delete_person(&person.person_id),
+            Err(LibraryError::StillReferenced(EntityKind::Person))
+        ));
+
+        // Once nothing refers to the person any more, the delete succeeds.
+        library.delete_work(&work.work_id).unwrap();
+        library.delete_person(&person.person_id).unwrap();
     }
 
     #[test]
