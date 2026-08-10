@@ -7,7 +7,7 @@ use std::{
 };
 
 use adw::{prelude::*, subclass::prelude::*};
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use gettextrs::gettext;
 use gtk::{
     gio,
@@ -167,13 +167,10 @@ impl TracksEditor {
             .build();
 
         let root = self.root();
-        let window = root
-            .as_ref()
-            .and_then(|r| r.downcast_ref::<gtk::Window>())
-            .unwrap();
+        let window = root.as_ref().and_then(|r| r.downcast_ref::<gtk::Window>());
 
         let obj = self.clone();
-        match dialog.open_multiple_future(Some(window)).await {
+        match dialog.open_multiple_future(window).await {
             Err(err) => {
                 if !err.matches(gtk::DialogError::Dismissed) {
                     log::error!("File selection failed: {err:?}");
@@ -181,13 +178,16 @@ impl TracksEditor {
             }
             Ok(files) => {
                 for file in &files {
-                    obj.add_file(
-                        file.unwrap()
-                            .downcast::<gio::File>()
-                            .unwrap()
-                            .path()
-                            .unwrap(),
-                    );
+                    // A selected item that is not a local file (or that cannot
+                    // be converted to a path) is skipped rather than fatal.
+                    match file
+                        .ok()
+                        .and_then(|file| file.downcast::<gio::File>().ok())
+                        .and_then(|file| file.path())
+                    {
+                        Some(path) => obj.add_file(path),
+                        None => log::warn!("Skipping a selected file with no local path"),
+                    }
                 }
             }
         }
@@ -212,10 +212,17 @@ impl TracksEditor {
         // Forget previously removed tracks (see above).
         self.imp().removed_tracks.borrow_mut().clear();
 
-        let tracks = self
-            .library()
-            .tracks_for_recording(&recording.recording_id)
-            .unwrap();
+        let tracks = match self.library().tracks_for_recording(&recording.recording_id) {
+            Ok(tracks) => tracks,
+            Err(err) => {
+                util::error_toast(
+                    "Failed to load the tracks of this recording",
+                    err,
+                    &self.toast_overlay(),
+                );
+                return;
+            }
+        };
 
         if !tracks.is_empty() {
             self.imp().save_row.set_title(&gettext("_Save changes"));
@@ -311,11 +318,16 @@ impl TracksEditor {
     #[template_callback]
     fn save(&self) {
         if let Some(recording) = &*self.imp().recording.borrow() {
-            if let Err(err) = self.import(recording) {
-                util::error_toast("Failed to import tracks", err, &self.toast_overlay());
+            match self.import(recording) {
+                Ok(()) => {
+                    self.navigation().pop();
+                }
+                Err(err) => {
+                    // Stay on the page: some tracks may not have been saved and
+                    // the user needs to be able to see and retry.
+                    util::error_toast("Failed to import tracks", err, &self.toast_overlay());
+                }
             }
-
-            self.navigation().pop();
         }
     }
 
@@ -329,7 +341,7 @@ impl TracksEditor {
 
             match track_data.location {
                 TrackLocation::Undefined => {
-                    log::error!("Failed to save track: Undefined track location.");
+                    return Err(anyhow!("A track has no file assigned to it."));
                 }
                 TrackLocation::Library(track) => {
                     self.library()
