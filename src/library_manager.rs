@@ -97,7 +97,7 @@ impl LibraryManager {
             .as_ref()
             .and_then(|r| r.downcast_ref::<gtk::Window>())
             .and_then(|w| w.downcast_ref::<Window>())
-            .unwrap();
+            .expect("library manager is attached to a window");
 
         match dialog.select_folder_future(Some(window)).await {
             Err(err) => {
@@ -121,7 +121,7 @@ impl LibraryManager {
             .as_ref()
             .and_then(|r| r.downcast_ref::<gtk::Window>())
             .and_then(|w| w.downcast_ref::<Window>())
-            .unwrap();
+            .expect("library manager is attached to a window");
 
         match dialog.open_future(Some(window)).await {
             Err(err) => {
@@ -184,7 +184,7 @@ impl LibraryManager {
             .as_ref()
             .and_then(|r| r.downcast_ref::<gtk::Window>())
             .and_then(|w| w.downcast_ref::<Window>())
-            .unwrap();
+            .expect("library manager is attached to a window");
 
         match dialog.save_future(Some(window)).await {
             Err(err) => {
