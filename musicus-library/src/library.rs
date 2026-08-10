@@ -17,14 +17,17 @@ pub mod exchange;
 pub mod metadata;
 pub mod query;
 
+/// An open metadata database remembered together with the modification time of
+/// the file it came from.
+/// 
+/// Downloading a new metadata database replaces that file, which invalidates the connection.
+type CachedMetadataConnection = (Option<SystemTime>, Arc<Mutex<SqliteConnection>>);
+
 /// A music library backed by a SQLite database in a given folder.
 pub struct Library {
     folder: String,
     connection: Arc<Mutex<SqliteConnection>>,
-    /// The cached connection to the downloaded metadata database, together with
-    /// the modification time of the file it was opened from. Downloading a new
-    /// metadata database replaces that file, which invalidates the connection.
-    metadata_connection: RefCell<Option<(Option<SystemTime>, Arc<Mutex<SqliteConnection>>)>>,
+    metadata_connection: RefCell<Option<CachedMetadataConnection>>,
     metadata_cache_dir: PathBuf,
     changed_senders: RefCell<Vec<async_channel::Sender<()>>>,
 }
