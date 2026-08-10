@@ -8,7 +8,7 @@ use gtk::{
 use once_cell::sync::Lazy;
 
 use super::{
-    item_row_child,
+    connect_keynav, item_row_child,
     kind::{
         EnsembleKind, InstrumentKind, KindSource, PersonKind, RoleKind, SelectorKind,
         SelectorSource,
@@ -72,6 +72,8 @@ mod imp {
                     obj.imp().scrolled_window.vadjustment().set_value(0.0);
                 }
             });
+
+            connect_keynav(&self.search_entry, &self.list_box);
         }
 
         fn signals() -> &'static [Signal] {
@@ -89,17 +91,7 @@ mod imp {
         }
     }
 
-    impl WidgetImpl for SelectorPopover {
-        // TODO: Fix focus.
-        fn focus(&self, direction_type: gtk::DirectionType) -> bool {
-            if direction_type == gtk::DirectionType::Down {
-                self.list_box.child_focus(direction_type)
-            } else {
-                self.parent_focus(direction_type)
-            }
-        }
-    }
-
+    impl WidgetImpl for SelectorPopover {}
     impl PopoverImpl for SelectorPopover {}
 }
 
