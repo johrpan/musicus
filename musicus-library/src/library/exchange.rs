@@ -7,7 +7,6 @@ use std::{
 };
 
 use anyhow::{anyhow, Error, Result};
-use chrono::prelude::*;
 use diesel::{prelude::*, SqliteConnection};
 use formatx::formatx;
 use futures_util::StreamExt;
@@ -539,7 +538,7 @@ fn import_metadata_from_file(
     this_connection: Arc<Mutex<SqliteConnection>>,
     ignore_tracks: bool,
 ) -> Result<Vec<tables::Track>> {
-    let now = Local::now().naive_local();
+    let now = db::now();
 
     let mut other_connection = db::connect(path.as_ref().to_str().unwrap())?;
 
@@ -1002,7 +1001,7 @@ mod tests {
         let remote_dir = TempDir::new().unwrap();
         let remote_db_path = remote_dir.path().join("musicus.db");
         let mut remote_connection = db::connect(remote_db_path.to_str().unwrap()).unwrap();
-        let now = Local::now().naive_local();
+        let now = db::now();
         diesel::insert_into(persons::table)
             .values(tables::Person {
                 person_id: person.person_id.clone(),

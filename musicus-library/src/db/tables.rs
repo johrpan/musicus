@@ -262,24 +262,28 @@ impl AsRef<Path> for PathBufWrapper {
     }
 }
 
-#[derive(AsExpression, FromSqlRow, Copy, Clone, Debug)]
+/// Where an item came from.
+#[derive(AsExpression, FromSqlRow, Copy, Clone, Debug, PartialEq, Eq)]
 #[diesel(sql_type = Text)]
 pub enum Source {
     Metadata,
     User,
     Import,
-    Unknown,
+}
+
+impl Source {
+    fn as_str(&self) -> &'static str {
+        match self {
+            Source::Metadata => "metadata",
+            Source::User => "user",
+            Source::Import => "import",
+        }
+    }
 }
 
 impl ToSql<Text, Sqlite> for Source {
     fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, Sqlite>) -> diesel::serialize::Result {
-        out.set_value(match self {
-            Source::Metadata => "metadata",
-            Source::User => "user",
-            Source::Import => "import",
-            Source::Unknown => "unknown",
-        });
-
+        out.set_value(self.as_str());
         Ok(IsNull::No)
     }
 }
@@ -290,11 +294,13 @@ where
     String: FromSql<Text, DB>,
 {
     fn from_sql(bytes: DB::RawValue<'_>) -> diesel::deserialize::Result<Self> {
-        Ok(match String::from_sql(bytes)?.as_str() {
-            "metadata" => Source::Metadata,
-            "user" => Source::User,
-            "import" => Source::Import,
-            _ => Source::Unknown,
-        })
+        let value = String::from_sql(bytes)?;
+
+        match value.as_str() {
+            "metadata" => Ok(Source::Metadata),
+            "user" => Ok(Source::User),
+            "import" => Ok(Source::Import),
+            other => Err(format!("Unknown item source \"{other}\"").into()),
+        }
     }
 }

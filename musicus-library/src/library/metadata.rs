@@ -5,7 +5,6 @@ use std::{
 };
 
 use anyhow::{anyhow, bail, Error, Result};
-use chrono::prelude::*;
 use diesel::{prelude::*, SqliteConnection};
 
 use super::{exchange, Library};
@@ -191,7 +190,7 @@ fn copy_person(
     to: &mut SqliteConnection,
     person_id: &str,
 ) -> Result<()> {
-    let now = Local::now().naive_local();
+    let now = db::now();
     let mut person = persons::table
         .filter(persons::person_id.eq(person_id))
         .first::<tables::Person>(from)?;
@@ -211,7 +210,7 @@ fn copy_person(
 }
 
 fn copy_role(from: &mut SqliteConnection, to: &mut SqliteConnection, role_id: &str) -> Result<()> {
-    let now = Local::now().naive_local();
+    let now = db::now();
     let mut role = roles::table
         .filter(roles::role_id.eq(role_id))
         .first::<tables::Role>(from)?;
@@ -234,7 +233,7 @@ fn copy_instrument(
     to: &mut SqliteConnection,
     instrument_id: &str,
 ) -> Result<()> {
-    let now = Local::now().naive_local();
+    let now = db::now();
     let mut instrument = instruments::table
         .filter(instruments::instrument_id.eq(instrument_id))
         .first::<tables::Instrument>(from)?;
@@ -272,7 +271,7 @@ fn copy_work_priv(
         bail!("Work {work_id} is its own ancestor in the metadata database");
     }
 
-    let now = Local::now().naive_local();
+    let now = db::now();
     let mut work = works::table
         .filter(works::work_id.eq(work_id))
         .first::<tables::Work>(from)?;
@@ -330,7 +329,7 @@ fn copy_ensemble(
     to: &mut SqliteConnection,
     ensemble_id: &str,
 ) -> Result<()> {
-    let now = Local::now().naive_local();
+    let now = db::now();
     let mut ensemble = ensembles::table
         .filter(ensembles::ensemble_id.eq(ensemble_id))
         .first::<tables::Ensemble>(from)?;
@@ -371,7 +370,7 @@ fn copy_recording(
     to: &mut SqliteConnection,
     recording_id: &str,
 ) -> Result<()> {
-    let now = Local::now().naive_local();
+    let now = db::now();
     let mut recording = recordings::table
         .filter(recordings::recording_id.eq(recording_id))
         .first::<tables::Recording>(from)?;
@@ -456,7 +455,7 @@ mod tests {
 
         // Foreign keys are enforced, so the cycle has to be introduced after
         // both rows exist.
-        let now = Local::now().naive_local();
+        let now = db::now();
         for id in ["a", "b"] {
             diesel::insert_into(works::table)
                 .values(tables::Work {

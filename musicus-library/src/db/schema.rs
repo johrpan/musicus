@@ -1,7 +1,7 @@
 // @generated automatically by Diesel CLI.
 
 diesel::table! {
-    album_mediums (album_id, medium_id) {
+    album_mediums (album_id, sequence_number) {
         album_id -> Text,
         medium_id -> Text,
         sequence_number -> Integer,
@@ -9,7 +9,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    album_recordings (album_id, recording_id) {
+    album_recordings (album_id, sequence_number) {
         album_id -> Text,
         recording_id -> Text,
         sequence_number -> Integer,
@@ -30,7 +30,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    ensemble_persons (ensemble_id, person_id, sequence_number) {
+    ensemble_persons (ensemble_id, sequence_number) {
         ensemble_id -> Text,
         person_id -> Text,
         instrument_id -> Nullable<Text>,
@@ -100,7 +100,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    recording_ensembles (recording_id, ensemble_id, sequence_number) {
+    recording_ensembles (recording_id, sequence_number) {
         recording_id -> Text,
         ensemble_id -> Text,
         role_id -> Nullable<Text>,
@@ -109,7 +109,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    recording_persons (recording_id, person_id, sequence_number) {
+    recording_persons (recording_id, sequence_number) {
         recording_id -> Text,
         person_id -> Text,
         role_id -> Nullable<Text>,
@@ -145,7 +145,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    track_works (track_id, work_id) {
+    track_works (track_id, sequence_number) {
         track_id -> Text,
         work_id -> Text,
         sequence_number -> Integer,
@@ -168,7 +168,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    work_instruments (work_id, instrument_id) {
+    work_instruments (work_id, sequence_number) {
         work_id -> Text,
         instrument_id -> Text,
         sequence_number -> Integer,
@@ -176,7 +176,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    work_persons (work_id, person_id, sequence_number) {
+    work_persons (work_id, sequence_number) {
         work_id -> Text,
         person_id -> Text,
         role_id -> Nullable<Text>,

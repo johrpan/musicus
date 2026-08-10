@@ -1,7 +1,6 @@
 use std::collections::HashSet;
 
 use anyhow::Result;
-use chrono::prelude::*;
 use diesel::{dsl::exists, prelude::*, sql_types, QueryDsl};
 
 use formatx::formatx;
@@ -700,7 +699,7 @@ impl Library {
     pub fn track_played(&self, track_id: &str) -> Result<()> {
         let connection = &mut *self.conn();
 
-        let now = Local::now().naive_local();
+        let now = db::now();
 
         diesel::update(tracks::table)
             .filter(tracks::track_id.eq(track_id))

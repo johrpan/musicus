@@ -5,7 +5,6 @@ use std::{
 };
 
 use anyhow::{Error, Result};
-use chrono::prelude::*;
 use diesel::{prelude::*, QueryDsl, SqliteConnection};
 
 use super::Library;
@@ -21,7 +20,7 @@ impl Library {
     pub fn create_person(&self, name: TranslatedString, enable_updates: bool) -> Result<Person> {
         let connection = &mut *self.conn();
 
-        let now = Local::now().naive_local();
+        let now = db::now();
 
         let person = Person {
             person_id: db::generate_id(),
@@ -51,7 +50,7 @@ impl Library {
     ) -> Result<()> {
         let connection = &mut *self.conn();
 
-        let now = Local::now().naive_local();
+        let now = db::now();
 
         diesel::update(persons::table)
             .filter(persons::person_id.eq(id))
@@ -87,7 +86,7 @@ impl Library {
     ) -> Result<Instrument> {
         let connection = &mut *self.conn();
 
-        let now = Local::now().naive_local();
+        let now = db::now();
 
         let instrument = Instrument {
             instrument_id: db::generate_id(),
@@ -117,7 +116,7 @@ impl Library {
     ) -> Result<()> {
         let connection = &mut *self.conn();
 
-        let now = Local::now().naive_local();
+        let now = db::now();
 
         diesel::update(instruments::table)
             .filter(instruments::instrument_id.eq(id))
@@ -149,7 +148,7 @@ impl Library {
     pub fn create_role(&self, name: TranslatedString, enable_updates: bool) -> Result<Role> {
         let connection = &mut *self.conn();
 
-        let now = Local::now().naive_local();
+        let now = db::now();
 
         let role = Role {
             role_id: db::generate_id(),
@@ -178,7 +177,7 @@ impl Library {
     ) -> Result<()> {
         let connection = &mut *self.conn();
 
-        let now = Local::now().naive_local();
+        let now = db::now();
 
         diesel::update(roles::table)
             .filter(roles::role_id.eq(id))
@@ -246,7 +245,7 @@ impl Library {
         enable_updates: bool,
     ) -> Result<Work> {
         let work_id = db::generate_id();
-        let now = Local::now().naive_local();
+        let now = db::now();
 
         let work_data = tables::Work {
             work_id: work_id.clone(),
@@ -349,7 +348,7 @@ impl Library {
         sequence_number: Option<i32>,
         enable_updates: bool,
     ) -> Result<()> {
-        let now = Local::now().naive_local();
+        let now = db::now();
 
         diesel::update(works::table)
             .filter(works::work_id.eq(work_id))
@@ -462,7 +461,7 @@ impl Library {
         let connection = &mut *self.conn();
 
         let ensemble = connection.transaction::<Ensemble, Error, _>(|connection| {
-            let now = Local::now().naive_local();
+            let now = db::now();
 
             let ensemble_data = tables::Ensemble {
                 ensemble_id: db::generate_id(),
@@ -510,7 +509,7 @@ impl Library {
         let connection = &mut *self.conn();
 
         connection.transaction::<(), Error, _>(|connection| {
-            let now = Local::now().naive_local();
+            let now = db::now();
 
             diesel::update(ensembles::table)
                 .filter(ensembles::ensemble_id.eq(id))
@@ -571,7 +570,7 @@ impl Library {
 
         let recording = connection.transaction::<Recording, Error, _>(|connection| {
             let recording_id = db::generate_id();
-            let now = Local::now().naive_local();
+            let now = db::now();
 
             let recording_data = tables::Recording {
                 recording_id: recording_id.clone(),
@@ -636,7 +635,7 @@ impl Library {
         let connection = &mut *self.conn();
 
         connection.transaction::<(), Error, _>(|connection| {
-            let now = Local::now().naive_local();
+            let now = db::now();
 
             diesel::update(recordings::table)
                 .filter(recordings::recording_id.eq(recording_id))
@@ -759,7 +758,7 @@ impl Library {
 
         let album = connection.transaction::<Album, Error, _>(|connection| {
             let album_id = db::generate_id();
-            let now = Local::now().naive_local();
+            let now = db::now();
 
             let album_data = tables::Album {
                 album_id: album_id.clone(),
@@ -806,7 +805,7 @@ impl Library {
         let connection = &mut *self.conn();
 
         connection.transaction::<(), Error, _>(|connection| {
-            let now = Local::now().naive_local();
+            let now = db::now();
 
             diesel::update(albums::table)
                 .filter(albums::album_id.eq(album_id))
@@ -866,7 +865,7 @@ impl Library {
         let connection = &mut *self.conn();
 
         let track_id = db::generate_id();
-        let now = Local::now().naive_local();
+        let now = db::now();
 
         // TODO: Human interpretable filenames?
         let mut filename = OsString::from(recording_id);
@@ -985,7 +984,7 @@ impl Library {
         let connection = &mut *self.conn();
 
         connection.transaction::<(), Error, _>(|connection| {
-            let now = Local::now().naive_local();
+            let now = db::now();
 
             diesel::update(tracks::table)
                 .filter(tracks::track_id.eq(track_id.to_owned()))

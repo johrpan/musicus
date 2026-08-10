@@ -30,7 +30,7 @@ const MIGRATIONS: EmbeddedMigrations = diesel_migrations::embed_migrations!("../
 /// The number of migrations in `migrations/`. Bump when adding one; this exists
 /// so that a migration that fails to embed is caught by the tests.
 #[cfg(test)]
-const MIGRATION_COUNT: usize = 7;
+const MIGRATION_COUNT: usize = 8;
 
 /// The user's preferred language code, used to pick the best translation out of a
 /// [`TranslatedString`]. Set once at application startup via [`set_language`].
@@ -49,7 +49,7 @@ pub fn set_language(lang: impl Into<String>) {
 /// Stored in every library database's `meta` table. Any migration that
 /// changes the schema must bump both this constant and the value written by the
 /// migration, so that an older build can recognise a database it cannot read.
-pub const SCHEMA_VERSION: i32 = 1;
+pub const SCHEMA_VERSION: i32 = 2;
 
 #[derive(QueryableByName)]
 struct SchemaVersionRow {
@@ -112,6 +112,17 @@ pub fn connect(file_name: &str) -> Result<SqliteConnection> {
     diesel::sql_query("PRAGMA foreign_keys = ON").execute(&mut connection)?;
 
     Ok(connection)
+}
+
+/// The current time, in the form all database timestamps are stored in.
+///
+/// Timestamps are stored in UTC. They used to be naive local time, which made
+/// `last_played_at` non-monotonic across DST transitions and machine
+/// relocations, and was inconsistent with the `UNIXEPOCH()` calls that
+/// `generate_recording` scores playlists with. Always go through this function
+/// rather than reaching for `Local::now()` or `Utc::now()` directly.
+pub fn now() -> chrono::NaiveDateTime {
+    chrono::Utc::now().naive_utc()
 }
 
 /// Generate a random string suitable as an item ID.
@@ -180,7 +191,6 @@ where
 
 #[cfg(test)]
 mod tests {
-    use chrono::Local;
 
     use super::*;
 
@@ -281,7 +291,7 @@ mod tests {
     #[test]
     fn translated_string_round_trips_through_sqlite() {
         let mut conn = migrated_conn();
-        let now = Local::now().naive_local();
+        let now = now();
 
         let mut name = HashMap::new();
         name.insert("generic".to_string(), "Ludwig van Beethoven".to_string());
