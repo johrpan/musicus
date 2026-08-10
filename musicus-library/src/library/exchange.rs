@@ -6,7 +6,7 @@ use std::{
     thread,
 };
 
-use anyhow::{anyhow, Error, Result};
+use anyhow::{anyhow, bail, Error, Result};
 use diesel::{prelude::*, SqliteConnection};
 use formatx::formatx;
 use futures_util::StreamExt;
@@ -24,6 +24,62 @@ use crate::{
     },
     process::{Cancellation, ProcessHandle, ProcessMsg},
 };
+
+/// The name of the manifest entry inside a `.muslib` archive.
+const MANIFEST_NAME: &str = "manifest.json";
+
+/// The version of the `.muslib` archive layout this build writes.
+///
+/// Bump when the archive gains, loses or renames entries. Archives with a
+/// higher version are refused rather than partially understood.
+const ARCHIVE_FORMAT_VERSION: u32 = 1;
+
+/// Describes a `.muslib` archive.
+///
+/// Archives written before this existed have no manifest at all; they are
+/// treated as format version 0 and imported as before.
+#[derive(serde::Serialize, serde::Deserialize, Debug)]
+struct ArchiveManifest {
+    format_version: u32,
+    /// The schema version of the `musicus.db` inside the archive, so that an
+    /// unreadable archive can be rejected before anything is extracted.
+    schema_version: i32,
+    created_at: String,
+    n_tracks: usize,
+}
+
+/// Read and check the manifest of an opened archive.
+fn read_manifest(
+    archive: &mut zip::ZipArchive<BufReader<fs::File>>,
+) -> Result<Option<ArchiveManifest>> {
+    let manifest: ArchiveManifest = match archive.by_name(MANIFEST_NAME) {
+        Ok(file) => serde_json::from_reader(BufReader::new(file))?,
+        Err(zip::result::ZipError::FileNotFound) => {
+            log::info!("Archive has no manifest; assuming the pre-versioning layout");
+            return Ok(None);
+        }
+        Err(err) => return Err(err.into()),
+    };
+
+    if manifest.format_version > ARCHIVE_FORMAT_VERSION {
+        bail!(
+            "This archive was created by a newer version of Musicus \
+             (archive format version {}, this version supports {ARCHIVE_FORMAT_VERSION}).",
+            manifest.format_version
+        );
+    }
+
+    if manifest.schema_version > db::SCHEMA_VERSION {
+        bail!(
+            "This archive contains a library from a newer version of Musicus \
+             (library schema version {}, this version supports {}).",
+            manifest.schema_version,
+            db::SCHEMA_VERSION
+        );
+    }
+
+    Ok(Some(manifest))
+}
 
 /// Run `operation` on a background thread, reporting its outcome as the final
 /// message on the returned handle's channel.
@@ -156,6 +212,9 @@ fn import_library_from_zip_priv(
 ) -> Result<()> {
     let mut archive = zip::ZipArchive::new(BufReader::new(fs::File::open(zip_path)?))?;
 
+    // Refuse an archive this build cannot read before extracting anything.
+    read_manifest(&mut archive)?;
+
     let archive_db_file = archive.by_name("musicus.db")?;
     let tmp_db_file = NamedTempFile::new()?;
     std::io::copy(
@@ -209,7 +268,18 @@ fn export_library_to_zip_priv(
 ) -> Result<()> {
     let mut zip = zip::ZipWriter::new(BufWriter::new(fs::File::create(zip_path)?));
 
-    // Start with the database:
+    // Describe the archive first, so that an importer can decide whether it can
+    // read the rest before extracting anything.
+    let manifest = ArchiveManifest {
+        format_version: ARCHIVE_FORMAT_VERSION,
+        schema_version: db::SCHEMA_VERSION,
+        created_at: db::now().and_utc().to_rfc3339(),
+        n_tracks: tracks.len(),
+    };
+
+    zip.start_file(MANIFEST_NAME, SimpleFileOptions::default())?;
+    zip.write_all(&serde_json::to_vec_pretty(&manifest)?)?;
+
     add_file_to_zip(&mut zip, &library_folder, "musicus.db")?;
 
     // avoid div by 0
@@ -949,6 +1019,124 @@ mod tests {
         assert_eq!(
             fs::read(dest_dir.path().join(&tracks[0].path)).unwrap(),
             b"not actually audio"
+        );
+    }
+
+    #[test]
+    fn export_writes_a_manifest_describing_the_archive() {
+        let dir = TempDir::new().unwrap();
+        let cache_dir = TempDir::new().unwrap();
+        let library = Library::new(dir.path(), cache_dir.path()).unwrap();
+
+        let track_source_file = dir.path().join("source_track.mp3");
+        fs::write(&track_source_file, b"not actually audio").unwrap();
+        populate(&library, &track_source_file);
+
+        let zip_path = dir.path().join("export.muslib");
+        wait_for_result(library.export_library_to_zip(&zip_path).unwrap()).unwrap();
+
+        let mut archive =
+            zip::ZipArchive::new(BufReader::new(fs::File::open(&zip_path).unwrap())).unwrap();
+        let manifest = read_manifest(&mut archive).unwrap().unwrap();
+
+        assert_eq!(manifest.format_version, ARCHIVE_FORMAT_VERSION);
+        assert_eq!(manifest.schema_version, db::SCHEMA_VERSION);
+        assert_eq!(manifest.n_tracks, 1);
+    }
+
+    /// An archive claiming a format this build does not know must be refused
+    /// rather than partially understood.
+    #[test]
+    fn import_refuses_an_archive_from_a_newer_version() {
+        let dir = TempDir::new().unwrap();
+        let cache_dir = TempDir::new().unwrap();
+        let library = Library::new(dir.path(), cache_dir.path()).unwrap();
+
+        let zip_path = dir.path().join("future.muslib");
+        let mut zip = ZipWriter::new(BufWriter::new(fs::File::create(&zip_path).unwrap()));
+        zip.start_file(MANIFEST_NAME, SimpleFileOptions::default())
+            .unwrap();
+        zip.write_all(
+            serde_json::to_string(&ArchiveManifest {
+                format_version: ARCHIVE_FORMAT_VERSION + 1,
+                schema_version: db::SCHEMA_VERSION,
+                created_at: "2026-01-01T00:00:00+00:00".to_owned(),
+                n_tracks: 0,
+            })
+            .unwrap()
+            .as_bytes(),
+        )
+        .unwrap();
+        zip.finish().unwrap();
+
+        let err = wait_for_result(
+            library
+                .import_library_from_zip(&zip_path, Source::Import)
+                .unwrap(),
+        )
+        .unwrap_err();
+
+        assert!(
+            err.to_string().contains("newer version of Musicus"),
+            "unexpected error: {err}"
+        );
+    }
+
+    /// Archives exported before manifests existed must still import.
+    #[test]
+    fn import_accepts_an_archive_without_a_manifest() {
+        let source_dir = TempDir::new().unwrap();
+        let source_cache_dir = TempDir::new().unwrap();
+        let source = Library::new(source_dir.path(), source_cache_dir.path()).unwrap();
+
+        let track_source_file = source_dir.path().join("source_track.mp3");
+        fs::write(&track_source_file, b"not actually audio").unwrap();
+        let recording = populate(&source, &track_source_file);
+
+        let zip_path = source_dir.path().join("export.muslib");
+        wait_for_result(source.export_library_to_zip(&zip_path).unwrap()).unwrap();
+
+        // Rebuild the archive without its manifest entry.
+        let legacy_path = source_dir.path().join("legacy.muslib");
+        {
+            let mut archive =
+                zip::ZipArchive::new(BufReader::new(fs::File::open(&zip_path).unwrap())).unwrap();
+            let mut legacy =
+                ZipWriter::new(BufWriter::new(fs::File::create(&legacy_path).unwrap()));
+
+            for i in 0..archive.len() {
+                let mut entry = archive.by_index(i).unwrap();
+                let name = entry.name().to_owned();
+                if name == MANIFEST_NAME {
+                    continue;
+                }
+
+                let mut buffer = Vec::new();
+                entry.read_to_end(&mut buffer).unwrap();
+                legacy
+                    .start_file(name, SimpleFileOptions::default())
+                    .unwrap();
+                legacy.write_all(&buffer).unwrap();
+            }
+
+            legacy.finish().unwrap();
+        }
+
+        let dest_dir = TempDir::new().unwrap();
+        let dest_cache_dir = TempDir::new().unwrap();
+        let dest = Library::new(dest_dir.path(), dest_cache_dir.path()).unwrap();
+
+        wait_for_result(
+            dest.import_library_from_zip(&legacy_path, Source::Import)
+                .unwrap(),
+        )
+        .unwrap();
+
+        assert_eq!(
+            dest.tracks_for_recording(&recording.recording_id)
+                .unwrap()
+                .len(),
+            1
         );
     }
 
