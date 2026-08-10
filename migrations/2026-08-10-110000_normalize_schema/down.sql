@@ -297,4 +297,4 @@ ALTER TABLE track_works_old RENAME TO track_works;
 ALTER TABLE album_recordings_old RENAME TO album_recordings;
 ALTER TABLE album_mediums_old RENAME TO album_mediums;
 
-UPDATE library_meta SET schema_version = 1, updated_at = DATETIME('now') WHERE id = 1;
+UPDATE meta SET schema_version = 1, updated_at = DATETIME('now') WHERE id = 1;
