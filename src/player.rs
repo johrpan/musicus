@@ -118,8 +118,6 @@ mod imp {
                 self.current_index.set(index);
                 item.set_is_playing(true);
 
-                // Recording the play is a statistic, not something worth
-                // interrupting playback for.
                 if let Some(library) = self.library.borrow().as_ref() {
                     if let Err(err) = library.track_played(&item.track_id()) {
                         log::warn!("Failed to record that a track was played: {err:?}");
@@ -141,9 +139,6 @@ mod imp {
             static SIGNALS: Lazy<Vec<Signal>> = Lazy::new(|| {
                 vec![
                     Signal::builder("raise").build(),
-                    // A playback failure the user should be told about. The
-                    // player is not a widget, so the window turns this into a
-                    // toast.
                     Signal::builder("error")
                         .param_types([String::static_type()])
                         .build(),
@@ -185,8 +180,6 @@ mod imp {
                 obj.get().next();
             });
 
-            // Without this, an unplayable or missing file produced no feedback
-            // at all: playback simply stopped on a track that never started.
             let obj = Fragile::new(self.obj().to_owned());
             play_signal_adapter.connect_error(move |_, error, _| {
                 let obj = obj.get();
@@ -198,8 +191,6 @@ mod imp {
                 };
 
                 obj.report_error(&message);
-
-                // Do not sit forever on a track that will never play.
                 obj.set_playing(false);
             });
 
@@ -444,11 +435,6 @@ impl Player {
         self.publish_playback_status(mpris_server::PlaybackStatus::Paused);
     }
 
-    /// Report the current playback status over MPRIS, if it is available.
-    ///
-    /// MPRIS initialization fails when there is no session bus, which is normal
-    /// in some sandboxes and on a TTY. It must not be able to take the player
-    /// down with it.
     fn publish_playback_status(&self, status: mpris_server::PlaybackStatus) {
         let obj = self.clone();
         glib::spawn_future_local(async move {
@@ -462,8 +448,6 @@ impl Player {
         });
     }
 
-    /// Tell whoever is listening that playback failed, so it can be shown to
-    /// the user. The player itself is not a widget.
     pub fn report_error(&self, message: &str) {
         self.emit_by_name::<()>("error", &[&message.to_owned()]);
     }
@@ -495,8 +479,6 @@ impl Player {
     }
 
     pub fn next(&self) {
-        // Written as an addition rather than `n_items() - 1`, which underflows
-        // on an empty playlist.
         if self.current_index() + 1 < self.playlist().n_items() {
             self.set_current_index(self.current_index() + 1);
         } else if let Some(program) = self.program() {
