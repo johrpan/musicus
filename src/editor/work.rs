@@ -19,7 +19,7 @@ use musicus_library::db::{
 use crate::{
     editor::{instrument::InstrumentEditor, person::PersonEditor, translation::TranslationEditor},
     library::Library,
-    selector::{instrument::InstrumentSelectorPopover, person::PersonSelectorPopover},
+    selector::SelectorPopover,
 };
 use instrument_row::InstrumentRow;
 
@@ -46,8 +46,8 @@ mod imp {
         pub part_rows: RefCell<Vec<WorkEditorPartRow>>,
         pub instrument_rows: RefCell<Vec<InstrumentRow>>,
 
-        pub persons_popover: OnceCell<PersonSelectorPopover>,
-        pub instruments_popover: OnceCell<InstrumentSelectorPopover>,
+        pub persons_popover: OnceCell<SelectorPopover>,
+        pub instruments_popover: OnceCell<SelectorPopover>,
 
         #[template_child]
         pub name_editor: TemplateChild<TranslationEditor>,
@@ -99,10 +99,10 @@ mod imp {
         fn constructed(&self) {
             self.parent_constructed();
 
-            let persons_popover = PersonSelectorPopover::new(self.library.get().unwrap());
+            let persons_popover = SelectorPopover::persons(self.library.get().unwrap());
 
             let obj = self.obj().clone();
-            persons_popover.connect_person_selected(move |_, person| {
+            persons_popover.connect_selected(move |_, person: Person| {
                 obj.add_composer(person);
             });
 
@@ -124,10 +124,10 @@ mod imp {
             self.composers_box.append(&persons_popover);
             self.persons_popover.set(persons_popover).unwrap();
 
-            let instruments_popover = InstrumentSelectorPopover::new(self.library.get().unwrap());
+            let instruments_popover = SelectorPopover::instruments(self.library.get().unwrap());
 
             let obj = self.obj().clone();
-            instruments_popover.connect_instrument_selected(move |_, instrument| {
+            instruments_popover.connect_selected(move |_, instrument: Instrument| {
                 obj.add_instrument_row(instrument);
             });
 

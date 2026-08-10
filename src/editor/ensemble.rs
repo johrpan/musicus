@@ -13,7 +13,7 @@ use musicus_library::db::models::{Ensemble, Instrument, Person};
 use crate::{
     editor::{person::PersonEditor, translation::TranslationEditor},
     library::Library,
-    selector::person::PersonSelectorPopover,
+    selector::SelectorPopover,
 };
 
 mod imp {
@@ -27,7 +27,7 @@ mod imp {
         pub library: OnceCell<Library>,
         pub ensemble_id: OnceCell<String>,
         pub member_rows: RefCell<Vec<EnsembleEditorMemberRow>>,
-        pub persons_popover: OnceCell<PersonSelectorPopover>,
+        pub persons_popover: OnceCell<SelectorPopover>,
 
         #[template_child]
         pub name_editor: TemplateChild<TranslationEditor>,
@@ -92,10 +92,10 @@ impl EnsembleEditor {
         obj.imp().navigation.set(navigation.to_owned()).unwrap();
         obj.imp().library.set(library.to_owned()).unwrap();
 
-        let persons_popover = PersonSelectorPopover::new(library);
+        let persons_popover = SelectorPopover::persons(library);
 
         let this = obj.clone();
-        persons_popover.connect_person_selected(move |_, person| {
+        persons_popover.connect_selected(move |_, person: Person| {
             this.new_member(person);
         });
 

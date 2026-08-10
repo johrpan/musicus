@@ -1,10 +1,10 @@
-pub mod ensemble;
-pub mod instrument;
+pub mod kind;
 pub mod performer_role;
-pub mod person;
+pub mod popover;
 pub mod recording;
-pub mod role;
 pub mod work;
+
+pub use popover::SelectorPopover;
 
 use gtk::{glib::prelude::*, pango, prelude::*};
 

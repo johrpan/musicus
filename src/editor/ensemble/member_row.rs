@@ -11,8 +11,8 @@ use once_cell::sync::Lazy;
 use musicus_library::db::models::{Instrument, Person};
 
 use crate::{
-    editor::instrument::InstrumentEditor, library::Library,
-    selector::instrument::InstrumentSelectorPopover, util::drag_widget::DragWidget,
+    editor::instrument::InstrumentEditor, library::Library, selector::SelectorPopover,
+    util::drag_widget::DragWidget,
 };
 
 mod imp {
@@ -30,7 +30,7 @@ mod imp {
 
         pub person: RefCell<Option<Person>>,
         pub instrument: RefCell<Option<Instrument>>,
-        pub instrument_popover: OnceCell<InstrumentSelectorPopover>,
+        pub instrument_popover: OnceCell<SelectorPopover>,
 
         #[template_child]
         pub instrument_label: TemplateChild<gtk::Label>,
@@ -110,10 +110,10 @@ mod imp {
 
             self.obj().add_controller(drop_target);
 
-            let instrument_popover = InstrumentSelectorPopover::new(self.library.get().unwrap());
+            let instrument_popover = SelectorPopover::instruments(self.library.get().unwrap());
 
             let obj = self.obj().to_owned();
-            instrument_popover.connect_instrument_selected(move |_, instrument| {
+            instrument_popover.connect_selected(move |_, instrument: Instrument| {
                 obj.set_instrument(instrument);
             });
 

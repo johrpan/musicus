@@ -17,9 +17,7 @@ use musicus_library::db::models::{
 use crate::{
     editor::{ensemble::EnsembleEditor, person::PersonEditor, work::WorkEditor},
     library::Library,
-    selector::{
-        ensemble::EnsembleSelectorPopover, person::PersonSelectorPopover, work::WorkSelectorPopover,
-    },
+    selector::{work::WorkSelectorPopover, SelectorPopover},
 };
 
 mod imp {
@@ -42,8 +40,8 @@ mod imp {
         pub ensemble_rows: RefCell<Vec<RecordingEditorEnsembleRow>>,
 
         pub work_selector_popover: OnceCell<WorkSelectorPopover>,
-        pub persons_popover: OnceCell<PersonSelectorPopover>,
-        pub ensembles_popover: OnceCell<EnsembleSelectorPopover>,
+        pub persons_popover: OnceCell<SelectorPopover>,
+        pub ensembles_popover: OnceCell<SelectorPopover>,
 
         #[template_child]
         pub work_row: TemplateChild<adw::ActionRow>,
@@ -123,10 +121,10 @@ mod imp {
                 .set(work_selector_popover)
                 .unwrap();
 
-            let persons_popover = PersonSelectorPopover::new(self.library.get().unwrap());
+            let persons_popover = SelectorPopover::persons(self.library.get().unwrap());
 
             let obj = self.obj().clone();
-            persons_popover.connect_person_selected(move |_, person| {
+            persons_popover.connect_selected(move |_, person: Person| {
                 obj.new_performer(person);
             });
 
@@ -148,10 +146,10 @@ mod imp {
             self.performers_box.append(&persons_popover);
             self.persons_popover.set(persons_popover).unwrap();
 
-            let ensembles_popover = EnsembleSelectorPopover::new(self.library.get().unwrap());
+            let ensembles_popover = SelectorPopover::ensembles(self.library.get().unwrap());
 
             let obj = self.obj().clone();
-            ensembles_popover.connect_ensemble_selected(move |_, ensemble| {
+            ensembles_popover.connect_selected(move |_, ensemble: Ensemble| {
                 obj.new_ensemble_performer(ensemble);
             });
 

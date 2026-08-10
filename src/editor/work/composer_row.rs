@@ -8,10 +8,10 @@ use gtk::{
 };
 use once_cell::sync::Lazy;
 
-use musicus_library::db::models::Composer;
+use musicus_library::db::models::{Composer, Role};
 
 use crate::{
-    editor::role::RoleEditor, library::Library, selector::role::RoleSelectorPopover,
+    editor::role::RoleEditor, library::Library, selector::SelectorPopover,
     util::drag_widget::DragWidget,
 };
 
@@ -29,7 +29,7 @@ mod imp {
         pub library: OnceCell<Library>,
 
         pub composer: RefCell<Option<Composer>>,
-        pub role_popover: OnceCell<RoleSelectorPopover>,
+        pub role_popover: OnceCell<SelectorPopover>,
 
         #[template_child]
         pub role_label: TemplateChild<gtk::Label>,
@@ -109,7 +109,7 @@ mod imp {
 
             self.obj().add_controller(drop_target);
 
-            let role_popover = RoleSelectorPopover::new(self.library.get().unwrap());
+            let role_popover = SelectorPopover::roles(self.library.get().unwrap());
 
             let obj = self.obj().to_owned();
             role_popover.connect_reset(move |_| {
@@ -120,7 +120,7 @@ mod imp {
             });
 
             let obj = self.obj().to_owned();
-            role_popover.connect_role_selected(move |_, role| {
+            role_popover.connect_selected(move |_, role: Role| {
                 if let Some(composer) = &mut *obj.imp().composer.borrow_mut() {
                     obj.imp().role_label.set_label(&role.to_string());
                     composer.role = Some(role);
