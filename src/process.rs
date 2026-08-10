@@ -18,6 +18,10 @@ mod imp {
         pub description: OnceCell<String>,
         #[property(get, set, nullable)]
         pub message: RefCell<Option<String>>,
+        /// A problem that did not stop the process. Unlike the message, this
+        /// outlives the process, because it is what the user has to act on.
+        #[property(get, set, nullable)]
+        pub warning: RefCell<Option<String>>,
         #[property(get, set)]
         pub progress: Cell<f64>,
         #[property(get, set)]
@@ -63,6 +67,13 @@ impl Process {
                 match msg {
                     ProcessMsg::Message(message) => {
                         obj_clone.set_message(Some(message));
+                    }
+                    ProcessMsg::Warning(warning) => {
+                        log::warn!(
+                            "Process \"{}\" reported a problem: {warning}",
+                            obj_clone.description()
+                        );
+                        obj_clone.set_warning(Some(warning));
                     }
                     ProcessMsg::Progress(fraction) => {
                         obj_clone.set_progress(fraction);

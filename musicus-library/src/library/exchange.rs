@@ -119,9 +119,14 @@ impl Library {
     ///
     /// Cancelling leaves the library partially populated: the metadata is
     /// imported in one transaction before any audio file is copied, so a
-    /// cancelled import can leave tracks whose files are missing. Running the
-    /// same import again completes it, since existing files and rows are
-    /// skipped.
+    /// cancelled import can leave tracks whose files are missing. That is
+    /// deliberate, because it keeps cancelling a large import cheap.
+    ///
+    /// Running the same import again copies exactly what is still missing.
+    /// Every audio file is written next to its destination and only moved into
+    /// place once it is whole, so a file that is present at its final path is
+    /// always complete — a crash or a full disk in the middle of a copy cannot
+    /// leave a truncated file that later runs would skip.
     pub fn import_library_from_zip(
         &self,
         path: impl AsRef<Path>,
@@ -236,25 +241,70 @@ fn import_library_from_zip_priv(
         cancellation.check()?;
 
         let library_track_file_path = library_folder.as_ref().join(&track.path);
+        let mut part_path = library_track_file_path.clone();
+        part_path.as_mut_os_string().push(".part");
 
         // Skip tracks that are already present.
-        if !fs::exists(&library_track_file_path)? {
+        if fs::exists(&library_track_file_path)? {
+            // A file at its final path is always complete, so anything left
+            // next to it comes from an earlier interrupted run of this import
+            // and is garbage.
+            if part_path.exists() {
+                if let Err(err) = fs::remove_file(&part_path) {
+                    log::warn!(
+                        "Failed to remove leftover temporary file {}: {err}",
+                        part_path.display()
+                    );
+                }
+            }
+        } else {
             if let Some(parent) = library_track_file_path.parent() {
                 fs::create_dir_all(parent)?;
             }
 
             let archive_track_file = archive.by_name(&path_to_zip(&track.path)?)?;
-            let library_track_file = File::create(library_track_file_path)?;
 
-            std::io::copy(
-                &mut BufReader::new(archive_track_file),
-                &mut BufWriter::new(library_track_file),
-            )?;
+            // Copy through a temporary file next to the destination and only
+            // move it into place once it is whole. A crash, a kill or a full
+            // disk in the middle of the copy would otherwise leave a truncated
+            // file that every later run of this import mistakes for a finished
+            // track and skips forever.
+            let result = copy_to_file(archive_track_file, &part_path)
+                .and_then(|()| Ok(fs::rename(&part_path, &library_track_file_path)?));
+
+            if let Err(err) = result {
+                if let Err(err) = fs::remove_file(&part_path) {
+                    log::warn!(
+                        "Failed to remove partially copied track {}: {err}",
+                        part_path.display()
+                    );
+                }
+
+                return Err(err);
+            }
         }
 
         // Ignore if the reveiver has been dropped.
         let _ = sender.send_blocking(ProcessMsg::Progress((index + 1) as f64 / n_tracks as f64));
     }
+
+    Ok(())
+}
+
+/// Write all of `source` to a new file at `path` and make sure it reached the
+/// disk before returning.
+///
+/// The caller renames the result into place, which is only safe once the bytes
+/// are durable.
+fn copy_to_file(source: impl Read, path: impl AsRef<Path>) -> Result<()> {
+    let file = File::create(path)?;
+
+    let mut writer = BufWriter::new(&file);
+    std::io::copy(&mut BufReader::new(source), &mut writer)?;
+    writer.flush()?;
+    drop(writer);
+
+    file.sync_all()?;
 
     Ok(())
 }
@@ -280,16 +330,23 @@ fn export_library_to_zip_priv(
     zip.start_file(MANIFEST_NAME, SimpleFileOptions::default())?;
     zip.write_all(&serde_json::to_vec_pretty(&manifest)?)?;
 
-    add_file_to_zip(&mut zip, &library_folder, "musicus.db")?;
+    // Without the database the archive would be worthless, so this file is the
+    // one that is not allowed to be missing.
+    if !add_file_to_zip(&mut zip, &library_folder, "musicus.db")? {
+        bail!("The library database is missing");
+    }
 
     // avoid div by 0
     let n_tracks = tracks.len().max(1);
+    let mut n_missing = 0;
 
     // Include all tracks that are part of the library.
     for (index, track) in tracks.into_iter().enumerate() {
         cancellation.check()?;
 
-        add_file_to_zip(&mut zip, &library_folder, &path_to_zip(&track.path)?)?;
+        if !add_file_to_zip(&mut zip, &library_folder, &path_to_zip(&track.path)?)? {
+            n_missing += 1;
+        }
 
         // Ignore if the reveiver has been dropped.
         let _ = sender.send_blocking(ProcessMsg::Progress((index + 1) as f64 / n_tracks as f64));
@@ -297,24 +354,45 @@ fn export_library_to_zip_priv(
 
     zip.finish()?;
 
+    if n_missing > 0 {
+        let _ = sender.send_blocking(ProcessMsg::Warning(format_translated!(
+            gettext("{} track files were missing and could not be exported."),
+            n_missing
+        )));
+    }
+
     Ok(())
 }
 
+/// Add the library file at `library_path` to `zip`.
+///
+/// Returns whether the file was there. A library can legitimately be missing
+/// audio files — an import that was cancelled or interrupted leaves exactly
+/// that — and not being able to back up the rest of it would be worse than an
+/// incomplete archive.
 fn add_file_to_zip(
     zip: &mut ZipWriter<BufWriter<File>>,
     library_folder: impl AsRef<Path>,
     library_path: &str,
-) -> Result<()> {
+) -> Result<bool> {
     let file_path = library_folder.as_ref().join(PathBuf::from(library_path));
 
-    let mut file = File::open(file_path)?;
+    let mut file = match File::open(&file_path) {
+        Ok(file) => file,
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
+            log::warn!("Skipping missing library file {}", file_path.display());
+            return Ok(false);
+        }
+        Err(err) => return Err(err.into()),
+    };
+
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer)?;
 
     zip.start_file(library_path, SimpleFileOptions::default())?;
     zip.write_all(&buffer)?;
 
-    Ok(())
+    Ok(true)
 }
 
 fn import_metadata_from_url_priv(
@@ -954,6 +1032,29 @@ mod tests {
         }
     }
 
+    /// Drain a process channel, returning its result together with every
+    /// warning it reported on the way.
+    fn wait_for_result_and_warnings(handle: ProcessHandle) -> (Result<()>, Vec<String>) {
+        let mut warnings = Vec::new();
+
+        loop {
+            match handle.receiver.recv_blocking() {
+                Ok(ProcessMsg::Result(result)) => return (result, warnings),
+                Ok(ProcessMsg::Cancelled) => {
+                    return (Err(anyhow!("process was cancelled")), warnings)
+                }
+                Ok(ProcessMsg::Warning(warning)) => warnings.push(warning),
+                Ok(_) => continue,
+                Err(_) => {
+                    return (
+                        Err(anyhow!("process channel closed without a result")),
+                        warnings,
+                    )
+                }
+            }
+        }
+    }
+
     fn translated(name: &str) -> TranslatedString {
         let mut translations = std::collections::HashMap::new();
         translations.insert("generic".to_string(), name.to_string());
@@ -1221,5 +1322,124 @@ mod tests {
 
         let after_enabled = dest.search_persons("Renamed").unwrap();
         assert_eq!(after_enabled.len(), 1, "name should now be updated");
+    }
+
+    /// Export an archive of a library populated with one track, returning the
+    /// archive path and the library relative path of that track.
+    fn export_with_one_track(dir: &TempDir, cache_dir: &TempDir) -> (PathBuf, PathBuf) {
+        let library = Library::new(dir.path(), cache_dir.path()).unwrap();
+
+        let track_source_file = dir.path().join("source_track.mp3");
+        fs::write(&track_source_file, b"not actually audio").unwrap();
+        let recording = populate(&library, &track_source_file);
+
+        let track_path = library
+            .tracks_for_recording(&recording.recording_id)
+            .unwrap()
+            .remove(0)
+            .path;
+
+        let zip_path = dir.path().join("export.muslib");
+        wait_for_result(library.export_library_to_zip(&zip_path).unwrap()).unwrap();
+
+        (zip_path, track_path)
+    }
+
+    /// A copy that was interrupted half way leaves a temporary file. An import
+    /// that runs afterwards has to finish the track, which it could not do if
+    /// the incomplete data had been written to the final path.
+    #[test]
+    fn import_finishes_a_track_left_half_copied() {
+        let source_dir = TempDir::new().unwrap();
+        let source_cache_dir = TempDir::new().unwrap();
+        let (zip_path, track_path) = export_with_one_track(&source_dir, &source_cache_dir);
+
+        let dest_dir = TempDir::new().unwrap();
+        let dest_cache_dir = TempDir::new().unwrap();
+        let dest = Library::new(dest_dir.path(), dest_cache_dir.path()).unwrap();
+
+        let final_path = dest_dir.path().join(&track_path);
+        let mut part_path = final_path.clone();
+        part_path.as_mut_os_string().push(".part");
+        fs::write(&part_path, b"truncat").unwrap();
+
+        wait_for_result(
+            dest.import_library_from_zip(&zip_path, Source::Import)
+                .unwrap(),
+        )
+        .unwrap();
+
+        assert_eq!(fs::read(&final_path).unwrap(), b"not actually audio");
+        assert!(!part_path.exists(), "the temporary file should be gone");
+    }
+
+    #[test]
+    fn import_removes_a_stale_temporary_file_next_to_a_finished_track() {
+        let source_dir = TempDir::new().unwrap();
+        let source_cache_dir = TempDir::new().unwrap();
+        let (zip_path, track_path) = export_with_one_track(&source_dir, &source_cache_dir);
+
+        let dest_dir = TempDir::new().unwrap();
+        let dest_cache_dir = TempDir::new().unwrap();
+        let dest = Library::new(dest_dir.path(), dest_cache_dir.path()).unwrap();
+
+        wait_for_result(
+            dest.import_library_from_zip(&zip_path, Source::Import)
+                .unwrap(),
+        )
+        .unwrap();
+
+        let final_path = dest_dir.path().join(&track_path);
+        let mut part_path = final_path.clone();
+        part_path.as_mut_os_string().push(".part");
+        fs::write(&part_path, b"left over").unwrap();
+
+        // Running the same import again is how an interrupted import is
+        // finished, so it has to tidy up after the interrupted one.
+        wait_for_result(
+            dest.import_library_from_zip(&zip_path, Source::Import)
+                .unwrap(),
+        )
+        .unwrap();
+
+        assert!(!part_path.exists(), "the stale temporary file should be gone");
+        assert_eq!(fs::read(&final_path).unwrap(), b"not actually audio");
+    }
+
+    /// A library whose files are incomplete — after a cancelled import, say —
+    /// must still be exportable, otherwise it cannot be backed up at all.
+    #[test]
+    fn export_skips_a_missing_track_file() {
+        let dir = TempDir::new().unwrap();
+        let cache_dir = TempDir::new().unwrap();
+        let library = Library::new(dir.path(), cache_dir.path()).unwrap();
+
+        let track_source_file = dir.path().join("source_track.mp3");
+        fs::write(&track_source_file, b"not actually audio").unwrap();
+        let recording = populate(&library, &track_source_file);
+
+        let track_path = library
+            .tracks_for_recording(&recording.recording_id)
+            .unwrap()
+            .remove(0)
+            .path;
+        fs::remove_file(dir.path().join(&track_path)).unwrap();
+
+        let zip_path = dir.path().join("export.muslib");
+        let (result, warnings) =
+            wait_for_result_and_warnings(library.export_library_to_zip(&zip_path).unwrap());
+        result.unwrap();
+
+        assert_eq!(warnings.len(), 1, "the user has to be told what is missing");
+        assert!(warnings[0].contains('1'));
+
+        let mut archive =
+            zip::ZipArchive::new(BufReader::new(fs::File::open(&zip_path).unwrap())).unwrap();
+        assert!(archive.by_name(MANIFEST_NAME).is_ok());
+        assert!(archive.by_name("musicus.db").is_ok());
+        assert!(
+            archive.by_name(&path_to_zip(&track_path).unwrap()).is_err(),
+            "the missing track must simply not be in the archive"
+        );
     }
 }

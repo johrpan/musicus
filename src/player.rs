@@ -26,6 +26,9 @@ use crate::{
     program::Program,
 };
 
+/// How many tracks may fail in a row before playback gives up.
+const MAX_CONSECUTIVE_ERRORS: u32 = 5;
+
 mod imp {
     use super::*;
 
@@ -52,6 +55,11 @@ mod imp {
         pub play: OnceCell<gstreamer_play::Play>,
         pub play_signal_adapter: OnceCell<gstreamer_play::PlaySignalAdapter>,
         pub mpris_player: OnceCell<mpris_server::Player>,
+
+        /// How many tracks failed in a row without one in between that played.
+        pub consecutive_errors: Cell<u32>,
+        /// Whether the current item has already been counted as played.
+        pub play_reported: Cell<bool>,
     }
 
     impl Player {
@@ -111,17 +119,16 @@ mod imp {
 
                 let play = self.play.get().unwrap();
                 play.set_uri(Some(&uri));
-                if self.playing.get() {
-                    play.play();
-                }
 
+                // Everything that describes the current item has to be in place
+                // before playback starts, because `playback_started` reads it.
                 self.current_index.set(index);
                 item.set_is_playing(true);
 
-                if let Some(library) = self.library.borrow().as_ref() {
-                    if let Err(err) = library.track_played(&item.track_id()) {
-                        log::warn!("Failed to record that a track was played: {err:?}");
-                    }
+                self.play_reported.set(false);
+
+                if self.playing.get() {
+                    play.play();
                 }
             }
         }
@@ -191,7 +198,14 @@ mod imp {
                 };
 
                 obj.report_error(&message);
-                obj.set_playing(false);
+                obj.skip_failed_item();
+            });
+
+            let obj = Fragile::new(self.obj().to_owned());
+            play_signal_adapter.connect_state_changed(move |_, state| {
+                if state == gstreamer_play::PlayState::Playing {
+                    obj.get().playback_started();
+                }
             });
 
             let obj = Fragile::new(self.obj().to_owned());
@@ -446,6 +460,49 @@ impl Player {
                 log::warn!("Failed to publish playback status over MPRIS: {err}");
             }
         });
+    }
+
+    fn playback_started(&self) {
+        let imp = self.imp();
+
+        imp.consecutive_errors.set(0);
+
+        if imp.play_reported.replace(true) {
+            return;
+        }
+
+        let Some(item) = self.current_item() else {
+            return;
+        };
+
+        if let Some(library) = imp.library.borrow().as_ref() {
+            if let Err(err) = library.track_played(&item.track_id()) {
+                log::warn!("Failed to record that a track was played: {err:?}");
+            }
+        }
+    }
+
+    /// Continue after the current item failed to play.
+    fn skip_failed_item(&self) {
+        let imp = self.imp();
+
+        let consecutive_errors = imp.consecutive_errors.get() + 1;
+        imp.consecutive_errors.set(consecutive_errors);
+
+        if consecutive_errors >= MAX_CONSECUTIVE_ERRORS {
+            log::error!("Stopping playback after {consecutive_errors} tracks failed in a row");
+            imp.consecutive_errors.set(0);
+            self.pause();
+            return;
+        }
+
+        // A program keeps generating items, so there is always something to
+        // skip to.
+        if self.current_index() + 1 < self.playlist().n_items() || self.program().is_some() {
+            self.next();
+        } else {
+            self.pause();
+        }
     }
 
     pub fn report_error(&self, message: &str) {

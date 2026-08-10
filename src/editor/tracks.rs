@@ -16,7 +16,10 @@ use gtk::{
 use once_cell::sync::Lazy;
 use track_row::{TrackLocation, TracksEditorTrackData, TracksEditorTrackRow};
 
-use musicus_library::db::models::{Recording, Track, Work};
+use musicus_library::{
+    db::models::{Recording, Track, Work},
+    library::TrackUpdate,
+};
 
 use crate::{
     editor::recording::RecordingEditor, library::Library,
@@ -323,8 +326,8 @@ impl TracksEditor {
                     self.navigation().pop();
                 }
                 Err(err) => {
-                    // Stay on the page: some tracks may not have been saved and
-                    // the user needs to be able to see and retry.
+                    // Stay on the page: nothing was saved, so the user can fix
+                    // whatever went wrong and try again.
                     util::error_toast("Failed to import tracks", err, &self.toast_overlay());
                 }
             }
@@ -332,31 +335,44 @@ impl TracksEditor {
     }
 
     fn import(&self, recording: &Recording) -> Result<()> {
-        for track in self.imp().removed_tracks.borrow_mut().drain(..) {
-            self.library().delete_track(&track)?;
-        }
+        // Describe the whole batch before saving any of it, so that a track
+        // without a file aborts the save before anything has been written.
+        let tracks = {
+            let mut tracks = Vec::new();
 
-        for (index, track_row) in self.imp().track_rows.borrow_mut().drain(..).enumerate() {
-            let track_data = track_row.track_data();
+            for track_row in self.imp().track_rows.borrow().iter() {
+                let track_data = track_row.track_data();
 
-            match track_data.location {
-                TrackLocation::Undefined => {
-                    return Err(anyhow!("A track has no file assigned to it."));
-                }
-                TrackLocation::Library(track) => {
-                    self.library()
-                        .update_track(&track.track_id, index as i32, track_data.parts)?
-                }
-                TrackLocation::System(path) => {
-                    self.library().import_track(
-                        &path,
-                        &recording.recording_id,
-                        index as i32,
-                        track_data.parts,
-                    )?;
-                }
+                tracks.push(match track_data.location {
+                    TrackLocation::Undefined => {
+                        return Err(anyhow!("A track has no file assigned to it."));
+                    }
+                    TrackLocation::Library(track) => TrackUpdate::Existing {
+                        track_id: track.track_id,
+                        works: track_data.parts,
+                    },
+                    TrackLocation::System(path) => TrackUpdate::New {
+                        path,
+                        works: track_data.parts,
+                    },
+                });
             }
 
+            tracks
+        };
+
+        // Nothing may be borrowed while the library is saving: it notifies its
+        // subscribers, which can call back into this page.
+        let removed_tracks = self.imp().removed_tracks.borrow().clone();
+
+        self.library()
+            .set_recording_tracks(&recording.recording_id, tracks, &removed_tracks)?;
+
+        // Only once everything has been saved may the pending changes be
+        // forgotten, so that a failed save stays retryable.
+        self.imp().removed_tracks.borrow_mut().clear();
+
+        for track_row in self.imp().track_rows.borrow_mut().drain(..) {
             self.imp().track_list.remove(&track_row);
         }
 
