@@ -26,10 +26,8 @@ data/ui/editor/program.blp
 data/ui/editor/program_settings.blp
 data/ui/editor/tracks.blp
 data/ui/editor/ensemble.blp
-data/ui/editor/instrument.blp
-data/ui/editor/person.blp
+data/ui/editor/simple_entity.blp
 data/ui/editor/recording.blp
-data/ui/editor/role.blp
 data/ui/editor/work.blp
 data/ui/selector/recording.blp
 data/ui/selector/work.blp
@@ -67,10 +65,8 @@ src/editor/program.rs
 src/editor/program_settings.rs
 src/editor/tracks.rs
 src/editor/ensemble.rs
-src/editor/instrument.rs
-src/editor/person.rs
+src/editor/simple_entity.rs
 src/editor/recording.rs
-src/editor/role.rs
 src/editor/work.rs
 src/main.rs
 src/player_bar.rs

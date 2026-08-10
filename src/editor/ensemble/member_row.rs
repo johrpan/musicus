@@ -11,7 +11,7 @@ use once_cell::sync::Lazy;
 use musicus_library::db::models::{Instrument, Person};
 
 use crate::{
-    editor::instrument::InstrumentEditor, library::Library, selector::SelectorPopover,
+    editor::simple_entity::SimpleEntityEditor, library::Library, selector::SelectorPopover,
     util::drag_widget::DragWidget,
 };
 
@@ -119,7 +119,8 @@ mod imp {
 
             let obj = self.obj().to_owned();
             instrument_popover.connect_create(move |_| {
-                let editor = InstrumentEditor::new(&obj.navigation(), &obj.library(), None);
+                let editor =
+                    SimpleEntityEditor::instrument(&obj.navigation(), &obj.library(), None);
 
                 editor.connect_created(clone!(
                     #[weak]

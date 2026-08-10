@@ -8,16 +8,16 @@ use gtk::{
 };
 use once_cell::sync::Lazy;
 
-use musicus_library::db::models::Performer;
+use musicus_library::db::models::{Instrument, Performer, Role};
 
 use crate::{
-    editor::role::RoleEditor, library::Library,
-    selector::performer_role::PerformerRoleSelectorPopover, util::drag_widget::DragWidget,
+    library::Library, selector::performer_role::PerformerRoleSelectorPopover,
+    util::drag_widget::DragWidget,
 };
 
 mod imp {
     use super::*;
-    use crate::editor::instrument::InstrumentEditor;
+    use crate::editor::simple_entity::SimpleEntityEditor;
 
     #[derive(Properties, Debug, Default, gtk::CompositeTemplate)]
     #[properties(wrapper_type = super::RecordingEditorPerformerRow)]
@@ -141,12 +141,12 @@ mod imp {
 
             let obj = self.obj().to_owned();
             role_popover.connect_create_role(move |_| {
-                let editor = RoleEditor::new(&obj.navigation(), &obj.library(), None);
+                let editor = SimpleEntityEditor::role(&obj.navigation(), &obj.library(), None);
 
                 editor.connect_created(clone!(
                     #[weak]
                     obj,
-                    move |_, role| {
+                    move |_, role: Role| {
                         if let Some(performer) = &mut *obj.imp().performer.borrow_mut() {
                             obj.imp().role_label.set_label(&role.to_string());
                             performer.role = Some(role);
@@ -160,12 +160,13 @@ mod imp {
 
             let obj = self.obj().to_owned();
             role_popover.connect_create_instrument(move |_| {
-                let editor = InstrumentEditor::new(&obj.navigation(), &obj.library(), None);
+                let editor =
+                    SimpleEntityEditor::instrument(&obj.navigation(), &obj.library(), None);
 
                 editor.connect_created(clone!(
                     #[weak]
                     obj,
-                    move |_, instrument| {
+                    move |_, instrument: Instrument| {
                         if let Some(performer) = &mut *obj.imp().performer.borrow_mut() {
                             obj.imp().role_label.set_label(&instrument.to_string());
                             performer.role = None;

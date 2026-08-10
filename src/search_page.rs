@@ -12,10 +12,7 @@ use musicus_library::db::models::*;
 use crate::{
     album_page::AlbumPage,
     album_tile::AlbumTile,
-    editor::{
-        ensemble::EnsembleEditor, instrument::InstrumentEditor, person::PersonEditor,
-        work::WorkEditor,
-    },
+    editor::{ensemble::EnsembleEditor, simple_entity::SimpleEntityEditor, work::WorkEditor},
     library::{Library, LibraryQuery, Tag},
     player::Player,
     program::Program,
@@ -195,7 +192,7 @@ impl SearchPage {
         if let Some(highlight) = &*self.imp().highlight.borrow() {
             match highlight {
                 Tag::Composer(person) | Tag::Performer(person) => {
-                    self.navigation().push(&PersonEditor::new(
+                    self.navigation().push(&SimpleEntityEditor::person(
                         &self.navigation(),
                         &self.library(),
                         Some(person),
@@ -208,11 +205,13 @@ impl SearchPage {
                         Some(ensemble),
                     ));
                 }
-                Tag::Instrument(instrument) => self.navigation().push(&InstrumentEditor::new(
-                    &self.navigation(),
-                    &self.library(),
-                    Some(instrument),
-                )),
+                Tag::Instrument(instrument) => {
+                    self.navigation().push(&SimpleEntityEditor::instrument(
+                        &self.navigation(),
+                        &self.library(),
+                        Some(instrument),
+                    ))
+                }
                 Tag::Work(work) => self.navigation().push(&WorkEditor::new(
                     &self.navigation(),
                     &self.library(),

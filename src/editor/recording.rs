@@ -15,7 +15,7 @@ use musicus_library::db::models::{
 };
 
 use crate::{
-    editor::{ensemble::EnsembleEditor, person::PersonEditor, work::WorkEditor},
+    editor::{ensemble::EnsembleEditor, simple_entity::SimpleEntityEditor, work::WorkEditor},
     library::Library,
     selector::{work::WorkSelectorPopover, SelectorPopover},
 };
@@ -130,7 +130,7 @@ mod imp {
 
             let obj = self.obj().clone();
             persons_popover.connect_create(move |_| {
-                let editor = PersonEditor::new(&obj.navigation(), &obj.library(), None);
+                let editor = SimpleEntityEditor::person(&obj.navigation(), &obj.library(), None);
 
                 editor.connect_created(clone!(
                     #[weak]

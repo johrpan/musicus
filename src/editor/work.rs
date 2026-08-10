@@ -17,7 +17,7 @@ use musicus_library::db::{
 };
 
 use crate::{
-    editor::{instrument::InstrumentEditor, person::PersonEditor, translation::TranslationEditor},
+    editor::{simple_entity::SimpleEntityEditor, translation::TranslationEditor},
     library::Library,
     selector::SelectorPopover,
 };
@@ -108,7 +108,7 @@ mod imp {
 
             let obj = self.obj().clone();
             persons_popover.connect_create(move |_| {
-                let editor = PersonEditor::new(&obj.navigation(), &obj.library(), None);
+                let editor = SimpleEntityEditor::person(&obj.navigation(), &obj.library(), None);
 
                 editor.connect_created(clone!(
                     #[weak]
@@ -133,7 +133,8 @@ mod imp {
 
             let obj = self.obj().clone();
             instruments_popover.connect_create(move |_| {
-                let editor = InstrumentEditor::new(&obj.navigation(), &obj.library(), None);
+                let editor =
+                    SimpleEntityEditor::instrument(&obj.navigation(), &obj.library(), None);
 
                 editor.connect_created(clone!(
                     #[weak]

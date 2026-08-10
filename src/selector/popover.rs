@@ -270,7 +270,7 @@ impl SelectorPopover {
             Err(err) => {
                 log::error!("Failed to import the selected item: {err:?}");
 
-                if let Some(toast_overlay) = self.toast_overlay() {
+                if let Some(toast_overlay) = util::find_toast_overlay(self) {
                     util::error_toast(
                         "Failed to add this item to the library",
                         err,
@@ -281,20 +281,6 @@ impl SelectorPopover {
                 self.popdown();
             }
         }
-    }
-
-    fn toast_overlay(&self) -> Option<adw::ToastOverlay> {
-        let mut widget = self.parent();
-
-        while let Some(current) = widget {
-            if let Ok(overlay) = current.clone().downcast::<adw::ToastOverlay>() {
-                return Some(overlay);
-            }
-
-            widget = current.parent();
-        }
-
-        None
     }
 
     fn create(&self) {
