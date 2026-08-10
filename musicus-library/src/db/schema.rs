@@ -78,6 +78,15 @@ diesel::table! {
 }
 
 diesel::table! {
+    meta (id) {
+        id -> Integer,
+        schema_version -> Integer,
+        created_at -> Timestamp,
+        updated_at -> Timestamp,
+    }
+}
+
+diesel::table! {
     persons (person_id) {
         person_id -> Text,
         name -> Text,
@@ -223,6 +232,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     ensembles,
     instruments,
     mediums,
+    meta,
     persons,
     recording_ensembles,
     recording_persons,

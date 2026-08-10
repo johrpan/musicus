@@ -11,7 +11,7 @@ use std::{
     sync::{Mutex, MutexGuard, OnceLock},
 };
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, bail, Result};
 use diesel::{
     backend::Backend,
     deserialize::{self, FromSql, FromSqlRow},
@@ -27,6 +27,11 @@ use serde::{Deserialize, Serialize};
 // This makes the SQL migration scripts accessible from the code.
 const MIGRATIONS: EmbeddedMigrations = diesel_migrations::embed_migrations!("../migrations");
 
+/// The number of migrations in `migrations/`. Bump when adding one; this exists
+/// so that a migration that fails to embed is caught by the tests.
+#[cfg(test)]
+const MIGRATION_COUNT: usize = 7;
+
 /// The user's preferred language code, used to pick the best translation out of a
 /// [`TranslatedString`]. Set once at application startup via [`set_language`].
 static LANG: OnceLock<String> = OnceLock::new();
@@ -39,10 +44,64 @@ pub fn set_language(lang: impl Into<String>) {
     }
 }
 
+/// The schema version this build understands.
+///
+/// Stored in every library database's `meta` table. Any migration that
+/// changes the schema must bump both this constant and the value written by the
+/// migration, so that an older build can recognise a database it cannot read.
+pub const SCHEMA_VERSION: i32 = 1;
+
+#[derive(QueryableByName)]
+struct SchemaVersionRow {
+    #[diesel(sql_type = diesel::sql_types::Integer)]
+    schema_version: i32,
+}
+
+#[derive(QueryableByName)]
+struct CountRow {
+    #[diesel(sql_type = diesel::sql_types::Integer)]
+    count: i32,
+}
+
+/// The schema version recorded in an existing database, or `None` for a
+/// database that predates `meta` (or is brand new).
+fn schema_version(connection: &mut SqliteConnection) -> Result<Option<i32>> {
+    let exists = diesel::sql_query(
+        "SELECT COUNT(*) AS count FROM sqlite_master \
+         WHERE type = 'table' AND name = 'meta'",
+    )
+    .get_result::<CountRow>(connection)?
+    .count;
+
+    if exists == 0 {
+        return Ok(None);
+    }
+
+    Ok(
+        diesel::sql_query("SELECT schema_version FROM meta WHERE id = 1")
+            .get_result::<SchemaVersionRow>(connection)
+            .optional()?
+            .map(|row| row.schema_version),
+    )
+}
+
 /// Connect to a Musicus database and apply any pending migrations.
+///
+/// Fails if the database was written by a newer version of Musicus, rather than
+/// migrating or reading a schema this build does not understand.
 pub fn connect(file_name: &str) -> Result<SqliteConnection> {
     log::info!("Opening database file '{}'", file_name);
     let mut connection = SqliteConnection::establish(file_name)?;
+
+    if let Some(version) = schema_version(&mut connection)? {
+        if version > SCHEMA_VERSION {
+            bail!(
+                "This library was created by a newer version of Musicus \
+                 (library schema version {version}, this version supports {SCHEMA_VERSION}). \
+                 Please update Musicus to open it."
+            );
+        }
+    }
 
     log::info!("Running migrations if necessary");
     connection
@@ -136,7 +195,7 @@ mod tests {
         let mut conn = migrated_conn();
 
         assert!(!conn.has_pending_migration(MIGRATIONS).unwrap());
-        assert_eq!(conn.applied_migrations().unwrap().len(), 6);
+        assert_eq!(conn.applied_migrations().unwrap().len(), MIGRATION_COUNT);
 
         assert_eq!(
             schema::persons::table
@@ -145,6 +204,62 @@ mod tests {
                 .unwrap(),
             0
         );
+    }
+
+    #[test]
+    fn fresh_database_records_the_current_schema_version() {
+        let mut conn = migrated_conn();
+        assert_eq!(schema_version(&mut conn).unwrap(), Some(SCHEMA_VERSION));
+    }
+
+    /// A database written by a newer Musicus must be refused rather than
+    /// migrated or read with a schema this build does not understand.
+    #[test]
+    fn connect_refuses_a_newer_schema_version() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let path = dir.path().join("musicus.db");
+        let path = path.to_str().unwrap();
+
+        connect(path).unwrap();
+
+        let mut conn = SqliteConnection::establish(path).unwrap();
+        diesel::sql_query(format!(
+            "UPDATE meta SET schema_version = {} WHERE id = 1",
+            SCHEMA_VERSION + 1
+        ))
+        .execute(&mut conn)
+        .unwrap();
+        drop(conn);
+
+        let err = match connect(path) {
+            Ok(_) => panic!("a newer schema version must be refused"),
+            Err(err) => err,
+        };
+        assert!(
+            err.to_string().contains("newer version of Musicus"),
+            "unexpected error: {err}"
+        );
+    }
+
+    /// Databases created before `meta` existed have no version to check
+    /// and must still open.
+    #[test]
+    fn connect_accepts_a_database_without_a_recorded_version() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let path = dir.path().join("musicus.db");
+        let path = path.to_str().unwrap();
+
+        connect(path).unwrap();
+
+        let mut conn = SqliteConnection::establish(path).unwrap();
+        assert_eq!(schema_version(&mut conn).unwrap(), Some(SCHEMA_VERSION));
+        diesel::sql_query("DROP TABLE meta")
+            .execute(&mut conn)
+            .unwrap();
+        assert_eq!(schema_version(&mut conn).unwrap(), None);
+        drop(conn);
+
+        connect(path).unwrap();
     }
 
     #[test]

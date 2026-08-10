@@ -77,7 +77,7 @@ fn full_migration_history_round_trips() {
     // Apply the rest of the chain.
     conn.run_pending_migrations(MIGRATIONS).unwrap();
     assert!(!conn.has_pending_migration(MIGRATIONS).unwrap());
-    assert_eq!(conn.applied_migrations().unwrap().len(), 6);
+    assert_eq!(conn.applied_migrations().unwrap().len(), MIGRATION_COUNT);
 
     // Every row should have survived each table rebuild along the way.
     for (table, id_column, id) in ENTITY_ROWS {
@@ -104,5 +104,5 @@ fn full_migration_history_round_trips() {
 
     // ...and reapply, proving the whole chain is consistent in both directions.
     conn.run_pending_migrations(MIGRATIONS).unwrap();
-    assert_eq!(conn.applied_migrations().unwrap().len(), 6);
+    assert_eq!(conn.applied_migrations().unwrap().len(), MIGRATION_COUNT);
 }
