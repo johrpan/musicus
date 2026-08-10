@@ -5,7 +5,10 @@ pub mod error_dialog;
 use std::sync::LazyLock;
 
 use gettextrs::gettext;
-use gtk::glib::{self, clone};
+use gtk::{
+    glib::{self, clone},
+    prelude::*,
+};
 use musicus_library::{EntityKind, LibraryError};
 
 use error_dialog::ErrorDialog;
@@ -23,6 +26,20 @@ pub static LANG: LazyLock<String> = LazyLock::new(|| {
     log::info!("Intialized user language to '{lang}'.");
     lang
 });
+
+pub fn find_toast_overlay(widget: &impl IsA<gtk::Widget>) -> Option<adw::ToastOverlay> {
+    let mut current = widget.as_ref().parent();
+
+    while let Some(widget) = current {
+        if let Ok(overlay) = widget.clone().downcast::<adw::ToastOverlay>() {
+            return Some(overlay);
+        }
+
+        current = widget.parent();
+    }
+
+    None
+}
 
 /// The message to show for a failure the user can do something about.
 ///

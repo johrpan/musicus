@@ -11,7 +11,7 @@ use once_cell::sync::Lazy;
 use musicus_library::db::models::{Composer, Role};
 
 use crate::{
-    editor::role::RoleEditor, library::Library, selector::SelectorPopover,
+    editor::simple_entity::SimpleEntityEditor, library::Library, selector::SelectorPopover,
     util::drag_widget::DragWidget,
 };
 
@@ -129,12 +129,12 @@ mod imp {
 
             let obj = self.obj().to_owned();
             role_popover.connect_create(move |_| {
-                let editor = RoleEditor::new(&obj.navigation(), &obj.library(), None);
+                let editor = SimpleEntityEditor::role(&obj.navigation(), &obj.library(), None);
 
                 editor.connect_created(clone!(
                     #[weak]
                     obj,
-                    move |_, role| {
+                    move |_, role: Role| {
                         if let Some(composer) = &mut *obj.imp().composer.borrow_mut() {
                             obj.imp().role_label.set_label(&role.to_string());
                             composer.role = Some(role);

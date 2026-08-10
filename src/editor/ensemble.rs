@@ -11,7 +11,7 @@ use once_cell::sync::Lazy;
 use musicus_library::db::models::{Ensemble, Instrument, Person};
 
 use crate::{
-    editor::{person::PersonEditor, translation::TranslationEditor},
+    editor::{simple_entity::SimpleEntityEditor, translation::TranslationEditor},
     library::Library,
     selector::SelectorPopover,
 };
@@ -101,7 +101,7 @@ impl EnsembleEditor {
 
         let this = obj.clone();
         persons_popover.connect_create(move |_| {
-            let editor = PersonEditor::new(
+            let editor = SimpleEntityEditor::person(
                 this.imp().navigation.get().unwrap(),
                 this.imp().library.get().unwrap(),
                 None,
