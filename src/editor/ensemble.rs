@@ -214,14 +214,27 @@ impl EnsembleEditor {
             .map(EnsembleEditorMemberRow::member)
             .collect::<Vec<(Person, Option<Instrument>)>>();
 
+        if !crate::editor::require_name(self, &name) {
+            return;
+        }
+
         if let Some(ensemble_id) = self.imp().ensemble_id.get() {
-            library
-                .update_ensemble(ensemble_id, name, persons, enable_updates)
-                .unwrap();
+            if crate::editor::handle_save(
+                self,
+                library.update_ensemble(ensemble_id, name, persons, enable_updates),
+            )
+            .is_none()
+            {
+                return;
+            }
         } else {
-            let ensemble = library
-                .create_ensemble(name, persons, enable_updates)
-                .unwrap();
+            let Some(ensemble) = crate::editor::handle_save(
+                self,
+                library.create_ensemble(name, persons, enable_updates),
+            ) else {
+                return;
+            };
+
             self.emit_by_name::<()>("created", &[&glib::BoxedAnyObject::new(ensemble.clone())]);
         }
 

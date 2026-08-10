@@ -383,20 +383,35 @@ impl RecordingEditor {
             let enable_updates = self.imp().enable_updates_row.is_active();
 
             if let Some(recording_id) = self.imp().recording_id.get() {
-                library
-                    .update_recording(
+                if crate::editor::handle_save(
+                    self,
+                    library.update_recording(
                         recording_id,
                         work,
                         Some(year),
                         performers,
                         ensembles,
                         enable_updates,
-                    )
-                    .unwrap();
+                    ),
+                )
+                .is_none()
+                {
+                    return;
+                }
             } else {
-                let recording = library
-                    .create_recording(work, Some(year), performers, ensembles, enable_updates)
-                    .unwrap();
+                let Some(recording) = crate::editor::handle_save(
+                    self,
+                    library.create_recording(
+                        work,
+                        Some(year),
+                        performers,
+                        ensembles,
+                        enable_updates,
+                    ),
+                ) else {
+                    return;
+                };
+
                 self.emit_by_name::<()>(
                     "created",
                     &[&glib::BoxedAnyObject::new(recording.clone())],

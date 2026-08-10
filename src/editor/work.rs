@@ -379,6 +379,10 @@ impl WorkEditor {
 
         let enable_updates = self.imp().enable_updates_row.is_active();
 
+        if !crate::editor::require_name(self, &name) {
+            return;
+        }
+
         if self.imp().is_part_editor.get() {
             let work_id = self
                 .imp()
@@ -398,13 +402,22 @@ impl WorkEditor {
 
             self.emit_by_name::<()>("created", &[&glib::BoxedAnyObject::new(part.clone())]);
         } else if let Some(work_id) = self.imp().work_id.get() {
-            library
-                .update_work(work_id, name, parts, composers, instruments, enable_updates)
-                .unwrap();
+            if crate::editor::handle_save(
+                self,
+                library.update_work(work_id, name, parts, composers, instruments, enable_updates),
+            )
+            .is_none()
+            {
+                return;
+            }
         } else {
-            let work = library
-                .create_work(name, parts, composers, instruments, enable_updates)
-                .unwrap();
+            let Some(work) = crate::editor::handle_save(
+                self,
+                library.create_work(name, parts, composers, instruments, enable_updates),
+            ) else {
+                return;
+            };
+
             self.emit_by_name::<()>("created", &[&glib::BoxedAnyObject::new(work.clone())]);
         }
 
