@@ -138,7 +138,7 @@ impl LibraryManager {
                         .unwrap()
                         .import_library_from_zip(&path, Source::Import)
                     {
-                        Ok(receiver) => {
+                        Ok(handle) => {
                             let process = Process::new(
                                 &formatx!(
                                     gettext("Importing music library from {}"),
@@ -147,7 +147,7 @@ impl LibraryManager {
                                         .unwrap_or(gettext("archive"))
                                 )
                                 .unwrap(),
-                                receiver,
+                                handle,
                             );
 
                             process.connect_finished_notify(clone!(
@@ -202,7 +202,7 @@ impl LibraryManager {
                         .unwrap()
                         .export_library_to_zip(&path)
                     {
-                        Ok(receiver) => {
+                        Ok(handle) => {
                             let process = Process::new(
                                 &formatx!(
                                     gettext("Exporting music library to {}"),
@@ -211,7 +211,7 @@ impl LibraryManager {
                                         .unwrap_or(gettext("archive"))
                                 )
                                 .unwrap(),
-                                receiver,
+                                handle,
                             );
 
                             self.imp()
@@ -245,8 +245,8 @@ impl LibraryManager {
             .unwrap()
             .import_metadata_from_url(&url)
         {
-            Ok(receiver) => {
-                let process = Process::new(&gettext("Updating metadata"), receiver);
+            Ok(handle) => {
+                let process = Process::new(&gettext("Updating metadata"), handle);
 
                 self.imp()
                     .process_manager
@@ -276,8 +276,8 @@ impl LibraryManager {
             .unwrap()
             .import_library_from_url(&url, Source::Metadata)
         {
-            Ok(receiver) => {
-                let process = Process::new(&gettext("Updating music library"), receiver);
+            Ok(handle) => {
+                let process = Process::new(&gettext("Updating music library"), handle);
 
                 self.imp()
                     .process_manager

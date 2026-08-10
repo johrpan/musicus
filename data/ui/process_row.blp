@@ -55,6 +55,30 @@ template $MusicusProcessRow: Gtk.ListBoxRow {
             "caption",
           ]
         }
+
+        Gtk.Label cancelled_label {
+          label: _("Process cancelled");
+          wrap: true;
+          xalign: 0.0;
+          visible: false;
+
+          styles [
+            "dim-label",
+            "caption",
+          ]
+        }
+      }
+
+      Gtk.Button cancel_button {
+        icon-name: "window-close-symbolic";
+        tooltip-text: _("Cancel");
+        valign: start;
+        visible: false;
+        clicked => $cancel() swapped;
+
+        styles [
+          "flat",
+        ]
       }
 
       Gtk.Button remove_button {

@@ -113,7 +113,11 @@ impl InstrumentSelectorPopover {
     ) -> glib::SignalHandlerId {
         self.connect_local("instrument-selected", true, move |values| {
             let obj = values[0].get::<Self>().unwrap();
-            let instrument = values[1].get::<glib::BoxedAnyObject>().unwrap().borrow::<Instrument>().clone();
+            let instrument = values[1]
+                .get::<glib::BoxedAnyObject>()
+                .unwrap()
+                .borrow::<Instrument>()
+                .clone();
             f(&obj, instrument);
             None
         })
@@ -210,7 +214,10 @@ impl InstrumentSelectorPopover {
             }
         };
 
-        self.emit_by_name::<()>("instrument-selected", &[&glib::BoxedAnyObject::new(instrument.clone())]);
+        self.emit_by_name::<()>(
+            "instrument-selected",
+            &[&glib::BoxedAnyObject::new(instrument.clone())],
+        );
         self.popdown();
     }
 

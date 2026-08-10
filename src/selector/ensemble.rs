@@ -113,7 +113,11 @@ impl EnsembleSelectorPopover {
     ) -> glib::SignalHandlerId {
         self.connect_local("ensemble-selected", true, move |values| {
             let obj = values[0].get::<Self>().unwrap();
-            let ensemble = values[1].get::<glib::BoxedAnyObject>().unwrap().borrow::<Ensemble>().clone();
+            let ensemble = values[1]
+                .get::<glib::BoxedAnyObject>()
+                .unwrap()
+                .borrow::<Ensemble>()
+                .clone();
             f(&obj, ensemble);
             None
         })
@@ -205,7 +209,10 @@ impl EnsembleSelectorPopover {
             }
         };
 
-        self.emit_by_name::<()>("ensemble-selected", &[&glib::BoxedAnyObject::new(ensemble.clone())]);
+        self.emit_by_name::<()>(
+            "ensemble-selected",
+            &[&glib::BoxedAnyObject::new(ensemble.clone())],
+        );
         self.popdown();
     }
 

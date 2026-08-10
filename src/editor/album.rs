@@ -142,7 +142,11 @@ impl AlbumEditor {
     pub fn connect_created<F: Fn(&Self, Album) + 'static>(&self, f: F) -> glib::SignalHandlerId {
         self.connect_local("created", true, move |values| {
             let obj = values[0].get::<Self>().unwrap();
-            let album = values[1].get::<glib::BoxedAnyObject>().unwrap().borrow::<Album>().clone();
+            let album = values[1]
+                .get::<glib::BoxedAnyObject>()
+                .unwrap()
+                .borrow::<Album>()
+                .clone();
             f(&obj, album);
             None
         })

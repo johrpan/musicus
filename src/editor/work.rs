@@ -207,7 +207,11 @@ impl WorkEditor {
     pub fn connect_created<F: Fn(&Self, Work) + 'static>(&self, f: F) -> glib::SignalHandlerId {
         self.connect_local("created", true, move |values| {
             let obj = values[0].get::<Self>().unwrap();
-            let work = values[1].get::<glib::BoxedAnyObject>().unwrap().borrow::<Work>().clone();
+            let work = values[1]
+                .get::<glib::BoxedAnyObject>()
+                .unwrap()
+                .borrow::<Work>()
+                .clone();
             f(&obj, work);
             None
         })

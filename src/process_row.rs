@@ -30,6 +30,10 @@ mod imp {
         #[template_child]
         pub error_label: TemplateChild<gtk::Label>,
         #[template_child]
+        pub cancelled_label: TemplateChild<gtk::Label>,
+        #[template_child]
+        pub cancel_button: TemplateChild<gtk::Button>,
+        #[template_child]
         pub remove_button: TemplateChild<gtk::Button>,
         #[template_child]
         pub progress_bar: TemplateChild<gtk::ProgressBar>,
@@ -114,6 +118,17 @@ impl ProcessRow {
         self.emit_by_name::<()>("remove", &[]);
     }
 
+    #[template_callback]
+    fn cancel(&self) {
+        self.process().cancel();
+
+        // Cancellation is cooperative, so the process keeps running until it
+        // reaches its next cancellation point.
+        self.imp().cancel_button.set_sensitive(false);
+        self.imp().message_label.set_label(&gettext("Cancelling…"));
+        self.imp().message_label.set_visible(true);
+    }
+
     fn update(&self) {
         match self.process().message() {
             Some(message) => {
@@ -127,10 +142,14 @@ impl ProcessRow {
 
         if !self.process().finished() {
             self.imp()
+                .cancel_button
+                .set_visible(self.process().is_cancellable());
+            self.imp()
                 .progress_bar
                 .set_fraction(self.process().progress());
         } else {
             self.imp().progress_bar.set_visible(false);
+            self.imp().cancel_button.set_visible(false);
             self.imp().remove_button.set_visible(true);
 
             if let Some(error) = self.process().error() {
@@ -138,6 +157,8 @@ impl ProcessRow {
                     .error_label
                     .set_label(&formatx!(gettext("Process failed: {}"), error).unwrap());
                 self.imp().error_label.set_visible(true);
+            } else if self.process().cancelled() {
+                self.imp().cancelled_label.set_visible(true);
             } else {
                 self.imp().success_label.set_visible(true);
             }

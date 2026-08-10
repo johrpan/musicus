@@ -87,7 +87,11 @@ impl RoleEditor {
     pub fn connect_created<F: Fn(&Self, Role) + 'static>(&self, f: F) -> glib::SignalHandlerId {
         self.connect_local("created", true, move |values| {
             let obj = values[0].get::<Self>().unwrap();
-            let role = values[1].get::<glib::BoxedAnyObject>().unwrap().borrow::<Role>().clone();
+            let role = values[1]
+                .get::<glib::BoxedAnyObject>()
+                .unwrap()
+                .borrow::<Role>()
+                .clone();
             f(&obj, role);
             None
         })

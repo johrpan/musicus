@@ -150,7 +150,11 @@ impl PerformerRoleSelectorPopover {
     ) -> glib::SignalHandlerId {
         self.connect_local("role-selected", true, move |values| {
             let obj = values[0].get::<Self>().unwrap();
-            let role = values[1].get::<glib::BoxedAnyObject>().unwrap().borrow::<Role>().clone();
+            let role = values[1]
+                .get::<glib::BoxedAnyObject>()
+                .unwrap()
+                .borrow::<Role>()
+                .clone();
             f(&obj, role);
             None
         })
@@ -162,7 +166,11 @@ impl PerformerRoleSelectorPopover {
     ) -> glib::SignalHandlerId {
         self.connect_local("instrument-selected", true, move |values| {
             let obj = values[0].get::<Self>().unwrap();
-            let role = values[1].get::<glib::BoxedAnyObject>().unwrap().borrow::<Instrument>().clone();
+            let role = values[1]
+                .get::<glib::BoxedAnyObject>()
+                .unwrap()
+                .borrow::<Instrument>()
+                .clone();
             f(&obj, role);
             None
         })
@@ -350,7 +358,10 @@ impl PerformerRoleSelectorPopover {
             }
         };
 
-        self.emit_by_name::<()>("instrument-selected", &[&glib::BoxedAnyObject::new(instrument.clone())]);
+        self.emit_by_name::<()>(
+            "instrument-selected",
+            &[&glib::BoxedAnyObject::new(instrument.clone())],
+        );
         self.popdown();
     }
 

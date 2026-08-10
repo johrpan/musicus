@@ -23,16 +23,55 @@ use crate::{
         schema::*,
         tables::{self, Source},
     },
-    process::ProcessMsg,
+    process::{Cancellation, ProcessHandle, ProcessMsg},
 };
+
+/// Run `operation` on a background thread, reporting its outcome as the final
+/// message on the returned handle's channel.
+fn spawn_process(
+    operation: impl FnOnce(&async_channel::Sender<ProcessMsg>, &Cancellation) -> Result<()>
+        + Send
+        + 'static,
+) -> ProcessHandle {
+    let (sender, receiver) = async_channel::unbounded::<ProcessMsg>();
+    let cancellation = Cancellation::new();
+
+    let thread_cancellation = cancellation.clone();
+    thread::spawn(move || {
+        let result = operation(&sender, &thread_cancellation);
+
+        // A cancelled operation fails with a sentinel error that must not be
+        // reported to the user as a failure.
+        let msg = if thread_cancellation.is_cancelled() {
+            ProcessMsg::Cancelled
+        } else {
+            ProcessMsg::Result(result)
+        };
+
+        if let Err(err) = sender.send_blocking(msg) {
+            log::error!("Failed to send library action result: {err:?}");
+        }
+    });
+
+    ProcessHandle {
+        receiver,
+        cancellation,
+    }
+}
 
 impl Library {
     /// Import from a music library ZIP archive at `path`.
+    ///
+    /// Cancelling leaves the library partially populated: the metadata is
+    /// imported in one transaction before any audio file is copied, so a
+    /// cancelled import can leave tracks whose files are missing. Running the
+    /// same import again completes it, since existing files and rows are
+    /// skipped.
     pub fn import_library_from_zip(
         &self,
         path: impl AsRef<Path>,
         source: Source,
-    ) -> Result<async_channel::Receiver<ProcessMsg>> {
+    ) -> Result<ProcessHandle> {
         log::info!(
             "Importing library from ZIP at {}",
             path.as_ref().to_string_lossy()
@@ -41,30 +80,21 @@ impl Library {
         let library_folder = PathBuf::from(&self.folder());
         let this_connection = self.connection.clone();
 
-        let (sender, receiver) = async_channel::unbounded::<ProcessMsg>();
-        thread::spawn(move || {
-            if let Err(err) =
-                sender.send_blocking(ProcessMsg::Result(import_library_from_zip_priv(
-                    path,
-                    library_folder,
-                    source,
-                    this_connection,
-                    &sender,
-                )))
-            {
-                log::error!("Failed to send library action result: {err:?}");
-            }
-        });
-
-        Ok(receiver)
+        Ok(spawn_process(move |sender, cancellation| {
+            import_library_from_zip_priv(
+                path,
+                library_folder,
+                source,
+                this_connection,
+                sender,
+                cancellation,
+            )
+        }))
     }
 
     /// Export the whole music library to a ZIP archive at `path`. If `path` already exists, it
     /// will be overwritten. The work will be done in a background thread.
-    pub fn export_library_to_zip(
-        &self,
-        path: impl AsRef<Path>,
-    ) -> Result<async_channel::Receiver<ProcessMsg>> {
+    pub fn export_library_to_zip(&self, path: impl AsRef<Path>) -> Result<ProcessHandle> {
         log::info!(
             "Exporting library to ZIP at {}",
             path.as_ref().to_string_lossy()
@@ -75,67 +105,44 @@ impl Library {
         let library_folder = PathBuf::from(&self.folder());
         let tracks = tracks::table.load::<tables::Track>(connection)?;
 
-        let (sender, receiver) = async_channel::unbounded::<ProcessMsg>();
-        thread::spawn(move || {
-            if let Err(err) = sender.send_blocking(ProcessMsg::Result(export_library_to_zip_priv(
-                path,
-                library_folder,
-                tracks,
-                &sender,
-            ))) {
-                log::error!("Failed to send library action result: {err:?}");
-            }
-        });
-
-        Ok(receiver)
+        Ok(spawn_process(move |sender, cancellation| {
+            export_library_to_zip_priv(path, library_folder, tracks, sender, cancellation)
+        }))
     }
 
     /// Import from a library archive at `url`.
-    pub fn import_library_from_url(
-        &self,
-        url: &str,
-        source: Source,
-    ) -> Result<async_channel::Receiver<ProcessMsg>> {
+    ///
+    /// See [`Library::import_library_from_zip`] for what cancelling leaves
+    /// behind.
+    pub fn import_library_from_url(&self, url: &str, source: Source) -> Result<ProcessHandle> {
         log::info!("Importing library from URL {url}");
         let url = url.to_owned();
         let library_folder = PathBuf::from(&self.folder());
         let this_connection = self.connection.clone();
 
-        let (sender, receiver) = async_channel::unbounded::<ProcessMsg>();
-
-        thread::spawn(move || {
-            if let Err(err) = sender.send_blocking(ProcessMsg::Result(
-                import_library_from_url_priv(url, library_folder, source, this_connection, &sender),
-            )) {
-                log::error!("Failed to send library action result: {err:?}");
-            }
-        });
-
-        Ok(receiver)
+        Ok(spawn_process(move |sender, cancellation| {
+            import_library_from_url_priv(
+                url,
+                library_folder,
+                source,
+                this_connection,
+                sender,
+                cancellation,
+            )
+        }))
     }
 
     /// Import from metadata from a database file at `url`.
-    pub fn import_metadata_from_url(
-        &self,
-        url: &str,
-    ) -> Result<async_channel::Receiver<ProcessMsg>> {
+    pub fn import_metadata_from_url(&self, url: &str) -> Result<ProcessHandle> {
         log::info!("Importing metadata from URL {url}");
 
         let url = url.to_owned();
         let this_connection = self.connection.clone();
         let cache_dir = self.metadata_cache_dir.clone();
 
-        let (sender, receiver) = async_channel::unbounded::<ProcessMsg>();
-
-        thread::spawn(move || {
-            if let Err(err) = sender.send_blocking(ProcessMsg::Result(
-                import_metadata_from_url_priv(url, cache_dir, this_connection, &sender),
-            )) {
-                log::error!("Failed to send library action result: {err:?}");
-            }
-        });
-
-        Ok(receiver)
+        Ok(spawn_process(move |sender, cancellation| {
+            import_metadata_from_url_priv(url, cache_dir, this_connection, sender, cancellation)
+        }))
     }
 }
 
@@ -146,6 +153,7 @@ fn import_library_from_zip_priv(
     source: Source,
     this_connection: Arc<Mutex<SqliteConnection>>,
     sender: &async_channel::Sender<ProcessMsg>,
+    cancellation: &Cancellation,
 ) -> Result<()> {
     let mut archive = zip::ZipArchive::new(BufReader::new(fs::File::open(zip_path)?))?;
 
@@ -156,6 +164,8 @@ fn import_library_from_zip_priv(
         &mut BufWriter::new(tmp_db_file.as_file()),
     )?;
 
+    cancellation.check()?;
+
     // Import metadata.
     let tracks = import_metadata_from_file(tmp_db_file.path(), source, this_connection, false)?;
 
@@ -165,6 +175,8 @@ fn import_library_from_zip_priv(
     let n_tracks = tracks.len().max(1);
     
     for (index, track) in tracks.into_iter().enumerate() {
+        cancellation.check()?;
+
         let library_track_file_path = library_folder.as_ref().join(&track.path);
 
         // Skip tracks that are already present.
@@ -194,6 +206,7 @@ fn export_library_to_zip_priv(
     library_folder: impl AsRef<Path>,
     tracks: Vec<tables::Track>,
     sender: &async_channel::Sender<ProcessMsg>,
+    cancellation: &Cancellation,
 ) -> Result<()> {
     let mut zip = zip::ZipWriter::new(BufWriter::new(fs::File::create(zip_path)?));
 
@@ -205,6 +218,8 @@ fn export_library_to_zip_priv(
 
     // Include all tracks that are part of the library.
     for (index, track) in tracks.into_iter().enumerate() {
+        cancellation.check()?;
+
         add_file_to_zip(&mut zip, &library_folder, &path_to_zip(&track.path)?)?;
 
         // Ignore if the reveiver has been dropped.
@@ -238,6 +253,7 @@ fn import_metadata_from_url_priv(
     cache_dir: PathBuf,
     this_connection: Arc<Mutex<SqliteConnection>>,
     sender: &async_channel::Sender<ProcessMsg>,
+    cancellation: &Cancellation,
 ) -> Result<()> {
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
@@ -249,7 +265,8 @@ fn import_metadata_from_url_priv(
 
     let db_path = metadata_file_path(&cache_dir);
 
-    runtime.block_on(download_file(&url, &db_path, sender))?;
+    runtime.block_on(download_file(&url, &db_path, sender, cancellation))?;
+    cancellation.check()?;
 
     let _ = sender.send_blocking(ProcessMsg::Message(gettext("Importing downloaded library")));
 
@@ -262,6 +279,7 @@ fn import_library_from_url_priv(
     source: Source,
     this_connection: Arc<Mutex<SqliteConnection>>,
     sender: &async_channel::Sender<ProcessMsg>,
+    cancellation: &Cancellation,
 ) -> Result<()> {
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
@@ -271,7 +289,8 @@ fn import_library_from_url_priv(
         formatx!(gettext("Downloading {}"), &url).unwrap(),
     ));
 
-    let archive_file = runtime.block_on(download_tmp_file(&url, sender))?;
+    let archive_file = runtime.block_on(download_tmp_file(&url, sender, cancellation))?;
+    cancellation.check()?;
 
     let _ = sender.send_blocking(ProcessMsg::Message(gettext("Importing downloaded library")));
 
@@ -281,6 +300,7 @@ fn import_library_from_url_priv(
         source,
         this_connection,
         sender,
+        cancellation,
     )
 }
 
@@ -747,6 +767,7 @@ async fn download_file(
     url: &str,
     path: impl AsRef<Path>,
     sender: &async_channel::Sender<ProcessMsg>,
+    cancellation: &Cancellation,
 ) -> Result<()> {
     let path = path.as_ref();
     let parent = path
@@ -755,7 +776,7 @@ async fn download_file(
 
     tokio::fs::create_dir_all(parent).await?;
 
-    let file = download_to_tmp_file(url, Some(parent), sender).await?;
+    let file = download_to_tmp_file(url, Some(parent), sender, cancellation).await?;
     file.persist(path)?;
 
     Ok(())
@@ -765,8 +786,9 @@ async fn download_file(
 async fn download_tmp_file(
     url: &str,
     sender: &async_channel::Sender<ProcessMsg>,
+    cancellation: &Cancellation,
 ) -> Result<NamedTempFile> {
-    download_to_tmp_file(url, None, sender).await
+    download_to_tmp_file(url, None, sender, cancellation).await
 }
 
 /// Download `url` into a new temporary file, in `dir` if given, reporting
@@ -775,6 +797,7 @@ async fn download_to_tmp_file(
     url: &str,
     dir: Option<&Path>,
     sender: &async_channel::Sender<ProcessMsg>,
+    cancellation: &Cancellation,
 ) -> Result<NamedTempFile> {
     let client = reqwest::Client::builder()
         .connect_timeout(std::time::Duration::from_secs(10))
@@ -797,6 +820,8 @@ async fn download_to_tmp_file(
 
     let mut downloaded = 0;
     while let Some(chunk) = body_stream.next().await {
+        cancellation.check()?;
+
         let chunk: Vec<u8> = chunk?.into();
         let chunk_size = chunk.len();
 
@@ -847,10 +872,11 @@ mod tests {
     use crate::db::TranslatedString;
 
     /// Drain a process channel until it reports a result, returning that result.
-    fn wait_for_result(receiver: async_channel::Receiver<ProcessMsg>) -> Result<()> {
+    fn wait_for_result(handle: ProcessHandle) -> Result<()> {
         loop {
-            match receiver.recv_blocking() {
+            match handle.receiver.recv_blocking() {
                 Ok(ProcessMsg::Result(result)) => return result,
+                Ok(ProcessMsg::Cancelled) => return Err(anyhow!("process was cancelled")),
                 Ok(_) => continue,
                 Err(_) => return Err(anyhow!("process channel closed without a result")),
             }
@@ -903,17 +929,17 @@ mod tests {
         let recording = populate(&source, &track_source_file);
 
         let zip_path = source_dir.path().join("export.muslib");
-        let receiver = source.export_library_to_zip(&zip_path).unwrap();
-        wait_for_result(receiver).unwrap();
+        let handle = source.export_library_to_zip(&zip_path).unwrap();
+        wait_for_result(handle).unwrap();
 
         let dest_dir = TempDir::new().unwrap();
         let dest_cache_dir = TempDir::new().unwrap();
         let dest = Library::new(dest_dir.path(), dest_cache_dir.path()).unwrap();
 
-        let receiver = dest
+        let handle = dest
             .import_library_from_zip(&zip_path, Source::Import)
             .unwrap();
-        wait_for_result(receiver).unwrap();
+        wait_for_result(handle).unwrap();
 
         let persons = dest.search_persons("Beethoven").unwrap();
         assert_eq!(persons.len(), 1);
@@ -924,6 +950,40 @@ mod tests {
         assert_eq!(
             fs::read(dest_dir.path().join(&tracks[0].path)).unwrap(),
             b"not actually audio"
+        );
+    }
+
+    /// Cancelling before the operation starts must report Cancelled rather than
+    /// a failure, and must not produce a Result message.
+    #[test]
+    fn cancelled_export_reports_cancellation() {
+        let dir = TempDir::new().unwrap();
+        let cache_dir = TempDir::new().unwrap();
+        let library = Library::new(dir.path(), cache_dir.path()).unwrap();
+
+        let track_source_file = dir.path().join("source_track.mp3");
+        fs::write(&track_source_file, b"not actually audio").unwrap();
+        populate(&library, &track_source_file);
+
+        let handle = library
+            .export_library_to_zip(dir.path().join("export.muslib"))
+            .unwrap();
+        handle.cancellation.cancel();
+
+        let mut terminal = None;
+        while let Ok(msg) = handle.receiver.recv_blocking() {
+            match msg {
+                ProcessMsg::Result(_) | ProcessMsg::Cancelled => {
+                    assert!(terminal.is_none(), "more than one terminal message");
+                    terminal = Some(msg);
+                }
+                _ => {}
+            }
+        }
+
+        assert!(
+            matches!(terminal, Some(ProcessMsg::Cancelled)),
+            "expected Cancelled, got {terminal:?}"
         );
     }
 

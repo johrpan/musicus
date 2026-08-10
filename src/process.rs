@@ -5,7 +5,8 @@ use gtk::{
     prelude::*,
     subclass::prelude::*,
 };
-pub use musicus_library::process::ProcessMsg;
+use musicus_library::process::Cancellation;
+pub use musicus_library::process::{ProcessHandle, ProcessMsg};
 
 mod imp {
     use super::*;
@@ -23,6 +24,10 @@ mod imp {
         pub finished: Cell<bool>,
         #[property(get, set)]
         pub error: RefCell<Option<String>>,
+        /// Whether the process stopped because the user cancelled it.
+        #[property(get, set)]
+        pub cancelled: Cell<bool>,
+        pub cancellation: OnceCell<Cancellation>,
     }
 
     #[glib::object_subclass]
@@ -40,10 +45,17 @@ glib::wrapper! {
 }
 
 impl Process {
-    pub fn new(description: &str, receiver: async_channel::Receiver<ProcessMsg>) -> Self {
+    pub fn new(description: &str, handle: ProcessHandle) -> Self {
         let obj: Self = glib::Object::builder()
             .property("description", description)
             .build();
+
+        let ProcessHandle {
+            receiver,
+            cancellation,
+        } = handle;
+
+        let _ = obj.imp().cancellation.set(cancellation);
 
         let obj_clone = obj.clone();
         glib::spawn_future_local(async move {
@@ -65,10 +77,36 @@ impl Process {
 
                         obj_clone.set_finished(true);
                     }
+                    ProcessMsg::Cancelled => {
+                        log::info!("Process \"{}\" was cancelled", obj_clone.description());
+                        obj_clone.set_message(None::<String>);
+                        obj_clone.set_cancelled(true);
+                        obj_clone.set_finished(true);
+                    }
                 }
             }
         });
 
         obj
+    }
+
+    /// Whether this process can still be cancelled.
+    pub fn is_cancellable(&self) -> bool {
+        !self.finished() && !self.cancellation_requested()
+    }
+
+    pub fn cancellation_requested(&self) -> bool {
+        self.imp()
+            .cancellation
+            .get()
+            .is_some_and(|cancellation| cancellation.is_cancelled())
+    }
+
+    /// Ask the background operation to stop. It stops at its next cancellation
+    /// point, so `finished` may only become true some time afterwards.
+    pub fn cancel(&self) {
+        if let Some(cancellation) = self.imp().cancellation.get() {
+            cancellation.cancel();
+        }
     }
 }

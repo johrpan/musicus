@@ -124,15 +124,18 @@ impl EmptyPage {
                     .unwrap()
                     .import_library_from_url(&url, Source::Metadata)
                 {
-                    Ok(receiver) => {
-                        let process = Process::new(&gettext("Downloading music library"), receiver);
+                    Ok(handle) => {
+                        let process = Process::new(&gettext("Downloading music library"), handle);
 
                         process.connect_finished_notify(clone!(
                             #[weak]
                             obj,
                             move |process| {
                                 if process.finished() {
-                                    if process.error().is_some() {
+                                    // A cancelled download leaves the library
+                                    // incomplete, so offer to start over just
+                                    // like after a failure.
+                                    if process.error().is_some() || process.cancelled() {
                                         obj.imp().download_button.set_visible(true);
                                     } else {
                                         obj.emit_by_name::<()>("ready", &[]);

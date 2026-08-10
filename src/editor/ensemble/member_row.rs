@@ -11,10 +11,8 @@ use once_cell::sync::Lazy;
 use musicus_library::db::models::{Instrument, Person};
 
 use crate::{
-    editor::instrument::InstrumentEditor,
-    library::Library,
-    selector::instrument::InstrumentSelectorPopover,
-    util::drag_widget::DragWidget,
+    editor::instrument::InstrumentEditor, library::Library,
+    selector::instrument::InstrumentSelectorPopover, util::drag_widget::DragWidget,
 };
 
 mod imp {
@@ -169,7 +167,10 @@ impl EnsembleEditorMemberRow {
 
         match instrument {
             Some(instrument) => obj.set_instrument(instrument),
-            None => obj.imp().instrument_label.set_label(&gettext("Select instrument")),
+            None => obj
+                .imp()
+                .instrument_label
+                .set_label(&gettext("Select instrument")),
         }
 
         obj
@@ -199,7 +200,9 @@ impl EnsembleEditorMemberRow {
     }
 
     fn set_instrument(&self, instrument: Instrument) {
-        self.imp().instrument_label.set_label(&instrument.to_string());
+        self.imp()
+            .instrument_label
+            .set_label(&instrument.to_string());
         self.imp().instrument.replace(Some(instrument));
     }
 

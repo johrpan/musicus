@@ -143,7 +143,11 @@ impl EnsembleEditor {
     pub fn connect_created<F: Fn(&Self, Ensemble) + 'static>(&self, f: F) -> glib::SignalHandlerId {
         self.connect_local("created", true, move |values| {
             let obj = values[0].get::<Self>().unwrap();
-            let ensemble = values[1].get::<glib::BoxedAnyObject>().unwrap().borrow::<Ensemble>().clone();
+            let ensemble = values[1]
+                .get::<glib::BoxedAnyObject>()
+                .unwrap()
+                .borrow::<Ensemble>()
+                .clone();
             f(&obj, ensemble);
             None
         })

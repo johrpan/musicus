@@ -106,7 +106,11 @@ impl TracksEditorPartsPopover {
     ) -> glib::SignalHandlerId {
         self.connect_local("part-selected", true, move |values| {
             let obj = values[0].get::<Self>().unwrap();
-            let role = values[1].get::<glib::BoxedAnyObject>().unwrap().borrow::<Work>().clone();
+            let role = values[1]
+                .get::<glib::BoxedAnyObject>()
+                .unwrap()
+                .borrow::<Work>()
+                .clone();
             f(&obj, role);
             None
         })

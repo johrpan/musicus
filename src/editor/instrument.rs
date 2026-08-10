@@ -100,7 +100,11 @@ impl InstrumentEditor {
     ) -> glib::SignalHandlerId {
         self.connect_local("created", true, move |values| {
             let obj = values[0].get::<Self>().unwrap();
-            let instrument = values[1].get::<glib::BoxedAnyObject>().unwrap().borrow::<Instrument>().clone();
+            let instrument = values[1]
+                .get::<glib::BoxedAnyObject>()
+                .unwrap()
+                .borrow::<Instrument>()
+                .clone();
             f(&obj, instrument);
             None
         })

@@ -152,7 +152,11 @@ impl RecordingSelectorPopover {
     ) -> glib::SignalHandlerId {
         self.connect_local("selected", true, move |values| {
             let obj = values[0].get::<Self>().unwrap();
-            let recording = values[1].get::<glib::BoxedAnyObject>().unwrap().borrow::<Recording>().clone();
+            let recording = values[1]
+                .get::<glib::BoxedAnyObject>()
+                .unwrap()
+                .borrow::<Recording>()
+                .clone();
             f(&obj, recording);
             None
         })

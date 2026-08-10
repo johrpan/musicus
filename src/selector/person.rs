@@ -113,7 +113,11 @@ impl PersonSelectorPopover {
     ) -> glib::SignalHandlerId {
         self.connect_local("person-selected", true, move |values| {
             let obj = values[0].get::<Self>().unwrap();
-            let person = values[1].get::<glib::BoxedAnyObject>().unwrap().borrow::<Person>().clone();
+            let person = values[1]
+                .get::<glib::BoxedAnyObject>()
+                .unwrap()
+                .borrow::<Person>()
+                .clone();
             f(&obj, person);
             None
         })
@@ -205,7 +209,10 @@ impl PersonSelectorPopover {
             }
         };
 
-        self.emit_by_name::<()>("person-selected", &[&glib::BoxedAnyObject::new(person.clone())]);
+        self.emit_by_name::<()>(
+            "person-selected",
+            &[&glib::BoxedAnyObject::new(person.clone())],
+        );
         self.popdown();
     }
 

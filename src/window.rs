@@ -323,8 +323,8 @@ impl Window {
                 };
 
                 match library.import_metadata_from_url(&url) {
-                    Ok(receiver) => {
-                        let process = Process::new(&gettext("Updating metadata"), receiver);
+                    Ok(handle) => {
+                        let process = Process::new(&gettext("Updating metadata"), handle);
                         self.imp().process_manager.add_process(&process);
                     }
                     Err(err) => log::error!("Failed to update metadata: {err:?}"),
