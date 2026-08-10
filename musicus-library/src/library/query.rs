@@ -3,11 +3,13 @@ use std::collections::HashSet;
 use anyhow::Result;
 use diesel::{dsl::exists, prelude::*, sql_types, QueryDsl};
 
-use formatx::formatx;
 use gettextrs::gettext;
 
 use super::{metadata::SearchItem, Library};
-use crate::db::{self, models::*, schema::*, tables};
+use crate::{
+    db::{self, models::*, schema::*, tables},
+    format_translated,
+};
 
 /// A single item that a [`LibraryQuery`] can be about, or that search results can be
 /// tagged/highlighted with.
@@ -77,7 +79,7 @@ impl LibraryQuery {
             Tag::Composer(person) | Tag::Performer(person) => person.name.get().to_owned(),
             Tag::Ensemble(ensemble) => ensemble.name.get().to_owned(),
             Tag::Instrument(instrument) => {
-                formatx!(gettext("Music for {}"), instrument.name.get()).unwrap()
+                format_translated!(gettext("Music for {}"), instrument.name.get())
             }
         })
     }
@@ -90,35 +92,37 @@ impl LibraryQuery {
             Tag::Work(work) => return work.composers_string(),
             Tag::Composer(_) => {
                 if let Some(instrument) = &self.instrument {
-                    details.push(formatx!(gettext("Works with {}"), instrument).unwrap());
+                    details.push(format_translated!(gettext("Works with {}"), instrument));
                 }
 
                 if let (Some(person), Some(ensemble)) = (&self.performer, &self.ensemble) {
-                    details.push(
-                        formatx!(gettext("Performed by {} and {}"), person, ensemble).unwrap(),
-                    );
+                    details.push(format_translated!(
+                        gettext("Performed by {} and {}"),
+                        person,
+                        ensemble
+                    ));
                 } else if let Some(person) = &self.performer {
-                    details.push(formatx!(gettext("Performed by {}"), person).unwrap());
+                    details.push(format_translated!(gettext("Performed by {}"), person));
                 } else if let Some(ensemble) = &self.ensemble {
-                    details.push(formatx!(gettext("Performed by {}"), ensemble).unwrap());
+                    details.push(format_translated!(gettext("Performed by {}"), ensemble));
                 }
             }
             Tag::Performer(_) => {
                 if let Some(instrument) = &self.instrument {
-                    details.push(formatx!(gettext("Works with {}"), instrument).unwrap());
+                    details.push(format_translated!(gettext("Works with {}"), instrument));
                 }
 
                 if let Some(ensemble) = &self.ensemble {
-                    details.push(formatx!(gettext("Performed with {}"), ensemble).unwrap());
+                    details.push(format_translated!(gettext("Performed with {}"), ensemble));
                 }
             }
             Tag::Ensemble(ensemble) => {
                 if let Some(instrument) = &self.instrument {
-                    details.push(formatx!(gettext("Works with {}"), instrument).unwrap());
+                    details.push(format_translated!(gettext("Works with {}"), instrument));
                 }
 
                 if let Some(members) = ensemble.members_string() {
-                    details.push(formatx!(gettext("Members: {}"), members).unwrap());
+                    details.push(format_translated!(gettext("Members: {}"), members));
                 }
             }
             Tag::Instrument(_) => (),

@@ -8,7 +8,6 @@ use std::{
 
 use anyhow::{anyhow, bail, Error, Result};
 use diesel::{prelude::*, SqliteConnection};
-use formatx::formatx;
 use futures_util::StreamExt;
 use gettextrs::gettext;
 use tempfile::NamedTempFile;
@@ -22,6 +21,7 @@ use crate::{
         schema::*,
         tables::{self, Source},
     },
+    format_translated,
     process::{Cancellation, ProcessHandle, ProcessMsg},
 };
 
@@ -328,9 +328,10 @@ fn import_metadata_from_url_priv(
         .enable_all()
         .build()?;
 
-    let _ = sender.send_blocking(ProcessMsg::Message(
-        formatx!(gettext("Downloading {}"), &url).unwrap(),
-    ));
+    let _ = sender.send_blocking(ProcessMsg::Message(format_translated!(
+        gettext("Downloading {}"),
+        &url
+    )));
 
     let db_path = metadata_file_path(&cache_dir);
 
@@ -354,9 +355,10 @@ fn import_library_from_url_priv(
         .enable_all()
         .build()?;
 
-    let _ = sender.send_blocking(ProcessMsg::Message(
-        formatx!(gettext("Downloading {}"), &url).unwrap(),
-    ));
+    let _ = sender.send_blocking(ProcessMsg::Message(format_translated!(
+        gettext("Downloading {}"),
+        &url
+    )));
 
     let archive_file = runtime.block_on(download_tmp_file(&url, sender, cancellation))?;
     cancellation.check()?;

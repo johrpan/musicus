@@ -1,12 +1,12 @@
 use std::cell::OnceCell;
 
-use formatx::formatx;
 use gettextrs::gettext;
 use gtk::{
     glib::{self, subclass::Signal, Properties},
     prelude::*,
     subclass::prelude::*,
 };
+use musicus_library::format_translated;
 use once_cell::sync::Lazy;
 
 use crate::process::Process;
@@ -155,7 +155,7 @@ impl ProcessRow {
             if let Some(error) = self.process().error() {
                 self.imp()
                     .error_label
-                    .set_label(&formatx!(gettext("Process failed: {}"), error).unwrap());
+                    .set_label(&format_translated!(gettext("Process failed: {}"), error));
                 self.imp().error_label.set_visible(true);
             } else if self.process().cancelled() {
                 self.imp().cancelled_label.set_visible(true);

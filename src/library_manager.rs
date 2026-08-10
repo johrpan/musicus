@@ -1,12 +1,12 @@
 use std::{cell::OnceCell, ffi::OsStr, path::Path};
 
 use adw::{prelude::*, subclass::prelude::*};
-use formatx::formatx;
 use gettextrs::gettext;
 use gtk::{
     gio,
     glib::{self, clone},
 };
+use musicus_library::format_translated;
 
 use musicus_library::db::tables::Source;
 
@@ -140,13 +140,12 @@ impl LibraryManager {
                     {
                         Ok(handle) => {
                             let process = Process::new(
-                                &formatx!(
+                                &format_translated!(
                                     gettext("Importing music library from {}"),
                                     path.file_name()
                                         .map(|f| f.to_string_lossy().into_owned())
                                         .unwrap_or(gettext("archive"))
-                                )
-                                .unwrap(),
+                                ),
                                 handle,
                             );
 
@@ -204,13 +203,12 @@ impl LibraryManager {
                     {
                         Ok(handle) => {
                             let process = Process::new(
-                                &formatx!(
+                                &format_translated!(
                                     gettext("Exporting music library to {}"),
                                     path.file_name()
                                         .map(|f| f.to_string_lossy().into_owned())
                                         .unwrap_or(gettext("archive"))
-                                )
-                                .unwrap(),
+                                ),
                                 handle,
                             );
 
