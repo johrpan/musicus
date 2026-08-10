@@ -2,6 +2,7 @@ use std::{
     cell::RefCell,
     path::{Path, PathBuf},
     sync::{Arc, Mutex, MutexGuard},
+    time::SystemTime,
 };
 
 use anyhow::{anyhow, Context, Result};
@@ -20,7 +21,10 @@ pub mod query;
 pub struct Library {
     folder: String,
     connection: Arc<Mutex<SqliteConnection>>,
-    metadata_connection: RefCell<Option<Arc<Mutex<SqliteConnection>>>>,
+    /// The cached connection to the downloaded metadata database, together with
+    /// the modification time of the file it was opened from. Downloading a new
+    /// metadata database replaces that file, which invalidates the connection.
+    metadata_connection: RefCell<Option<(Option<SystemTime>, Arc<Mutex<SqliteConnection>>)>>,
     metadata_cache_dir: PathBuf,
     changed_senders: RefCell<Vec<async_channel::Sender<()>>>,
 }

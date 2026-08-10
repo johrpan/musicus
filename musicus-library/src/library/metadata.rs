@@ -1,6 +1,10 @@
-use std::sync::{Arc, Mutex};
+use std::{
+    collections::HashSet,
+    fs,
+    sync::{Arc, Mutex},
+};
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, bail, Error, Result};
 use chrono::prelude::*;
 use diesel::{prelude::*, SqliteConnection};
 
@@ -23,23 +27,36 @@ pub struct SearchItem<T> {
 impl Library {
     pub fn metadata_connection(&self) -> Option<Arc<Mutex<SqliteConnection>>> {
         let mut metadata_connection = self.metadata_connection.borrow_mut();
+        let path = exchange::metadata_file_path(&self.metadata_cache_dir);
 
-        if metadata_connection.is_none() {
-            let path = exchange::metadata_file_path(&self.metadata_cache_dir);
+        if !path.exists() {
+            *metadata_connection = None;
+            return None;
+        }
 
-            if path.exists() {
-                match db::connect(path.to_str()?) {
-                    Ok(connection) => {
-                        *metadata_connection = Some(Arc::new(Mutex::new(connection)));
-                    }
-                    Err(err) => {
-                        log::error!("Failed to open metadata database: {err:?}");
-                    }
+        // Downloading an updated metadata database replaces the file behind an
+        // already open connection, which would otherwise keep serving the
+        // contents of the previous download until the app is restarted.
+        let modified = fs::metadata(&path).and_then(|m| m.modified()).ok();
+
+        if metadata_connection
+            .as_ref()
+            .is_none_or(|(cached, _)| *cached != modified)
+        {
+            match db::connect(path.to_str()?) {
+                Ok(connection) => {
+                    *metadata_connection = Some((modified, Arc::new(Mutex::new(connection))));
+                }
+                Err(err) => {
+                    log::error!("Failed to open metadata database: {err:?}");
+                    *metadata_connection = None;
                 }
             }
         }
 
-        metadata_connection.clone()
+        metadata_connection
+            .as_ref()
+            .map(|(_, connection)| connection.clone())
     }
 
     pub fn import_metadata_person(&self, person_id: &str) -> Result<Person> {
@@ -49,11 +66,13 @@ impl Library {
         let metadata_connection = &mut *db::lock_connection(&metadata_connection);
         let connection = &mut *self.conn();
 
-        copy_person(metadata_connection, connection, person_id)?;
+        let person = connection.transaction::<Person, Error, _>(|connection| {
+            copy_person(metadata_connection, connection, person_id)?;
 
-        let person = persons::table
-            .filter(persons::person_id.eq(person_id))
-            .first(connection)?;
+            Ok(persons::table
+                .filter(persons::person_id.eq(person_id))
+                .first(connection)?)
+        })?;
 
         self.changed();
 
@@ -67,11 +86,13 @@ impl Library {
         let metadata_connection = &mut *db::lock_connection(&metadata_connection);
         let connection = &mut *self.conn();
 
-        copy_role(metadata_connection, connection, role_id)?;
+        let role = connection.transaction::<Role, Error, _>(|connection| {
+            copy_role(metadata_connection, connection, role_id)?;
 
-        let role = roles::table
-            .filter(roles::role_id.eq(role_id))
-            .first(connection)?;
+            Ok(roles::table
+                .filter(roles::role_id.eq(role_id))
+                .first(connection)?)
+        })?;
 
         self.changed();
 
@@ -85,11 +106,13 @@ impl Library {
         let metadata_connection = &mut *db::lock_connection(&metadata_connection);
         let connection = &mut *self.conn();
 
-        copy_instrument(metadata_connection, connection, instrument_id)?;
+        let instrument = connection.transaction::<Instrument, Error, _>(|connection| {
+            copy_instrument(metadata_connection, connection, instrument_id)?;
 
-        let instrument = instruments::table
-            .filter(instruments::instrument_id.eq(instrument_id))
-            .first(connection)?;
+            Ok(instruments::table
+                .filter(instruments::instrument_id.eq(instrument_id))
+                .first(connection)?)
+        })?;
 
         self.changed();
 
@@ -103,13 +126,15 @@ impl Library {
         let metadata_connection = &mut *db::lock_connection(&metadata_connection);
         let connection = &mut *self.conn();
 
-        copy_ensemble(metadata_connection, connection, ensemble_id)?;
+        let ensemble = connection.transaction::<Ensemble, Error, _>(|connection| {
+            copy_ensemble(metadata_connection, connection, ensemble_id)?;
 
-        let row = ensembles::table
-            .filter(ensembles::ensemble_id.eq(ensemble_id))
-            .first::<tables::Ensemble>(connection)?;
+            let row = ensembles::table
+                .filter(ensembles::ensemble_id.eq(ensemble_id))
+                .first::<tables::Ensemble>(connection)?;
 
-        let ensemble = Ensemble::from_table(row, connection)?;
+            Ensemble::from_table(row, connection)
+        })?;
 
         self.changed();
 
@@ -123,13 +148,15 @@ impl Library {
         let metadata_connection = &mut *db::lock_connection(&metadata_connection);
         let connection = &mut *self.conn();
 
-        copy_work(metadata_connection, connection, work_id)?;
+        let work = connection.transaction::<Work, Error, _>(|connection| {
+            copy_work(metadata_connection, connection, work_id)?;
 
-        let row = works::table
-            .filter(works::work_id.eq(work_id))
-            .first::<tables::Work>(connection)?;
+            let row = works::table
+                .filter(works::work_id.eq(work_id))
+                .first::<tables::Work>(connection)?;
 
-        let work = Work::from_table(row, connection)?;
+            Work::from_table(row, connection)
+        })?;
 
         self.changed();
 
@@ -143,13 +170,15 @@ impl Library {
         let metadata_connection = &mut *db::lock_connection(&metadata_connection);
         let connection = &mut *self.conn();
 
-        copy_recording(metadata_connection, connection, recording_id)?;
+        let recording = connection.transaction::<Recording, Error, _>(|connection| {
+            copy_recording(metadata_connection, connection, recording_id)?;
 
-        let row = recordings::table
-            .filter(recordings::recording_id.eq(recording_id))
-            .first::<tables::Recording>(connection)?;
+            let row = recordings::table
+                .filter(recordings::recording_id.eq(recording_id))
+                .first::<tables::Recording>(connection)?;
 
-        let recording = Recording::from_table(row, connection)?;
+            Recording::from_table(row, connection)
+        })?;
 
         self.changed();
 
@@ -225,13 +254,31 @@ fn copy_instrument(
 }
 
 fn copy_work(from: &mut SqliteConnection, to: &mut SqliteConnection, work_id: &str) -> Result<()> {
+    copy_work_priv(from, to, work_id, &mut HashSet::new())
+}
+
+/// Copy a work and its parents.
+///
+/// `ancestors` holds the works currently being copied further up the parent
+/// chain. A metadata database with a cyclic parent chain would otherwise
+/// recurse until the stack overflows.
+fn copy_work_priv(
+    from: &mut SqliteConnection,
+    to: &mut SqliteConnection,
+    work_id: &str,
+    ancestors: &mut HashSet<String>,
+) -> Result<()> {
+    if !ancestors.insert(work_id.to_owned()) {
+        bail!("Work {work_id} is its own ancestor in the metadata database");
+    }
+
     let now = Local::now().naive_local();
     let mut work = works::table
         .filter(works::work_id.eq(work_id))
         .first::<tables::Work>(from)?;
 
     if let Some(parent_work_id) = work.parent_work_id.clone() {
-        copy_work(from, to, &parent_work_id)?;
+        copy_work_priv(from, to, &parent_work_id, ancestors)?;
     }
 
     work.source = Source::Metadata;
@@ -381,4 +428,66 @@ fn copy_recording(
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+
+    use tempfile::TempDir;
+
+    use super::*;
+    use crate::db::TranslatedString;
+
+    fn translated(name: &str) -> TranslatedString {
+        let mut translations = HashMap::new();
+        translations.insert("generic".to_string(), name.to_string());
+        TranslatedString(translations)
+    }
+
+    /// A metadata database whose parent chain is cyclic must be rejected rather
+    /// than recursed into until the stack overflows.
+    #[test]
+    fn copy_work_rejects_a_cyclic_parent_chain() {
+        let from_dir = TempDir::new().unwrap();
+        let to_dir = TempDir::new().unwrap();
+        let mut from = db::connect(from_dir.path().join("musicus.db").to_str().unwrap()).unwrap();
+        let mut to = db::connect(to_dir.path().join("musicus.db").to_str().unwrap()).unwrap();
+
+        // Foreign keys are enforced, so the cycle has to be introduced after
+        // both rows exist.
+        let now = Local::now().naive_local();
+        for id in ["a", "b"] {
+            diesel::insert_into(works::table)
+                .values(tables::Work {
+                    work_id: id.to_owned(),
+                    parent_work_id: None,
+                    sequence_number: None,
+                    name: translated(id),
+                    source: Source::User,
+                    enable_updates: true,
+                    created_at: now,
+                    edited_at: now,
+                    last_used_at: now,
+                    last_played_at: None,
+                })
+                .execute(&mut from)
+                .unwrap();
+        }
+
+        diesel::update(works::table.filter(works::work_id.eq("a")))
+            .set(works::parent_work_id.eq("b"))
+            .execute(&mut from)
+            .unwrap();
+        diesel::update(works::table.filter(works::work_id.eq("b")))
+            .set(works::parent_work_id.eq("a"))
+            .execute(&mut from)
+            .unwrap();
+
+        let err = copy_work(&mut from, &mut to, "a").unwrap_err();
+        assert!(
+            err.to_string().contains("its own ancestor"),
+            "unexpected error: {err}"
+        );
+    }
 }
