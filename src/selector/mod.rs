@@ -6,7 +6,59 @@ pub mod work;
 
 pub use popover::SelectorPopover;
 
-use gtk::{glib::prelude::*, pango, prelude::*};
+use gtk::{
+    gdk,
+    glib::{self, clone, prelude::*},
+    pango,
+    prelude::*,
+};
+
+/// Let the up and down keys move the focus between a selector's search entry and its result list.
+pub fn connect_keynav(search_entry: &gtk::SearchEntry, list_box: &gtk::ListBox) {
+    let controller = gtk::EventControllerKey::new();
+    controller.connect_key_pressed(clone!(
+        #[weak]
+        list_box,
+        #[upgrade_or]
+        glib::Propagation::Proceed,
+        move |_, key, _, _| {
+            if matches!(key, gdk::Key::Down | gdk::Key::KP_Down)
+                && list_box.child_focus(gtk::DirectionType::Down)
+            {
+                glib::Propagation::Stop
+            } else {
+                glib::Propagation::Proceed
+            }
+        }
+    ));
+    search_entry.add_controller(controller);
+
+    let controller = gtk::EventControllerKey::new();
+
+    // The list box's own up/down key bindings would consume the key first in the bubble phase.
+    controller.set_propagation_phase(gtk::PropagationPhase::Capture);
+
+    controller.connect_key_pressed(clone!(
+        #[weak]
+        search_entry,
+        #[weak]
+        list_box,
+        #[upgrade_or]
+        glib::Propagation::Proceed,
+        move |_, key, _, _| {
+            if matches!(key, gdk::Key::Up | gdk::Key::KP_Up)
+                && list_box.focus_child().is_some()
+                && list_box.focus_child() == list_box.first_child()
+            {
+                search_entry.grab_focus();
+                glib::Propagation::Stop
+            } else {
+                glib::Propagation::Proceed
+            }
+        }
+    ));
+    list_box.add_controller(controller);
+}
 
 pub fn item_row_child(text: &str, in_library: bool) -> gtk::Widget {
     let label = gtk::Label::builder()

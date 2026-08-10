@@ -10,6 +10,7 @@ use once_cell::sync::Lazy;
 
 use musicus_library::db::models::{Instrument, Role};
 
+use super::connect_keynav;
 use crate::{
     library::{Library, SearchItem},
     util::activatable_row::ActivatableRow,
@@ -83,6 +84,9 @@ mod imp {
                 }
             });
 
+            connect_keynav(&self.role_search_entry, &self.role_list);
+            connect_keynav(&self.instrument_search_entry, &self.instrument_list);
+
             self.obj().search_roles("");
             self.obj().search_instruments("");
         }
@@ -106,21 +110,7 @@ mod imp {
         }
     }
 
-    impl WidgetImpl for PerformerRoleSelectorPopover {
-        // TODO: Fix focus.
-        fn focus(&self, direction_type: gtk::DirectionType) -> bool {
-            if direction_type == gtk::DirectionType::Down {
-                if self.stack.visible_child_name().as_deref() == Some("role") {
-                    self.role_list.child_focus(direction_type)
-                } else {
-                    self.instrument_list.child_focus(direction_type)
-                }
-            } else {
-                self.parent_focus(direction_type)
-            }
-        }
-    }
-
+    impl WidgetImpl for PerformerRoleSelectorPopover {}
     impl PopoverImpl for PerformerRoleSelectorPopover {}
 }
 

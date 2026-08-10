@@ -19,7 +19,7 @@ pub mod query;
 
 /// An open metadata database remembered together with the modification time of
 /// the file it came from.
-/// 
+///
 /// Downloading a new metadata database replaces that file, which invalidates the connection.
 type CachedMetadataConnection = (Option<SystemTime>, Arc<Mutex<SqliteConnection>>);
 

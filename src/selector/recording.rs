@@ -10,6 +10,7 @@ use once_cell::sync::Lazy;
 
 use musicus_library::db::models::{Person, Recording, Work};
 
+use super::connect_keynav;
 use crate::{
     library::{Library, SearchItem},
     util::activatable_row::ActivatableRow,
@@ -97,6 +98,10 @@ mod imp {
                 }
             });
 
+            connect_keynav(&self.composer_search_entry, &self.composer_list);
+            connect_keynav(&self.work_search_entry, &self.work_list);
+            connect_keynav(&self.recording_search_entry, &self.recording_list);
+
             self.obj().search_composers("");
         }
 
@@ -114,23 +119,7 @@ mod imp {
         }
     }
 
-    impl WidgetImpl for RecordingSelectorPopover {
-        // TODO: Fix focus.
-        fn focus(&self, direction_type: gtk::DirectionType) -> bool {
-            if direction_type == gtk::DirectionType::Down {
-                if self.stack.visible_child() == Some(self.composer_list.get().upcast()) {
-                    self.composer_list.child_focus(direction_type)
-                } else if self.stack.visible_child() == Some(self.work_list.get().upcast()) {
-                    self.work_list.child_focus(direction_type)
-                } else {
-                    self.recording_list.child_focus(direction_type)
-                }
-            } else {
-                self.parent_focus(direction_type)
-            }
-        }
-    }
-
+    impl WidgetImpl for RecordingSelectorPopover {}
     impl PopoverImpl for RecordingSelectorPopover {}
 }
 

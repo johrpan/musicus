@@ -228,10 +228,10 @@ fn import_library_from_zip_priv(
     let tracks = import_metadata_from_file(tmp_db_file.path(), source, this_connection, false)?;
 
     // Import audio files.
-    
+
     // avoid div by 0
     let n_tracks = tracks.len().max(1);
-    
+
     for (index, track) in tracks.into_iter().enumerate() {
         cancellation.check()?;
 
