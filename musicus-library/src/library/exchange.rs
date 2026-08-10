@@ -160,7 +160,10 @@ fn import_library_from_zip_priv(
     let tracks = import_metadata_from_file(tmp_db_file.path(), source, this_connection, false)?;
 
     // Import audio files.
-    let n_tracks = tracks.len();
+    
+    // avoid div by 0
+    let n_tracks = tracks.len().max(1);
+    
     for (index, track) in tracks.into_iter().enumerate() {
         let library_track_file_path = library_folder.as_ref().join(&track.path);
 
@@ -197,7 +200,8 @@ fn export_library_to_zip_priv(
     // Start with the database:
     add_file_to_zip(&mut zip, &library_folder, "musicus.db")?;
 
-    let n_tracks = tracks.len();
+    // avoid div by 0
+    let n_tracks = tracks.len().max(1);
 
     // Include all tracks that are part of the library.
     for (index, track) in tracks.into_iter().enumerate() {
@@ -245,23 +249,11 @@ fn import_metadata_from_url_priv(
 
     let db_path = metadata_file_path(&cache_dir);
 
-    match runtime.block_on(download_file(&url, &db_path, sender)) {
-        Ok(()) => {
-            let _ = sender.send_blocking(ProcessMsg::Message(
-                formatx!(gettext("Importing downloaded library"), &url).unwrap(),
-            ));
+    runtime.block_on(download_file(&url, &db_path, sender))?;
 
-            let _ = sender.send_blocking(ProcessMsg::Result(update_metadata_from_file(
-                &db_path,
-                this_connection,
-            )));
-        }
-        Err(err) => {
-            let _ = sender.send_blocking(ProcessMsg::Result(Err(err)));
-        }
-    }
+    let _ = sender.send_blocking(ProcessMsg::Message(gettext("Importing downloaded library")));
 
-    Ok(())
+    update_metadata_from_file(&db_path, this_connection)
 }
 
 fn import_library_from_url_priv(
@@ -279,28 +271,17 @@ fn import_library_from_url_priv(
         formatx!(gettext("Downloading {}"), &url).unwrap(),
     ));
 
-    let archive_file = runtime.block_on(download_tmp_file(&url, sender));
+    let archive_file = runtime.block_on(download_tmp_file(&url, sender))?;
 
-    match archive_file {
-        Ok(archive_file) => {
-            let _ = sender.send_blocking(ProcessMsg::Message(
-                formatx!(gettext("Importing downloaded library"), &url).unwrap(),
-            ));
+    let _ = sender.send_blocking(ProcessMsg::Message(gettext("Importing downloaded library")));
 
-            let _ = sender.send_blocking(ProcessMsg::Result(import_library_from_zip_priv(
-                archive_file.path(),
-                library_folder,
-                source,
-                this_connection,
-                sender,
-            )));
-        }
-        Err(err) => {
-            let _ = sender.send_blocking(ProcessMsg::Result(Err(err)));
-        }
-    }
-
-    Ok(())
+    import_library_from_zip_priv(
+        archive_file.path(),
+        library_folder,
+        source,
+        this_connection,
+        sender,
+    )
 }
 
 /// Update metadata from the database file at `path`.
@@ -749,53 +730,55 @@ fn import_metadata_from_file(
     Ok(tracks)
 }
 
+/// How long a download may stall before it is considered failed.
+///
+/// There is deliberately no overall request timeout: a library archive can
+/// legitimately take a long time to transfer. This bounds the time without any
+/// progress instead, which is what actually distinguishes a stalled server from
+/// a slow one.
+const DOWNLOAD_READ_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(60);
+
+/// Download `url` into `path`, replacing whatever is already there.
+///
+/// The download goes to a temporary file next to `path` and is only moved into
+/// place once it has completed, so that an interrupted download cannot leave a
+/// truncated file behind for the next run to pick up.
 async fn download_file(
     url: &str,
     path: impl AsRef<Path>,
     sender: &async_channel::Sender<ProcessMsg>,
 ) -> Result<()> {
-    let client = reqwest::Client::builder()
-        .connect_timeout(std::time::Duration::from_secs(10))
-        .build()?;
+    let path = path.as_ref();
+    let parent = path
+        .parent()
+        .ok_or_else(|| anyhow!("Download target {} has no parent directory", path.display()))?;
 
-    let response = client.get(url).send().await?;
-    response.error_for_status_ref()?;
+    tokio::fs::create_dir_all(parent).await?;
 
-    let total_size = response.content_length();
-    let mut body_stream = response.bytes_stream();
-
-    if let Some(parent) = path.as_ref().parent() {
-        tokio::fs::create_dir_all(parent).await?;
-    }
-
-    let mut writer = tokio::io::BufWriter::new(tokio::fs::File::create(path).await?);
-
-    let mut downloaded = 0;
-    while let Some(chunk) = body_stream.next().await {
-        let chunk: Vec<u8> = chunk?.into();
-        let chunk_size = chunk.len();
-
-        writer.write_all(&chunk).await?;
-
-        if let Some(total_size) = total_size {
-            downloaded += chunk_size as u64;
-            let _ = sender
-                .send(ProcessMsg::Progress(downloaded as f64 / total_size as f64))
-                .await;
-        }
-    }
-
-    writer.flush().await?;
+    let file = download_to_tmp_file(url, Some(parent), sender).await?;
+    file.persist(path)?;
 
     Ok(())
 }
 
+/// Download `url` into a temporary file in the system temporary directory.
 async fn download_tmp_file(
     url: &str,
     sender: &async_channel::Sender<ProcessMsg>,
 ) -> Result<NamedTempFile> {
+    download_to_tmp_file(url, None, sender).await
+}
+
+/// Download `url` into a new temporary file, in `dir` if given, reporting
+/// progress on `sender` if the server announced a content length.
+async fn download_to_tmp_file(
+    url: &str,
+    dir: Option<&Path>,
+    sender: &async_channel::Sender<ProcessMsg>,
+) -> Result<NamedTempFile> {
     let client = reqwest::Client::builder()
         .connect_timeout(std::time::Duration::from_secs(10))
+        .read_timeout(DOWNLOAD_READ_TIMEOUT)
         .build()?;
 
     let response = client.get(url).send().await?;
@@ -804,7 +787,11 @@ async fn download_tmp_file(
     let total_size = response.content_length();
     let mut body_stream = response.bytes_stream();
 
-    let file = NamedTempFile::new()?;
+    let file = match dir {
+        Some(dir) => NamedTempFile::new_in(dir)?,
+        None => NamedTempFile::new()?,
+    };
+
     let mut writer =
         tokio::io::BufWriter::new(tokio::fs::File::from_std(file.as_file().try_clone()?));
 
