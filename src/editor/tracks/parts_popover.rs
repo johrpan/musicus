@@ -9,7 +9,7 @@ use once_cell::sync::Lazy;
 
 use musicus_library::db::models::Work;
 
-use crate::util::activatable_row::ActivatableRow;
+use crate::{selector::connect_keynav, util::activatable_row::ActivatableRow};
 
 mod imp {
     use super::*;
@@ -55,6 +55,8 @@ mod imp {
                     obj.imp().scrolled_window.vadjustment().set_value(0.0);
                 }
             });
+
+            connect_keynav(&self.search_entry, &self.list_box);
         }
 
         fn signals() -> &'static [Signal] {
@@ -71,17 +73,7 @@ mod imp {
         }
     }
 
-    impl WidgetImpl for TracksEditorPartsPopover {
-        // TODO: Fix focus.
-        fn focus(&self, direction_type: gtk::DirectionType) -> bool {
-            if direction_type == gtk::DirectionType::Down {
-                self.list_box.child_focus(direction_type)
-            } else {
-                self.parent_focus(direction_type)
-            }
-        }
-    }
-
+    impl WidgetImpl for TracksEditorPartsPopover {}
     impl PopoverImpl for TracksEditorPartsPopover {}
 }
 
