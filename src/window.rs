@@ -168,6 +168,12 @@ mod imp {
             let obj = self.obj().to_owned();
             self.player.connect_raise(move |_| obj.present());
 
+            // The player is not a widget, so playback failures surface here.
+            let obj = self.obj().to_owned();
+            self.player.connect_error(move |_, message| {
+                obj.imp().toast_overlay.add_toast(adw::Toast::new(&message));
+            });
+
             let obj = self.obj().to_owned();
             self.player.connect_playing_notify(move |player| {
                 if let Some(app) = obj.application() {
@@ -386,6 +392,13 @@ impl Window {
     }
 
     fn reset_view(&self) {
+        // The changed handler is connected before the library is stored, so an
+        // emission during loading would otherwise panic here.
+        let Some(library) = self.imp().library.borrow().clone() else {
+            log::debug!("Ignoring a library change before the library was loaded");
+            return;
+        };
+
         let navigation = self.imp().navigation_view.get();
 
         // Get all pages that are not instances of SearchPage or AlbumPage.
@@ -401,7 +414,7 @@ impl Window {
             SearchPage::new(
                 &self.imp().toast_overlay,
                 &navigation,
-                self.imp().library.borrow().as_ref().unwrap(),
+                &library,
                 &self.imp().player,
                 LibraryQuery::default(),
             )

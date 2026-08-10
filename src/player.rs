@@ -5,6 +5,7 @@ use std::{
 
 use anyhow::{anyhow, Context, Result};
 use fragile::Fragile;
+use gettextrs::gettext;
 use gstreamer_play::gst;
 use gtk::{
     gio,
@@ -12,9 +13,11 @@ use gtk::{
     prelude::*,
     subclass::prelude::*,
 };
+use musicus_library::{
+    db::models::{Recording, Track},
+    format_translated,
+};
 use once_cell::sync::Lazy;
-
-use musicus_library::db::models::{Recording, Track};
 
 use crate::{
     config,
@@ -77,22 +80,34 @@ mod imp {
                 let obj = self.obj().clone();
                 let item_clone = item.clone();
                 glib::spawn_future_local(async move {
-                    obj.imp()
-                        .mpris_player
-                        .get()
-                        .unwrap()
+                    let Some(mpris_player) = obj.imp().mpris_player.get() else {
+                        return;
+                    };
+
+                    if let Err(err) = mpris_player
                         .set_metadata(
                             mpris_server::Metadata::builder()
-                                .artist(vec![item_clone.make_title()])
-                                .title(item_clone.make_subtitle().unwrap_or_else(String::new))
+                                .title(item_clone.make_title())
+                                .artist(vec![item_clone
+                                    .make_subtitle()
+                                    .unwrap_or_else(String::new)])
                                 .build(),
                         )
                         .await
-                        .unwrap();
+                    {
+                        log::warn!("Failed to publish track metadata over MPRIS: {err}");
+                    }
                 });
 
-                let uri = glib::filename_to_uri(item.path(), None)
-                    .expect("track path should be parsable as an URI");
+                let uri = match glib::filename_to_uri(item.path(), None) {
+                    Ok(uri) => uri,
+                    Err(err) => {
+                        log::error!("Failed to build a URI for {}: {err}", item.path().display());
+                        self.obj()
+                            .report_error(&gettext("This track cannot be played."));
+                        return;
+                    }
+                };
 
                 let play = self.play.get().unwrap();
                 play.set_uri(Some(&uri));
@@ -103,12 +118,13 @@ mod imp {
                 self.current_index.set(index);
                 item.set_is_playing(true);
 
-                self.library
-                    .borrow()
-                    .as_ref()
-                    .unwrap()
-                    .track_played(&item.track_id())
-                    .unwrap();
+                // Recording the play is a statistic, not something worth
+                // interrupting playback for.
+                if let Some(library) = self.library.borrow().as_ref() {
+                    if let Err(err) = library.track_played(&item.track_id()) {
+                        log::warn!("Failed to record that a track was played: {err:?}");
+                    }
+                }
             }
         }
     }
@@ -122,8 +138,17 @@ mod imp {
     #[glib::derived_properties]
     impl ObjectImpl for Player {
         fn signals() -> &'static [Signal] {
-            static SIGNALS: Lazy<Vec<Signal>> =
-                Lazy::new(|| vec![Signal::builder("raise").build()]);
+            static SIGNALS: Lazy<Vec<Signal>> = Lazy::new(|| {
+                vec![
+                    Signal::builder("raise").build(),
+                    // A playback failure the user should be told about. The
+                    // player is not a widget, so the window turns this into a
+                    // toast.
+                    Signal::builder("error")
+                        .param_types([String::static_type()])
+                        .build(),
+                ]
+            });
 
             SIGNALS.as_ref()
         }
@@ -148,7 +173,9 @@ mod imp {
 
             let mut config = play.config();
             config.set_position_update_interval(250);
-            play.set_config(config).unwrap();
+            if let Err(err) = play.set_config(config) {
+                log::warn!("Failed to configure the player: {err}");
+            }
             play.set_video_track_enabled(false);
 
             let play_signal_adapter = gstreamer_play::PlaySignalAdapter::new(&play);
@@ -156,6 +183,30 @@ mod imp {
             let obj = Fragile::new(self.obj().to_owned());
             play_signal_adapter.connect_end_of_stream(move |_| {
                 obj.get().next();
+            });
+
+            // Without this, an unplayable or missing file produced no feedback
+            // at all: playback simply stopped on a track that never started.
+            let obj = Fragile::new(self.obj().to_owned());
+            play_signal_adapter.connect_error(move |_, error, _| {
+                let obj = obj.get();
+                log::error!("Playback failed: {error}");
+
+                let message = match obj.current_item().and_then(|item| item.make_subtitle()) {
+                    Some(title) => format_translated!(gettext("Could not play {}."), title),
+                    None => gettext("Could not play this track."),
+                };
+
+                obj.report_error(&message);
+
+                // Do not sit forever on a track that will never play.
+                obj.set_playing(false);
+            });
+
+            let obj = Fragile::new(self.obj().to_owned());
+            play_signal_adapter.connect_warning(move |_, error, _| {
+                let _ = obj.get();
+                log::warn!("Playback warning: {error}");
             });
 
             let obj = Fragile::new(self.obj().to_owned());
@@ -383,34 +434,47 @@ impl Player {
         let imp = self.imp();
         imp.play.get().unwrap().play();
         self.set_playing(true);
-
-        let obj = self.clone();
-        glib::spawn_future_local(async move {
-            obj.imp()
-                .mpris_player
-                .get()
-                .unwrap()
-                .set_playback_status(mpris_server::PlaybackStatus::Playing)
-                .await
-                .unwrap();
-        });
+        self.publish_playback_status(mpris_server::PlaybackStatus::Playing);
     }
 
     pub fn pause(&self) {
         let imp = self.imp();
         imp.play.get().unwrap().pause();
         self.set_playing(false);
+        self.publish_playback_status(mpris_server::PlaybackStatus::Paused);
+    }
 
+    /// Report the current playback status over MPRIS, if it is available.
+    ///
+    /// MPRIS initialization fails when there is no session bus, which is normal
+    /// in some sandboxes and on a TTY. It must not be able to take the player
+    /// down with it.
+    fn publish_playback_status(&self, status: mpris_server::PlaybackStatus) {
         let obj = self.clone();
         glib::spawn_future_local(async move {
-            obj.imp()
-                .mpris_player
-                .get()
-                .unwrap()
-                .set_playback_status(mpris_server::PlaybackStatus::Paused)
-                .await
-                .unwrap();
+            let Some(mpris_player) = obj.imp().mpris_player.get() else {
+                return;
+            };
+
+            if let Err(err) = mpris_player.set_playback_status(status).await {
+                log::warn!("Failed to publish playback status over MPRIS: {err}");
+            }
         });
+    }
+
+    /// Tell whoever is listening that playback failed, so it can be shown to
+    /// the user. The player itself is not a widget.
+    pub fn report_error(&self, message: &str) {
+        self.emit_by_name::<()>("error", &[&message.to_owned()]);
+    }
+
+    pub fn connect_error<F: Fn(&Self, String) + 'static>(&self, f: F) -> glib::SignalHandlerId {
+        self.connect_local("error", true, move |values| {
+            let obj = values[0].get::<Self>().unwrap();
+            let message = values[1].get::<String>().unwrap();
+            f(&obj, message);
+            None
+        })
     }
 
     pub fn seek_to(&self, time_ms: u64) {
@@ -431,7 +495,9 @@ impl Player {
     }
 
     pub fn next(&self) {
-        if self.current_index() < self.playlist().n_items() - 1 {
+        // Written as an addition rather than `n_items() - 1`, which underflows
+        // on an empty playlist.
+        if self.current_index() + 1 < self.playlist().n_items() {
             self.set_current_index(self.current_index() + 1);
         } else if let Some(program) = self.program() {
             match self.generate_items(&program) {
