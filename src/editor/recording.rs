@@ -15,9 +15,9 @@ use musicus_library::db::models::{
 };
 
 use crate::{
-    editor::{ensemble::EnsembleEditor, simple_entity::SimpleEntityEditor, work::WorkEditor},
+    editor::{create, ensemble::EnsembleEditor, simple_entity::SimpleEntityEditor},
     library::Library,
-    selector::{work::WorkSelectorPopover, RecordingPrefill, SelectorPopover},
+    selector::{work::WorkSelectorPopover, RecordingPrefill, RecordingWork, SelectorPopover},
 };
 
 mod imp {
@@ -103,18 +103,18 @@ mod imp {
 
             let obj = self.obj().clone();
             work_selector_popover.connect_create(move |_, prefill| {
-                let editor = WorkEditor::new(&obj.navigation(), &obj.library(), None, false);
-                editor.prefill(&prefill);
-
-                editor.connect_created(clone!(
-                    #[weak]
-                    obj,
-                    move |_, work| {
-                        obj.set_work(work);
-                    }
-                ));
-
-                obj.navigation().push(&editor);
+                create::work(
+                    &obj.navigation(),
+                    &obj.library(),
+                    prefill,
+                    clone!(
+                        #[weak]
+                        obj,
+                        move |work| {
+                            obj.set_work(work);
+                        }
+                    ),
+                );
             });
 
             self.select_work_box.append(&work_selector_popover);
@@ -224,7 +224,7 @@ impl RecordingEditor {
     }
 
     pub fn prefill(&self, prefill: &RecordingPrefill) {
-        if let Some(work) = &prefill.work {
+        if let RecordingWork::Work(work) = &prefill.work {
             self.set_work(work.to_owned());
         }
     }

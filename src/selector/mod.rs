@@ -15,19 +15,66 @@ use gtk::{
 
 use musicus_library::db::models::{Person, Work};
 
+use crate::util::activatable_row::ActivatableRow;
+
+/// The composer of a work that is about to be created.
+#[derive(Debug, Default, Clone)]
+pub enum ComposerPrefill {
+    /// Nothing is known about the composer.
+    #[default]
+    Unknown,
+
+    /// A person that already exists within the library.
+    Person(Person),
+
+    /// A person that the user chose to create first, whose name is already known.
+    New(String),
+}
+
 /// Information the user already provided in a selector before choosing to create a new
 /// work, so that the editor can start out pre-filled.
 #[derive(Debug, Default, Clone)]
 pub struct WorkPrefill {
-    pub composer: Option<Person>,
+    pub composer: ComposerPrefill,
     pub name: String,
+}
+
+/// The work of a recording that is about to be created.
+#[derive(Debug, Default, Clone)]
+pub enum RecordingWork {
+    /// Nothing is known about the work.
+    #[default]
+    Unknown,
+
+    /// A work that already exists within the library.
+    Work(Work),
+
+    /// A work that the user chose to create first.
+    New(WorkPrefill),
 }
 
 /// Information the user already provided in a selector before choosing to create a new
 /// recording, so that the editor can start out pre-filled.
 #[derive(Debug, Default, Clone)]
 pub struct RecordingPrefill {
-    pub work: Option<Work>,
+    pub work: RecordingWork,
+}
+
+/// A row at the end of a selector's list that starts creating a new entity.
+pub fn create_row<F: Fn() + 'static>(label: &str, f: F) -> ActivatableRow {
+    let create_box = gtk::Box::builder().spacing(12).build();
+    create_box.append(&gtk::Image::builder().icon_name("list-add-symbolic").build());
+    create_box.append(
+        &gtk::Label::builder()
+            .label(label)
+            .halign(gtk::Align::Start)
+            .build(),
+    );
+
+    let row = ActivatableRow::new(&create_box);
+    row.connect_activated(move |_: &ActivatableRow| f());
+
+    row
 }
 
 /// Let the up and down keys move the focus between a selector's search entry and its result list.

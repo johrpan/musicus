@@ -10,7 +10,7 @@ use once_cell::sync::Lazy;
 
 use musicus_library::db::models::{Person, Work};
 
-use super::{connect_keynav, WorkPrefill};
+use super::{connect_keynav, create_row, ComposerPrefill, WorkPrefill};
 use crate::{
     library::{Library, SearchItem},
     util::activatable_row::ActivatableRow,
@@ -162,8 +162,9 @@ impl WorkSelectorPopover {
         if let Some(item) = self.imp().composers.borrow().first() {
             self.select_composer(item.to_owned());
         } else {
-            // The text within the composer pane is a composer's name and not a work's.
-            self.create(WorkPrefill::default());
+            // There is no composer matching what the user typed, so it is most likely the
+            // name of a composer that does not exist yet.
+            self.create(self.composer_prefill());
         }
     }
 
@@ -214,22 +215,17 @@ impl WorkSelectorPopover {
             imp.composer_list.append(&row);
         }
 
-        let create_box = gtk::Box::builder().spacing(12).build();
-        create_box.append(&gtk::Image::builder().icon_name("list-add-symbolic").build());
-        create_box.append(
-            &gtk::Label::builder()
-                .label(gettext("Create new work"))
-                .halign(gtk::Align::Start)
-                .build(),
-        );
-
-        let create_row = ActivatableRow::new(&create_box);
         let obj = self.clone();
-        create_row.connect_activated(move |_: &ActivatableRow| {
-            obj.create(WorkPrefill::default());
-        });
+        imp.composer_list
+            .append(&create_row(&gettext("Create new person"), move || {
+                obj.create(obj.composer_prefill());
+            }));
 
-        imp.composer_list.append(&create_row);
+        let obj = self.clone();
+        imp.composer_list
+            .append(&create_row(&gettext("Create new work"), move || {
+                obj.create(WorkPrefill::default());
+            }));
 
         imp.composers.replace(persons);
     }
@@ -259,22 +255,11 @@ impl WorkSelectorPopover {
             imp.work_list.append(&row);
         }
 
-        let create_box = gtk::Box::builder().spacing(12).build();
-        create_box.append(&gtk::Image::builder().icon_name("list-add-symbolic").build());
-        create_box.append(
-            &gtk::Label::builder()
-                .label(gettext("Create new work"))
-                .halign(gtk::Align::Start)
-                .build(),
-        );
-
-        let create_row = ActivatableRow::new(&create_box);
         let obj = self.clone();
-        create_row.connect_activated(move |_: &ActivatableRow| {
-            obj.create(obj.work_prefill());
-        });
-
-        imp.work_list.append(&create_row);
+        imp.work_list
+            .append(&create_row(&gettext("Create new work"), move || {
+                obj.create(obj.work_prefill());
+            }));
 
         imp.works.replace(works);
     }
@@ -331,9 +316,22 @@ impl WorkSelectorPopover {
         self.popdown();
     }
 
+    /// What is known about a new work when creating its composer first from within the
+    /// composer pane. The text in that pane is a composer's name and not a work's.
+    fn composer_prefill(&self) -> WorkPrefill {
+        WorkPrefill {
+            composer: ComposerPrefill::New(self.imp().composer_search_entry.text().to_string()),
+            name: String::new(),
+        }
+    }
+
+    /// What is known about a new work when creating it from within the work pane.
     fn work_prefill(&self) -> WorkPrefill {
         WorkPrefill {
-            composer: self.imp().composer.borrow().clone(),
+            composer: match self.imp().composer.borrow().clone() {
+                Some(composer) => ComposerPrefill::Person(composer),
+                None => ComposerPrefill::Unknown,
+            },
             name: self.imp().work_search_entry.text().to_string(),
         }
     }

@@ -19,7 +19,7 @@ use musicus_library::db::{
 use crate::{
     editor::{simple_entity::SimpleEntityEditor, translation::TranslationEditor},
     library::Library,
-    selector::{SelectorPopover, WorkPrefill},
+    selector::{ComposerPrefill, SelectorPopover, WorkPrefill},
 };
 use instrument_row::InstrumentRow;
 
@@ -210,7 +210,7 @@ impl WorkEditor {
     pub fn prefill(&self, prefill: &WorkPrefill) {
         self.imp().name_editor.set_generic(&prefill.name);
 
-        if let Some(composer) = &prefill.composer {
+        if let ComposerPrefill::Person(composer) = &prefill.composer {
             self.add_composer(composer.to_owned());
         }
     }
