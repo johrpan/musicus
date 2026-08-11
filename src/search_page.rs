@@ -12,13 +12,16 @@ use musicus_library::db::models::*;
 use crate::{
     album_page::AlbumPage,
     album_tile::AlbumTile,
-    editor::{ensemble::EnsembleEditor, simple_entity::SimpleEntityEditor, work::WorkEditor},
-    library::{Library, LibraryQuery, Tag},
+    editor::{
+        ensemble::EnsembleEditor, simple_entity::SimpleEntityEditor, tag::TagEditor,
+        work::WorkEditor,
+    },
+    facet_tile::FacetTile,
+    library::{Facet, Library, LibraryQuery},
     player::Player,
     program::Program,
     program_tile::ProgramTile,
     recording_tile::RecordingTile,
-    tag_tile::TagTile,
     util,
 };
 
@@ -42,7 +45,7 @@ mod imp {
         pub player: OnceCell<Player>,
 
         pub query: OnceCell<LibraryQuery>,
-        pub highlight: RefCell<Option<Tag>>,
+        pub highlight: RefCell<Option<Facet>>,
 
         pub program_tiles: RefCell<Vec<ProgramTile>>,
         pub composers: RefCell<Vec<Person>>,
@@ -77,6 +80,8 @@ mod imp {
         pub ensembles_flow_box: TemplateChild<gtk::FlowBox>,
         #[template_child]
         pub instruments_flow_box: TemplateChild<gtk::FlowBox>,
+        #[template_child]
+        pub tags_flow_box: TemplateChild<gtk::FlowBox>,
         #[template_child]
         pub works_flow_box: TemplateChild<gtk::FlowBox>,
         #[template_child]
@@ -191,32 +196,37 @@ impl SearchPage {
     fn edit(&self) {
         if let Some(highlight) = &*self.imp().highlight.borrow() {
             match highlight {
-                Tag::Composer(person) | Tag::Performer(person) => {
+                Facet::Composer(person) | Facet::Performer(person) => {
                     self.navigation().push(&SimpleEntityEditor::person(
                         &self.navigation(),
                         &self.library(),
                         Some(person),
                     ));
                 }
-                Tag::Ensemble(ensemble) => {
+                Facet::Ensemble(ensemble) => {
                     self.navigation().push(&EnsembleEditor::new(
                         &self.navigation(),
                         &self.library(),
                         Some(ensemble),
                     ));
                 }
-                Tag::Instrument(instrument) => {
+                Facet::Instrument(instrument) => {
                     self.navigation().push(&SimpleEntityEditor::instrument(
                         &self.navigation(),
                         &self.library(),
                         Some(instrument),
                     ))
                 }
-                Tag::Work(work) => self.navigation().push(&WorkEditor::new(
+                Facet::Work(work) => self.navigation().push(&WorkEditor::new(
                     &self.navigation(),
                     &self.library(),
                     Some(work),
                     false,
+                )),
+                Facet::Tag(tag) => self.navigation().push(&TagEditor::new(
+                    &self.navigation(),
+                    &self.library(),
+                    Some(tag),
                 )),
             }
         }
@@ -225,17 +235,17 @@ impl SearchPage {
     fn delete(&self) {
         if let Some(highlight) = &*self.imp().highlight.borrow() {
             match highlight {
-                Tag::Composer(person) | Tag::Performer(person) => {
+                Facet::Composer(person) | Facet::Performer(person) => {
                     if let Err(err) = self.library().delete_person(&person.person_id) {
                         util::error_toast("Failed to delete person", err, &self.toast_overlay());
                     }
                 }
-                Tag::Ensemble(ensemble) => {
+                Facet::Ensemble(ensemble) => {
                     if let Err(err) = self.library().delete_ensemble(&ensemble.ensemble_id) {
                         util::error_toast("Failed to delete ensemble", err, &self.toast_overlay());
                     }
                 }
-                Tag::Instrument(instrument) => {
+                Facet::Instrument(instrument) => {
                     if let Err(err) = self.library().delete_instrument(&instrument.instrument_id) {
                         util::error_toast(
                             "Failed to delete instrument",
@@ -244,9 +254,14 @@ impl SearchPage {
                         );
                     }
                 }
-                Tag::Work(work) => {
+                Facet::Work(work) => {
                     if let Err(err) = self.library().delete_work(&work.work_id) {
                         util::error_toast("Failed to delete work", err, &self.toast_overlay());
+                    }
+                }
+                Facet::Tag(tag) => {
+                    if let Err(err) = self.library().delete_tag(&tag.tag_id) {
+                        util::error_toast("Failed to delete tag", err, &self.toast_overlay());
                     }
                 }
             }
@@ -322,12 +337,13 @@ impl SearchPage {
     #[template_callback]
     fn tile_selected(&self, tile: &gtk::FlowBoxChild) {
         let mut new_query = self.imp().query.get().unwrap().clone();
-        match tile.downcast_ref::<TagTile>().unwrap().tag().clone() {
-            Tag::Composer(person) => new_query.composer = Some(person),
-            Tag::Performer(person) => new_query.performer = Some(person),
-            Tag::Ensemble(ensemble) => new_query.ensemble = Some(ensemble),
-            Tag::Instrument(instrument) => new_query.instrument = Some(instrument),
-            Tag::Work(work) => new_query.work = Some(work),
+        match tile.downcast_ref::<FacetTile>().unwrap().facet().clone() {
+            Facet::Composer(person) => new_query.composer = Some(person),
+            Facet::Performer(person) => new_query.performer = Some(person),
+            Facet::Ensemble(ensemble) => new_query.ensemble = Some(ensemble),
+            Facet::Instrument(instrument) => new_query.instrument = Some(instrument),
+            Facet::Work(work) => new_query.work = Some(work),
+            Facet::Tag(tag) => new_query.tag = Some(tag),
         }
 
         self.navigation().push(&SearchPage::new(
@@ -380,6 +396,7 @@ impl SearchPage {
             &imp.performers_flow_box,
             &imp.ensembles_flow_box,
             &imp.instruments_flow_box,
+            &imp.tags_flow_box,
             &imp.works_flow_box,
             &imp.recordings_flow_box,
             &imp.albums_flow_box,
@@ -423,6 +440,7 @@ impl SearchPage {
                 .set_visible(!results.ensembles.is_empty());
             imp.instruments_flow_box
                 .set_visible(!results.instruments.is_empty());
+            imp.tags_flow_box.set_visible(!results.tags.is_empty());
             imp.works_flow_box.set_visible(!results.works.is_empty());
             imp.recordings_flow_box
                 .set_visible(!results.recordings.is_empty());
@@ -430,27 +448,32 @@ impl SearchPage {
 
             for composer in &results.composers {
                 imp.composers_flow_box
-                    .append(&TagTile::new(Tag::Composer(composer.clone())));
+                    .append(&FacetTile::new(Facet::Composer(composer.clone())));
             }
 
             for performer in &results.performers {
                 imp.performers_flow_box
-                    .append(&TagTile::new(Tag::Performer(performer.clone())));
+                    .append(&FacetTile::new(Facet::Performer(performer.clone())));
             }
 
             for ensemble in &results.ensembles {
                 imp.ensembles_flow_box
-                    .append(&TagTile::new(Tag::Ensemble(ensemble.clone())));
+                    .append(&FacetTile::new(Facet::Ensemble(ensemble.clone())));
             }
 
             for instrument in &results.instruments {
                 imp.instruments_flow_box
-                    .append(&TagTile::new(Tag::Instrument(instrument.clone())));
+                    .append(&FacetTile::new(Facet::Instrument(instrument.clone())));
+            }
+
+            for tag in &results.tags {
+                imp.tags_flow_box
+                    .append(&FacetTile::new(Facet::Tag(tag.clone())));
             }
 
             for work in &results.works {
                 imp.works_flow_box
-                    .append(&TagTile::new(Tag::Work(work.clone())));
+                    .append(&FacetTile::new(Facet::Work(work.clone())));
             }
 
             for recording in &results.recordings {

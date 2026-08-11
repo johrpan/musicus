@@ -1,7 +1,11 @@
 use std::collections::HashSet;
 
 use anyhow::Result;
-use diesel::{dsl::exists, prelude::*, sql_types, QueryDsl};
+use diesel::{
+    dsl::{exists, sql},
+    prelude::*,
+    sql_types, QueryDsl,
+};
 
 use gettextrs::gettext;
 
@@ -12,14 +16,15 @@ use crate::{
 };
 
 /// A single item that a [`LibraryQuery`] can be about, or that search results can be
-/// tagged/highlighted with.
+/// highlighted with.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Tag {
+pub enum Facet {
     Composer(Person),
     Performer(Person),
     Ensemble(Ensemble),
     Instrument(Instrument),
     Work(Work),
+    Tag(Tag),
 }
 
 /// Parameters for [`Library::generate_recording`], describing a playback "program".
@@ -31,6 +36,7 @@ pub struct GenerateRecordingParams {
     pub instrument_id: Option<String>,
     pub work_id: Option<String>,
     pub album_id: Option<String>,
+    pub tag_id: Option<String>,
     pub prefer_recently_added: f64,
     pub prefer_least_recently_played: f64,
     pub avoid_repeated_composers: i32,
@@ -44,6 +50,7 @@ pub struct LibraryQuery {
     pub ensemble: Option<Ensemble>,
     pub instrument: Option<Instrument>,
     pub work: Option<Work>,
+    pub tag: Option<Tag>,
 }
 
 impl LibraryQuery {
@@ -53,20 +60,23 @@ impl LibraryQuery {
             && self.ensemble.is_none()
             && self.instrument.is_none()
             && self.work.is_none()
+            && self.tag.is_none()
     }
 
     /// The item that the query is mainly about, if there is one.
-    pub fn highlight(&self) -> Option<Tag> {
+    pub fn highlight(&self) -> Option<Facet> {
         if let Some(work) = &self.work {
-            Some(Tag::Work(work.to_owned()))
+            Some(Facet::Work(work.to_owned()))
         } else if let Some(person) = &self.composer {
-            Some(Tag::Composer(person.to_owned()))
+            Some(Facet::Composer(person.to_owned()))
         } else if let Some(person) = &self.performer {
-            Some(Tag::Performer(person.to_owned()))
+            Some(Facet::Performer(person.to_owned()))
         } else if let Some(ensemble) = &self.ensemble {
-            Some(Tag::Ensemble(ensemble.to_owned()))
+            Some(Facet::Ensemble(ensemble.to_owned()))
         } else if let Some(instrument) = &self.instrument {
-            Some(Tag::Instrument(instrument.to_owned()))
+            Some(Facet::Instrument(instrument.to_owned()))
+        } else if let Some(tag) = &self.tag {
+            Some(Facet::Tag(tag.to_owned()))
         } else {
             None
         }
@@ -75,12 +85,13 @@ impl LibraryQuery {
     /// A short name for what the query selects, based on its [`Self::highlight`].
     pub fn title(&self) -> Option<String> {
         Some(match self.highlight()? {
-            Tag::Work(work) => work.name.get().to_owned(),
-            Tag::Composer(person) | Tag::Performer(person) => person.name.get().to_owned(),
-            Tag::Ensemble(ensemble) => ensemble.name.get().to_owned(),
-            Tag::Instrument(instrument) => {
+            Facet::Work(work) => work.name.get().to_owned(),
+            Facet::Composer(person) | Facet::Performer(person) => person.name.get().to_owned(),
+            Facet::Ensemble(ensemble) => ensemble.name.get().to_owned(),
+            Facet::Instrument(instrument) => {
                 format_translated!(gettext("Music for {}"), instrument.name.get())
             }
+            Facet::Tag(tag) => tag.name.get().to_owned(),
         })
     }
 
@@ -89,8 +100,8 @@ impl LibraryQuery {
         let mut details = Vec::new();
 
         match self.highlight()? {
-            Tag::Work(work) => return work.composers_string(),
-            Tag::Composer(_) => {
+            Facet::Work(work) => return work.composers_string(),
+            Facet::Composer(_) => {
                 if let Some(instrument) = &self.instrument {
                     details.push(format_translated!(gettext("Works with {}"), instrument));
                 }
@@ -107,7 +118,7 @@ impl LibraryQuery {
                     details.push(format_translated!(gettext("Performed by {}"), ensemble));
                 }
             }
-            Tag::Performer(_) => {
+            Facet::Performer(_) => {
                 if let Some(instrument) = &self.instrument {
                     details.push(format_translated!(gettext("Works with {}"), instrument));
                 }
@@ -116,7 +127,7 @@ impl LibraryQuery {
                     details.push(format_translated!(gettext("Performed with {}"), ensemble));
                 }
             }
-            Tag::Ensemble(ensemble) => {
+            Facet::Ensemble(ensemble) => {
                 if let Some(instrument) = &self.instrument {
                     details.push(format_translated!(gettext("Works with {}"), instrument));
                 }
@@ -125,7 +136,18 @@ impl LibraryQuery {
                     details.push(format_translated!(gettext("Members: {}"), members));
                 }
             }
-            Tag::Instrument(_) => (),
+            Facet::Instrument(_) => (),
+            Facet::Tag(_) => {
+                if let Some(instrument) = &self.instrument {
+                    details.push(format_translated!(gettext("Works with {}"), instrument));
+                }
+
+                if let Some(person) = &self.performer {
+                    details.push(format_translated!(gettext("Performed by {}"), person));
+                } else if let Some(ensemble) = &self.ensemble {
+                    details.push(format_translated!(gettext("Performed by {}"), ensemble));
+                }
+            }
         }
 
         if details.is_empty() {
@@ -145,6 +167,7 @@ pub struct LibraryResults {
     pub works: Vec<Work>,
     pub recordings: Vec<Recording>,
     pub albums: Vec<Album>,
+    pub tags: Vec<Tag>,
 }
 
 impl LibraryResults {
@@ -156,6 +179,7 @@ impl LibraryResults {
             && self.works.is_empty()
             && self.recordings.is_empty()
             && self.albums.is_empty()
+            && self.tags.is_empty()
     }
 }
 
@@ -205,6 +229,27 @@ impl Library {
                         );
                     }
 
+                    if let Some(tag) = &query.tag {
+                        // A tag matches if it is on the work itself or on any of its recordings.
+                        // Written out because the subquery needs its own alias for `recordings`,
+                        // which is already in the outer query.
+                        statement = statement.filter(
+                            sql::<sql_types::Bool>(
+                                "(EXISTS (SELECT 1 FROM work_tags \
+                                  WHERE work_tags.work_id = works.work_id AND work_tags.tag_id = ",
+                            )
+                            .bind::<sql_types::Text, _>(tag.tag_id.clone())
+                            .sql(
+                                ") OR EXISTS (SELECT 1 FROM recording_tags \
+                                 JOIN recordings AS tagged_recordings \
+                                 ON tagged_recordings.recording_id = recording_tags.recording_id \
+                                 WHERE tagged_recordings.work_id = works.work_id AND recording_tags.tag_id = ",
+                            )
+                            .bind::<sql_types::Text, _>(tag.tag_id.clone())
+                            .sql("))"),
+                        );
+                    }
+
                     statement
                         .order_by(persons::last_played_at.desc())
                         .limit(9)
@@ -245,6 +290,27 @@ impl Library {
                             work_instruments::instrument_id
                                 .eq(&instrument.instrument_id)
                                 .or(recording_persons::instrument_id.eq(&instrument.instrument_id)),
+                        );
+                    }
+
+                    if let Some(tag) = &query.tag {
+                        // A tag matches if it is on the work itself or on any of its recordings.
+                        // Written out because the subquery needs its own alias for `recordings`,
+                        // which is already in the outer query.
+                        statement = statement.filter(
+                            sql::<sql_types::Bool>(
+                                "(EXISTS (SELECT 1 FROM work_tags \
+                                  WHERE work_tags.work_id = works.work_id AND work_tags.tag_id = ",
+                            )
+                            .bind::<sql_types::Text, _>(tag.tag_id.clone())
+                            .sql(
+                                ") OR EXISTS (SELECT 1 FROM recording_tags \
+                                 JOIN recordings AS tagged_recordings \
+                                 ON tagged_recordings.recording_id = recording_tags.recording_id \
+                                 WHERE tagged_recordings.work_id = works.work_id AND recording_tags.tag_id = ",
+                            )
+                            .bind::<sql_types::Text, _>(tag.tag_id.clone())
+                            .sql("))"),
                         );
                     }
 
@@ -299,6 +365,27 @@ impl Library {
                         );
                     }
 
+                    if let Some(tag) = &query.tag {
+                        // A tag matches if it is on the work itself or on any of its recordings.
+                        // Written out because the subquery needs its own alias for `recordings`,
+                        // which is already in the outer query.
+                        statement = statement.filter(
+                            sql::<sql_types::Bool>(
+                                "(EXISTS (SELECT 1 FROM work_tags \
+                                  WHERE work_tags.work_id = works.work_id AND work_tags.tag_id = ",
+                            )
+                            .bind::<sql_types::Text, _>(tag.tag_id.clone())
+                            .sql(
+                                ") OR EXISTS (SELECT 1 FROM recording_tags \
+                                 JOIN recordings AS tagged_recordings \
+                                 ON tagged_recordings.recording_id = recording_tags.recording_id \
+                                 WHERE tagged_recordings.work_id = works.work_id AND recording_tags.tag_id = ",
+                            )
+                            .bind::<sql_types::Text, _>(tag.tag_id.clone())
+                            .sql("))"),
+                        );
+                    }
+
                     statement
                         .order_by(ensembles::last_played_at.desc())
                         .limit(9)
@@ -338,6 +425,27 @@ impl Library {
                     if let Some(ensemble) = &query.ensemble {
                         statement = statement
                             .filter(ensemble_persons::ensemble_id.eq(&ensemble.ensemble_id));
+                    }
+
+                    if let Some(tag) = &query.tag {
+                        // A tag matches if it is on the work itself or on any of its recordings.
+                        // Written out because the subquery needs its own alias for `recordings`,
+                        // which is already in the outer query.
+                        statement = statement.filter(
+                            sql::<sql_types::Bool>(
+                                "(EXISTS (SELECT 1 FROM work_tags \
+                                  WHERE work_tags.work_id = works.work_id AND work_tags.tag_id = ",
+                            )
+                            .bind::<sql_types::Text, _>(tag.tag_id.clone())
+                            .sql(
+                                ") OR EXISTS (SELECT 1 FROM recording_tags \
+                                 JOIN recordings AS tagged_recordings \
+                                 ON tagged_recordings.recording_id = recording_tags.recording_id \
+                                 WHERE tagged_recordings.work_id = works.work_id AND recording_tags.tag_id = ",
+                            )
+                            .bind::<sql_types::Text, _>(tag.tag_id.clone())
+                            .sql("))"),
+                        );
                     }
 
                     statement
@@ -388,6 +496,27 @@ impl Library {
                     if let Some(ensemble) = &query.ensemble {
                         statement = statement
                             .filter(recording_ensembles::ensemble_id.eq(&ensemble.ensemble_id));
+                    }
+
+                    if let Some(tag) = &query.tag {
+                        // A tag matches if it is on the work itself or on any of its recordings.
+                        // Written out because the subquery needs its own alias for `recordings`,
+                        // which is already in the outer query.
+                        statement = statement.filter(
+                            sql::<sql_types::Bool>(
+                                "(EXISTS (SELECT 1 FROM work_tags \
+                                  WHERE work_tags.work_id = works.work_id AND work_tags.tag_id = ",
+                            )
+                            .bind::<sql_types::Text, _>(tag.tag_id.clone())
+                            .sql(
+                                ") OR EXISTS (SELECT 1 FROM recording_tags \
+                                 JOIN recordings AS tagged_recordings \
+                                 ON tagged_recordings.recording_id = recording_tags.recording_id \
+                                 WHERE tagged_recordings.work_id = works.work_id AND recording_tags.tag_id = ",
+                            )
+                            .bind::<sql_types::Text, _>(tag.tag_id.clone())
+                            .sql("))"),
+                        );
                     }
 
                     statement
@@ -447,6 +576,16 @@ impl Library {
                             .filter(recording_ensembles::ensemble_id.eq(&ensemble.ensemble_id));
                     }
 
+                    if let Some(tag) = &query.tag {
+                        statement = statement.filter(exists(
+                            recording_tags::table.filter(
+                                recording_tags::recording_id
+                                    .eq(recordings::recording_id)
+                                    .and(recording_tags::tag_id.eq(&tag.tag_id)),
+                            ),
+                        ));
+                    }
+
                     statement
                         .order_by(recordings::last_played_at.desc())
                         .limit(9)
@@ -504,6 +643,27 @@ impl Library {
                         .filter(recording_ensembles::ensemble_id.eq(&ensemble.ensemble_id));
                 }
 
+                if let Some(tag) = &query.tag {
+                    // A tag matches if it is on the work itself or on any of its recordings.
+                    // Written out because the subquery needs its own alias for `recordings`,
+                    // which is already in the outer query.
+                    statement = statement.filter(
+                        sql::<sql_types::Bool>(
+                            "(EXISTS (SELECT 1 FROM work_tags \
+                              WHERE work_tags.work_id = works.work_id AND work_tags.tag_id = ",
+                        )
+                        .bind::<sql_types::Text, _>(tag.tag_id.clone())
+                        .sql(
+                            ") OR EXISTS (SELECT 1 FROM recording_tags \
+                             JOIN recordings AS tagged_recordings \
+                             ON tagged_recordings.recording_id = recording_tags.recording_id \
+                             WHERE tagged_recordings.work_id = works.work_id AND recording_tags.tag_id = ",
+                        )
+                        .bind::<sql_types::Text, _>(tag.tag_id.clone())
+                        .sql("))"),
+                    );
+                }
+
                 let albums = statement
                     .order_by(albums::last_played_at.desc())
                     .limit(9)
@@ -514,6 +674,21 @@ impl Library {
                     .map(|r| Album::from_table(r, connection))
                     .collect::<Result<Vec<Album>>>()?;
 
+                // Only label tags are offered as facets. A valued tag's values are
+                // close to unique, so filtering by the tag itself would not narrow
+                // anything down; those are shown as properties of an item instead.
+                let tags = if query.tag.is_none() {
+                    tags::table
+                        .filter(tags::name.like(&search))
+                        .filter(tags::takes_value.eq(false))
+                        .order_by(tags::last_used_at.desc())
+                        .limit(9)
+                        .select(tags::all_columns)
+                        .load::<Tag>(connection)?
+                } else {
+                    Vec::new()
+                };
+
                 LibraryResults {
                     composers,
                     performers,
@@ -522,13 +697,27 @@ impl Library {
                     works,
                     recordings,
                     albums,
+                    tags,
                 }
             }
             LibraryQuery {
                 work: Some(work), ..
             } => {
-                let recordings = recordings::table
+                let mut statement = recordings::table
                     .filter(recordings::work_id.eq(&work.work_id))
+                    .into_boxed();
+
+                if let Some(tag) = &query.tag {
+                    statement = statement.filter(exists(
+                        recording_tags::table.filter(
+                            recording_tags::recording_id
+                                .eq(recordings::recording_id)
+                                .and(recording_tags::tag_id.eq(&tag.tag_id)),
+                        ),
+                    ));
+                }
+
+                let recordings = statement
                     .order_by(recordings::last_played_at.desc())
                     .load::<tables::Recording>(connection)?
                     .into_iter()
@@ -552,6 +741,7 @@ impl Library {
         let instrument_id = params.instrument_id.clone();
         let work_id = params.work_id.clone();
         let album_id = params.album_id.clone();
+        let tag_id = params.tag_id.clone();
 
         let mut query = recordings::table
             .inner_join(
@@ -598,6 +788,26 @@ impl Library {
 
         if let Some(album_id) = &album_id {
             query = query.filter(album_recordings::album_id.eq(album_id));
+        }
+
+        // As in `search`, a tag counts if it is on the work or on the recording.
+        if let Some(tag_id) = &tag_id {
+            query = query.filter(
+                exists(
+                    work_tags::table.filter(
+                        work_tags::work_id
+                            .eq(works::work_id)
+                            .and(work_tags::tag_id.eq(tag_id)),
+                    ),
+                )
+                .or(exists(
+                    recording_tags::table.filter(
+                        recording_tags::recording_id
+                            .eq(recordings::recording_id)
+                            .and(recording_tags::tag_id.eq(tag_id)),
+                    ),
+                )),
+            );
         }
 
         // Orders recordings using a dynamically calculated priority score that includes:
@@ -911,6 +1121,54 @@ impl Library {
 
             for item in metadata_roles {
                 if !existing.contains(&item.role_id) {
+                    results.push(SearchItem {
+                        item,
+                        in_library: false,
+                    });
+                }
+            }
+        }
+
+        Ok(results)
+    }
+
+    pub fn search_tags(&self, search: &str) -> Result<Vec<SearchItem<Tag>>> {
+        let search = format!("%{}%", search);
+        let connection = &mut *self.conn();
+
+        let tags: Vec<Tag> = tags::table
+            .order(tags::last_used_at.desc())
+            .filter(tags::name.like(&search))
+            .limit(20)
+            .load(connection)?;
+
+        let mut results: Vec<SearchItem<Tag>> = tags
+            .into_iter()
+            .map(|item| SearchItem {
+                item,
+                in_library: true,
+            })
+            .collect();
+
+        if let Some(metadata_connection) = self.metadata_connection() {
+            let metadata_connection = &mut *db::lock_connection(&metadata_connection);
+
+            let metadata_tags: Vec<Tag> = tags::table
+                .filter(tags::name.like(&search))
+                .limit(20)
+                .load(metadata_connection)?;
+
+            let candidate_ids: Vec<String> =
+                metadata_tags.iter().map(|t| t.tag_id.clone()).collect();
+            let existing: HashSet<String> = tags::table
+                .filter(tags::tag_id.eq_any(&candidate_ids))
+                .select(tags::tag_id)
+                .load(connection)?
+                .into_iter()
+                .collect();
+
+            for item in metadata_tags {
+                if !existing.contains(&item.tag_id) {
                     results.push(SearchItem {
                         item,
                         in_library: false,

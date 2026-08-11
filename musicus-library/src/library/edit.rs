@@ -210,12 +210,158 @@ impl Library {
         Ok(())
     }
 
+    pub fn create_tag(
+        &self,
+        name: TranslatedString,
+        takes_value: bool,
+        enable_updates: bool,
+    ) -> Result<Tag> {
+        let connection = &mut *self.conn();
+
+        let now = db::now();
+
+        let tag = Tag {
+            tag_id: db::generate_id(),
+            name,
+            takes_value,
+            source: Source::User,
+            created_at: now,
+            edited_at: now,
+            last_used_at: now,
+            enable_updates,
+        };
+
+        diesel::insert_into(tags::table)
+            .values(&tag)
+            .execute(connection)?;
+
+        self.changed();
+
+        Ok(tag)
+    }
+
+    pub fn update_tag(
+        &self,
+        id: &str,
+        name: TranslatedString,
+        takes_value: bool,
+        enable_updates: bool,
+    ) -> Result<()> {
+        let connection = &mut *self.conn();
+
+        connection.transaction::<(), Error, _>(|connection| {
+            let now = db::now();
+
+            diesel::update(tags::table)
+                .filter(tags::tag_id.eq(id))
+                .set((
+                    tags::name.eq(name),
+                    tags::takes_value.eq(takes_value),
+                    tags::edited_at.eq(now),
+                    tags::last_used_at.eq(now),
+                    tags::enable_updates.eq(enable_updates),
+                ))
+                .execute(connection)?;
+
+            // A tag that no longer takes a value must not leave stale values
+            // behind on its assignments, and one that starts taking a value has
+            // none to show until the items are edited.
+            if !takes_value {
+                diesel::update(work_tags::table)
+                    .filter(work_tags::tag_id.eq(id))
+                    .set(work_tags::value.eq(None::<String>))
+                    .execute(connection)?;
+
+                diesel::update(recording_tags::table)
+                    .filter(recording_tags::tag_id.eq(id))
+                    .set(recording_tags::value.eq(None::<String>))
+                    .execute(connection)?;
+            }
+
+            Ok(())
+        })?;
+
+        self.changed();
+
+        Ok(())
+    }
+
+    pub fn delete_tag(&self, tag_id: &str) -> Result<(), LibraryError> {
+        let connection = &mut *self.conn();
+
+        diesel::delete(tags::table)
+            .filter(tags::tag_id.eq(tag_id))
+            .execute(connection)
+            .map_err(|err| LibraryError::from_delete(EntityKind::Tag, err))?;
+
+        self.changed();
+
+        Ok(())
+    }
+
+    /// Replace a work's tag assignments.
+    ///
+    /// Assignments are keyed by `(work_id, sequence_number)`, so they are
+    /// rewritten wholesale rather than diffed, matching how the other ordered
+    /// relations of a work are updated.
+    fn set_work_tags(
+        connection: &mut SqliteConnection,
+        work_id: &str,
+        tags: Vec<TagValue>,
+    ) -> Result<()> {
+        diesel::delete(work_tags::table)
+            .filter(work_tags::work_id.eq(work_id))
+            .execute(connection)?;
+
+        for (index, tag_value) in tags.into_iter().enumerate() {
+            let work_tag_data = tables::WorkTag {
+                work_id: work_id.to_string(),
+                tag_id: tag_value.tag.tag_id,
+                value: tag_value.value.filter(|_| tag_value.tag.takes_value),
+                sequence_number: index as i32,
+            };
+
+            diesel::insert_into(work_tags::table)
+                .values(&work_tag_data)
+                .execute(connection)?;
+        }
+
+        Ok(())
+    }
+
+    /// Replace a recording's tag assignments. See [`Library::set_work_tags`].
+    fn set_recording_tags(
+        connection: &mut SqliteConnection,
+        recording_id: &str,
+        tags: Vec<TagValue>,
+    ) -> Result<()> {
+        diesel::delete(recording_tags::table)
+            .filter(recording_tags::recording_id.eq(recording_id))
+            .execute(connection)?;
+
+        for (index, tag_value) in tags.into_iter().enumerate() {
+            let recording_tag_data = tables::RecordingTag {
+                recording_id: recording_id.to_string(),
+                tag_id: tag_value.tag.tag_id,
+                value: tag_value.value.filter(|_| tag_value.tag.takes_value),
+                sequence_number: index as i32,
+            };
+
+            diesel::insert_into(recording_tags::table)
+                .values(&recording_tag_data)
+                .execute(connection)?;
+        }
+
+        Ok(())
+    }
+
     pub fn create_work(
         &self,
         name: TranslatedString,
         parts: Vec<Work>,
         persons: Vec<Composer>,
         instruments: Vec<Instrument>,
+        tags: Vec<TagValue>,
         enable_updates: bool,
     ) -> Result<Work> {
         let connection = &mut *self.conn();
@@ -227,6 +373,7 @@ impl Library {
                 parts,
                 persons,
                 instruments,
+                tags,
                 None,
                 None,
                 enable_updates,
@@ -244,6 +391,7 @@ impl Library {
         parts: Vec<Work>,
         persons: Vec<Composer>,
         instruments: Vec<Instrument>,
+        tags: Vec<TagValue>,
         parent_work_id: Option<&str>,
         sequence_number: Option<i32>,
         enable_updates: bool,
@@ -275,11 +423,14 @@ impl Library {
                 part.parts,
                 part.persons,
                 part.instruments,
+                part.tags,
                 Some(&work_id),
                 Some(index as i32),
                 enable_updates,
             )?;
         }
+
+        Self::set_work_tags(connection, &work_id, tags)?;
 
         for (index, composer) in persons.into_iter().enumerate() {
             let composer_data = tables::WorkPerson {
@@ -318,6 +469,7 @@ impl Library {
         parts: Vec<Work>,
         persons: Vec<Composer>,
         instruments: Vec<Instrument>,
+        tags: Vec<TagValue>,
         enable_updates: bool,
     ) -> Result<()> {
         let connection = &mut *self.conn();
@@ -330,6 +482,7 @@ impl Library {
                 parts,
                 persons,
                 instruments,
+                tags,
                 None,
                 None,
                 enable_updates,
@@ -348,6 +501,7 @@ impl Library {
         parts: Vec<Work>,
         persons: Vec<Composer>,
         instruments: Vec<Instrument>,
+        tags: Vec<TagValue>,
         parent_work_id: Option<&str>,
         sequence_number: Option<i32>,
         enable_updates: bool,
@@ -388,6 +542,7 @@ impl Library {
                     part.parts,
                     part.persons,
                     part.instruments,
+                    part.tags,
                     Some(work_id),
                     Some(index as i32),
                     enable_updates,
@@ -401,6 +556,7 @@ impl Library {
                     part.parts,
                     part.persons,
                     part.instruments,
+                    part.tags,
                     Some(work_id),
                     Some(index as i32),
                     enable_updates,
@@ -440,6 +596,8 @@ impl Library {
                 .values(instrument_data)
                 .execute(connection)?;
         }
+
+        Self::set_work_tags(connection, work_id, tags)?;
 
         Ok(())
     }
@@ -567,9 +725,9 @@ impl Library {
     pub fn create_recording(
         &self,
         work: Work,
-        year: Option<i32>,
         performers: Vec<Performer>,
         ensembles: Vec<EnsemblePerformer>,
+        tags: Vec<TagValue>,
         enable_updates: bool,
     ) -> Result<Recording> {
         let connection = &mut *self.conn();
@@ -581,7 +739,6 @@ impl Library {
             let recording_data = tables::Recording {
                 recording_id: recording_id.clone(),
                 work_id: work.work_id.clone(),
-                year,
                 source: Source::User,
                 created_at: now,
                 edited_at: now,
@@ -621,6 +778,8 @@ impl Library {
                     .execute(connection)?;
             }
 
+            Self::set_recording_tags(connection, &recording_id, tags)?;
+
             Recording::from_table(recording_data, connection)
         })?;
 
@@ -633,9 +792,9 @@ impl Library {
         &self,
         recording_id: &str,
         work: Work,
-        year: Option<i32>,
         performers: Vec<Performer>,
         ensembles: Vec<EnsemblePerformer>,
+        tags: Vec<TagValue>,
         enable_updates: bool,
     ) -> Result<()> {
         let connection = &mut *self.conn();
@@ -647,7 +806,6 @@ impl Library {
                 .filter(recordings::recording_id.eq(recording_id))
                 .set((
                     recordings::work_id.eq(work.work_id),
-                    recordings::year.eq(year),
                     recordings::edited_at.eq(now),
                     recordings::last_used_at.eq(now),
                     recordings::enable_updates.eq(enable_updates),
@@ -688,6 +846,8 @@ impl Library {
                     .values(&recording_ensemble_data)
                     .execute(connection)?;
             }
+
+            Self::set_recording_tags(connection, recording_id, tags)?;
 
             Ok(())
         })?;
@@ -1239,11 +1399,12 @@ mod tests {
                 Vec::new(),
                 vec![Composer { person, role: None }],
                 Vec::new(),
+                Vec::new(),
                 true,
             )
             .unwrap();
         let recording = library
-            .create_recording(work.clone(), None, Vec::new(), Vec::new(), true)
+            .create_recording(work.clone(), Vec::new(), Vec::new(), Vec::new(), true)
             .unwrap();
 
         for index in 0..n_tracks {
@@ -1326,6 +1487,7 @@ mod tests {
                 Vec::new(),
                 vec![composer.clone()],
                 vec![instrument.clone()],
+                Vec::new(),
                 true,
             )
         });
@@ -1335,6 +1497,7 @@ mod tests {
                 translated("Symphony No. 6"),
                 Vec::new(),
                 vec![composer.clone()],
+                Vec::new(),
                 Vec::new(),
                 true,
             )
@@ -1357,13 +1520,13 @@ mod tests {
         });
 
         let recording = assert_notifies(&library, "create_recording", || {
-            library.create_recording(work.clone(), Some(1963), Vec::new(), Vec::new(), true)
+            library.create_recording(work.clone(), Vec::new(), Vec::new(), Vec::new(), true)
         });
         assert_notifies(&library, "update_recording", || {
             library.update_recording(
                 &recording.recording_id,
                 work.clone(),
-                Some(1964),
+                Vec::new(),
                 Vec::new(),
                 Vec::new(),
                 true,
@@ -1450,6 +1613,7 @@ mod tests {
                     role: None,
                 }],
                 Vec::new(),
+                Vec::new(),
                 true,
             )
             .unwrap();
@@ -1479,11 +1643,12 @@ mod tests {
                 Vec::new(),
                 vec![Composer { person, role: None }],
                 Vec::new(),
+                Vec::new(),
                 true,
             )
             .unwrap();
         let recording = library
-            .create_recording(work.clone(), None, Vec::new(), Vec::new(), true)
+            .create_recording(work.clone(), Vec::new(), Vec::new(), Vec::new(), true)
             .unwrap();
 
         let track_source = dir.path().join("source_track.mp3");
@@ -1593,7 +1758,9 @@ mod tests {
         );
 
         assert!(
-            library_files(&dir).iter().all(|name| !name.ends_with(".part")),
+            library_files(&dir)
+                .iter()
+                .all(|name| !name.ends_with(".part")),
             "no temporary file may be left behind"
         );
     }

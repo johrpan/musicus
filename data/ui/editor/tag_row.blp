@@ -1,0 +1,29 @@
+using Gtk 4.0;
+using Adw 1;
+
+template $MusicusEditorTagRow: Adw.ActionRow {
+  [prefix]
+  Gtk.Image {
+    icon-name: "list-drag-handle-symbolic";
+
+    styles [
+      "drag-handle",
+    ]
+  }
+
+  Gtk.Entry value_entry {
+    visible: false;
+    valign: center;
+    placeholder-text: _("Value");
+  }
+
+  Gtk.Button {
+    icon-name: "user-trash-symbolic";
+    valign: center;
+    clicked => $remove() swapped;
+
+    styles [
+      "flat",
+    ]
+  }
+}

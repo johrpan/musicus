@@ -6,6 +6,8 @@ pub mod program;
 pub mod program_settings;
 pub mod recording;
 pub mod simple_entity;
+pub mod tag;
+pub mod tag_row;
 pub mod tracks;
 pub mod translation;
 pub mod translation_entry;

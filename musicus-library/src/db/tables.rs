@@ -54,6 +54,43 @@ pub struct Instrument {
     pub last_played_at: Option<NaiveDateTime>,
 }
 
+/// A label that can be assigned to works and recordings.
+///
+/// `takes_value` distinguishes the two kinds of tag: a plain label such as
+/// "Baroque" is shared by many items and is offered as a search facet, while a
+/// tag like "Catalogue" names a property whose value ("BWV 1043") is stored on
+/// the assignment itself.
+#[derive(Insertable, Queryable, Selectable, Clone, Debug)]
+#[diesel(check_for_backend(Sqlite))]
+pub struct Tag {
+    pub tag_id: String,
+    pub name: TranslatedString,
+    pub takes_value: bool,
+    pub source: Source,
+    pub enable_updates: bool,
+    pub created_at: NaiveDateTime,
+    pub edited_at: NaiveDateTime,
+    pub last_used_at: NaiveDateTime,
+}
+
+#[derive(Insertable, Queryable, Selectable, Clone, Debug)]
+#[diesel(check_for_backend(Sqlite))]
+pub struct WorkTag {
+    pub work_id: String,
+    pub tag_id: String,
+    pub value: Option<String>,
+    pub sequence_number: i32,
+}
+
+#[derive(Insertable, Queryable, Selectable, Clone, Debug)]
+#[diesel(check_for_backend(Sqlite))]
+pub struct RecordingTag {
+    pub recording_id: String,
+    pub tag_id: String,
+    pub value: Option<String>,
+    pub sequence_number: i32,
+}
+
 #[derive(Insertable, Queryable, Selectable, Clone, Debug)]
 #[diesel(check_for_backend(Sqlite))]
 pub struct Work {
@@ -113,7 +150,6 @@ pub struct EnsemblePerson {
 pub struct Recording {
     pub recording_id: String,
     pub work_id: String,
-    pub year: Option<i32>,
     pub source: Source,
     pub enable_updates: bool,
     pub created_at: NaiveDateTime,

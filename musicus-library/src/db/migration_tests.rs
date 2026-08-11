@@ -119,16 +119,84 @@ struct IntRow {
     value: i32,
 }
 
-/// Apply every migration except the last one, so that data can be seeded in the
-/// shape the last migration expects to convert.
-fn conn_before_normalize_schema() -> SqliteConnection {
+/// How many migrations precede `normalize_schema` and `tags` respectively.
+///
+/// Pinned rather than derived from [`MIGRATION_COUNT`], so that adding a later
+/// migration cannot silently move these helpers past the migration under test
+/// and seed data in the wrong schema.
+const MIGRATIONS_BEFORE_NORMALIZE_SCHEMA: usize = 7;
+const MIGRATIONS_BEFORE_TAGS: usize = 8;
+
+fn conn_after_migrations(count: usize) -> SqliteConnection {
     let mut conn = SqliteConnection::establish(":memory:").unwrap();
 
-    for _ in 0..MIGRATION_COUNT - 1 {
+    for _ in 0..count {
         conn.run_next_migration(MIGRATIONS).unwrap();
     }
 
     conn
+}
+
+/// Apply every migration before `normalize_schema`, so that data can be seeded
+/// in the shape that migration expects to convert.
+fn conn_before_normalize_schema() -> SqliteConnection {
+    conn_after_migrations(MIGRATIONS_BEFORE_NORMALIZE_SCHEMA)
+}
+
+/// Apply every migration before `tags`, while `recordings.year` still exists.
+fn conn_before_tags() -> SqliteConnection {
+    conn_after_migrations(MIGRATIONS_BEFORE_TAGS)
+}
+
+/// The recording year moves into the built-in Year tag, and comes back out of
+/// it when the migration is reverted.
+#[test]
+fn tags_migration_moves_the_recording_year() {
+    let mut conn = conn_before_tags();
+
+    sql_query("INSERT INTO works (work_id, name) VALUES ('work-1', '{\"generic\":\"Test\"}')")
+        .execute(&mut conn)
+        .unwrap();
+    sql_query(
+        "INSERT INTO recordings (recording_id, work_id, year) \
+         VALUES ('recording-1', 'work-1', 1963), ('recording-2', 'work-1', NULL)",
+    )
+    .execute(&mut conn)
+    .unwrap();
+
+    conn.run_pending_migrations(MIGRATIONS).unwrap();
+
+    let value: TextRow = sql_query(format!(
+        "SELECT value FROM recording_tags \
+         WHERE recording_id = 'recording-1' AND tag_id = '{TAG_YEAR}'"
+    ))
+    .get_result(&mut conn)
+    .unwrap();
+    assert_eq!(value.value, "1963");
+
+    // A recording without a year gets no assignment at all.
+    let count: CountRow = sql_query(
+        "SELECT COUNT(*) AS count FROM recording_tags WHERE recording_id = 'recording-2'",
+    )
+    .get_result(&mut conn)
+    .unwrap();
+    assert_eq!(count.count, 0);
+
+    // The Year tag is seeded as a valued tag, so the UI offers a value field.
+    let takes_value: IntRow = sql_query(format!(
+        "SELECT takes_value AS value FROM tags WHERE tag_id = '{TAG_YEAR}'"
+    ))
+    .get_result(&mut conn)
+    .unwrap();
+    assert_eq!(takes_value.value, 1);
+
+    conn.revert_last_migration(MIGRATIONS).unwrap();
+
+    let year: IntRow =
+        sql_query("SELECT year AS value FROM recordings WHERE recording_id = 'recording-1'")
+            .get_result(&mut conn)
+            .unwrap();
+    assert_eq!(year.value, 1963);
 }
 
 /// Timestamps written as local time must come out as the equivalent UTC

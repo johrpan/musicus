@@ -6,9 +6,9 @@ use std::{collections::HashSet, fmt::Display, path::PathBuf};
 use anyhow::Result;
 use diesel::prelude::*;
 // Re-exports for tables that don't need additional information.
-pub use tables::{Instrument, Person, Role};
+pub use tables::{Instrument, Person, Role, Tag};
 
-use super::{schema::*, tables, TranslatedString};
+use super::{schema::*, tables, TranslatedString, TAG_YEAR};
 
 #[derive(Clone, Debug)]
 pub struct Work {
@@ -17,7 +17,18 @@ pub struct Work {
     pub parts: Vec<Work>,
     pub persons: Vec<Composer>,
     pub instruments: Vec<Instrument>,
+    pub tags: Vec<TagValue>,
     pub enable_updates: bool,
+}
+
+/// A tag as assigned to a work or recording.
+///
+/// `value` is set exactly when the tag's `takes_value` is true; a plain label
+/// carries no value.
+#[derive(Clone, Debug)]
+pub struct TagValue {
+    pub tag: Tag,
+    pub value: Option<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -38,9 +49,9 @@ pub struct Ensemble {
 pub struct Recording {
     pub recording_id: String,
     pub work: Work,
-    pub year: Option<i32>,
     pub persons: Vec<Performer>,
     pub ensembles: Vec<EnsemblePerformer>,
+    pub tags: Vec<TagValue>,
     pub enable_updates: bool,
 }
 
@@ -118,6 +129,57 @@ impl PartialEq for Composer {
     }
 }
 
+impl TagValue {
+    pub fn load_for_work(work_id: &str, connection: &mut SqliteConnection) -> Result<Vec<Self>> {
+        Ok(work_tags::table
+            .inner_join(tags::table)
+            .order(work_tags::sequence_number)
+            .filter(work_tags::work_id.eq(work_id))
+            .select((tables::Tag::as_select(), work_tags::value))
+            .load::<(Tag, Option<String>)>(connection)?
+            .into_iter()
+            .map(|(tag, value)| Self { tag, value })
+            .collect())
+    }
+
+    pub fn load_for_recording(
+        recording_id: &str,
+        connection: &mut SqliteConnection,
+    ) -> Result<Vec<Self>> {
+        Ok(recording_tags::table
+            .inner_join(tags::table)
+            .order(recording_tags::sequence_number)
+            .filter(recording_tags::recording_id.eq(recording_id))
+            .select((tables::Tag::as_select(), recording_tags::value))
+            .load::<(Tag, Option<String>)>(connection)?
+            .into_iter()
+            .map(|(tag, value)| Self { tag, value })
+            .collect())
+    }
+}
+
+impl Display for TagValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self.value {
+            Some(value) => write!(f, "{}: {}", self.tag.name.get(), value),
+            None => write!(f, "{}", self.tag.name.get()),
+        }
+    }
+}
+
+impl Eq for Tag {}
+impl PartialEq for Tag {
+    fn eq(&self, other: &Self) -> bool {
+        self.tag_id == other.tag_id
+    }
+}
+
+impl Display for Tag {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.name)
+    }
+}
+
 impl Work {
     pub fn from_table(data: tables::Work, connection: &mut SqliteConnection) -> Result<Self> {
         // Note: Because this calls Work::from_table for each part, this recursively
@@ -145,12 +207,15 @@ impl Work {
             .select(tables::Instrument::as_select())
             .load(connection)?;
 
+        let tags = TagValue::load_for_work(&data.work_id, connection)?;
+
         Ok(Self {
             work_id: data.work_id,
             name: data.name,
             parts,
             persons,
             instruments,
+            tags,
             enable_updates: data.enable_updates,
         })
     }
@@ -297,14 +362,28 @@ impl Recording {
             .map(|e| EnsemblePerformer::from_table(e, connection))
             .collect::<Result<Vec<EnsemblePerformer>>>()?;
 
+        let tags = TagValue::load_for_recording(&data.recording_id, connection)?;
+
         Ok(Self {
             recording_id: data.recording_id,
             work,
-            year: data.year,
             persons,
             ensembles,
+            tags,
             enable_updates: data.enable_updates,
         })
+    }
+
+    /// The recording year, read from the built-in Year tag.
+    ///
+    /// A tag value is free text, so a value that is not a plain number reads as
+    /// no year rather than as an error.
+    pub fn year(&self) -> Option<i32> {
+        self.tags
+            .iter()
+            .find(|tag_value| tag_value.tag.tag_id == TAG_YEAR)
+            .and_then(|tag_value| tag_value.value.as_deref())
+            .and_then(|value| value.trim().parse().ok())
     }
 
     pub fn performers_string(&self) -> String {
