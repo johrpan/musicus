@@ -24,7 +24,7 @@ pub enum Facet {
     Ensemble(Ensemble),
     Instrument(Instrument),
     Work(Work),
-    Tag(Tag),
+    Tag(TagValue),
 }
 
 /// Parameters for [`Library::generate_recording`], describing a playback "program".
@@ -37,6 +37,7 @@ pub struct GenerateRecordingParams {
     pub work_id: Option<String>,
     pub album_id: Option<String>,
     pub tag_id: Option<String>,
+    pub tag_value: Option<String>,
     pub prefer_recently_added: f64,
     pub prefer_least_recently_played: f64,
     pub avoid_repeated_composers: i32,
@@ -50,7 +51,7 @@ pub struct LibraryQuery {
     pub ensemble: Option<Ensemble>,
     pub instrument: Option<Instrument>,
     pub work: Option<Work>,
-    pub tag: Option<Tag>,
+    pub tag: Option<TagValue>,
 }
 
 impl LibraryQuery {
@@ -91,7 +92,7 @@ impl LibraryQuery {
             Facet::Instrument(instrument) => {
                 format_translated!(gettext("Music for {}"), instrument.name.get())
             }
-            Facet::Tag(tag) => tag.name.get().to_owned(),
+            Facet::Tag(tag) => tag.to_string(),
         })
     }
 
@@ -100,7 +101,11 @@ impl LibraryQuery {
         let mut details = Vec::new();
 
         match self.highlight()? {
-            Facet::Work(work) => return work.composers_string(),
+            Facet::Work(work) => {
+                if let Some(composers) = work.composers_string() {
+                    details.push(composers);
+                }
+            }
             Facet::Composer(_) => {
                 if let Some(instrument) = &self.instrument {
                     details.push(format_translated!(gettext("Works with {}"), instrument));
@@ -150,6 +155,12 @@ impl LibraryQuery {
             }
         }
 
+        if let Some(tag) = &self.tag {
+            if !matches!(self.highlight(), Some(Facet::Tag(_))) {
+                details.push(tag.to_string());
+            }
+        }
+
         if details.is_empty() {
             None
         } else {
@@ -167,7 +178,7 @@ pub struct LibraryResults {
     pub works: Vec<Work>,
     pub recordings: Vec<Recording>,
     pub albums: Vec<Album>,
-    pub tags: Vec<Tag>,
+    pub tags: Vec<TagValue>,
 }
 
 impl LibraryResults {
@@ -232,21 +243,31 @@ impl Library {
                     if let Some(tag) = &query.tag {
                         // A tag matches if it is on the work itself or on any of its recordings.
                         // Written out because the subquery needs its own alias for `recordings`,
-                        // which is already in the outer query.
+                        // which is already in the outer query. A valued tag matches only that
+                        // exact value; a label tag binds NULL, which matches any assignment.
                         statement = statement.filter(
                             sql::<sql_types::Bool>(
                                 "(EXISTS (SELECT 1 FROM work_tags \
                                   WHERE work_tags.work_id = works.work_id AND work_tags.tag_id = ",
                             )
-                            .bind::<sql_types::Text, _>(tag.tag_id.clone())
+                            .bind::<sql_types::Text, _>(tag.tag.tag_id.clone())
+                            .sql(" AND (")
+                            .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
+                            .sql(" IS NULL OR work_tags.value = ")
+                            .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
                             .sql(
-                                ") OR EXISTS (SELECT 1 FROM recording_tags \
+                                ")) OR EXISTS (SELECT 1 FROM recording_tags \
                                  JOIN recordings AS tagged_recordings \
                                  ON tagged_recordings.recording_id = recording_tags.recording_id \
-                                 WHERE tagged_recordings.work_id = works.work_id AND recording_tags.tag_id = ",
+                                 WHERE tagged_recordings.work_id = works.work_id \
+                                 AND recording_tags.tag_id = ",
                             )
-                            .bind::<sql_types::Text, _>(tag.tag_id.clone())
-                            .sql("))"),
+                            .bind::<sql_types::Text, _>(tag.tag.tag_id.clone())
+                            .sql(" AND (")
+                            .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
+                            .sql(" IS NULL OR recording_tags.value = ")
+                            .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
+                            .sql(")))"),
                         );
                     }
 
@@ -296,21 +317,31 @@ impl Library {
                     if let Some(tag) = &query.tag {
                         // A tag matches if it is on the work itself or on any of its recordings.
                         // Written out because the subquery needs its own alias for `recordings`,
-                        // which is already in the outer query.
+                        // which is already in the outer query. A valued tag matches only that
+                        // exact value; a label tag binds NULL, which matches any assignment.
                         statement = statement.filter(
                             sql::<sql_types::Bool>(
                                 "(EXISTS (SELECT 1 FROM work_tags \
                                   WHERE work_tags.work_id = works.work_id AND work_tags.tag_id = ",
                             )
-                            .bind::<sql_types::Text, _>(tag.tag_id.clone())
+                            .bind::<sql_types::Text, _>(tag.tag.tag_id.clone())
+                            .sql(" AND (")
+                            .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
+                            .sql(" IS NULL OR work_tags.value = ")
+                            .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
                             .sql(
-                                ") OR EXISTS (SELECT 1 FROM recording_tags \
+                                ")) OR EXISTS (SELECT 1 FROM recording_tags \
                                  JOIN recordings AS tagged_recordings \
                                  ON tagged_recordings.recording_id = recording_tags.recording_id \
-                                 WHERE tagged_recordings.work_id = works.work_id AND recording_tags.tag_id = ",
+                                 WHERE tagged_recordings.work_id = works.work_id \
+                                 AND recording_tags.tag_id = ",
                             )
-                            .bind::<sql_types::Text, _>(tag.tag_id.clone())
-                            .sql("))"),
+                            .bind::<sql_types::Text, _>(tag.tag.tag_id.clone())
+                            .sql(" AND (")
+                            .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
+                            .sql(" IS NULL OR recording_tags.value = ")
+                            .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
+                            .sql(")))"),
                         );
                     }
 
@@ -368,21 +399,31 @@ impl Library {
                     if let Some(tag) = &query.tag {
                         // A tag matches if it is on the work itself or on any of its recordings.
                         // Written out because the subquery needs its own alias for `recordings`,
-                        // which is already in the outer query.
+                        // which is already in the outer query. A valued tag matches only that
+                        // exact value; a label tag binds NULL, which matches any assignment.
                         statement = statement.filter(
                             sql::<sql_types::Bool>(
                                 "(EXISTS (SELECT 1 FROM work_tags \
                                   WHERE work_tags.work_id = works.work_id AND work_tags.tag_id = ",
                             )
-                            .bind::<sql_types::Text, _>(tag.tag_id.clone())
+                            .bind::<sql_types::Text, _>(tag.tag.tag_id.clone())
+                            .sql(" AND (")
+                            .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
+                            .sql(" IS NULL OR work_tags.value = ")
+                            .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
                             .sql(
-                                ") OR EXISTS (SELECT 1 FROM recording_tags \
+                                ")) OR EXISTS (SELECT 1 FROM recording_tags \
                                  JOIN recordings AS tagged_recordings \
                                  ON tagged_recordings.recording_id = recording_tags.recording_id \
-                                 WHERE tagged_recordings.work_id = works.work_id AND recording_tags.tag_id = ",
+                                 WHERE tagged_recordings.work_id = works.work_id \
+                                 AND recording_tags.tag_id = ",
                             )
-                            .bind::<sql_types::Text, _>(tag.tag_id.clone())
-                            .sql("))"),
+                            .bind::<sql_types::Text, _>(tag.tag.tag_id.clone())
+                            .sql(" AND (")
+                            .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
+                            .sql(" IS NULL OR recording_tags.value = ")
+                            .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
+                            .sql(")))"),
                         );
                     }
 
@@ -430,21 +471,31 @@ impl Library {
                     if let Some(tag) = &query.tag {
                         // A tag matches if it is on the work itself or on any of its recordings.
                         // Written out because the subquery needs its own alias for `recordings`,
-                        // which is already in the outer query.
+                        // which is already in the outer query. A valued tag matches only that
+                        // exact value; a label tag binds NULL, which matches any assignment.
                         statement = statement.filter(
                             sql::<sql_types::Bool>(
                                 "(EXISTS (SELECT 1 FROM work_tags \
                                   WHERE work_tags.work_id = works.work_id AND work_tags.tag_id = ",
                             )
-                            .bind::<sql_types::Text, _>(tag.tag_id.clone())
+                            .bind::<sql_types::Text, _>(tag.tag.tag_id.clone())
+                            .sql(" AND (")
+                            .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
+                            .sql(" IS NULL OR work_tags.value = ")
+                            .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
                             .sql(
-                                ") OR EXISTS (SELECT 1 FROM recording_tags \
+                                ")) OR EXISTS (SELECT 1 FROM recording_tags \
                                  JOIN recordings AS tagged_recordings \
                                  ON tagged_recordings.recording_id = recording_tags.recording_id \
-                                 WHERE tagged_recordings.work_id = works.work_id AND recording_tags.tag_id = ",
+                                 WHERE tagged_recordings.work_id = works.work_id \
+                                 AND recording_tags.tag_id = ",
                             )
-                            .bind::<sql_types::Text, _>(tag.tag_id.clone())
-                            .sql("))"),
+                            .bind::<sql_types::Text, _>(tag.tag.tag_id.clone())
+                            .sql(" AND (")
+                            .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
+                            .sql(" IS NULL OR recording_tags.value = ")
+                            .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
+                            .sql(")))"),
                         );
                     }
 
@@ -501,21 +552,31 @@ impl Library {
                     if let Some(tag) = &query.tag {
                         // A tag matches if it is on the work itself or on any of its recordings.
                         // Written out because the subquery needs its own alias for `recordings`,
-                        // which is already in the outer query.
+                        // which is already in the outer query. A valued tag matches only that
+                        // exact value; a label tag binds NULL, which matches any assignment.
                         statement = statement.filter(
                             sql::<sql_types::Bool>(
                                 "(EXISTS (SELECT 1 FROM work_tags \
                                   WHERE work_tags.work_id = works.work_id AND work_tags.tag_id = ",
                             )
-                            .bind::<sql_types::Text, _>(tag.tag_id.clone())
+                            .bind::<sql_types::Text, _>(tag.tag.tag_id.clone())
+                            .sql(" AND (")
+                            .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
+                            .sql(" IS NULL OR work_tags.value = ")
+                            .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
                             .sql(
-                                ") OR EXISTS (SELECT 1 FROM recording_tags \
+                                ")) OR EXISTS (SELECT 1 FROM recording_tags \
                                  JOIN recordings AS tagged_recordings \
                                  ON tagged_recordings.recording_id = recording_tags.recording_id \
-                                 WHERE tagged_recordings.work_id = works.work_id AND recording_tags.tag_id = ",
+                                 WHERE tagged_recordings.work_id = works.work_id \
+                                 AND recording_tags.tag_id = ",
                             )
-                            .bind::<sql_types::Text, _>(tag.tag_id.clone())
-                            .sql("))"),
+                            .bind::<sql_types::Text, _>(tag.tag.tag_id.clone())
+                            .sql(" AND (")
+                            .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
+                            .sql(" IS NULL OR recording_tags.value = ")
+                            .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
+                            .sql(")))"),
                         );
                     }
 
@@ -577,13 +638,32 @@ impl Library {
                     }
 
                     if let Some(tag) = &query.tag {
-                        statement = statement.filter(exists(
-                            recording_tags::table.filter(
-                                recording_tags::recording_id
-                                    .eq(recordings::recording_id)
-                                    .and(recording_tags::tag_id.eq(&tag.tag_id)),
-                            ),
-                        ));
+                        // For a recording the assignment on the recording itself is what counts,
+                        // falling back to its work. Going through the work alone would match every
+                        // sibling recording, which is wrong once a tag carries a value.
+                        statement = statement.filter(
+                            sql::<sql_types::Bool>(
+                                "(EXISTS (SELECT 1 FROM recording_tags \
+                                  WHERE recording_tags.recording_id = recordings.recording_id \
+                                  AND recording_tags.tag_id = ",
+                            )
+                            .bind::<sql_types::Text, _>(tag.tag.tag_id.clone())
+                            .sql(" AND (")
+                            .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
+                            .sql(" IS NULL OR recording_tags.value = ")
+                            .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
+                            .sql(
+                                ")) OR EXISTS (SELECT 1 FROM work_tags \
+                                 WHERE work_tags.work_id = recordings.work_id \
+                                 AND work_tags.tag_id = ",
+                            )
+                            .bind::<sql_types::Text, _>(tag.tag.tag_id.clone())
+                            .sql(" AND (")
+                            .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
+                            .sql(" IS NULL OR work_tags.value = ")
+                            .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
+                            .sql(")))"),
+                        );
                     }
 
                     statement
@@ -646,21 +726,31 @@ impl Library {
                 if let Some(tag) = &query.tag {
                     // A tag matches if it is on the work itself or on any of its recordings.
                     // Written out because the subquery needs its own alias for `recordings`,
-                    // which is already in the outer query.
+                    // which is already in the outer query. A valued tag matches only that
+                    // exact value; a label tag binds NULL, which matches any assignment.
                     statement = statement.filter(
                         sql::<sql_types::Bool>(
                             "(EXISTS (SELECT 1 FROM work_tags \
                               WHERE work_tags.work_id = works.work_id AND work_tags.tag_id = ",
                         )
-                        .bind::<sql_types::Text, _>(tag.tag_id.clone())
+                        .bind::<sql_types::Text, _>(tag.tag.tag_id.clone())
+                        .sql(" AND (")
+                        .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
+                        .sql(" IS NULL OR work_tags.value = ")
+                        .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
                         .sql(
-                            ") OR EXISTS (SELECT 1 FROM recording_tags \
+                            ")) OR EXISTS (SELECT 1 FROM recording_tags \
                              JOIN recordings AS tagged_recordings \
                              ON tagged_recordings.recording_id = recording_tags.recording_id \
-                             WHERE tagged_recordings.work_id = works.work_id AND recording_tags.tag_id = ",
+                             WHERE tagged_recordings.work_id = works.work_id \
+                             AND recording_tags.tag_id = ",
                         )
-                        .bind::<sql_types::Text, _>(tag.tag_id.clone())
-                        .sql("))"),
+                        .bind::<sql_types::Text, _>(tag.tag.tag_id.clone())
+                        .sql(" AND (")
+                        .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
+                        .sql(" IS NULL OR recording_tags.value = ")
+                        .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
+                        .sql(")))"),
                     );
                 }
 
@@ -674,17 +764,140 @@ impl Library {
                     .map(|r| Album::from_table(r, connection))
                     .collect::<Result<Vec<Album>>>()?;
 
-                // Only label tags are offered as facets. A valued tag's values are
-                // close to unique, so filtering by the tag itself would not narrow
-                // anything down; those are shown as properties of an item instead.
+                // Tags are facets like any other, so they have to come from items
+                // the rest of the query actually selects. Reading them straight
+                // out of `tags` would offer every tag in the library on every
+                // page, and picking one would then produce a query that matches
+                // nothing.
+                //
+                // A label tag is a category and matches on its own name. A valued
+                // tag names a property rather than a category, so it is its values
+                // that are worth offering: searching "1963" finds the year, while
+                // searching "Year" finds nothing useful.
                 let tags = if query.tag.is_none() {
-                    tags::table
-                        .filter(tags::name.like(&search))
-                        .filter(tags::takes_value.eq(false))
+                    let mut statement = works::table
+                        .left_join(work_persons::table)
+                        .inner_join(
+                            recordings::table
+                                .left_join(recording_persons::table)
+                                .left_join(recording_ensembles::table.left_join(
+                                    ensembles::table.inner_join(ensemble_persons::table),
+                                )),
+                        )
+                        .left_join(work_instruments::table)
+                        .inner_join(work_tags::table.inner_join(tags::table))
+                        .filter(
+                            tags::takes_value
+                                .eq(false)
+                                .and(tags::name.like(&search))
+                                .or(tags::takes_value
+                                    .eq(true)
+                                    .and(work_tags::value.like(&search))),
+                        )
+                        .into_boxed();
+
+                    if let Some(person) = &query.composer {
+                        statement = statement.filter(work_persons::person_id.eq(&person.person_id));
+                    }
+
+                    if let Some(person) = &query.performer {
+                        statement = statement.filter(
+                            recording_persons::person_id
+                                .eq(&person.person_id)
+                                .or(ensemble_persons::person_id.eq(&person.person_id)),
+                        );
+                    }
+
+                    if let Some(instrument) = &query.instrument {
+                        statement = statement.filter(
+                            work_instruments::instrument_id
+                                .eq(&instrument.instrument_id)
+                                .or(recording_persons::instrument_id.eq(&instrument.instrument_id))
+                                .or(ensemble_persons::instrument_id.eq(&instrument.instrument_id)),
+                        );
+                    }
+
+                    if let Some(ensemble) = &query.ensemble {
+                        statement = statement
+                            .filter(recording_ensembles::ensemble_id.eq(&ensemble.ensemble_id));
+                    }
+
+                    let mut found = statement
                         .order_by(tags::last_used_at.desc())
                         .limit(9)
-                        .select(tags::all_columns)
-                        .load::<Tag>(connection)?
+                        .select((tables::Tag::as_select(), work_tags::value))
+                        .distinct()
+                        .load::<(Tag, Option<String>)>(connection)?;
+
+                    let mut statement = recordings::table
+                        .inner_join(
+                            works::table
+                                .left_join(work_persons::table)
+                                .left_join(work_instruments::table),
+                        )
+                        .left_join(recording_persons::table)
+                        .left_join(
+                            recording_ensembles::table
+                                .inner_join(ensembles::table.left_join(ensemble_persons::table)),
+                        )
+                        .inner_join(recording_tags::table.inner_join(tags::table))
+                        .filter(
+                            tags::takes_value
+                                .eq(false)
+                                .and(tags::name.like(&search))
+                                .or(tags::takes_value
+                                    .eq(true)
+                                    .and(recording_tags::value.like(&search))),
+                        )
+                        .into_boxed();
+
+                    if let Some(person) = &query.composer {
+                        statement = statement.filter(work_persons::person_id.eq(&person.person_id));
+                    }
+
+                    if let Some(person) = &query.performer {
+                        statement = statement.filter(
+                            recording_persons::person_id
+                                .eq(&person.person_id)
+                                .or(ensemble_persons::person_id.eq(&person.person_id)),
+                        );
+                    }
+
+                    if let Some(instrument) = &query.instrument {
+                        statement = statement.filter(
+                            work_instruments::instrument_id
+                                .eq(&instrument.instrument_id)
+                                .or(recording_persons::instrument_id.eq(&instrument.instrument_id))
+                                .or(ensemble_persons::instrument_id.eq(&instrument.instrument_id)),
+                        );
+                    }
+
+                    if let Some(ensemble) = &query.ensemble {
+                        statement = statement
+                            .filter(recording_ensembles::ensemble_id.eq(&ensemble.ensemble_id));
+                    }
+
+                    found.extend(
+                        statement
+                            .order_by(tags::last_used_at.desc())
+                            .limit(9)
+                            .select((tables::Tag::as_select(), recording_tags::value))
+                            .distinct()
+                            .load::<(Tag, Option<String>)>(connection)?,
+                    );
+
+                    // The same tag can sit on a work and on its recordings, and the
+                    // two statements cannot be deduplicated against each other in SQL.
+                    let mut seen = HashSet::new();
+                    let mut tags = Vec::new();
+                    for (tag, value) in found {
+                        if seen.insert((tag.tag_id.clone(), value.clone())) {
+                            tags.push(TagValue { tag, value });
+                        }
+                    }
+
+                    tags.truncate(9);
+                    tags
                 } else {
                     Vec::new()
                 };
@@ -708,13 +921,32 @@ impl Library {
                     .into_boxed();
 
                 if let Some(tag) = &query.tag {
-                    statement = statement.filter(exists(
-                        recording_tags::table.filter(
-                            recording_tags::recording_id
-                                .eq(recordings::recording_id)
-                                .and(recording_tags::tag_id.eq(&tag.tag_id)),
-                        ),
-                    ));
+                    // For a recording the assignment on the recording itself is what counts,
+                    // falling back to its work. Going through the work alone would match every
+                    // sibling recording, which is wrong once a tag carries a value.
+                    statement = statement.filter(
+                        sql::<sql_types::Bool>(
+                            "(EXISTS (SELECT 1 FROM recording_tags \
+                              WHERE recording_tags.recording_id = recordings.recording_id \
+                              AND recording_tags.tag_id = ",
+                        )
+                        .bind::<sql_types::Text, _>(tag.tag.tag_id.clone())
+                        .sql(" AND (")
+                        .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
+                        .sql(" IS NULL OR recording_tags.value = ")
+                        .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
+                        .sql(
+                            ")) OR EXISTS (SELECT 1 FROM work_tags \
+                             WHERE work_tags.work_id = recordings.work_id \
+                             AND work_tags.tag_id = ",
+                        )
+                        .bind::<sql_types::Text, _>(tag.tag.tag_id.clone())
+                        .sql(" AND (")
+                        .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
+                        .sql(" IS NULL OR work_tags.value = ")
+                        .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
+                        .sql(")))"),
+                    );
                 }
 
                 let recordings = statement
@@ -742,6 +974,7 @@ impl Library {
         let work_id = params.work_id.clone();
         let album_id = params.album_id.clone();
         let tag_id = params.tag_id.clone();
+        let tag_value = params.tag_value.clone();
 
         let mut query = recordings::table
             .inner_join(
@@ -790,23 +1023,31 @@ impl Library {
             query = query.filter(album_recordings::album_id.eq(album_id));
         }
 
-        // As in `search`, a tag counts if it is on the work or on the recording.
+        // As in `search`, a tag counts if it is on the recording or on its work,
+        // and a valued tag only counts for the exact value.
         if let Some(tag_id) = &tag_id {
             query = query.filter(
-                exists(
-                    work_tags::table.filter(
-                        work_tags::work_id
-                            .eq(works::work_id)
-                            .and(work_tags::tag_id.eq(tag_id)),
-                    ),
+                sql::<sql_types::Bool>(
+                    "(EXISTS (SELECT 1 FROM recording_tags \
+                      WHERE recording_tags.recording_id = recordings.recording_id \
+                      AND recording_tags.tag_id = ",
                 )
-                .or(exists(
-                    recording_tags::table.filter(
-                        recording_tags::recording_id
-                            .eq(recordings::recording_id)
-                            .and(recording_tags::tag_id.eq(tag_id)),
-                    ),
-                )),
+                .bind::<sql_types::Text, _>(tag_id.clone())
+                .sql(" AND (")
+                .bind::<sql_types::Nullable<sql_types::Text>, _>(tag_value.clone())
+                .sql(" IS NULL OR recording_tags.value = ")
+                .bind::<sql_types::Nullable<sql_types::Text>, _>(tag_value.clone())
+                .sql(
+                    ")) OR EXISTS (SELECT 1 FROM work_tags \
+                     WHERE work_tags.work_id = recordings.work_id \
+                     AND work_tags.tag_id = ",
+                )
+                .bind::<sql_types::Text, _>(tag_id.clone())
+                .sql(" AND (")
+                .bind::<sql_types::Nullable<sql_types::Text>, _>(tag_value.clone())
+                .sql(" IS NULL OR work_tags.value = ")
+                .bind::<sql_types::Nullable<sql_types::Text>, _>(tag_value.clone())
+                .sql(")))"),
             );
         }
 
@@ -1433,5 +1674,324 @@ impl Library {
         }
 
         Ok(results)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+
+    use tempfile::TempDir;
+
+    use super::*;
+    use crate::db::{models::Composer, TranslatedString};
+
+    fn translated(name: &str) -> TranslatedString {
+        let mut translations = HashMap::new();
+        translations.insert("generic".to_string(), name.to_string());
+        TranslatedString(translations)
+    }
+
+    fn library(dir: &TempDir, cache_dir: &TempDir) -> Library {
+        Library::new(dir.path(), cache_dir.path()).unwrap()
+    }
+
+    /// Two recordings of one work, one tagged `Year: 1963` and the other
+    /// `Year: 1964`, with the work itself tagged `Baroque`.
+    fn tagged_library(library: &Library) -> (Tag, Tag, Recording, Recording) {
+        let year = library.create_tag(translated("Year"), true, true).unwrap();
+        let baroque = library
+            .create_tag(translated("Baroque"), false, true)
+            .unwrap();
+
+        let person = library.create_person(translated("Bach"), true).unwrap();
+
+        let work = library
+            .create_work(
+                translated("Brandenburg Concerto No. 3"),
+                Vec::new(),
+                vec![Composer { person, role: None }],
+                Vec::new(),
+                vec![TagValue {
+                    tag: baroque.clone(),
+                    value: None,
+                }],
+                true,
+            )
+            .unwrap();
+
+        let first = library
+            .create_recording(
+                work.clone(),
+                Vec::new(),
+                Vec::new(),
+                vec![TagValue {
+                    tag: year.clone(),
+                    value: Some("1963".to_string()),
+                }],
+                true,
+            )
+            .unwrap();
+
+        let second = library
+            .create_recording(
+                work,
+                Vec::new(),
+                Vec::new(),
+                vec![TagValue {
+                    tag: year.clone(),
+                    value: Some("1964".to_string()),
+                }],
+                true,
+            )
+            .unwrap();
+
+        (year, baroque, first, second)
+    }
+
+    /// A valued tag is offered as one facet per value, found by searching the
+    /// value rather than the tag's name.
+    #[test]
+    fn searching_a_valued_tag_matches_its_values() {
+        let dir = TempDir::new().unwrap();
+        let cache_dir = TempDir::new().unwrap();
+        let library = library(&dir, &cache_dir);
+        let (year, _, _, _) = tagged_library(&library);
+
+        let results = library.search(&LibraryQuery::default(), "1963").unwrap();
+        assert_eq!(
+            results.tags,
+            vec![TagValue {
+                tag: year.clone(),
+                value: Some("1963".to_string()),
+            }],
+        );
+
+        // The tag's own name is not what identifies the facet.
+        let results = library.search(&LibraryQuery::default(), "Year").unwrap();
+        assert!(
+            results.tags.is_empty(),
+            "a valued tag must not match its own name: {:?}",
+            results.tags
+        );
+    }
+
+    /// A label tag matches on its name and carries no value, and both kinds of
+    /// tag come back from the same search.
+    #[test]
+    fn searching_a_label_tag_matches_its_name() {
+        let dir = TempDir::new().unwrap();
+        let cache_dir = TempDir::new().unwrap();
+        let library = library(&dir, &cache_dir);
+        let (_, baroque, _, _) = tagged_library(&library);
+
+        let results = library.search(&LibraryQuery::default(), "Baroque").unwrap();
+        assert_eq!(
+            results.tags,
+            vec![TagValue {
+                tag: baroque,
+                value: None,
+            }],
+        );
+    }
+
+    /// Filtering by a valued tag must not drag in sibling recordings of the same
+    /// work that carry a different value.
+    #[test]
+    fn filtering_by_a_valued_tag_matches_only_that_value() {
+        let dir = TempDir::new().unwrap();
+        let cache_dir = TempDir::new().unwrap();
+        let library = library(&dir, &cache_dir);
+        let (year, baroque, first, second) = tagged_library(&library);
+
+        let work = first.work.clone();
+
+        let query = LibraryQuery {
+            work: Some(work.clone()),
+            tag: Some(TagValue {
+                tag: year,
+                value: Some("1963".to_string()),
+            }),
+            ..Default::default()
+        };
+
+        let results = library.search(&query, "").unwrap();
+        assert_eq!(
+            results.recordings.iter().collect::<Vec<_>>(),
+            vec![&first],
+            "only the 1963 recording carries that value"
+        );
+
+        // A label tag on the work applies to every recording of it.
+        let query = LibraryQuery {
+            work: Some(work),
+            tag: Some(TagValue {
+                tag: baroque,
+                value: None,
+            }),
+            ..Default::default()
+        };
+
+        let results = library.search(&query, "").unwrap();
+        assert_eq!(results.recordings.len(), 2);
+        assert!(results.recordings.contains(&first));
+        assert!(results.recordings.contains(&second));
+    }
+    /// A tag stays visible in the header once the query is narrowed further,
+    /// rather than silently still applying.
+    #[test]
+    fn a_tag_stays_named_once_it_is_no_longer_the_title() {
+        let dir = TempDir::new().unwrap();
+        let cache_dir = TempDir::new().unwrap();
+        let library = library(&dir, &cache_dir);
+        let (year, baroque, first, _) = tagged_library(&library);
+
+        // On its own, the tag is the title.
+        let query = LibraryQuery {
+            tag: Some(TagValue {
+                tag: baroque.clone(),
+                value: None,
+            }),
+            ..Default::default()
+        };
+        assert_eq!(query.title().as_deref(), Some("Baroque"));
+
+        // Narrowed by a composer, the composer takes the title and the tag moves
+        // into the description.
+        let query = LibraryQuery {
+            composer: Some(first.work.persons[0].person.clone()),
+            tag: Some(TagValue {
+                tag: baroque,
+                value: None,
+            }),
+            ..Default::default()
+        };
+        assert_eq!(query.title().as_deref(), Some("Bach"));
+        assert_eq!(query.description().as_deref(), Some("Tagged Baroque"));
+
+        // A valued tag names its value too.
+        let query = LibraryQuery {
+            work: Some(first.work.clone()),
+            tag: Some(TagValue {
+                tag: year,
+                value: Some("1963".to_string()),
+            }),
+            ..Default::default()
+        };
+        assert_eq!(
+            query.description().as_deref(),
+            Some("Bach, Tagged Year: 1963")
+        );
+    }
+
+    /// A tag must only be offered on pages whose items actually carry it.
+    /// Otherwise picking it produces a query that matches nothing, which shows
+    /// an empty page and makes the play button fail.
+    #[test]
+    fn tags_are_scoped_to_the_rest_of_the_query() {
+        let dir = TempDir::new().unwrap();
+        let cache_dir = TempDir::new().unwrap();
+        let library = library(&dir, &cache_dir);
+        let (_, baroque, first, _) = tagged_library(&library);
+
+        // A second composer, whose work carries no tag at all.
+        let other_person = library.create_person(translated("Ligeti"), true).unwrap();
+        let other_work = library
+            .create_work(
+                translated("Atmosphères"),
+                Vec::new(),
+                vec![Composer {
+                    person: other_person.clone(),
+                    role: None,
+                }],
+                Vec::new(),
+                Vec::new(),
+                true,
+            )
+            .unwrap();
+        library
+            .create_recording(other_work, Vec::new(), Vec::new(), Vec::new(), true)
+            .unwrap();
+
+        let bach = first.work.persons[0].person.clone();
+
+        let results = library
+            .search(
+                &LibraryQuery {
+                    composer: Some(bach),
+                    ..Default::default()
+                },
+                "",
+            )
+            .unwrap();
+
+        // The label on the work and both of its recordings' years.
+        assert!(results.tags.contains(&TagValue {
+            tag: baroque,
+            value: None,
+        }));
+        assert!(results
+            .tags
+            .iter()
+            .any(|t| t.value.as_deref() == Some("1963")));
+        assert!(results
+            .tags
+            .iter()
+            .any(|t| t.value.as_deref() == Some("1964")));
+        assert_eq!(results.tags.len(), 3);
+
+        let results = library
+            .search(
+                &LibraryQuery {
+                    composer: Some(other_person),
+                    ..Default::default()
+                },
+                "",
+            )
+            .unwrap();
+        assert!(
+            results.tags.is_empty(),
+            "an untagged composer must offer no tags: {:?}",
+            results.tags
+        );
+    }
+
+    /// Playing a tag-filtered search page must generate a recording.
+    #[test]
+    fn generating_a_recording_honours_a_tag() {
+        let dir = TempDir::new().unwrap();
+        let cache_dir = TempDir::new().unwrap();
+        let library = library(&dir, &cache_dir);
+        let (year, baroque, first, _) = tagged_library(&library);
+
+        let params = GenerateRecordingParams {
+            tag_id: Some(year.tag_id.clone()),
+            tag_value: Some("1963".to_string()),
+            ..Default::default()
+        };
+        let generated = library.generate_recording(&params).unwrap();
+        assert_eq!(generated, first, "valued tag");
+
+        // The weights a real program carries put binds in the ORDER BY as well
+        // as the WHERE clause.
+        let params = GenerateRecordingParams {
+            tag_id: Some(year.tag_id.clone()),
+            tag_value: Some("1963".to_string()),
+            prefer_recently_added: 0.5,
+            prefer_least_recently_played: 0.5,
+            avoid_repeated_composers: 30,
+            avoid_repeated_instruments: 30,
+            ..Default::default()
+        };
+        let generated = library.generate_recording(&params).unwrap();
+        assert_eq!(generated, first, "valued tag with program weights");
+
+        let params = GenerateRecordingParams {
+            tag_id: Some(baroque.tag_id.clone()),
+            ..Default::default()
+        };
+        library
+            .generate_recording(&params)
+            .expect("label tag on the work must generate");
     }
 }

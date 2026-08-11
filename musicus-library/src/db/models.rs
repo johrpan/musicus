@@ -158,6 +158,13 @@ impl TagValue {
     }
 }
 
+impl Eq for TagValue {}
+impl PartialEq for TagValue {
+    fn eq(&self, other: &Self) -> bool {
+        self.tag == other.tag && self.value == other.value
+    }
+}
+
 impl Display for TagValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self.value {

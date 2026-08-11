@@ -65,9 +65,17 @@ impl FacetTile {
             Facet::Instrument(instrument) => {
                 imp.title_label.set_label(instrument.name.get());
             }
-            Facet::Tag(tag) => {
-                imp.title_label.set_label(tag.name.get());
-            }
+            Facet::Tag(tag_value) => match &tag_value.value {
+                Some(value) => {
+                    imp.title_label.set_label(value);
+                    imp.subtitle_label.set_label(tag_value.tag.name.get());
+                    imp.subtitle_label.set_visible(true);
+                }
+                None => {
+                    imp.title_label.set_label(tag_value.tag.name.get());
+                    imp.subtitle_label.set_visible(false);
+                }
+            },
             Facet::Work(work) => {
                 imp.title_label.set_label(work.name.get());
                 if let Some(composers) = work.composers_string() {
