@@ -22,8 +22,7 @@ use musicus_library::{
 };
 
 use crate::{
-    editor::recording::RecordingEditor, library::Library,
-    selector::recording::RecordingSelectorPopover, util,
+    editor::create, library::Library, selector::recording::RecordingSelectorPopover, util,
 };
 
 mod imp {
@@ -97,20 +96,18 @@ mod imp {
 
             let obj = self.obj().clone();
             recordings_popover.connect_create(move |_, prefill| {
-                let editor =
-                    RecordingEditor::new(obj.imp().navigation.get().unwrap(), &obj.library(), None);
-
-                editor.prefill(&prefill);
-
-                editor.connect_created(clone!(
-                    #[weak]
-                    obj,
-                    move |_, recording| {
-                        obj.set_recording(recording);
-                    }
-                ));
-
-                obj.imp().navigation.get().unwrap().push(&editor);
+                create::recording(
+                    obj.imp().navigation.get().unwrap(),
+                    &obj.library(),
+                    prefill,
+                    clone!(
+                        #[weak]
+                        obj,
+                        move |recording| {
+                            obj.set_recording(recording);
+                        }
+                    ),
+                );
             });
 
             self.select_recording_box.append(&recordings_popover);

@@ -11,7 +11,7 @@ use recording_row::RecordingRow;
 use musicus_library::db::models::{Album, Recording};
 
 use crate::{
-    editor::{recording::RecordingEditor, translation::TranslationEditor},
+    editor::{create, translation::TranslationEditor},
     library::Library,
     selector::recording::RecordingSelectorPopover,
 };
@@ -86,18 +86,18 @@ mod imp {
 
             let obj = self.obj().clone();
             recordings_popover.connect_create(move |_, prefill| {
-                let editor = RecordingEditor::new(&obj.navigation(), &obj.library(), None);
-                editor.prefill(&prefill);
-
-                editor.connect_created(clone!(
-                    #[weak]
-                    obj,
-                    move |_, recording| {
-                        obj.add_recording(recording);
-                    }
-                ));
-
-                obj.navigation().push(&editor);
+                create::recording(
+                    &obj.navigation(),
+                    &obj.library(),
+                    prefill,
+                    clone!(
+                        #[weak]
+                        obj,
+                        move |recording| {
+                            obj.add_recording(recording);
+                        }
+                    ),
+                );
             });
 
             self.recordings_box.append(&recordings_popover);

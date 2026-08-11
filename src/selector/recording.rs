@@ -10,7 +10,9 @@ use once_cell::sync::Lazy;
 
 use musicus_library::db::models::{Person, Recording, Work};
 
-use super::{connect_keynav, RecordingPrefill};
+use super::{
+    connect_keynav, create_row, ComposerPrefill, RecordingPrefill, RecordingWork, WorkPrefill,
+};
 use crate::{
     library::{Library, SearchItem},
     util::activatable_row::ActivatableRow,
@@ -179,7 +181,9 @@ impl RecordingSelectorPopover {
         if let Some(item) = self.imp().composers.borrow().first() {
             self.select_composer(item.to_owned());
         } else {
-            self.create(RecordingPrefill::default());
+            // There is no composer matching what the user typed, so it is the
+            // name of a composer that does not exist yet.
+            self.create(self.composer_prefill());
         }
     }
 
@@ -201,7 +205,9 @@ impl RecordingSelectorPopover {
         if let Some(item) = self.imp().works.borrow().first() {
             self.select_work(item.to_owned());
         } else {
-            self.create(RecordingPrefill::default());
+            // There is no work matching what the user typed, so it is the name
+            // of a work that does not exist yet.
+            self.create(self.work_prefill());
         }
     }
 
@@ -250,22 +256,17 @@ impl RecordingSelectorPopover {
             imp.composer_list.append(&row);
         }
 
-        let create_box = gtk::Box::builder().spacing(12).build();
-        create_box.append(&gtk::Image::builder().icon_name("list-add-symbolic").build());
-        create_box.append(
-            &gtk::Label::builder()
-                .label(gettext("Create new recording"))
-                .halign(gtk::Align::Start)
-                .build(),
-        );
-
-        let create_row = ActivatableRow::new(&create_box);
         let obj = self.clone();
-        create_row.connect_activated(move |_: &ActivatableRow| {
-            obj.create(RecordingPrefill::default());
-        });
+        imp.composer_list
+            .append(&create_row(&gettext("Create new person"), move || {
+                obj.create(obj.composer_prefill());
+            }));
 
-        imp.composer_list.append(&create_row);
+        let obj = self.clone();
+        imp.composer_list
+            .append(&create_row(&gettext("Create new recording"), move || {
+                obj.create(RecordingPrefill::default());
+            }));
 
         imp.composers.replace(persons);
     }
@@ -295,22 +296,17 @@ impl RecordingSelectorPopover {
             imp.work_list.append(&row);
         }
 
-        let create_box = gtk::Box::builder().spacing(12).build();
-        create_box.append(&gtk::Image::builder().icon_name("list-add-symbolic").build());
-        create_box.append(
-            &gtk::Label::builder()
-                .label(gettext("Create new recording"))
-                .halign(gtk::Align::Start)
-                .build(),
-        );
-
-        let create_row = ActivatableRow::new(&create_box);
         let obj = self.clone();
-        create_row.connect_activated(move |_: &ActivatableRow| {
-            obj.create(RecordingPrefill::default());
-        });
+        imp.work_list
+            .append(&create_row(&gettext("Create new work"), move || {
+                obj.create(obj.work_prefill());
+            }));
 
-        imp.work_list.append(&create_row);
+        let obj = self.clone();
+        imp.work_list
+            .append(&create_row(&gettext("Create new recording"), move || {
+                obj.create(RecordingPrefill::default());
+            }));
 
         imp.works.replace(works);
     }
@@ -345,22 +341,11 @@ impl RecordingSelectorPopover {
             imp.recording_list.append(&row);
         }
 
-        let create_box = gtk::Box::builder().spacing(12).build();
-        create_box.append(&gtk::Image::builder().icon_name("list-add-symbolic").build());
-        create_box.append(
-            &gtk::Label::builder()
-                .label(gettext("Create new recording"))
-                .halign(gtk::Align::Start)
-                .build(),
-        );
-
-        let create_row = ActivatableRow::new(&create_box);
         let obj = self.clone();
-        create_row.connect_activated(move |_: &ActivatableRow| {
-            obj.create(obj.recording_prefill());
-        });
-
-        imp.recording_list.append(&create_row);
+        imp.recording_list
+            .append(&create_row(&gettext("Create new recording"), move || {
+                obj.create(obj.recording_prefill());
+            }));
 
         imp.recordings.replace(recordings);
     }
@@ -451,9 +436,38 @@ impl RecordingSelectorPopover {
         self.popdown();
     }
 
+    /// What is known about a new recording when creating its work and that work's composer
+    /// first from within the composer pane.
+    fn composer_prefill(&self) -> RecordingPrefill {
+        RecordingPrefill {
+            work: RecordingWork::New(WorkPrefill {
+                composer: ComposerPrefill::New(self.imp().composer_search_entry.text().to_string()),
+                name: String::new(),
+            }),
+        }
+    }
+
+    /// What is known about a new recording when creating its work first from within the
+    /// work pane.
+    fn work_prefill(&self) -> RecordingPrefill {
+        RecordingPrefill {
+            work: RecordingWork::New(WorkPrefill {
+                composer: match self.imp().composer.borrow().clone() {
+                    Some(composer) => ComposerPrefill::Person(composer),
+                    None => ComposerPrefill::Unknown,
+                },
+                name: self.imp().work_search_entry.text().to_string(),
+            }),
+        }
+    }
+
+    /// What is known about a new recording when creating it from within the recording pane.
     fn recording_prefill(&self) -> RecordingPrefill {
         RecordingPrefill {
-            work: self.imp().work.borrow().clone(),
+            work: match self.imp().work.borrow().clone() {
+                Some(work) => RecordingWork::Work(work),
+                None => RecordingWork::Unknown,
+            },
         }
     }
 
