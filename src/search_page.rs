@@ -52,6 +52,7 @@ mod imp {
         pub performers: RefCell<Vec<Person>>,
         pub ensembles: RefCell<Vec<Ensemble>>,
         pub instruments: RefCell<Vec<Instrument>>,
+        pub tags: RefCell<Vec<TagValue>>,
         pub works: RefCell<Vec<Work>>,
         pub recordings: RefCell<Vec<Recording>>,
         pub albums: RefCell<Vec<Album>>,
@@ -223,10 +224,10 @@ impl SearchPage {
                     Some(work),
                     false,
                 )),
-                Facet::Tag(tag) => self.navigation().push(&TagEditor::new(
+                Facet::Tag(tag_value) => self.navigation().push(&TagEditor::new(
                     &self.navigation(),
                     &self.library(),
-                    Some(tag),
+                    Some(&tag_value.tag),
                 )),
             }
         }
@@ -259,8 +260,8 @@ impl SearchPage {
                         util::error_toast("Failed to delete work", err, &self.toast_overlay());
                     }
                 }
-                Facet::Tag(tag) => {
-                    if let Err(err) = self.library().delete_tag(&tag.tag_id) {
+                Facet::Tag(tag_value) => {
+                    if let Err(err) = self.library().delete_tag(&tag_value.tag.tag_id) {
                         util::error_toast("Failed to delete tag", err, &self.toast_overlay());
                     }
                 }
@@ -300,6 +301,9 @@ impl SearchPage {
                 true
             } else if let Some(instrument) = imp.instruments.borrow().first().cloned() {
                 new_query.instrument = Some(instrument);
+                true
+            } else if let Some(tag_value) = imp.tags.borrow().first().cloned() {
+                new_query.tag = Some(tag_value);
                 true
             } else if let Some(work) = imp.works.borrow().first().cloned() {
                 new_query.work = Some(work);
@@ -466,9 +470,9 @@ impl SearchPage {
                     .append(&FacetTile::new(Facet::Instrument(instrument.clone())));
             }
 
-            for tag in &results.tags {
+            for tag_value in &results.tags {
                 imp.tags_flow_box
-                    .append(&FacetTile::new(Facet::Tag(tag.clone())));
+                    .append(&FacetTile::new(Facet::Tag(tag_value.clone())));
             }
 
             for work in &results.works {
@@ -494,6 +498,7 @@ impl SearchPage {
             imp.performers.replace(results.performers);
             imp.ensembles.replace(results.ensembles);
             imp.instruments.replace(results.instruments);
+            imp.tags.replace(results.tags);
             imp.works.replace(results.works);
             imp.recordings.replace(results.recordings);
             imp.albums.replace(results.albums);

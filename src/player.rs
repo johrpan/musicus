@@ -620,6 +620,7 @@ impl Player {
             work_id: program.work_id(),
             album_id: program.album_id(),
             tag_id: program.tag_id(),
+            tag_value: program.tag_value(),
             prefer_recently_added: program.prefer_recently_added(),
             prefer_least_recently_played: program.prefer_least_recently_played(),
             avoid_repeated_composers: program.avoid_repeated_composers(),

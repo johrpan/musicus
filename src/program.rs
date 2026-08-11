@@ -48,6 +48,9 @@ mod imp {
         pub tag_id: RefCell<Option<String>>,
 
         #[property(get, set)]
+        pub tag_value: RefCell<Option<String>>,
+
+        #[property(get, set)]
         pub prefer_recently_added: Cell<f64>,
 
         #[property(get, set)]
@@ -111,7 +114,8 @@ impl Program {
                 query.instrument.as_ref().map(|i| i.instrument_id.clone()),
             )
             .property("work-id", query.work.as_ref().map(|w| w.work_id.clone()))
-            .property("tag-id", query.tag.map(|t| t.tag_id))
+            .property("tag-id", query.tag.as_ref().map(|t| t.tag.tag_id.clone()))
+            .property("tag-value", query.tag.and_then(|t| t.value))
             .property(
                 "prefer-recently-added",
                 settings.int("prefer-recently-added") as f64 / 100.0,
@@ -148,28 +152,15 @@ impl Program {
     /// This is used to make sure that programs that are being played are never the same object
     /// as the ones that they were started from, which could be changed inadvertently.
     pub fn duplicate(&self) -> Self {
-        glib::Object::builder()
-            .property("title", self.title())
-            .property("description", self.description())
-            .property("design", self.design())
-            .property("composer-id", self.composer_id())
-            .property("performer-id", self.performer_id())
-            .property("ensemble-id", self.ensemble_id())
-            .property("instrument-id", self.instrument_id())
-            .property("work-id", self.work_id())
-            .property("album-id", self.album_id())
-            .property("prefer-recently-added", self.prefer_recently_added())
-            .property(
-                "prefer-least-recently-played",
-                self.prefer_least_recently_played(),
-            )
-            .property("avoid-repeated-composers", self.avoid_repeated_composers())
-            .property(
-                "avoid-repeated-instruments",
-                self.avoid_repeated_instruments(),
-            )
-            .property("play-full-recordings", self.play_full_recordings())
-            .build()
+        let copy: Self = glib::Object::new();
+
+        for pspec in self.list_properties() {
+            if pspec.flags().contains(glib::ParamFlags::READWRITE) {
+                copy.set_property_from_value(pspec.name(), &self.property_value(pspec.name()));
+            }
+        }
+
+        copy
     }
 
     pub fn deserialize(input: &str) -> Result<Self> {
