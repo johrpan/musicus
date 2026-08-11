@@ -523,11 +523,11 @@ fn update_metadata_from_file(
                 .optional()?;
 
             if enable_updates == Some(true) {
+                // Only the name is merged. Whether a tag takes a value decides
+                // what the assignments already in this library mean, so an
+                // update from the catalogue must not change it underneath them.
                 diesel::update(tags::table.filter(tags::tag_id.eq(&tag.tag_id)))
-                    .set((
-                        tags::name.eq(tag.name),
-                        tags::takes_value.eq(tag.takes_value),
-                    ))
+                    .set(tags::name.eq(tag.name))
                     .execute(connection)?;
             }
         }

@@ -5,7 +5,7 @@ use std::{
 };
 
 use anyhow::{bail, Error, Result};
-use diesel::{prelude::*, QueryDsl, SqliteConnection};
+use diesel::{dsl::exists, prelude::*, QueryDsl, SqliteConnection};
 
 use super::Library;
 use crate::db::{
@@ -240,46 +240,67 @@ impl Library {
         Ok(tag)
     }
 
+    /// Whether any work or recording is tagged with this tag.
+    pub fn tag_is_in_use(&self, tag_id: &str) -> Result<bool> {
+        let connection = &mut *self.conn();
+        Self::tag_is_in_use_priv(connection, tag_id)
+    }
+
+    /// The body of [`Library::tag_is_in_use`], for callers that already hold the
+    /// connection. Taking it twice would deadlock: the guard lives until the end
+    /// of the enclosing function, and dropping the `&mut` to it does not release
+    /// it.
+    fn tag_is_in_use_priv(connection: &mut SqliteConnection, tag_id: &str) -> Result<bool> {
+        Ok(diesel::select(exists(
+            work_tags::table.filter(work_tags::tag_id.eq(tag_id)),
+        ))
+        .get_result::<bool>(connection)?
+            || diesel::select(exists(
+                recording_tags::table.filter(recording_tags::tag_id.eq(tag_id)),
+            ))
+            .get_result::<bool>(connection)?)
+    }
+
+    /// Update a tag.
+    ///
+    /// Whether a tag takes a value cannot be changed once anything is tagged
+    /// with it. It decides what the existing assignments mean and how they are
+    /// found: dropping the value would discard every value already recorded,
+    /// and adding one would leave every existing assignment without the value
+    /// that a valued tag is searched by. A tag nothing uses yet can still be
+    /// corrected.
     pub fn update_tag(
         &self,
         id: &str,
         name: TranslatedString,
         takes_value: bool,
         enable_updates: bool,
-    ) -> Result<()> {
+    ) -> Result<(), LibraryError> {
         let connection = &mut *self.conn();
 
-        connection.transaction::<(), Error, _>(|connection| {
-            let now = db::now();
+        let previous = tags::table
+            .filter(tags::tag_id.eq(id))
+            .select(tags::takes_value)
+            .first::<bool>(connection)
+            .map_err(anyhow::Error::from)?;
 
-            diesel::update(tags::table)
-                .filter(tags::tag_id.eq(id))
-                .set((
-                    tags::name.eq(name),
-                    tags::takes_value.eq(takes_value),
-                    tags::edited_at.eq(now),
-                    tags::last_used_at.eq(now),
-                    tags::enable_updates.eq(enable_updates),
-                ))
-                .execute(connection)?;
+        if previous != takes_value && Self::tag_is_in_use_priv(connection, id)? {
+            return Err(LibraryError::StillReferenced(EntityKind::Tag));
+        }
 
-            // A tag that no longer takes a value must not leave stale values
-            // behind on its assignments, and one that starts taking a value has
-            // none to show until the items are edited.
-            if !takes_value {
-                diesel::update(work_tags::table)
-                    .filter(work_tags::tag_id.eq(id))
-                    .set(work_tags::value.eq(None::<String>))
-                    .execute(connection)?;
+        let now = db::now();
 
-                diesel::update(recording_tags::table)
-                    .filter(recording_tags::tag_id.eq(id))
-                    .set(recording_tags::value.eq(None::<String>))
-                    .execute(connection)?;
-            }
-
-            Ok(())
-        })?;
+        diesel::update(tags::table)
+            .filter(tags::tag_id.eq(id))
+            .set((
+                tags::name.eq(name),
+                tags::takes_value.eq(takes_value),
+                tags::edited_at.eq(now),
+                tags::last_used_at.eq(now),
+                tags::enable_updates.eq(enable_updates),
+            ))
+            .execute(connection)
+            .map_err(anyhow::Error::from)?;
 
         self.changed();
 
@@ -1450,6 +1471,73 @@ mod tests {
         value
     }
 
+    /// Whether a tag takes a value decides what its existing assignments mean,
+    /// so it is fixed once anything is tagged with it. A tag nothing uses yet
+    /// can still be corrected.
+    #[test]
+    fn a_tag_in_use_keeps_its_kind() {
+        let dir = TempDir::new().unwrap();
+        let cache_dir = TempDir::new().unwrap();
+        let library = library(&dir, &cache_dir);
+
+        let tag = library.create_tag(translated("Year"), true, true).unwrap();
+
+        // Nothing uses it yet, so it can still be corrected.
+        library
+            .update_tag(&tag.tag_id, translated("Year"), false, true)
+            .expect("an unused tag may change kind");
+        library
+            .update_tag(&tag.tag_id, translated("Year"), true, true)
+            .unwrap();
+
+        let person = library.create_person(translated("Bach"), true).unwrap();
+        let work = library
+            .create_work(
+                translated("Toccata"),
+                Vec::new(),
+                vec![Composer { person, role: None }],
+                Vec::new(),
+                Vec::new(),
+                true,
+            )
+            .unwrap();
+        library
+            .create_recording(
+                work,
+                Vec::new(),
+                Vec::new(),
+                vec![TagValue {
+                    tag: tag.clone(),
+                    value: Some("1963".to_string()),
+                }],
+                true,
+            )
+            .unwrap();
+
+        let err = library
+            .update_tag(&tag.tag_id, translated("Year"), false, true)
+            .expect_err("a tag in use must keep its kind");
+        assert!(
+            matches!(err, LibraryError::StillReferenced(EntityKind::Tag)),
+            "unexpected error: {err:?}"
+        );
+
+        // The rename is refused along with the kind change, and no value is lost.
+        let connection = &mut *library.conn();
+        let value = recording_tags::table
+            .select(recording_tags::value)
+            .first::<Option<String>>(connection)
+            .unwrap();
+        assert_eq!(value.as_deref(), Some("1963"));
+
+        let takes_value = tags::table
+            .filter(tags::tag_id.eq(&tag.tag_id))
+            .select(tags::takes_value)
+            .first::<bool>(connection)
+            .unwrap();
+        assert!(takes_value);
+    }
+
     #[test]
     fn every_mutator_emits_a_change_notification() {
         let dir = TempDir::new().unwrap();
@@ -1465,6 +1553,9 @@ mod tests {
         let instrument = assert_notifies(&library, "create_instrument", || {
             library.create_instrument(translated("Piano"), true)
         });
+        let tag = assert_notifies(&library, "create_tag", || {
+            library.create_tag(translated("Baroque"), false, true)
+        });
 
         assert_notifies(&library, "update_person", || {
             library.update_person(&person.person_id, translated("van Beethoven"), true)
@@ -1474,6 +1565,9 @@ mod tests {
         });
         assert_notifies(&library, "update_instrument", || {
             library.update_instrument(&instrument.instrument_id, translated("Fortepiano"), true)
+        });
+        assert_notifies(&library, "update_tag", || {
+            library.update_tag(&tag.tag_id, translated("Classical"), false, true)
         });
 
         let composer = Composer {
