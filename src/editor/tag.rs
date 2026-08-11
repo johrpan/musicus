@@ -84,6 +84,22 @@ impl TagEditor {
             imp.name_editor.set_translation(&tag.name);
             imp.takes_value_row.set_active(tag.takes_value);
             imp.enable_updates_row.set_active(tag.enable_updates);
+
+            // Changing this would discard the values already recorded, or leave
+            // existing assignments without the value a valued tag is found by.
+            let in_use = match library.tag_is_in_use(&tag.tag_id) {
+                Ok(in_use) => in_use,
+                Err(err) => {
+                    log::warn!("Failed to check whether the tag is in use: {err:?}");
+                    true
+                }
+            };
+
+            if in_use {
+                imp.takes_value_row.set_sensitive(false);
+                imp.takes_value_row
+                    .set_subtitle(&gettext("Cannot be changed once the tag is in use"));
+            }
         }
 
         obj
@@ -121,7 +137,9 @@ impl TagEditor {
         }
 
         let result = match imp.tag_id.get() {
-            Some(id) => library.update_tag(id, name, takes_value, enable_updates),
+            Some(id) => library
+                .update_tag(id, name, takes_value, enable_updates)
+                .map_err(anyhow::Error::from),
             None => library
                 .create_tag(name, takes_value, enable_updates)
                 .map(|tag| self.emit_by_name::<()>("created", &[&glib::BoxedAnyObject::new(tag)])),
