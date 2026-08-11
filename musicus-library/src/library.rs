@@ -11,7 +11,7 @@ use diesel::{prelude::*, SqliteConnection};
 use crate::db::{self, schema::*, tables};
 pub use edit::TrackUpdate;
 pub use metadata::SearchItem;
-pub use query::{GenerateRecordingParams, LibraryQuery, Tag};
+pub use query::{Facet, GenerateRecordingParams, LibraryQuery};
 
 pub mod edit;
 pub mod exchange;

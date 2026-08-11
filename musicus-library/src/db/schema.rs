@@ -119,10 +119,18 @@ diesel::table! {
 }
 
 diesel::table! {
+    recording_tags (recording_id, sequence_number) {
+        recording_id -> Text,
+        tag_id -> Text,
+        value -> Nullable<Text>,
+        sequence_number -> Integer,
+    }
+}
+
+diesel::table! {
     recordings (recording_id) {
         recording_id -> Text,
         work_id -> Text,
-        year -> Nullable<Integer>,
         source -> Text,
         enable_updates -> Bool,
         created_at -> Timestamp,
@@ -136,6 +144,19 @@ diesel::table! {
     roles (role_id) {
         role_id -> Text,
         name -> Text,
+        source -> Text,
+        enable_updates -> Bool,
+        created_at -> Timestamp,
+        edited_at -> Timestamp,
+        last_used_at -> Timestamp,
+    }
+}
+
+diesel::table! {
+    tags (tag_id) {
+        tag_id -> Text,
+        name -> Text,
+        takes_value -> Bool,
         source -> Text,
         enable_updates -> Bool,
         created_at -> Timestamp,
@@ -185,6 +206,15 @@ diesel::table! {
 }
 
 diesel::table! {
+    work_tags (work_id, sequence_number) {
+        work_id -> Text,
+        tag_id -> Text,
+        value -> Nullable<Text>,
+        sequence_number -> Integer,
+    }
+}
+
+diesel::table! {
     works (work_id) {
         work_id -> Text,
         parent_work_id -> Nullable<Text>,
@@ -213,6 +243,8 @@ diesel::joinable!(recording_persons -> instruments (instrument_id));
 diesel::joinable!(recording_persons -> persons (person_id));
 diesel::joinable!(recording_persons -> recordings (recording_id));
 diesel::joinable!(recording_persons -> roles (role_id));
+diesel::joinable!(recording_tags -> recordings (recording_id));
+diesel::joinable!(recording_tags -> tags (tag_id));
 diesel::joinable!(recordings -> works (work_id));
 diesel::joinable!(track_works -> tracks (track_id));
 diesel::joinable!(track_works -> works (work_id));
@@ -223,6 +255,8 @@ diesel::joinable!(work_instruments -> works (work_id));
 diesel::joinable!(work_persons -> persons (person_id));
 diesel::joinable!(work_persons -> roles (role_id));
 diesel::joinable!(work_persons -> works (work_id));
+diesel::joinable!(work_tags -> tags (tag_id));
+diesel::joinable!(work_tags -> works (work_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
     album_mediums,
@@ -236,11 +270,14 @@ diesel::allow_tables_to_appear_in_same_query!(
     persons,
     recording_ensembles,
     recording_persons,
+    recording_tags,
     recordings,
     roles,
+    tags,
     track_works,
     tracks,
     work_instruments,
     work_persons,
+    work_tags,
     works,
 );

@@ -3,7 +3,7 @@ use std::cell::RefCell;
 use anyhow::Result;
 use gettextrs::gettext;
 use gtk::glib;
-use musicus_library::db::models::{Ensemble, Instrument, Person, Role};
+use musicus_library::db::models::{Ensemble, Instrument, Person, Role, Tag};
 
 use crate::library::{Library, SearchItem};
 
@@ -202,5 +202,27 @@ impl SelectorKind for RoleKind {
 
     fn reset_tooltip() -> Option<String> {
         Some(gettext("Reset to default role"))
+    }
+}
+
+pub struct TagKind;
+
+impl SelectorKind for TagKind {
+    type Item = Tag;
+
+    fn search(library: &Library, search: &str) -> Result<Vec<SearchItem<Tag>>> {
+        library.search_tags(search)
+    }
+
+    fn import(library: &Library, item: &Tag) -> Result<Tag> {
+        library.import_metadata_tag(&item.tag_id)
+    }
+
+    fn search_placeholder() -> String {
+        gettext("Search tags…")
+    }
+
+    fn create_label() -> String {
+        gettext("Create new tag")
     }
 }

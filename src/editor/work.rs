@@ -13,11 +13,14 @@ use part_row::WorkEditorPartRow;
 
 use musicus_library::db::{
     self,
-    models::{Composer, Instrument, Person, Work},
+    models::{Composer, Instrument, Person, Tag, TagValue, Work},
 };
 
 use crate::{
-    editor::{simple_entity::SimpleEntityEditor, translation::TranslationEditor},
+    editor::{
+        simple_entity::SimpleEntityEditor, tag::TagEditor, tag_row::TagRow,
+        translation::TranslationEditor,
+    },
     library::Library,
     selector::{ComposerPrefill, SelectorPopover, WorkPrefill},
 };
@@ -45,9 +48,11 @@ mod imp {
         pub composer_rows: RefCell<Vec<WorkEditorComposerRow>>,
         pub part_rows: RefCell<Vec<WorkEditorPartRow>>,
         pub instrument_rows: RefCell<Vec<InstrumentRow>>,
+        pub tag_rows: RefCell<Vec<TagRow>>,
 
         pub persons_popover: OnceCell<SelectorPopover>,
         pub instruments_popover: OnceCell<SelectorPopover>,
+        pub tags_popover: OnceCell<SelectorPopover>,
 
         #[template_child]
         pub name_editor: TemplateChild<TranslationEditor>,
@@ -61,6 +66,10 @@ mod imp {
         pub instruments_box: TemplateChild<gtk::Box>,
         #[template_child]
         pub instrument_list: TemplateChild<gtk::ListBox>,
+        #[template_child]
+        pub tags_box: TemplateChild<gtk::Box>,
+        #[template_child]
+        pub tag_list: TemplateChild<gtk::ListBox>,
         #[template_child]
         pub enable_updates_row: TemplateChild<adw::SwitchRow>,
         #[template_child]
@@ -151,6 +160,32 @@ mod imp {
 
             self.instruments_box.append(&instruments_popover);
             self.instruments_popover.set(instruments_popover).unwrap();
+
+            let tags_popover = SelectorPopover::tags(self.library.get().unwrap());
+
+            let obj = self.obj().clone();
+            tags_popover.connect_selected(move |_, tag: Tag| {
+                obj.add_tag_row(TagValue { tag, value: None });
+            });
+
+            let obj = self.obj().clone();
+            tags_popover.connect_create(move |_, search| {
+                let editor = TagEditor::new(&obj.navigation(), &obj.library(), None);
+                editor.set_name(&search);
+
+                editor.connect_created(clone!(
+                    #[weak]
+                    obj,
+                    move |_, tag| {
+                        obj.add_tag_row(TagValue { tag, value: None });
+                    }
+                ));
+
+                obj.navigation().push(&editor);
+            });
+
+            self.tags_box.append(&tags_popover);
+            self.tags_popover.set(tags_popover).unwrap();
         }
     }
 
@@ -199,6 +234,10 @@ impl WorkEditor {
 
             for instrument in &work.instruments {
                 obj.add_instrument_row(instrument.clone());
+            }
+
+            for tag_value in &work.tags {
+                obj.add_tag_row(tag_value.clone());
             }
 
             obj.imp().enable_updates_row.set_active(work.enable_updates);
@@ -251,6 +290,11 @@ impl WorkEditor {
     #[template_callback]
     fn add_instrument(&self) {
         self.imp().instruments_popover.get().unwrap().popup();
+    }
+
+    #[template_callback]
+    fn add_tag(&self) {
+        self.imp().tags_popover.get().unwrap().popup();
     }
 
     fn add_composer(&self, person: Person) {
@@ -357,6 +401,39 @@ impl WorkEditor {
         self.imp().instrument_rows.borrow_mut().push(row);
     }
 
+    fn add_tag_row(&self, tag_value: TagValue) {
+        let row = TagRow::new(tag_value);
+
+        row.connect_move(clone!(
+            #[weak(rename_to = this)]
+            self,
+            move |target, source| {
+                let mut tag_rows = this.imp().tag_rows.borrow_mut();
+                if let Some(index) = tag_rows.iter().position(|p| p == target) {
+                    this.imp().tag_list.remove(&source);
+                    tag_rows.retain(|p| p != &source);
+                    this.imp().tag_list.insert(&source, index as i32);
+                    tag_rows.insert(index, source);
+                }
+            }
+        ));
+
+        row.connect_remove(clone!(
+            #[weak(rename_to = this)]
+            self,
+            move |row| {
+                this.imp().tag_list.remove(row);
+                this.imp().tag_rows.borrow_mut().retain(|p| p != row);
+            }
+        ));
+
+        self.imp()
+            .tag_list
+            .insert(&row, self.imp().tag_rows.borrow().len() as i32);
+
+        self.imp().tag_rows.borrow_mut().push(row);
+    }
+
     #[template_callback]
     fn save(&self) {
         let library = self.imp().library.get().unwrap();
@@ -387,6 +464,14 @@ impl WorkEditor {
             .map(|r| r.instrument())
             .collect::<Vec<Instrument>>();
 
+        let tags = self
+            .imp()
+            .tag_rows
+            .borrow()
+            .iter()
+            .map(|r| r.tag_value())
+            .collect::<Vec<TagValue>>();
+
         let enable_updates = self.imp().enable_updates_row.is_active();
 
         if !crate::editor::require_name(self, &name) {
@@ -407,6 +492,7 @@ impl WorkEditor {
                 parts,
                 persons: composers,
                 instruments,
+                tags,
                 enable_updates,
             };
 
@@ -414,7 +500,15 @@ impl WorkEditor {
         } else if let Some(work_id) = self.imp().work_id.get() {
             if crate::editor::handle_save(
                 self,
-                library.update_work(work_id, name, parts, composers, instruments, enable_updates),
+                library.update_work(
+                    work_id,
+                    name,
+                    parts,
+                    composers,
+                    instruments,
+                    tags,
+                    enable_updates,
+                ),
             )
             .is_none()
             {
@@ -423,7 +517,7 @@ impl WorkEditor {
         } else {
             let Some(work) = crate::editor::handle_save(
                 self,
-                library.create_work(name, parts, composers, instruments, enable_updates),
+                library.create_work(name, parts, composers, instruments, tags, enable_updates),
             ) else {
                 return;
             };

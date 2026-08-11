@@ -98,6 +98,26 @@ impl Library {
         Ok(role)
     }
 
+    pub fn import_metadata_tag(&self, tag_id: &str) -> Result<Tag> {
+        let metadata_connection = self
+            .metadata_connection()
+            .ok_or_else(|| anyhow!("No metadata database available"))?;
+        let metadata_connection = &mut *db::lock_connection(&metadata_connection);
+        let connection = &mut *self.conn();
+
+        let tag = connection.transaction::<Tag, Error, _>(|connection| {
+            copy_tag(metadata_connection, connection, tag_id)?;
+
+            Ok(tags::table
+                .filter(tags::tag_id.eq(tag_id))
+                .first(connection)?)
+        })?;
+
+        self.changed();
+
+        Ok(tag)
+    }
+
     pub fn import_metadata_instrument(&self, instrument_id: &str) -> Result<Instrument> {
         let metadata_connection = self
             .metadata_connection()
@@ -228,6 +248,25 @@ fn copy_role(from: &mut SqliteConnection, to: &mut SqliteConnection, role_id: &s
     Ok(())
 }
 
+fn copy_tag(from: &mut SqliteConnection, to: &mut SqliteConnection, tag_id: &str) -> Result<()> {
+    let now = db::now();
+    let mut tag = tags::table
+        .filter(tags::tag_id.eq(tag_id))
+        .first::<tables::Tag>(from)?;
+
+    tag.source = Source::Metadata;
+    tag.created_at = now;
+    tag.edited_at = now;
+    tag.last_used_at = now;
+
+    diesel::insert_into(tags::table)
+        .values(tag)
+        .on_conflict_do_nothing()
+        .execute(to)?;
+
+    Ok(())
+}
+
 fn copy_instrument(
     from: &mut SqliteConnection,
     to: &mut SqliteConnection,
@@ -317,6 +356,19 @@ fn copy_work_priv(
 
         diesel::insert_into(work_instruments::table)
             .values(work_instrument)
+            .on_conflict_do_nothing()
+            .execute(to)?;
+    }
+
+    let work_tags = work_tags::table
+        .filter(work_tags::work_id.eq(work_id))
+        .load::<tables::WorkTag>(from)?;
+
+    for work_tag in work_tags {
+        copy_tag(from, to, &work_tag.tag_id)?;
+
+        diesel::insert_into(work_tags::table)
+            .values(work_tag)
             .on_conflict_do_nothing()
             .execute(to)?;
     }
@@ -422,6 +474,19 @@ fn copy_recording(
 
         diesel::insert_into(recording_ensembles::table)
             .values(recording_ensemble)
+            .on_conflict_do_nothing()
+            .execute(to)?;
+    }
+
+    let recording_tags = recording_tags::table
+        .filter(recording_tags::recording_id.eq(recording_id))
+        .load::<tables::RecordingTag>(from)?;
+
+    for recording_tag in recording_tags {
+        copy_tag(from, to, &recording_tag.tag_id)?;
+
+        diesel::insert_into(recording_tags::table)
+            .values(recording_tag)
             .on_conflict_do_nothing()
             .execute(to)?;
     }

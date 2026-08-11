@@ -11,7 +11,7 @@ use super::{
     connect_keynav, item_row_child,
     kind::{
         EnsembleKind, InstrumentKind, KindSource, PersonKind, RoleKind, SelectorKind,
-        SelectorSource,
+        SelectorSource, TagKind,
     },
 };
 use crate::{library::Library, util, util::activatable_row::ActivatableRow};
@@ -146,6 +146,10 @@ impl SelectorPopover {
 
     pub fn roles(library: &Library) -> Self {
         Self::new::<RoleKind>(library)
+    }
+
+    pub fn tags(library: &Library) -> Self {
+        Self::new::<TagKind>(library)
     }
 
     pub fn connect_selected<T: Clone + 'static, F: Fn(&Self, T) + 'static>(

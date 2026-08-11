@@ -11,11 +11,14 @@ use once_cell::sync::Lazy;
 use performer_row::RecordingEditorPerformerRow;
 
 use musicus_library::db::models::{
-    Ensemble, EnsemblePerformer, Performer, Person, Recording, Work,
+    Ensemble, EnsemblePerformer, Performer, Person, Recording, Tag, TagValue, Work,
 };
 
 use crate::{
-    editor::{create, ensemble::EnsembleEditor, simple_entity::SimpleEntityEditor},
+    editor::{
+        create, ensemble::EnsembleEditor, simple_entity::SimpleEntityEditor, tag::TagEditor,
+        tag_row::TagRow,
+    },
     library::Library,
     selector::{work::WorkSelectorPopover, RecordingPrefill, RecordingWork, SelectorPopover},
 };
@@ -38,17 +41,17 @@ mod imp {
         pub work: RefCell<Option<Work>>,
         pub performer_rows: RefCell<Vec<RecordingEditorPerformerRow>>,
         pub ensemble_rows: RefCell<Vec<RecordingEditorEnsembleRow>>,
+        pub tag_rows: RefCell<Vec<TagRow>>,
 
         pub work_selector_popover: OnceCell<WorkSelectorPopover>,
         pub persons_popover: OnceCell<SelectorPopover>,
         pub ensembles_popover: OnceCell<SelectorPopover>,
+        pub tags_popover: OnceCell<SelectorPopover>,
 
         #[template_child]
         pub work_row: TemplateChild<adw::ActionRow>,
         #[template_child]
         pub select_work_box: TemplateChild<gtk::Box>,
-        #[template_child]
-        pub year_row: TemplateChild<adw::SpinRow>,
         #[template_child]
         pub performers_box: TemplateChild<gtk::Box>,
         #[template_child]
@@ -57,6 +60,10 @@ mod imp {
         pub ensembles_box: TemplateChild<gtk::Box>,
         #[template_child]
         pub ensemble_list: TemplateChild<gtk::ListBox>,
+        #[template_child]
+        pub tags_box: TemplateChild<gtk::Box>,
+        #[template_child]
+        pub tag_list: TemplateChild<gtk::ListBox>,
         #[template_child]
         pub enable_updates_row: TemplateChild<adw::SwitchRow>,
         #[template_child]
@@ -173,6 +180,32 @@ mod imp {
 
             self.ensembles_box.append(&ensembles_popover);
             self.ensembles_popover.set(ensembles_popover).unwrap();
+
+            let tags_popover = SelectorPopover::tags(self.library.get().unwrap());
+
+            let obj = self.obj().clone();
+            tags_popover.connect_selected(move |_, tag: Tag| {
+                obj.add_tag_row(TagValue { tag, value: None });
+            });
+
+            let obj = self.obj().clone();
+            tags_popover.connect_create(move |_, search| {
+                let editor = TagEditor::new(&obj.navigation(), &obj.library(), None);
+                editor.set_name(&search);
+
+                editor.connect_created(clone!(
+                    #[weak]
+                    obj,
+                    move |_, tag| {
+                        obj.add_tag_row(TagValue { tag, value: None });
+                    }
+                ));
+
+                obj.navigation().push(&editor);
+            });
+
+            self.tags_box.append(&tags_popover);
+            self.tags_popover.set(tags_popover).unwrap();
         }
     }
 
@@ -207,16 +240,16 @@ impl RecordingEditor {
 
             obj.set_work(recording.work.clone());
 
-            if let Some(year) = recording.year {
-                obj.imp().year_row.set_value(year as f64);
-            }
-
             for performer in recording.persons.clone() {
                 obj.add_performer_row(performer);
             }
 
             for ensemble_performer in recording.ensembles.clone() {
                 obj.add_ensemble_row(ensemble_performer);
+            }
+
+            for tag_value in recording.tags.clone() {
+                obj.add_tag_row(tag_value);
             }
         }
 
@@ -366,12 +399,49 @@ impl RecordingEditor {
     }
 
     #[template_callback]
+    fn add_tag(&self) {
+        self.imp().tags_popover.get().unwrap().popup();
+    }
+
+    fn add_tag_row(&self, tag_value: TagValue) {
+        let row = TagRow::new(tag_value);
+
+        row.connect_move(clone!(
+            #[weak(rename_to = this)]
+            self,
+            move |target, source| {
+                let mut tag_rows = this.imp().tag_rows.borrow_mut();
+                if let Some(index) = tag_rows.iter().position(|p| p == target) {
+                    this.imp().tag_list.remove(&source);
+                    tag_rows.retain(|p| p != &source);
+                    this.imp().tag_list.insert(&source, index as i32);
+                    tag_rows.insert(index, source);
+                }
+            }
+        ));
+
+        row.connect_remove(clone!(
+            #[weak(rename_to = this)]
+            self,
+            move |row| {
+                this.imp().tag_list.remove(row);
+                this.imp().tag_rows.borrow_mut().retain(|p| p != row);
+            }
+        ));
+
+        self.imp()
+            .tag_list
+            .insert(&row, self.imp().tag_rows.borrow().len() as i32);
+
+        self.imp().tag_rows.borrow_mut().push(row);
+    }
+
+    #[template_callback]
     fn save(&self) {
         if let Some(work) = &*self.imp().work.borrow() {
             let library = self.imp().library.get().unwrap();
 
             let work = work.to_owned();
-            let year = self.imp().year_row.value() as i32;
 
             let performers = self
                 .imp()
@@ -389,6 +459,14 @@ impl RecordingEditor {
                 .map(|e| e.ensemble())
                 .collect::<Vec<EnsemblePerformer>>();
 
+            let tags = self
+                .imp()
+                .tag_rows
+                .borrow()
+                .iter()
+                .map(|r| r.tag_value())
+                .collect::<Vec<TagValue>>();
+
             let enable_updates = self.imp().enable_updates_row.is_active();
 
             if let Some(recording_id) = self.imp().recording_id.get() {
@@ -397,9 +475,9 @@ impl RecordingEditor {
                     library.update_recording(
                         recording_id,
                         work,
-                        Some(year),
                         performers,
                         ensembles,
+                        tags,
                         enable_updates,
                     ),
                 )
@@ -410,13 +488,7 @@ impl RecordingEditor {
             } else {
                 let Some(recording) = crate::editor::handle_save(
                     self,
-                    library.create_recording(
-                        work,
-                        Some(year),
-                        performers,
-                        ensembles,
-                        enable_updates,
-                    ),
+                    library.create_recording(work, performers, ensembles, tags, enable_updates),
                 ) else {
                     return;
                 };

@@ -326,7 +326,7 @@ impl RecordingSelectorPopover {
         for result in &recordings {
             let mut text = result.item.performers_string();
 
-            if let Some(year) = result.item.year {
+            if let Some(year) = result.item.year() {
                 text.push_str(&format!(" ({year})"));
             }
 

@@ -53,6 +53,9 @@ fn expected_error_message(err: &LibraryError) -> Option<String> {
             EntityKind::Instrument => {
                 gettext("This instrument is still used elsewhere in the library.")
             }
+            EntityKind::Tag => {
+                gettext("This tag is still assigned to works or recordings in the library.")
+            }
             EntityKind::Work => gettext("This work still has recordings in the library."),
             EntityKind::Ensemble => {
                 gettext("This ensemble is still used elsewhere in the library.")

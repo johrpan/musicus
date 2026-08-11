@@ -45,6 +45,9 @@ mod imp {
         pub album_id: RefCell<Option<String>>,
 
         #[property(get, set)]
+        pub tag_id: RefCell<Option<String>>,
+
+        #[property(get, set)]
         pub prefer_recently_added: Cell<f64>,
 
         #[property(get, set)]
@@ -108,6 +111,7 @@ impl Program {
                 query.instrument.as_ref().map(|i| i.instrument_id.clone()),
             )
             .property("work-id", query.work.as_ref().map(|w| w.work_id.clone()))
+            .property("tag-id", query.tag.map(|t| t.tag_id))
             .property(
                 "prefer-recently-added",
                 settings.int("prefer-recently-added") as f64 / 100.0,

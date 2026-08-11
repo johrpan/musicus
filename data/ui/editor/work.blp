@@ -114,6 +114,35 @@ template $MusicusWorkEditor: Adw.NavigationPage {
             }
           }
 
+          Gtk.Label {
+            label: _("Tags");
+            xalign: 0;
+            margin-top: 24;
+
+            styles [
+              "heading",
+            ]
+          }
+
+          Gtk.Box tags_box {
+            Gtk.ListBox tag_list {
+              selection-mode: none;
+              margin-top: 12;
+              hexpand: true;
+
+              styles [
+                "boxed-list",
+              ]
+
+              Adw.ButtonRow {
+                title: _("Add _tag");
+                start-icon-name: "list-add-symbolic";
+                use-underline: true;
+                activated => $add_tag() swapped;
+              }
+            }
+          }
+
           Gtk.ListBox {
             selection-mode: none;
             margin-top: 24;

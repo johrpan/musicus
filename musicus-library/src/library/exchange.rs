@@ -479,6 +479,10 @@ fn update_metadata_from_file(
     let albums = albums::table.load::<tables::Album>(&mut other_connection)?;
     let album_recordings =
         album_recordings::table.load::<tables::AlbumRecording>(&mut other_connection)?;
+    let tags = tags::table.load::<tables::Tag>(&mut other_connection)?;
+    let work_tags = work_tags::table.load::<tables::WorkTag>(&mut other_connection)?;
+    let recording_tags =
+        recording_tags::table.load::<tables::RecordingTag>(&mut other_connection)?;
 
     let mut this_connection = db::lock_connection(&this_connection);
 
@@ -507,6 +511,23 @@ fn update_metadata_from_file(
             if enable_updates == Some(true) {
                 diesel::update(roles::table.filter(roles::role_id.eq(&role.role_id)))
                     .set(roles::name.eq(role.name))
+                    .execute(connection)?;
+            }
+        }
+
+        for tag in tags {
+            let enable_updates = tags::table
+                .filter(tags::tag_id.eq(&tag.tag_id))
+                .select(tags::enable_updates)
+                .first(connection)
+                .optional()?;
+
+            if enable_updates == Some(true) {
+                diesel::update(tags::table.filter(tags::tag_id.eq(&tag.tag_id)))
+                    .set((
+                        tags::name.eq(tag.name),
+                        tags::takes_value.eq(tag.takes_value),
+                    ))
                     .execute(connection)?;
             }
         }
@@ -565,6 +586,18 @@ fn update_metadata_from_file(
                         .values(work_instrument)
                         .execute(connection)?;
                 }
+
+                diesel::delete(work_tags::table.filter(work_tags::work_id.eq(&work.work_id)))
+                    .execute(connection)?;
+
+                for work_tag in work_tags
+                    .iter()
+                    .filter(|work_tag| work_tag.work_id == work.work_id)
+                {
+                    diesel::insert_into(work_tags::table)
+                        .values(work_tag)
+                        .execute(connection)?;
+                }
             }
         }
 
@@ -607,11 +640,20 @@ fn update_metadata_from_file(
                 .optional()?;
 
             if enable_updates == Some(true) {
-                diesel::update(
-                    recordings::table.filter(recordings::recording_id.eq(&recording.recording_id)),
+                diesel::delete(
+                    recording_tags::table
+                        .filter(recording_tags::recording_id.eq(&recording.recording_id)),
                 )
-                .set(recordings::year.eq(recording.year))
                 .execute(connection)?;
+
+                for recording_tag in recording_tags
+                    .iter()
+                    .filter(|recording_tag| recording_tag.recording_id == recording.recording_id)
+                {
+                    diesel::insert_into(recording_tags::table)
+                        .values(recording_tag)
+                        .execute(connection)?;
+                }
 
                 diesel::delete(
                     recording_persons::table
@@ -715,6 +757,10 @@ fn import_metadata_from_file(
     let album_recordings =
         album_recordings::table.load::<tables::AlbumRecording>(&mut other_connection)?;
     let album_mediums = album_mediums::table.load::<tables::AlbumMedium>(&mut other_connection)?;
+    let tags = tags::table.load::<tables::Tag>(&mut other_connection)?;
+    let work_tags = work_tags::table.load::<tables::WorkTag>(&mut other_connection)?;
+    let recording_tags =
+        recording_tags::table.load::<tables::RecordingTag>(&mut other_connection)?;
 
     // Import metadata that is not already present.
 
@@ -742,6 +788,18 @@ fn import_metadata_from_file(
 
             diesel::insert_into(roles::table)
                 .values(role)
+                .on_conflict_do_nothing()
+                .execute(connection)?;
+        }
+
+        for mut tag in tags {
+            tag.source = source;
+            tag.created_at = now;
+            tag.edited_at = now;
+            tag.last_used_at = now;
+
+            diesel::insert_into(tags::table)
+                .values(tag)
                 .on_conflict_do_nothing()
                 .execute(connection)?;
         }
@@ -782,6 +840,13 @@ fn import_metadata_from_file(
         for work_instrument in work_instruments {
             diesel::insert_into(work_instruments::table)
                 .values(work_instrument)
+                .on_conflict_do_nothing()
+                .execute(connection)?;
+        }
+
+        for work_tag in work_tags {
+            diesel::insert_into(work_tags::table)
+                .values(work_tag)
                 .on_conflict_do_nothing()
                 .execute(connection)?;
         }
@@ -829,6 +894,13 @@ fn import_metadata_from_file(
         for recording_ensemble in recording_ensembles {
             diesel::insert_into(recording_ensembles::table)
                 .values(recording_ensemble)
+                .on_conflict_do_nothing()
+                .execute(connection)?;
+        }
+
+        for recording_tag in recording_tags {
+            diesel::insert_into(recording_tags::table)
+                .values(recording_tag)
                 .on_conflict_do_nothing()
                 .execute(connection)?;
         }
@@ -1074,12 +1146,13 @@ mod tests {
                 Vec::new(),
                 vec![crate::db::models::Composer { person, role: None }],
                 Vec::new(),
+                Vec::new(),
                 true,
             )
             .unwrap();
 
         let recording = library
-            .create_recording(work.clone(), None, Vec::new(), Vec::new(), true)
+            .create_recording(work.clone(), Vec::new(), Vec::new(), Vec::new(), true)
             .unwrap();
 
         library
@@ -1402,7 +1475,10 @@ mod tests {
         )
         .unwrap();
 
-        assert!(!part_path.exists(), "the stale temporary file should be gone");
+        assert!(
+            !part_path.exists(),
+            "the stale temporary file should be gone"
+        );
         assert_eq!(fs::read(&final_path).unwrap(), b"not actually audio");
     }
 

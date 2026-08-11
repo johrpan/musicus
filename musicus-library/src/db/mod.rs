@@ -32,7 +32,7 @@ const MIGRATIONS: EmbeddedMigrations = diesel_migrations::embed_migrations!("../
 /// The number of migrations in `migrations/`. Bump when adding one; this exists
 /// so that a migration that fails to embed is caught by the tests.
 #[cfg(test)]
-const MIGRATION_COUNT: usize = 8;
+const MIGRATION_COUNT: usize = 9;
 
 /// The user's preferred language code, used to pick the best translation out of a
 /// [`TranslatedString`]. Set once at application startup via [`set_language`].
@@ -51,7 +51,10 @@ pub fn set_language(lang: impl Into<String>) {
 /// Stored in every library database's `meta` table. Any migration that
 /// changes the schema must bump both this constant and the value written by the
 /// migration, so that an older build can recognise a database it cannot read.
-pub const SCHEMA_VERSION: i32 = 2;
+pub const SCHEMA_VERSION: i32 = 3;
+
+/// The ID of the built-in "Year" tag, which replaced the `recordings.year` column.
+pub const TAG_YEAR: &str = "c18e9585a9a5433fbc2b4e5848c96d4d";
 
 #[derive(QueryableByName)]
 struct SchemaVersionRow {

@@ -2,26 +2,26 @@ use std::cell::OnceCell;
 
 use gtk::{glib, prelude::*, subclass::prelude::*};
 
-use crate::library::Tag;
+use crate::library::Facet;
 
 mod imp {
     use super::*;
 
     #[derive(Debug, Default, gtk::CompositeTemplate)]
-    #[template(file = "data/ui/tag_tile.blp")]
-    pub struct TagTile {
+    #[template(file = "data/ui/facet_tile.blp")]
+    pub struct FacetTile {
         #[template_child]
         pub title_label: TemplateChild<gtk::Label>,
         #[template_child]
         pub subtitle_label: TemplateChild<gtk::Label>,
 
-        pub tag: OnceCell<Tag>,
+        pub facet: OnceCell<Facet>,
     }
 
     #[glib::object_subclass]
-    impl ObjectSubclass for TagTile {
-        const NAME: &'static str = "MusicusTagTile";
-        type Type = super::TagTile;
+    impl ObjectSubclass for FacetTile {
+        const NAME: &'static str = "MusicusFacetTile";
+        type Type = super::FacetTile;
         type ParentType = gtk::FlowBoxChild;
 
         fn class_init(klass: &mut Self::Class) {
@@ -33,27 +33,27 @@ mod imp {
         }
     }
 
-    impl ObjectImpl for TagTile {}
-    impl WidgetImpl for TagTile {}
-    impl FlowBoxChildImpl for TagTile {}
+    impl ObjectImpl for FacetTile {}
+    impl WidgetImpl for FacetTile {}
+    impl FlowBoxChildImpl for FacetTile {}
 }
 
 glib::wrapper! {
-    pub struct TagTile(ObjectSubclass<imp::TagTile>)
+    pub struct FacetTile(ObjectSubclass<imp::FacetTile>)
         @extends gtk::FlowBoxChild, gtk::Widget,
         @implements gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget;
 }
 
-impl TagTile {
-    pub fn new(tag: Tag) -> Self {
+impl FacetTile {
+    pub fn new(facet: Facet) -> Self {
         let obj: Self = glib::Object::new();
         let imp = obj.imp();
 
-        match &tag {
-            Tag::Composer(person) | Tag::Performer(person) => {
+        match &facet {
+            Facet::Composer(person) | Facet::Performer(person) => {
                 imp.title_label.set_label(person.name.get());
             }
-            Tag::Ensemble(ensemble) => {
+            Facet::Ensemble(ensemble) => {
                 imp.title_label.set_label(ensemble.name.get());
                 if let Some(members) = ensemble.members_string() {
                     imp.subtitle_label.set_label(&members);
@@ -62,10 +62,13 @@ impl TagTile {
                     imp.subtitle_label.set_visible(false);
                 }
             }
-            Tag::Instrument(instrument) => {
+            Facet::Instrument(instrument) => {
                 imp.title_label.set_label(instrument.name.get());
             }
-            Tag::Work(work) => {
+            Facet::Tag(tag) => {
+                imp.title_label.set_label(tag.name.get());
+            }
+            Facet::Work(work) => {
                 imp.title_label.set_label(work.name.get());
                 if let Some(composers) = work.composers_string() {
                     imp.subtitle_label.set_label(&composers);
@@ -76,12 +79,12 @@ impl TagTile {
             }
         }
 
-        imp.tag.set(tag).unwrap();
+        imp.facet.set(facet).unwrap();
 
         obj
     }
 
-    pub fn tag(&self) -> &Tag {
-        self.imp().tag.get().unwrap()
+    pub fn facet(&self) -> &Facet {
+        self.imp().facet.get().unwrap()
     }
 }
