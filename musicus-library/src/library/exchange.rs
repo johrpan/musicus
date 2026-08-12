@@ -7,10 +7,10 @@ use std::{
 };
 
 use anyhow::{anyhow, bail, Error, Result};
-use diesel::{prelude::*, SqliteConnection};
+use diesel::{dsl::exists, prelude::*, SqliteConnection};
 use futures_util::StreamExt;
 use gettextrs::gettext;
-use tempfile::NamedTempFile;
+use tempfile::{NamedTempFile, TempDir};
 use tokio::io::AsyncWriteExt;
 use zip::{write::SimpleFileOptions, ZipWriter};
 
@@ -154,6 +154,9 @@ impl Library {
 
     /// Export the whole music library to a ZIP archive at `path`. If `path` already exists, it
     /// will be overwritten. The work will be done in a background thread.
+    ///
+    /// Private tags are personal to this library and are left out, together
+    /// with every assignment referring to one.
     pub fn export_library_to_zip(&self, path: impl AsRef<Path>) -> Result<ProcessHandle> {
         log::info!(
             "Exporting library to ZIP at {}",
@@ -164,9 +167,17 @@ impl Library {
         let path = path.as_ref().to_owned();
         let library_folder = PathBuf::from(&self.folder());
         let tracks = tracks::table.load::<tables::Track>(connection)?;
+        let this_connection = self.connection.clone();
 
         Ok(spawn_process(move |sender, cancellation| {
-            export_library_to_zip_priv(path, library_folder, tracks, sender, cancellation)
+            export_library_to_zip_priv(
+                path,
+                library_folder,
+                this_connection,
+                tracks,
+                sender,
+                cancellation,
+            )
         }))
     }
 
@@ -309,13 +320,84 @@ fn copy_to_file(source: impl Read, path: impl AsRef<Path>) -> Result<()> {
     Ok(())
 }
 
+/// Copy the library database into a temporary directory, without the private
+/// tags and without the assignments referring to them.
+///
+/// An export is meant to be handed to someone else, so a private tag must not
+/// be in the archive at all — not even as a row nothing points at. The copy is
+/// made with `VACUUM INTO`, which writes a consistent snapshot of the database,
+/// and vacuumed once more after the deletes so that no freed page still carries
+/// the removed rows.
+///
+/// The assignments that stay keep their sequence numbers, which may now have
+/// gaps. Only their order matters, and the editors rewrite a work's or
+/// recording's tags as a whole anyway.
+///
+/// The returned directory owns the copy and deletes it when dropped, so it has
+/// to outlive the export.
+fn database_without_private_tags(connection: &mut SqliteConnection) -> Result<TempDir> {
+    let dir = TempDir::new()?;
+    let path = dir.path().join("musicus.db");
+    let path = path
+        .to_str()
+        .ok_or_else(|| anyhow!("The temporary directory path is not valid Unicode"))?;
+
+    diesel::sql_query("VACUUM INTO ?")
+        .bind::<diesel::sql_types::Text, _>(path)
+        .execute(connection)?;
+
+    let copy = &mut SqliteConnection::establish(path)?;
+
+    copy.transaction::<_, Error, _>(|copy| {
+        let private_tag_ids = tags::table
+            .filter(tags::private.eq(true))
+            .select(tags::tag_id)
+            .load::<String>(copy)?;
+
+        diesel::delete(work_tags::table.filter(work_tags::tag_id.eq_any(&private_tag_ids)))
+            .execute(copy)?;
+
+        diesel::delete(
+            recording_tags::table.filter(recording_tags::tag_id.eq_any(&private_tag_ids)),
+        )
+        .execute(copy)?;
+
+        diesel::delete(tags::table.filter(tags::tag_id.eq_any(&private_tag_ids))).execute(copy)?;
+
+        Ok(())
+    })?;
+
+    diesel::sql_query("VACUUM").execute(copy)?;
+
+    Ok(dir)
+}
+
 fn export_library_to_zip_priv(
     zip_path: impl AsRef<Path>,
     library_folder: impl AsRef<Path>,
+    this_connection: Arc<Mutex<SqliteConnection>>,
     tracks: Vec<tables::Track>,
     sender: &async_channel::Sender<ProcessMsg>,
     cancellation: &Cancellation,
 ) -> Result<()> {
+    // A library without private tags is exported exactly as it is on disk; only
+    // one that has them pays for the sanitized copy. Both the check and the copy
+    // happen here rather than in the caller, so that the work does not block the
+    // thread that started the export.
+    let database = {
+        let connection = &mut *db::lock_connection(&this_connection);
+
+        if diesel::select(exists(tags::table.filter(tags::private.eq(true))))
+            .get_result::<bool>(connection)?
+        {
+            Some(database_without_private_tags(connection)?)
+        } else {
+            None
+        }
+    };
+
+    cancellation.check()?;
+
     let mut zip = zip::ZipWriter::new(BufWriter::new(fs::File::create(zip_path)?));
 
     // Describe the archive first, so that an importer can decide whether it can
@@ -332,7 +414,12 @@ fn export_library_to_zip_priv(
 
     // Without the database the archive would be worthless, so this file is the
     // one that is not allowed to be missing.
-    if !add_file_to_zip(&mut zip, &library_folder, "musicus.db")? {
+    let database_path = match &database {
+        Some(dir) => dir.path().join("musicus.db"),
+        None => library_folder.as_ref().join("musicus.db"),
+    };
+
+    if !add_file_to_zip(&mut zip, &database_path, "musicus.db")? {
         bail!("The library database is missing");
     }
 
@@ -344,7 +431,11 @@ fn export_library_to_zip_priv(
     for (index, track) in tracks.into_iter().enumerate() {
         cancellation.check()?;
 
-        if !add_file_to_zip(&mut zip, &library_folder, &path_to_zip(&track.path)?)? {
+        if !add_file_to_zip(
+            &mut zip,
+            library_folder.as_ref().join(&track.path),
+            &path_to_zip(&track.path)?,
+        )? {
             n_missing += 1;
         }
 
@@ -364,7 +455,11 @@ fn export_library_to_zip_priv(
     Ok(())
 }
 
-/// Add the library file at `library_path` to `zip`.
+/// Add the file at `file_path` to `zip` under the archive path `zip_path`.
+///
+/// The two are given separately because the database may be read from a
+/// sanitized copy outside the library folder while still going into the archive
+/// where an importer expects it.
 ///
 /// Returns whether the file was there. A library can legitimately be missing
 /// audio files — an import that was cancelled or interrupted leaves exactly
@@ -372,12 +467,12 @@ fn export_library_to_zip_priv(
 /// incomplete archive.
 fn add_file_to_zip(
     zip: &mut ZipWriter<BufWriter<File>>,
-    library_folder: impl AsRef<Path>,
-    library_path: &str,
+    file_path: impl AsRef<Path>,
+    zip_path: &str,
 ) -> Result<bool> {
-    let file_path = library_folder.as_ref().join(PathBuf::from(library_path));
+    let file_path = file_path.as_ref();
 
-    let mut file = match File::open(&file_path) {
+    let mut file = match File::open(file_path) {
         Ok(file) => file,
         Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
             log::warn!("Skipping missing library file {}", file_path.display());
@@ -389,7 +484,7 @@ fn add_file_to_zip(
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer)?;
 
-    zip.start_file(library_path, SimpleFileOptions::default())?;
+    zip.start_file(zip_path, SimpleFileOptions::default())?;
     zip.write_all(&buffer)?;
 
     Ok(true)
@@ -1196,6 +1291,85 @@ mod tests {
             fs::read(dest_dir.path().join(&tracks[0].path)).unwrap(),
             b"not actually audio"
         );
+    }
+
+    /// A private tag is personal to its library: neither the tag nor the
+    /// assignment referring to it may end up in an archive.
+    #[test]
+    fn export_leaves_out_private_tags() {
+        let source_dir = TempDir::new().unwrap();
+        let source_cache_dir = TempDir::new().unwrap();
+        let source = Library::new(source_dir.path(), source_cache_dir.path()).unwrap();
+
+        let track_source_file = source_dir.path().join("source_track.mp3");
+        fs::write(&track_source_file, b"not actually audio").unwrap();
+        let recording = populate(&source, &track_source_file);
+
+        let public = source
+            .create_tag(translated("Baroque"), false, false, true)
+            .unwrap();
+        let private = source
+            .create_tag(translated("Favourite"), false, true, true)
+            .unwrap();
+
+        source
+            .update_recording(
+                &recording.recording_id,
+                recording.work.clone(),
+                Vec::new(),
+                Vec::new(),
+                vec![
+                    crate::db::models::TagValue {
+                        tag: public.clone(),
+                        value: None,
+                    },
+                    crate::db::models::TagValue {
+                        tag: private.clone(),
+                        value: None,
+                    },
+                ],
+                true,
+            )
+            .unwrap();
+
+        let zip_path = source_dir.path().join("export.muslib");
+        wait_for_result(source.export_library_to_zip(&zip_path).unwrap()).unwrap();
+
+        let dest_dir = TempDir::new().unwrap();
+        let dest_cache_dir = TempDir::new().unwrap();
+        let dest = Library::new(dest_dir.path(), dest_cache_dir.path()).unwrap();
+        wait_for_result(
+            dest.import_library_from_zip(&zip_path, Source::Import)
+                .unwrap(),
+        )
+        .unwrap();
+
+        let names = dest
+            .search_tags("")
+            .unwrap()
+            .into_iter()
+            .map(|item| item.item.name.get().to_string())
+            .collect::<Vec<_>>();
+        assert!(names.contains(&"Baroque".to_owned()));
+        assert!(
+            !names.contains(&"Favourite".to_owned()),
+            "the private tag must not be exported: {names:?}"
+        );
+
+        // The assignment must be gone too, not just the tag it points at.
+        let connection = &mut *dest.conn();
+        let tag_ids = recording_tags::table
+            .select(recording_tags::tag_id)
+            .load::<String>(connection)
+            .unwrap();
+        assert_eq!(tag_ids, vec![public.tag_id]);
+
+        // The source library keeps its private tag.
+        assert!(source
+            .search_tags("Favourite")
+            .unwrap()
+            .iter()
+            .any(|item| item.item.tag_id == private.tag_id));
     }
 
     #[test]

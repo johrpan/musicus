@@ -60,6 +60,10 @@ pub struct Instrument {
 /// "Baroque" is shared by many items and is offered as a search facet, while a
 /// tag like "Catalogue" names a property whose value ("BWV 1043") is stored on
 /// the assignment itself.
+///
+/// A `private` tag is personal to this library: it works like any other tag
+/// locally, but neither it nor the assignments referring to it leave the
+/// library in an export.
 #[derive(Insertable, Queryable, Selectable, Clone, Debug)]
 #[diesel(check_for_backend(Sqlite))]
 pub struct Tag {
@@ -71,6 +75,7 @@ pub struct Tag {
     pub created_at: NaiveDateTime,
     pub edited_at: NaiveDateTime,
     pub last_used_at: NaiveDateTime,
+    pub private: bool,
 }
 
 #[derive(Insertable, Queryable, Selectable, Clone, Debug)]
