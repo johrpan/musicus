@@ -23,6 +23,8 @@ mod imp {
         #[template_child]
         pub takes_value_row: TemplateChild<adw::SwitchRow>,
         #[template_child]
+        pub private_row: TemplateChild<adw::SwitchRow>,
+        #[template_child]
         pub enable_updates_row: TemplateChild<adw::SwitchRow>,
         #[template_child]
         pub save_row: TemplateChild<adw::ButtonRow>,
@@ -83,6 +85,7 @@ impl TagEditor {
             let _ = imp.tag_id.set(tag.tag_id.to_owned());
             imp.name_editor.set_translation(&tag.name);
             imp.takes_value_row.set_active(tag.takes_value);
+            imp.private_row.set_active(tag.private);
             imp.enable_updates_row.set_active(tag.enable_updates);
 
             // Changing this would discard the values already recorded, or leave
@@ -129,6 +132,7 @@ impl TagEditor {
 
         let name = imp.name_editor.translation();
         let takes_value = imp.takes_value_row.is_active();
+        let private = imp.private_row.is_active();
         let enable_updates = imp.enable_updates_row.is_active();
 
         if name.0.values().all(|value| value.trim().is_empty()) {
@@ -138,10 +142,10 @@ impl TagEditor {
 
         let result = match imp.tag_id.get() {
             Some(id) => library
-                .update_tag(id, name, takes_value, enable_updates)
+                .update_tag(id, name, takes_value, private, enable_updates)
                 .map_err(anyhow::Error::from),
             None => library
-                .create_tag(name, takes_value, enable_updates)
+                .create_tag(name, takes_value, private, enable_updates)
                 .map(|tag| self.emit_by_name::<()>("created", &[&glib::BoxedAnyObject::new(tag)])),
         };
 

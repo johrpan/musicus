@@ -42,6 +42,11 @@ template $MusicusTagEditor: Adw.NavigationPage {
               title: _("Takes a value");
               subtitle: _("Let items set a custom value for this tag");
             }
+
+            Adw.SwitchRow private_row {
+              title: _("Private");
+              subtitle: _("Exclude this tag from library exports");
+            }
           }
 
           Gtk.ListBox {

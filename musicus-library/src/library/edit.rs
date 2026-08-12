@@ -214,6 +214,7 @@ impl Library {
         &self,
         name: TranslatedString,
         takes_value: bool,
+        private: bool,
         enable_updates: bool,
     ) -> Result<Tag> {
         let connection = &mut *self.conn();
@@ -229,6 +230,7 @@ impl Library {
             edited_at: now,
             last_used_at: now,
             enable_updates,
+            private,
         };
 
         diesel::insert_into(tags::table)
@@ -274,6 +276,7 @@ impl Library {
         id: &str,
         name: TranslatedString,
         takes_value: bool,
+        private: bool,
         enable_updates: bool,
     ) -> Result<(), LibraryError> {
         let connection = &mut *self.conn();
@@ -295,6 +298,7 @@ impl Library {
             .set((
                 tags::name.eq(name),
                 tags::takes_value.eq(takes_value),
+                tags::private.eq(private),
                 tags::edited_at.eq(now),
                 tags::last_used_at.eq(now),
                 tags::enable_updates.eq(enable_updates),
@@ -1480,14 +1484,16 @@ mod tests {
         let cache_dir = TempDir::new().unwrap();
         let library = library(&dir, &cache_dir);
 
-        let tag = library.create_tag(translated("Year"), true, true).unwrap();
+        let tag = library
+            .create_tag(translated("Year"), true, false, true)
+            .unwrap();
 
         // Nothing uses it yet, so it can still be corrected.
         library
-            .update_tag(&tag.tag_id, translated("Year"), false, true)
+            .update_tag(&tag.tag_id, translated("Year"), false, false, true)
             .expect("an unused tag may change kind");
         library
-            .update_tag(&tag.tag_id, translated("Year"), true, true)
+            .update_tag(&tag.tag_id, translated("Year"), true, false, true)
             .unwrap();
 
         let person = library.create_person(translated("Bach"), true).unwrap();
@@ -1515,7 +1521,7 @@ mod tests {
             .unwrap();
 
         let err = library
-            .update_tag(&tag.tag_id, translated("Year"), false, true)
+            .update_tag(&tag.tag_id, translated("Year"), false, false, true)
             .expect_err("a tag in use must keep its kind");
         assert!(
             matches!(err, LibraryError::StillReferenced(EntityKind::Tag)),
@@ -1554,7 +1560,7 @@ mod tests {
             library.create_instrument(translated("Piano"), true)
         });
         let tag = assert_notifies(&library, "create_tag", || {
-            library.create_tag(translated("Baroque"), false, true)
+            library.create_tag(translated("Baroque"), false, false, true)
         });
 
         assert_notifies(&library, "update_person", || {
@@ -1567,7 +1573,7 @@ mod tests {
             library.update_instrument(&instrument.instrument_id, translated("Fortepiano"), true)
         });
         assert_notifies(&library, "update_tag", || {
-            library.update_tag(&tag.tag_id, translated("Classical"), false, true)
+            library.update_tag(&tag.tag_id, translated("Classical"), false, false, true)
         });
 
         let composer = Composer {

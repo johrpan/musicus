@@ -126,6 +126,7 @@ struct IntRow {
 /// and seed data in the wrong schema.
 const MIGRATIONS_BEFORE_NORMALIZE_SCHEMA: usize = 7;
 const MIGRATIONS_BEFORE_TAGS: usize = 8;
+const MIGRATIONS_BEFORE_TAG_PRIVATE: usize = 9;
 
 fn conn_after_migrations(count: usize) -> SqliteConnection {
     let mut conn = SqliteConnection::establish(":memory:").unwrap();
@@ -146,6 +147,31 @@ fn conn_before_normalize_schema() -> SqliteConnection {
 /// Apply every migration before `tags`, while `recordings.year` still exists.
 fn conn_before_tags() -> SqliteConnection {
     conn_after_migrations(MIGRATIONS_BEFORE_TAGS)
+}
+
+/// Existing tags become ordinary, non-private tags, and reverting the migration
+/// leaves them intact without the column.
+#[test]
+fn tag_private_migration_keeps_existing_tags() {
+    let mut conn = conn_after_migrations(MIGRATIONS_BEFORE_TAG_PRIVATE);
+
+    sql_query("INSERT INTO tags (tag_id, name) VALUES ('tag-1', '{\"generic\":\"Baroque\"}')")
+        .execute(&mut conn)
+        .unwrap();
+
+    conn.run_pending_migrations(MIGRATIONS).unwrap();
+
+    let private: IntRow = sql_query("SELECT private AS value FROM tags WHERE tag_id = 'tag-1'")
+        .get_result(&mut conn)
+        .unwrap();
+    assert_eq!(private.value, 0, "an existing tag must not become private");
+
+    conn.revert_last_migration(MIGRATIONS).unwrap();
+
+    let name: TextRow = sql_query("SELECT name AS value FROM tags WHERE tag_id = 'tag-1'")
+        .get_result(&mut conn)
+        .unwrap();
+    assert_eq!(name.value, "{\"generic\":\"Baroque\"}");
 }
 
 /// The recording year moves into the built-in Year tag, and comes back out of
@@ -190,7 +216,11 @@ fn tags_migration_moves_the_recording_year() {
     .unwrap();
     assert_eq!(takes_value.value, 1);
 
-    conn.revert_last_migration(MIGRATIONS).unwrap();
+    // Back out everything applied after `tags`, so that reverting `tags` itself
+    // is what restores the year column.
+    for _ in MIGRATIONS_BEFORE_TAGS + 1..=MIGRATION_COUNT {
+        conn.revert_last_migration(MIGRATIONS).unwrap();
+    }
 
     let year: IntRow =
         sql_query("SELECT year AS value FROM recordings WHERE recording_id = 'recording-1'")

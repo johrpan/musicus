@@ -1699,9 +1699,11 @@ mod tests {
     /// Two recordings of one work, one tagged `Year: 1963` and the other
     /// `Year: 1964`, with the work itself tagged `Baroque`.
     fn tagged_library(library: &Library) -> (Tag, Tag, Recording, Recording) {
-        let year = library.create_tag(translated("Year"), true, true).unwrap();
+        let year = library
+            .create_tag(translated("Year"), true, false, true)
+            .unwrap();
         let baroque = library
-            .create_tag(translated("Baroque"), false, true)
+            .create_tag(translated("Baroque"), false, false, true)
             .unwrap();
 
         let person = library.create_person(translated("Bach"), true).unwrap();
