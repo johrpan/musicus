@@ -25,7 +25,6 @@ diesel::table! {
         created_at -> Timestamp,
         edited_at -> Timestamp,
         last_used_at -> Timestamp,
-        last_played_at -> Nullable<Timestamp>,
     }
 }
 
@@ -47,7 +46,6 @@ diesel::table! {
         created_at -> Timestamp,
         edited_at -> Timestamp,
         last_used_at -> Timestamp,
-        last_played_at -> Nullable<Timestamp>,
     }
 }
 
@@ -60,7 +58,6 @@ diesel::table! {
         created_at -> Timestamp,
         edited_at -> Timestamp,
         last_used_at -> Timestamp,
-        last_played_at -> Nullable<Timestamp>,
     }
 }
 
@@ -73,7 +70,6 @@ diesel::table! {
         created_at -> Timestamp,
         edited_at -> Timestamp,
         last_used_at -> Timestamp,
-        last_played_at -> Nullable<Timestamp>,
     }
 }
 
@@ -95,7 +91,15 @@ diesel::table! {
         created_at -> Timestamp,
         edited_at -> Timestamp,
         last_used_at -> Timestamp,
-        last_played_at -> Nullable<Timestamp>,
+    }
+}
+
+diesel::table! {
+    plays (play_id) {
+        play_id -> Text,
+        track_id -> Nullable<Text>,
+        recording_id -> Text,
+        played_at -> Timestamp,
     }
 }
 
@@ -136,7 +140,6 @@ diesel::table! {
         created_at -> Timestamp,
         edited_at -> Timestamp,
         last_used_at -> Timestamp,
-        last_played_at -> Nullable<Timestamp>,
     }
 }
 
@@ -185,7 +188,6 @@ diesel::table! {
         created_at -> Timestamp,
         edited_at -> Timestamp,
         last_used_at -> Timestamp,
-        last_played_at -> Nullable<Timestamp>,
     }
 }
 
@@ -226,7 +228,6 @@ diesel::table! {
         created_at -> Timestamp,
         edited_at -> Timestamp,
         last_used_at -> Timestamp,
-        last_played_at -> Nullable<Timestamp>,
     }
 }
 
@@ -237,6 +238,8 @@ diesel::joinable!(album_recordings -> recordings (recording_id));
 diesel::joinable!(ensemble_persons -> ensembles (ensemble_id));
 diesel::joinable!(ensemble_persons -> instruments (instrument_id));
 diesel::joinable!(ensemble_persons -> persons (person_id));
+diesel::joinable!(plays -> recordings (recording_id));
+diesel::joinable!(plays -> tracks (track_id));
 diesel::joinable!(recording_ensembles -> ensembles (ensemble_id));
 diesel::joinable!(recording_ensembles -> recordings (recording_id));
 diesel::joinable!(recording_ensembles -> roles (role_id));
@@ -269,6 +272,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     mediums,
     meta,
     persons,
+    plays,
     recording_ensembles,
     recording_persons,
     recording_tags,

@@ -1,7 +1,7 @@
 //! A single round-trip test that walks the entire migration history at once, applying all
 //! of them, reverting all of them, and re-applying them again.
 
-use diesel::{sql_query, QueryableByName};
+use diesel::{connection::SimpleConnection, sql_query, QueryableByName};
 
 use super::*;
 
@@ -127,6 +127,7 @@ struct IntRow {
 const MIGRATIONS_BEFORE_NORMALIZE_SCHEMA: usize = 7;
 const MIGRATIONS_BEFORE_TAGS: usize = 8;
 const MIGRATIONS_BEFORE_TAG_PRIVATE: usize = 9;
+const MIGRATIONS_BEFORE_PLAY_LOG: usize = 10;
 
 fn conn_after_migrations(count: usize) -> SqliteConnection {
     let mut conn = SqliteConnection::establish(":memory:").unwrap();
@@ -172,6 +173,78 @@ fn tag_private_migration_keeps_existing_tags() {
         .get_result(&mut conn)
         .unwrap();
     assert_eq!(name.value, "{\"generic\":\"Baroque\"}");
+}
+
+/// Listening history survives the move from per-entity columns into the play
+/// log, and comes back out of it when the migration is reverted.
+#[test]
+fn play_log_migration_preserves_listening_history() {
+    let mut conn = conn_after_migrations(MIGRATIONS_BEFORE_PLAY_LOG);
+
+    // `batch_execute` rather than `sql_query`, which prepares only the first
+    // statement it is given and silently ignores the rest.
+    conn.batch_execute(
+        "INSERT INTO persons (person_id, name) VALUES ('person-1', '{\"generic\":\"Bach\"}'); \
+         INSERT INTO works (work_id, name) VALUES ('work-1', '{\"generic\":\"Work\"}'); \
+         INSERT INTO work_persons (work_id, person_id, sequence_number) \
+             VALUES ('work-1', 'person-1', 0); \
+         INSERT INTO recordings (recording_id, work_id) VALUES ('recording-1', 'work-1'); \
+         INSERT INTO tracks (track_id, recording_id, recording_index, path, last_played_at) \
+             VALUES ('track-1', 'recording-1', 0, 'a.mp3', '2026-08-01 10:00:00'); \
+         INSERT INTO tracks (track_id, recording_id, recording_index, path, last_played_at) \
+             VALUES ('track-2', 'recording-1', 1, 'b.mp3', NULL)",
+    )
+    .unwrap();
+
+    conn.run_next_migration(MIGRATIONS).unwrap();
+
+    let plays: CountRow = sql_query("SELECT COUNT(*) AS count FROM plays")
+        .get_result(&mut conn)
+        .unwrap();
+    assert_eq!(plays.count, 1, "only the played track becomes a play");
+
+    let played: TextRow =
+        sql_query("SELECT played_at AS value FROM plays WHERE track_id = 'track-1'")
+            .get_result(&mut conn)
+            .unwrap();
+    assert_eq!(played.value, "2026-08-01 10:00:00");
+
+    // The views are what search and generation read the history through, so
+    // the composer of the played work has to be reachable from one play.
+    let composer: TextRow = sql_query(
+        "SELECT last_played_at AS value FROM person_last_played WHERE person_id = 'person-1'",
+    )
+    .get_result(&mut conn)
+    .unwrap();
+    assert_eq!(composer.value, "2026-08-01 10:00:00");
+
+    conn.revert_last_migration(MIGRATIONS).unwrap();
+
+    let track: TextRow =
+        sql_query("SELECT last_played_at AS value FROM tracks WHERE track_id = 'track-1'")
+            .get_result(&mut conn)
+            .unwrap();
+    assert_eq!(track.value, "2026-08-01 10:00:00");
+
+    let person: TextRow =
+        sql_query("SELECT last_played_at AS value FROM persons WHERE person_id = 'person-1'")
+            .get_result(&mut conn)
+            .unwrap();
+    assert_eq!(
+        person.value, "2026-08-01 10:00:00",
+        "the composer's column is rebuilt from the log"
+    );
+
+    let unplayed: CountRow = sql_query(
+        "SELECT COUNT(*) AS count FROM tracks WHERE track_id = 'track-2' \
+         AND last_played_at IS NULL",
+    )
+    .get_result(&mut conn)
+    .unwrap();
+    assert_eq!(
+        unplayed.count, 1,
+        "a track that was never played must not gain a timestamp"
+    );
 }
 
 /// The recording year moves into the built-in Year tag, and comes back out of
@@ -249,7 +322,10 @@ fn normalize_schema_converts_timestamps_to_utc() {
         .get_result(&mut conn)
         .unwrap();
 
-    conn.run_pending_migrations(MIGRATIONS).unwrap();
+    // Only the migration under test, rather than everything after it: a later
+    // migration moved `last_played_at` into the play log, and this case is
+    // about what `normalize_schema` does to the value, not where it ends up.
+    conn.run_next_migration(MIGRATIONS).unwrap();
 
     let actual: TextRow =
         sql_query("SELECT last_played_at AS value FROM persons WHERE person_id = 'person-1'")

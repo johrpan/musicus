@@ -1,14 +1,41 @@
-use anyhow::Result;
+//! Random track selection from programs.
+//!
+//! This module contains code for choosing tracks based on settings within a
+//! program. The main concept is based an exponential function of the form:
+//!
+//! `exp(STRENGTH * preference * (score - 1))`
+//!
+//! with `STRENGTH` being a hard coded constant for tweaking the association,
+//! `preference` being a user supplied value in the range `[0; 1]` and `score`
+//! being the property of the recording that is being evaluated.
+//!
+//! Additionally, there is a linear decay for avoiding repeated entities. Both
+//! are combined to give each recording a weight that corresponds to its
+//! desired likelihood of being selected next.
+
+use std::collections::HashMap;
+
+use anyhow::{anyhow, Result};
+use chrono::{NaiveDateTime, TimeDelta};
 use diesel::{
-    dsl::{exists, sql},
+    dsl::exists,
     prelude::*,
-    sql_types, QueryDsl,
+    sql_types::{self, Bool},
+    QueryDsl,
 };
+use rand::RngExt;
 
 use super::Library;
-use crate::db::{self, models::*, schema::*, tables};
+use crate::db::{self, models::*, schema::*, tables, views::*};
+
+/// How strong the preference setting affects the selection.
+const PREFERENCE_STRENGTH: f64 = 10.0;
 
 /// Parameters for [`Library::generate_recording`], describing a playback "program".
+///
+/// The filters restrict which recordings may be chosen; the rest shape the odds
+/// among those that qualify. A default value is neutral for every field: no
+/// filtering, no preference, no repetition penalty.
 #[derive(Clone, Default, Debug)]
 pub struct GenerateRecordingParams {
     pub composer_id: Option<String>,
@@ -16,89 +43,318 @@ pub struct GenerateRecordingParams {
     pub ensemble_id: Option<String>,
     pub instrument_id: Option<String>,
     pub work_id: Option<String>,
-    pub album_id: Option<String>,
     pub tag_id: Option<String>,
     pub tag_value: Option<String>,
+    /// How much to prefer recordings added to the library recently, from 0.0 to 1.0.
     pub prefer_recently_added: f64,
+    /// How much to prefer recordings that have not been played in a long time,
+    /// from 0.0 to 1.0.
     pub prefer_least_recently_played: f64,
+    /// For how many **minutes** after hearing a composer to avoid them. 0 disables it.
     pub avoid_repeated_composers: i32,
+    /// For how many **minutes** after hearing an instrument to avoid it. 0 disables it.
     pub avoid_repeated_instruments: i32,
 }
 
+/// One recording a program allows, with everything needed to weight it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct Candidate {
+    recording_id: String,
+    created_at: NaiveDateTime,
+    last_played_at: Option<NaiveDateTime>,
+}
+
+/// When a candidate's composers and instruments were last heard.
+///
+/// Only entries within the program's avoidance window are collected, because
+/// anything older carries no penalty and would only make the maps bigger.
+/// A recording missing from a map has nothing to answer for.
+#[derive(Default, Debug)]
+struct Repetition {
+    composers: HashMap<String, NaiveDateTime>,
+    instruments: HashMap<String, NaiveDateTime>,
+}
+
+/// Rank `values` from 0.0 for the smallest to 1.0 for the largest.
+///
+/// Equal values share the average of the ranks they span, so that a set of
+/// identical values scores 0.5 throughout rather than being spread out by
+/// whatever order they happened to arrive in.
+fn rank_ascending<T: Ord + Copy>(values: &[T]) -> Vec<f64> {
+    let mut order = (0..values.len()).collect::<Vec<_>>();
+    order.sort_by_key(|&i| values[i]);
+
+    let mut ranks = vec![0.0; values.len()];
+
+    if values.len() < 2 {
+        // A single candidate is neither first nor last; anything else would
+        // make a one-recording program depend on a preference setting.
+        ranks.fill(1.0);
+        return ranks;
+    }
+
+    let last = (values.len() - 1) as f64;
+    let mut start = 0;
+
+    while start < order.len() {
+        let mut end = start + 1;
+        while end < order.len() && values[order[end]] == values[order[start]] {
+            end += 1;
+        }
+
+        let shared = ((start + end - 1) as f64 / 2.0) / last;
+        for &i in &order[start..end] {
+            ranks[i] = shared;
+        }
+
+        start = end;
+    }
+
+    ranks
+}
+
+/// Rank `values` from 1.0 for the smallest to 0.0 for the largest.
+fn rank_descending<T: Ord + Copy>(values: &[T]) -> Vec<f64> {
+    rank_ascending(values)
+        .into_iter()
+        .map(|rank| 1.0 - rank)
+        .collect()
+}
+
+/// How much `score` should be weighted based on `preference`.
+///
+/// `preference` is `[0; 1]` with 1 being the strongest preference.
+/// `score` is `[0; 1]` with 1 being the most desirable value.
+fn weight_preference(preference: f64, score: f64) -> f64 {
+    (PREFERENCE_STRENGTH * preference * (score - 1.0)).exp()
+}
+
+/// Weight between `[0; 1]` taking into account `last_played_at`.
+///
+/// This interpolated linearily between 1.0 for items played >= `window_minutes`
+/// ago and 0.0 for items played just now. Items with `last_played_at = None`
+/// will get 1.0.
+fn weight_avoidance(
+    last_played_at: Option<NaiveDateTime>,
+    now: NaiveDateTime,
+    window_minutes: i32,
+) -> f64 {
+    if window_minutes <= 0 {
+        return 1.0;
+    }
+
+    match last_played_at {
+        None => 1.0,
+        Some(last_played_at) => {
+            let elapsed = (now - last_played_at).num_seconds() as f64 / 60.0;
+            (elapsed / window_minutes as f64).clamp(0.0, 1.0)
+        }
+    }
+}
+
+/// Compute the desired likelihood of a recording being played next.
+///
+/// The resulting value will be in the range [0; 1].
+fn weight(
+    candidate: &Candidate,
+    params: &GenerateRecordingParams,
+    least_recently_played_score: f64,
+    recently_created_score: f64,
+    repetition: &Repetition,
+    now: NaiveDateTime,
+) -> f64 {
+    weight_preference(
+        params.prefer_least_recently_played,
+        least_recently_played_score,
+    ) * weight_preference(params.prefer_recently_added, recently_created_score)
+        * weight_avoidance(
+            repetition.composers.get(&candidate.recording_id).copied(),
+            now,
+            params.avoid_repeated_composers,
+        )
+        * weight_avoidance(
+            repetition.instruments.get(&candidate.recording_id).copied(),
+            now,
+            params.avoid_repeated_instruments,
+        )
+}
+
+/// Draw one candidate, with a probability proportional to its weight.
+///
+/// Returns `None` for empty `candidates`. Falls back to uniform selection in
+/// edge cases.
+fn choose<'a>(candidates: &'a [Candidate], weights: &[f64]) -> Option<&'a Candidate> {
+    if candidates.is_empty() {
+        return None;
+    }
+
+    let mut rng = rand::rng();
+    let total = weights.iter().sum::<f64>();
+
+    if !total.is_finite() || total <= 0.0 {
+        return candidates.get(rng.random_range(0..candidates.len()));
+    }
+
+    let mut remaining = rng.random_range(0.0..total);
+
+    for (candidate, weight) in candidates.iter().zip(weights) {
+        remaining -= weight;
+
+        if remaining < 0.0 {
+            return Some(candidate);
+        }
+    }
+
+    candidates.last()
+}
+
 impl Library {
+    /// Choose a recording to play, following `params`.
     pub fn generate_recording(&self, params: &GenerateRecordingParams) -> Result<Recording> {
+        let now = db::now();
+
+        let candidates = self.candidates(params)?;
+        let repetition = self.repetition(params, now)?;
+
+        let least_recently_played_ranks = rank_descending(
+            &candidates
+                .iter()
+                .map(|c| c.last_played_at.unwrap_or(NaiveDateTime::MIN))
+                .collect::<Vec<_>>(),
+        );
+
+        let recently_created_ranks =
+            rank_ascending(&candidates.iter().map(|c| c.created_at).collect::<Vec<_>>());
+
+        let weights = candidates
+            .iter()
+            .enumerate()
+            .map(|(index, candidate)| {
+                weight(
+                    candidate,
+                    params,
+                    least_recently_played_ranks[index],
+                    recently_created_ranks[index],
+                    &repetition,
+                    now,
+                )
+            })
+            .collect::<Vec<_>>();
+
+        let chosen = choose(&candidates, &weights)
+            .ok_or_else(|| anyhow!("No recording in the library matches this program"))?;
+
         let connection = &mut *self.conn();
 
-        let composer_id = params.composer_id.clone();
-        let performer_id = params.performer_id.clone();
-        let ensemble_id = params.ensemble_id.clone();
-        let instrument_id = params.instrument_id.clone();
-        let work_id = params.work_id.clone();
-        let album_id = params.album_id.clone();
-        let tag_id = params.tag_id.clone();
-        let tag_value = params.tag_value.clone();
+        let row = recordings::table
+            .filter(recordings::recording_id.eq(&chosen.recording_id))
+            .select(tables::Recording::as_select())
+            .first::<tables::Recording>(connection)?;
+
+        Recording::from_table(row, connection)
+    }
+
+    /// Every recording the program allows.
+    fn candidates(&self, params: &GenerateRecordingParams) -> Result<Vec<Candidate>> {
+        let connection = &mut *self.conn();
 
         let mut query = recordings::table
-            .inner_join(
-                works::table
-                    .left_join(work_persons::table.inner_join(persons::table))
-                    .left_join(work_instruments::table.inner_join(instruments::table)),
-            )
-            .left_join(recording_persons::table)
-            .left_join(
-                recording_ensembles::table
-                    .left_join(ensembles::table.inner_join(ensemble_persons::table)),
-            )
-            .left_join(album_recordings::table)
+            .left_join(recording_last_played::table)
             .into_boxed();
 
-        if let Some(composer_id) = &composer_id {
-            query = query.filter(work_persons::person_id.eq(composer_id));
+        if let Some(composer_id) = &params.composer_id {
+            query = query.filter(exists(
+                work_persons::table.filter(
+                    work_persons::work_id
+                        .eq(recordings::work_id)
+                        .and(work_persons::person_id.eq(composer_id)),
+                ),
+            ));
         }
 
-        if let Some(performer_id) = &performer_id {
-            query = query.filter(
-                recording_persons::person_id
-                    .eq(performer_id)
-                    .or(ensemble_persons::person_id.eq(performer_id)),
-            );
+        if let Some(performer_id) = &params.performer_id {
+            query =
+                query.filter(
+                    exists(
+                        recording_persons::table.filter(
+                            recording_persons::recording_id
+                                .eq(recordings::recording_id)
+                                .and(recording_persons::person_id.eq(performer_id)),
+                        ),
+                    )
+                    .or(exists(
+                        recording_ensembles::table
+                            .inner_join(ensemble_persons::table.on(
+                                ensemble_persons::ensemble_id.eq(recording_ensembles::ensemble_id),
+                            ))
+                            .filter(
+                                recording_ensembles::recording_id
+                                    .eq(recordings::recording_id)
+                                    .and(ensemble_persons::person_id.eq(performer_id)),
+                            ),
+                    )),
+                );
         }
 
-        if let Some(ensemble_id) = &ensemble_id {
-            query = query.filter(recording_ensembles::ensemble_id.eq(ensemble_id));
+        if let Some(ensemble_id) = &params.ensemble_id {
+            query = query.filter(exists(
+                recording_ensembles::table.filter(
+                    recording_ensembles::recording_id
+                        .eq(recordings::recording_id)
+                        .and(recording_ensembles::ensemble_id.eq(ensemble_id)),
+                ),
+            ));
         }
 
-        if let Some(instrument_id) = &instrument_id {
-            query = query.filter(
-                work_instruments::instrument_id
-                    .eq(instrument_id)
-                    .or(recording_persons::instrument_id.eq(instrument_id))
-                    .or(ensemble_persons::instrument_id.eq(instrument_id)),
-            );
+        if let Some(instrument_id) = &params.instrument_id {
+            query =
+                query.filter(
+                    exists(
+                        work_instruments::table.filter(
+                            work_instruments::work_id
+                                .eq(recordings::work_id)
+                                .and(work_instruments::instrument_id.eq(instrument_id)),
+                        ),
+                    )
+                    .or(exists(
+                        recording_persons::table.filter(
+                            recording_persons::recording_id
+                                .eq(recordings::recording_id)
+                                .and(recording_persons::instrument_id.eq(instrument_id)),
+                        ),
+                    ))
+                    .or(exists(
+                        recording_ensembles::table
+                            .inner_join(ensemble_persons::table.on(
+                                ensemble_persons::ensemble_id.eq(recording_ensembles::ensemble_id),
+                            ))
+                            .filter(
+                                recording_ensembles::recording_id
+                                    .eq(recordings::recording_id)
+                                    .and(ensemble_persons::instrument_id.eq(instrument_id)),
+                            ),
+                    )),
+                );
         }
 
-        if let Some(work_id) = &work_id {
+        if let Some(work_id) = &params.work_id {
             query = query.filter(recordings::work_id.eq(work_id));
-        }
-
-        if let Some(album_id) = &album_id {
-            query = query.filter(album_recordings::album_id.eq(album_id));
         }
 
         // As in `search`, a tag counts if it is on the recording or on its work,
         // and a valued tag only counts for the exact value.
-        if let Some(tag_id) = &tag_id {
+        if let Some(tag_id) = &params.tag_id {
             query = query.filter(
-                sql::<sql_types::Bool>(
+                diesel::dsl::sql::<Bool>(
                     "(EXISTS (SELECT 1 FROM recording_tags \
                       WHERE recording_tags.recording_id = recordings.recording_id \
                       AND recording_tags.tag_id = ",
                 )
                 .bind::<sql_types::Text, _>(tag_id.clone())
                 .sql(" AND (")
-                .bind::<sql_types::Nullable<sql_types::Text>, _>(tag_value.clone())
+                .bind::<sql_types::Nullable<sql_types::Text>, _>(params.tag_value.clone())
                 .sql(" IS NULL OR recording_tags.value = ")
-                .bind::<sql_types::Nullable<sql_types::Text>, _>(tag_value.clone())
+                .bind::<sql_types::Nullable<sql_types::Text>, _>(params.tag_value.clone())
                 .sql(
                     ")) OR EXISTS (SELECT 1 FROM work_tags \
                      WHERE work_tags.work_id = recordings.work_id \
@@ -106,330 +362,102 @@ impl Library {
                 )
                 .bind::<sql_types::Text, _>(tag_id.clone())
                 .sql(" AND (")
-                .bind::<sql_types::Nullable<sql_types::Text>, _>(tag_value.clone())
+                .bind::<sql_types::Nullable<sql_types::Text>, _>(params.tag_value.clone())
                 .sql(" IS NULL OR work_tags.value = ")
-                .bind::<sql_types::Nullable<sql_types::Text>, _>(tag_value.clone())
+                .bind::<sql_types::Nullable<sql_types::Text>, _>(params.tag_value.clone())
                 .sql(")))"),
             );
         }
 
-        // Orders recordings using a dynamically calculated priority score that includes:
-        //  - a random base value between 0.0 and 1.0 giving equal probability to each recording
-        //  - weighted by the average of two scores between 0.0 and 1.0 based on
-        //    1. how long ago the last playback is
-        //    2. how recently the recording was added to the library
-        // Both scores are individually modified based on the following formula:
-        //   e^(10 * a * (score - 1))
-        // This assigns a new score between 0.0 and 1.0 that favors higher scores with "a" being
-        // a user defined constant to determine the bias.
-        query = query.order(
-            diesel::dsl::sql::<sql_types::Untyped>("( \
-                WITH global_bounds AS (
-                    SELECT MIN(UNIXEPOCH(last_played_at)) AS min_last_played_at,
-                        NULLIF(
-                            MAX(UNIXEPOCH(last_played_at)) - MIN(UNIXEPOCH(last_played_at)),
-                            0.0
-                        ) AS last_played_at_range,
-                        MIN(UNIXEPOCH(created_at)) AS min_created_at,
-                        NULLIF(
-                            MAX(UNIXEPOCH(created_at)) - MIN(UNIXEPOCH(created_at)),
-                            0.0
-                        ) AS created_at_range
-                    FROM recordings
-                ),
-                normalized AS (
-                    SELECT IFNULL(
-                            1.0 - (
-                                UNIXEPOCH(recordings.last_played_at) - min_last_played_at
-                            ) * 1.0 / last_played_at_range,
-                            1.0
-                        ) AS least_recently_played,
-                        IFNULL(
-                            (
-                                UNIXEPOCH(recordings.created_at) - min_created_at
-                            ) * 1.0 / created_at_range,
-                            1.0
-                        ) AS recently_created
-                    FROM global_bounds
-                )
-                SELECT (RANDOM() / 9223372036854775808.0 + 1.0) / 2.0 * MIN(
-                        (
-                            EXP(10.0 * ")
-                                .bind::<sql_types::Double, _>(params.prefer_least_recently_played)
-                                .sql(" * (least_recently_played - 1.0)) + EXP(10.0 * ")
-                                .bind::<sql_types::Double, _>(params.prefer_recently_added)
-                                .sql(" * (recently_created - 1.0))
-                        ) / 2.0,
-                        FIRST_VALUE(
-                            MIN(
-                                IFNULL(
-                                    (
-                                        UNIXEPOCH('now', 'localtime') - UNIXEPOCH(instruments.last_played_at)
-                                    ) * 1.0 / ")
-                                        .bind::<sql_types::Integer, _>(params.avoid_repeated_instruments)
-                                        .sql(",
-                                    1.0
-                                ),
-                                IFNULL(
-                                    (
-                                        UNIXEPOCH('now', 'localtime') - UNIXEPOCH(persons.last_played_at)
-                                    ) * 1.0 / ").bind::<sql_types::Integer, _>(params.avoid_repeated_composers).sql(",
-                                    1.0
-                                ),
-                                1.0
-                            )
-                        ) OVER (
-                            PARTITION BY recordings.recording_id
-                            ORDER BY MAX(
-                                    IFNULL(instruments.last_played_at, 0),
-                                    IFNULL(persons.last_played_at, 0)
-                                )
-                        )
-                    )
-                FROM normalized
-            ) DESC")
-        );
+        // Do not include empty recordings.
+        query = query.filter(exists(
+            tracks::table.filter(tracks::recording_id.eq(recordings::recording_id)),
+        ));
 
-        let row = query
-            .select(tables::Recording::as_select())
-            .distinct()
-            .first::<tables::Recording>(connection)?;
+        let rows = query
+            .select((
+                recordings::recording_id,
+                recordings::created_at,
+                recording_last_played::last_played_at.nullable(),
+            ))
+            .load::<(String, NaiveDateTime, Option<NaiveDateTime>)>(connection)?;
 
-        Recording::from_table(row, connection)
+        Ok(rows
+            .into_iter()
+            .map(|(recording_id, created_at, last_played_at)| Candidate {
+                recording_id,
+                created_at,
+                last_played_at,
+            })
+            .collect())
     }
 
-    pub fn track_played(&self, track_id: &str) -> Result<()> {
+    /// When each recording's composers and instruments were last heard, for
+    /// those heard recently enough to still count against it.
+    fn repetition(
+        &self,
+        params: &GenerateRecordingParams,
+        now: NaiveDateTime,
+    ) -> Result<Repetition> {
         let connection = &mut *self.conn();
+        let mut repetition = Repetition::default();
 
-        let now = db::now();
+        if params.avoid_repeated_composers > 0 {
+            let cutoff = now - TimeDelta::minutes(params.avoid_repeated_composers as i64);
 
-        diesel::update(tracks::table)
-            .filter(tracks::track_id.eq(track_id))
-            .set(tracks::last_played_at.eq(now))
-            .execute(connection)?;
-
-        diesel::update(recordings::table)
-            .filter(exists(
-                tracks::table.filter(
-                    tracks::track_id
-                        .eq(track_id)
-                        .and(tracks::recording_id.eq(recordings::recording_id)),
-                ),
-            ))
-            .set(recordings::last_played_at.eq(now))
-            .execute(connection)?;
-
-        diesel::update(works::table)
-            .filter(exists(
-                recordings::table.inner_join(tracks::table).filter(
-                    tracks::track_id
-                        .eq(track_id)
-                        .and(recordings::work_id.eq(works::work_id)),
-                ),
-            ))
-            .set(works::last_played_at.eq(now))
-            .execute(connection)?;
-
-        diesel::update(instruments::table)
-            .filter(exists(
-                work_instruments::table
-                    .inner_join(
-                        works::table.inner_join(recordings::table.inner_join(tracks::table)),
-                    )
-                    .filter(
-                        tracks::track_id
-                            .eq(track_id)
-                            .and(work_instruments::instrument_id.eq(instruments::instrument_id)),
-                    ),
-            ))
-            .set(instruments::last_played_at.eq(now))
-            .execute(connection)?;
-
-        diesel::update(persons::table)
-            .filter(
-                exists(
-                    work_persons::table
-                        .inner_join(
-                            works::table.inner_join(recordings::table.inner_join(tracks::table)),
-                        )
-                        .filter(
-                            tracks::track_id
-                                .eq(track_id)
-                                .and(work_persons::person_id.eq(persons::person_id)),
-                        ),
+            let rows = recordings::table
+                .inner_join(work_persons::table.on(work_persons::work_id.eq(recordings::work_id)))
+                .inner_join(
+                    person_last_played::table
+                        .on(person_last_played::person_id.eq(work_persons::person_id)),
                 )
-                .or(exists(
-                    recording_persons::table
-                        .inner_join(recordings::table.inner_join(tracks::table))
-                        .filter(
-                            tracks::track_id
-                                .eq(track_id)
-                                .and(recording_persons::person_id.eq(persons::person_id)),
-                        ),
-                )),
-            )
-            .set(persons::last_played_at.eq(now))
-            .execute(connection)?;
+                .filter(person_last_played::last_played_at.ge(cutoff))
+                .select((recordings::recording_id, person_last_played::last_played_at))
+                .load::<(String, NaiveDateTime)>(connection)?;
 
-        diesel::update(ensembles::table)
-            .filter(exists(
-                recording_ensembles::table
-                    .inner_join(recordings::table.inner_join(tracks::table))
-                    .filter(
-                        tracks::track_id
-                            .eq(track_id)
-                            .and(recording_ensembles::ensemble_id.eq(ensembles::ensemble_id)),
-                    ),
-            ))
-            .set(ensembles::last_played_at.eq(now))
-            .execute(connection)?;
+            repetition.composers = most_recent(rows);
+        }
 
-        diesel::update(mediums::table)
-            .filter(exists(
-                tracks::table.filter(
-                    tracks::track_id
-                        .eq(track_id)
-                        .and(tracks::medium_id.eq(mediums::medium_id.nullable())),
-                ),
-            ))
-            .set(mediums::last_played_at.eq(now))
-            .execute(connection)?;
+        if params.avoid_repeated_instruments > 0 {
+            let cutoff = now - TimeDelta::minutes(params.avoid_repeated_instruments as i64);
 
-        diesel::update(albums::table)
-            .filter(
-                exists(
-                    album_recordings::table
-                        .inner_join(recordings::table.inner_join(tracks::table))
-                        .filter(
-                            tracks::track_id
-                                .eq(track_id)
-                                .and(album_recordings::album_id.eq(albums::album_id)),
-                        ),
+            let rows = recordings::table
+                .inner_join(
+                    work_instruments::table.on(work_instruments::work_id.eq(recordings::work_id)),
                 )
-                .or(exists(
-                    album_mediums::table
-                        .inner_join(mediums::table.inner_join(tracks::table))
-                        .filter(
-                            tracks::track_id
-                                .eq(track_id)
-                                .and(album_mediums::album_id.eq(albums::album_id)),
-                        ),
-                )),
-            )
-            .set(albums::last_played_at.eq(now))
-            .execute(connection)?;
+                .inner_join(
+                    instrument_last_played::table
+                        .on(instrument_last_played::instrument_id
+                            .eq(work_instruments::instrument_id)),
+                )
+                .filter(instrument_last_played::last_played_at.ge(cutoff))
+                .select((
+                    recordings::recording_id,
+                    instrument_last_played::last_played_at,
+                ))
+                .load::<(String, NaiveDateTime)>(connection)?;
 
-        Ok(())
+            repetition.instruments = most_recent(rows);
+        }
+
+        Ok(repetition)
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use std::collections::HashMap;
+/// Keep the latest timestamp per key.
+fn most_recent(rows: Vec<(String, NaiveDateTime)>) -> HashMap<String, NaiveDateTime> {
+    let mut latest = HashMap::new();
 
-    use tempfile::TempDir;
-
-    use super::*;
-    use crate::db::{models::Composer, TranslatedString};
-
-    fn translated(name: &str) -> TranslatedString {
-        let mut translations = HashMap::new();
-        translations.insert("generic".to_string(), name.to_string());
-        TranslatedString(translations)
+    for (key, at) in rows {
+        latest
+            .entry(key)
+            .and_modify(|current: &mut NaiveDateTime| {
+                if at > *current {
+                    *current = at;
+                }
+            })
+            .or_insert(at);
     }
 
-    fn library(dir: &TempDir, cache_dir: &TempDir) -> Library {
-        Library::new(dir.path(), cache_dir.path()).unwrap()
-    }
-
-    /// Two recordings of one work, one tagged `Year: 1963` and the other
-    /// `Year: 1964`, with the work itself tagged `Baroque`.
-    fn tagged_library(library: &Library) -> (Tag, Tag, Recording, Recording) {
-        let year = library.create_tag(translated("Year"), true, true).unwrap();
-        let baroque = library
-            .create_tag(translated("Baroque"), false, true)
-            .unwrap();
-
-        let person = library.create_person(translated("Bach"), true).unwrap();
-
-        let work = library
-            .create_work(
-                translated("Brandenburg Concerto No. 3"),
-                Vec::new(),
-                vec![Composer { person, role: None }],
-                Vec::new(),
-                vec![TagValue {
-                    tag: baroque.clone(),
-                    value: None,
-                }],
-                true,
-            )
-            .unwrap();
-
-        let first = library
-            .create_recording(
-                work.clone(),
-                Vec::new(),
-                Vec::new(),
-                vec![TagValue {
-                    tag: year.clone(),
-                    value: Some("1963".to_string()),
-                }],
-                true,
-            )
-            .unwrap();
-
-        let second = library
-            .create_recording(
-                work,
-                Vec::new(),
-                Vec::new(),
-                vec![TagValue {
-                    tag: year.clone(),
-                    value: Some("1964".to_string()),
-                }],
-                true,
-            )
-            .unwrap();
-
-        (year, baroque, first, second)
-    }
-
-    /// Playing a tag-filtered search page must generate a recording.
-    #[test]
-    fn generating_a_recording_honours_a_tag() {
-        let dir = TempDir::new().unwrap();
-        let cache_dir = TempDir::new().unwrap();
-        let library = library(&dir, &cache_dir);
-        let (year, baroque, first, _) = tagged_library(&library);
-
-        let params = GenerateRecordingParams {
-            tag_id: Some(year.tag_id.clone()),
-            tag_value: Some("1963".to_string()),
-            ..Default::default()
-        };
-        let generated = library.generate_recording(&params).unwrap();
-        assert_eq!(generated, first, "valued tag");
-
-        // The weights a real program carries put binds in the ORDER BY as well
-        // as the WHERE clause.
-        let params = GenerateRecordingParams {
-            tag_id: Some(year.tag_id.clone()),
-            tag_value: Some("1963".to_string()),
-            prefer_recently_added: 0.5,
-            prefer_least_recently_played: 0.5,
-            avoid_repeated_composers: 30,
-            avoid_repeated_instruments: 30,
-            ..Default::default()
-        };
-        let generated = library.generate_recording(&params).unwrap();
-        assert_eq!(generated, first, "valued tag with program weights");
-
-        let params = GenerateRecordingParams {
-            tag_id: Some(baroque.tag_id.clone()),
-            ..Default::default()
-        };
-        library
-            .generate_recording(&params)
-            .expect("label tag on the work must generate");
-    }}
+    latest
+}

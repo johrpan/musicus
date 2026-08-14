@@ -29,6 +29,10 @@ use crate::{
 /// How many tracks may fail in a row before playback gives up.
 const MAX_CONSECUTIVE_ERRORS: u32 = 5;
 
+/// How far into a track it counts as listened to: half of it, or this, whichever
+/// comes first.
+const PLAY_THRESHOLD_MS: u64 = 4 * 60 * 1000;
+
 mod imp {
     use super::*;
 
@@ -220,6 +224,7 @@ mod imp {
                     let obj = obj.get();
                     obj.imp().position_ms.set(position.mseconds());
                     obj.notify_position_ms();
+                    obj.report_play_if_listened();
                 }
             });
 
@@ -415,6 +420,7 @@ impl Player {
                 }
                 Err(err) => {
                     log::warn!("Failed to play from program: {err:?}");
+                    self.report_error(&gettext("No music matches this program."));
                 }
             }
         }
@@ -463,13 +469,35 @@ impl Player {
     }
 
     fn playback_started(&self) {
+        self.imp().consecutive_errors.set(0);
+    }
+
+    /// Record the current item as played, once enough of it has gone by.
+    ///
+    /// Called from the position updates, which arrive every 250 ms.
+    /// `play_reported` is reset per item in `set_current_index`, so an item is
+    /// recorded at most once no matter how often this runs.
+    ///
+    /// Seeking past the threshold counts as having listened. Being exact would
+    /// mean accumulating playback time separately; going by position is what
+    /// most players do and is close enough for statistics.
+    fn report_play_if_listened(&self) {
         let imp = self.imp();
 
-        imp.consecutive_errors.set(0);
-
-        if imp.play_reported.replace(true) {
+        if imp.play_reported.get() {
             return;
         }
+
+        let duration_ms = imp.duration_ms.get();
+        if duration_ms == 0 {
+            return;
+        }
+
+        if imp.position_ms.get() < (duration_ms / 2).min(PLAY_THRESHOLD_MS) {
+            return;
+        }
+
+        imp.play_reported.set(true);
 
         let Some(item) = self.current_item() else {
             return;
@@ -541,7 +569,11 @@ impl Player {
         } else if let Some(program) = self.program() {
             match self.generate_items(&program) {
                 Ok(index) => self.set_current_index(index),
-                Err(err) => log::warn!("Failed to continue playing from program: {err:?}"),
+                Err(err) => {
+                    log::warn!("Failed to continue playing from program: {err:?}");
+                    self.report_error(&gettext("No more music matches this program."));
+                    self.pause();
+                }
             }
         }
     }
@@ -618,7 +650,6 @@ impl Player {
             ensemble_id: program.ensemble_id(),
             instrument_id: program.instrument_id(),
             work_id: program.work_id(),
-            album_id: program.album_id(),
             tag_id: program.tag_id(),
             tag_value: program.tag_value(),
             prefer_recently_added: program.prefer_recently_added(),

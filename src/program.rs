@@ -42,9 +42,6 @@ mod imp {
         pub work_id: RefCell<Option<String>>,
 
         #[property(get, set)]
-        pub album_id: RefCell<Option<String>>,
-
-        #[property(get, set)]
         pub tag_id: RefCell<Option<String>>,
 
         #[property(get, set)]
@@ -170,6 +167,13 @@ impl Program {
             .property("title", &*data.title.borrow())
             .property("description", &*data.description.borrow())
             .property("design", data.design.get())
+            .property("composer-id", &*data.composer_id.borrow())
+            .property("performer-id", &*data.performer_id.borrow())
+            .property("ensemble-id", &*data.ensemble_id.borrow())
+            .property("instrument-id", &*data.instrument_id.borrow())
+            .property("work-id", &*data.work_id.borrow())
+            .property("tag-id", &*data.tag_id.borrow())
+            .property("tag-value", &*data.tag_value.borrow())
             .property("prefer-recently-added", data.prefer_recently_added.get())
             .property(
                 "prefer-least-recently-played",

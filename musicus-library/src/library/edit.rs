@@ -30,7 +30,6 @@ impl Library {
             created_at: now,
             edited_at: now,
             last_used_at: now,
-            last_played_at: None,
             enable_updates,
         };
 
@@ -97,7 +96,6 @@ impl Library {
             created_at: now,
             edited_at: now,
             last_used_at: now,
-            last_played_at: None,
             enable_updates,
         };
 
@@ -433,7 +431,6 @@ impl Library {
             created_at: now,
             edited_at: now,
             last_used_at: now,
-            last_played_at: None,
             enable_updates,
         };
 
@@ -658,7 +655,6 @@ impl Library {
                 created_at: now,
                 edited_at: now,
                 last_used_at: now,
-                last_played_at: None,
                 enable_updates,
             };
 
@@ -768,7 +764,6 @@ impl Library {
                 created_at: now,
                 edited_at: now,
                 last_used_at: now,
-                last_played_at: None,
                 enable_updates,
             };
 
@@ -960,7 +955,6 @@ impl Library {
                 created_at: now,
                 edited_at: now,
                 last_used_at: now,
-                last_played_at: None,
             };
 
             diesel::insert_into(albums::table)
@@ -1109,6 +1103,45 @@ impl Library {
         self.apply_track_changes(None, vec![(recording_index, track)], &[])
     }
 
+    /// Record that a track was played.
+    pub fn track_played(&self, track_id: &str) -> Result<()> {
+        let connection = &mut *self.conn();
+
+        connection.transaction::<(), diesel::result::Error, _>(|connection| {
+            let recording_id = tracks::table
+                .filter(tracks::track_id.eq(track_id))
+                .select(tracks::recording_id)
+                .first::<String>(connection)?;
+
+            diesel::insert_into(plays::table)
+                .values(tables::Play {
+                    play_id: db::generate_id(),
+                    track_id: Some(track_id.to_owned()),
+                    recording_id,
+                    played_at: db::now(),
+                })
+                .execute(connection)?;
+
+            Ok(())
+        })?;
+
+        self.changed();
+
+        Ok(())
+    }
+
+    /// Load the recording with the given ID including its work and performers.
+    fn load_recording(&self, recording_id: &str) -> Result<Recording> {
+        let connection = &mut *self.conn();
+
+        let row = recordings::table
+            .filter(recordings::recording_id.eq(recording_id))
+            .select(tables::Recording::as_select())
+            .first::<tables::Recording>(connection)?;
+
+        Recording::from_table(row, connection)
+    }
+
     /// Apply a batch of track changes in a single transaction.
     ///
     /// Each entry of `tracks` carries the `recording_index` its track should end
@@ -1226,7 +1259,6 @@ impl Library {
                             created_at: now,
                             edited_at: now,
                             last_used_at: now,
-                            last_played_at: None,
                         };
 
                         diesel::insert_into(tracks::table)

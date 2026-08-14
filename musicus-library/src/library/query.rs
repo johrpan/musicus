@@ -1,17 +1,13 @@
 use std::collections::HashSet;
 
 use anyhow::Result;
-use diesel::{
-    dsl::sql,
-    prelude::*,
-    sql_types, QueryDsl,
-};
+use diesel::{dsl::sql, prelude::*, sql_types, QueryDsl};
 
 use gettextrs::gettext;
 
 use super::{metadata::SearchItem, Library};
 use crate::{
-    db::{self, models::*, schema::*, tables},
+    db::{self, models::*, schema::*, tables, views::*},
     format_translated,
 };
 
@@ -255,7 +251,13 @@ impl Library {
                     }
 
                     statement
-                        .order_by(persons::last_played_at.desc())
+                        .order_by(
+                            person_last_played::table
+                                .filter(person_last_played::person_id.eq(persons::person_id))
+                                .select(person_last_played::last_played_at)
+                                .single_value()
+                                .desc(),
+                        )
                         .limit(9)
                         .select(persons::all_columns)
                         .distinct()
@@ -329,7 +331,13 @@ impl Library {
                     }
 
                     statement
-                        .order_by(persons::last_played_at.desc())
+                        .order_by(
+                            performer_last_played::table
+                                .filter(performer_last_played::person_id.eq(persons::person_id))
+                                .select(performer_last_played::last_played_at)
+                                .single_value()
+                                .desc(),
+                        )
                         .limit(9)
                         .select(persons::all_columns)
                         .distinct()
@@ -411,7 +419,15 @@ impl Library {
                     }
 
                     statement
-                        .order_by(ensembles::last_played_at.desc())
+                        .order_by(
+                            ensemble_last_played::table
+                                .filter(
+                                    ensemble_last_played::ensemble_id.eq(ensembles::ensemble_id),
+                                )
+                                .select(ensemble_last_played::last_played_at)
+                                .single_value()
+                                .desc(),
+                        )
                         .limit(9)
                         .select(ensembles::all_columns)
                         .distinct()
@@ -483,7 +499,16 @@ impl Library {
                     }
 
                     statement
-                        .order_by(instruments::last_played_at.desc())
+                        .order_by(
+                            instrument_last_played::table
+                                .filter(
+                                    instrument_last_played::instrument_id
+                                        .eq(instruments::instrument_id),
+                                )
+                                .select(instrument_last_played::last_played_at)
+                                .single_value()
+                                .desc(),
+                        )
                         .limit(9)
                         .select(instruments::all_columns)
                         .distinct()
@@ -564,7 +589,13 @@ impl Library {
                     }
 
                     statement
-                        .order_by(works::last_played_at.desc())
+                        .order_by(
+                            work_last_played::table
+                                .filter(work_last_played::work_id.eq(works::work_id))
+                                .select(work_last_played::last_played_at)
+                                .single_value()
+                                .desc(),
+                        )
                         .limit(9)
                         .select(works::all_columns)
                         .distinct()
@@ -650,7 +681,16 @@ impl Library {
                     }
 
                     statement
-                        .order_by(recordings::last_played_at.desc())
+                        .order_by(
+                            recording_last_played::table
+                                .filter(
+                                    recording_last_played::recording_id
+                                        .eq(recordings::recording_id),
+                                )
+                                .select(recording_last_played::last_played_at)
+                                .single_value()
+                                .desc(),
+                        )
                         .limit(9)
                         .select(recordings::all_columns)
                         .distinct()
@@ -738,7 +778,13 @@ impl Library {
                 }
 
                 let albums = statement
-                    .order_by(albums::last_played_at.desc())
+                    .order_by(
+                        album_last_played::table
+                            .filter(album_last_played::album_id.eq(albums::album_id))
+                            .select(album_last_played::last_played_at)
+                            .single_value()
+                            .desc(),
+                    )
                     .limit(9)
                     .select(albums::all_columns)
                     .distinct()
@@ -933,7 +979,15 @@ impl Library {
                 }
 
                 let recordings = statement
-                    .order_by(recordings::last_played_at.desc())
+                    .order_by(
+                        recording_last_played::table
+                            .filter(
+                                recording_last_played::recording_id.eq(recordings::recording_id),
+                            )
+                            .select(recording_last_played::last_played_at)
+                            .single_value()
+                            .desc(),
+                    )
                     .load::<tables::Recording>(connection)?
                     .into_iter()
                     .map(|r| Recording::from_table(r, connection))

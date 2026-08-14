@@ -1947,6 +1947,7 @@ dependencies = [
  "gettext-rs 0.8.0",
  "log",
  "once_cell",
+ "rand",
  "reqwest",
  "serde",
  "serde_json",
