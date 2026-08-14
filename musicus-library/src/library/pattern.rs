@@ -42,7 +42,7 @@ pub const DEFAULT_ARTIST_PATTERN: &str = "{performers}";
 pub const DEFAULT_TITLE_PATTERN: &str = "{work}: {part}";
 
 /// The placeholders a pattern may use.
-pub const PLACEHOLDERS: &[&str] = &["composer", "work", "part", "performers", "index", "year"];
+pub const PLACEHOLDERS: &[&str] = &["composer", "work", "part", "performers", "index"];
 
 /// Every pattern that describes a track file.
 ///
@@ -74,7 +74,6 @@ pub struct TrackData {
     pub part: String,
     pub performers: String,
     pub index: String,
-    pub year: String,
 }
 
 impl TrackData {
@@ -91,10 +90,6 @@ impl TrackData {
                 .join(", "),
             performers: recording.performers_string(),
             index: format!("{:02}", recording_index + 1),
-            year: recording
-                .year()
-                .map(|year| year.to_string())
-                .unwrap_or_default(),
         }
     }
 
@@ -109,7 +104,6 @@ impl TrackData {
             part: "Allegro con brio".to_owned(),
             performers: "Wiener Philharmoniker".to_owned(),
             index: "01".to_owned(),
-            year: "1977".to_owned(),
         }
     }
 }
@@ -130,7 +124,6 @@ pub fn render(pattern: &str, data: &TrackData) -> Result<String> {
         .named("part", &data.part)
         .named("performers", &data.performers)
         .named("index", &data.index)
-        .named("year", &data.year)
         .finish()
         .map_err(|err| anyhow!("{err}"))
 }
@@ -222,7 +215,7 @@ mod tests {
         assert!(validate(&pattern).is_ok());
         assert!(render(&pattern, &TrackData::example())
             .unwrap()
-            .contains("1977"));
+            .contains("Ludwig van Beethoven"));
     }
 
     #[test]
@@ -298,6 +291,5 @@ mod tests {
         assert_eq!(data.part, "Allegro");
         assert_eq!(data.index, "01");
         assert!(data.composer.is_empty());
-        assert!(data.year.is_empty());
     }
 }

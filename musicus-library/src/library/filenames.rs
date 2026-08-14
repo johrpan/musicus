@@ -135,7 +135,6 @@ mod tests {
             part: "Largo".to_owned(),
             performers: "Berliner Philharmoniker".to_owned(),
             index: "02".to_owned(),
-            year: "1993".to_owned(),
         }
     }
 
@@ -184,7 +183,6 @@ mod tests {
             "Symfonie c. 9; 02 Largo"
         );
 
-        let mut data = data;
         data.work = String::new();
 
         assert_eq!(render(DEFAULT_FILENAME_PATTERN, &data).unwrap(), "02 Largo");

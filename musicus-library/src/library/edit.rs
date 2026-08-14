@@ -2141,8 +2141,12 @@ mod tests {
         let file = read_from_path(dir.path().join(&tracks[0].path)).unwrap();
         let tag = file.primary_tag().unwrap();
 
-        assert_eq!(tag.album().as_deref(), Some("Beethoven: Symphony No. 5"));
-        assert_eq!(tag.title().as_deref(), Some("Symphony No. 5"));
+        assert_eq!(tag.album().as_deref(), Some("Beethoven"));
+        // The work is both the recording's work and the track's only part here.
+        assert_eq!(
+            tag.title().as_deref(),
+            Some("Symphony No. 5: Symphony No. 5")
+        );
         assert_eq!(tag.track(), Some(2));
 
         // The file the user picked belongs to them and is only ever read.

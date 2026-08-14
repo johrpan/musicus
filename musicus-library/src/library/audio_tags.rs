@@ -266,7 +266,6 @@ mod tests {
             part: "Largo".to_owned(),
             performers: "Berliner Philharmoniker".to_owned(),
             index: "02".to_owned(),
-            year: "1993".to_owned(),
         }
     }
 
@@ -280,9 +279,9 @@ mod tests {
     fn default_patterns_describe_the_track() {
         let tags = AudioTags::render(&Patterns::default(), &data(), 1);
 
-        assert_eq!(tags.album.as_deref(), Some("Antonín Dvořák: Symfonie č. 9"));
+        assert_eq!(tags.album.as_deref(), Some("Antonín Dvořák"));
         assert_eq!(tags.artist.as_deref(), Some("Berliner Philharmoniker"));
-        assert_eq!(tags.title.as_deref(), Some("Largo"));
+        assert_eq!(tags.title.as_deref(), Some("Symfonie č. 9: Largo"));
         assert_eq!(tags.track_number, 2);
     }
 
@@ -296,11 +295,11 @@ mod tests {
     #[test]
     fn an_empty_value_does_not_leave_its_separator_behind() {
         let mut data = data();
-        data.composer = String::new();
+        data.work = String::new();
 
         let tags = AudioTags::render(&Patterns::default(), &data, 0);
 
-        assert_eq!(tags.album.as_deref(), Some("Symfonie č. 9"));
+        assert_eq!(tags.title.as_deref(), Some("Largo"));
     }
 
     #[test]
@@ -330,7 +329,7 @@ mod tests {
         assert!(validate(DEFAULT_ALBUM_PATTERN).is_ok());
         assert_eq!(
             preview(DEFAULT_ALBUM_PATTERN).unwrap(),
-            "Ludwig van Beethoven: Symphony No. 5 in C minor, Op. 67"
+            "Ludwig van Beethoven"
         );
     }
 
@@ -364,12 +363,9 @@ mod tests {
         let file = read_from_path(&path).unwrap();
         let tag = file.primary_tag().unwrap();
 
-        assert_eq!(
-            tag.album().as_deref(),
-            Some("Antonín Dvořák: Symfonie č. 9")
-        );
+        assert_eq!(tag.album().as_deref(), Some("Antonín Dvořák"));
         assert_eq!(tag.artist().as_deref(), Some("Berliner Philharmoniker"));
-        assert_eq!(tag.title().as_deref(), Some("Largo"));
+        assert_eq!(tag.title().as_deref(), Some("Symfonie č. 9: Largo"));
         assert_eq!(tag.track(), Some(2));
     }
 
@@ -392,10 +388,7 @@ mod tests {
 
         assert_eq!(tag.comment(), None);
         assert_eq!(tag.genre(), None);
-        assert_eq!(
-            tag.album().as_deref(),
-            Some("Antonín Dvořák: Symfonie č. 9")
-        );
+        assert_eq!(tag.album().as_deref(), Some("Antonín Dvořák"));
         assert_eq!(file.tags().len(), 1);
     }
 

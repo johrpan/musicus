@@ -11,12 +11,15 @@ use diesel::{prelude::*, SqliteConnection};
 use crate::db::{self, schema::*, tables};
 pub use edit::TrackUpdate;
 pub use metadata::SearchItem;
+pub use pattern::Patterns;
 pub use query::{Facet, GenerateRecordingParams, LibraryQuery};
 
+pub mod audio_tags;
 pub mod edit;
 pub mod exchange;
 pub mod filenames;
 pub mod metadata;
+pub mod pattern;
 pub mod query;
 pub mod reorganize;
 
@@ -33,7 +36,7 @@ pub struct Library {
     metadata_connection: RefCell<Option<CachedMetadataConnection>>,
     metadata_cache_dir: PathBuf,
     changed_senders: RefCell<Vec<async_channel::Sender<()>>>,
-    filename_pattern: RefCell<String>,
+    patterns: RefCell<Patterns>,
 }
 
 impl Library {
@@ -62,7 +65,7 @@ impl Library {
             metadata_connection: RefCell::new(None),
             metadata_cache_dir: metadata_cache_dir.into(),
             changed_senders: RefCell::new(Vec::new()),
-            filename_pattern: RefCell::new(filenames::DEFAULT_FILENAME_PATTERN.to_owned()),
+            patterns: RefCell::new(Patterns::default()),
         })
     }
 
@@ -70,14 +73,25 @@ impl Library {
         &self.folder
     }
 
+    /// The patterns used to name and tag the files of newly imported tracks.
+    pub fn patterns(&self) -> Patterns {
+        self.patterns.borrow().clone()
+    }
+
+    /// Set the patterns used to name and tag the files of newly imported
+    /// tracks.
+    pub fn set_patterns(&self, patterns: &Patterns) {
+        self.patterns.replace(patterns.clone());
+    }
+
     /// The pattern used to name the files of newly imported tracks.
     pub fn filename_pattern(&self) -> String {
-        self.filename_pattern.borrow().clone()
+        self.patterns.borrow().filename.clone()
     }
 
     /// Set the pattern used to name the files of newly imported tracks.
     pub fn set_filename_pattern(&self, pattern: &str) {
-        self.filename_pattern.replace(pattern.to_owned());
+        self.patterns.borrow_mut().filename = pattern.to_owned();
     }
 
     fn conn(&self) -> MutexGuard<'_, SqliteConnection> {

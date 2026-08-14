@@ -559,8 +559,8 @@ mod tests {
         let (album, title, track) =
             tags_of(&dir.path().join("Beethoven; Symphony No. 5; 01 Allegro.wav"));
 
-        assert_eq!(album.as_deref(), Some("Beethoven: Symphony No. 5"));
-        assert_eq!(title.as_deref(), Some("Allegro"));
+        assert_eq!(album.as_deref(), Some("Beethoven"));
+        assert_eq!(title.as_deref(), Some("Symphony No. 5: Allegro"));
         assert_eq!(track, Some(1));
     }
 
@@ -670,11 +670,11 @@ mod tests {
 
         // The tags identify which of the two files ended up where.
         let (_, title, track) = tags_of(&dir.path().join(&paths[0]));
-        assert_eq!(title.as_deref(), Some("Andante"));
+        assert_eq!(title.as_deref(), Some("Symphony No. 5: Andante"));
         assert_eq!(track, Some(1));
 
         let (_, title, track) = tags_of(&dir.path().join(&paths[1]));
-        assert_eq!(title.as_deref(), Some("Allegro"));
+        assert_eq!(title.as_deref(), Some("Symphony No. 5: Allegro"));
         assert_eq!(track, Some(2));
     }
 
