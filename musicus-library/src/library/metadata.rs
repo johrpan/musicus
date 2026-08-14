@@ -219,7 +219,6 @@ fn copy_person(
     person.created_at = now;
     person.edited_at = now;
     person.last_used_at = now;
-    person.last_played_at = None;
 
     diesel::insert_into(persons::table)
         .values(person)
@@ -281,7 +280,6 @@ fn copy_instrument(
     instrument.created_at = now;
     instrument.edited_at = now;
     instrument.last_used_at = now;
-    instrument.last_played_at = None;
 
     diesel::insert_into(instruments::table)
         .values(instrument)
@@ -323,7 +321,6 @@ fn copy_work_priv(
     work.created_at = now;
     work.edited_at = now;
     work.last_used_at = now;
-    work.last_played_at = None;
 
     diesel::insert_into(works::table)
         .values(&work)
@@ -390,7 +387,6 @@ fn copy_ensemble(
     ensemble.created_at = now;
     ensemble.edited_at = now;
     ensemble.last_used_at = now;
-    ensemble.last_played_at = None;
 
     diesel::insert_into(ensembles::table)
         .values(&ensemble)
@@ -433,7 +429,6 @@ fn copy_recording(
     recording.created_at = now;
     recording.edited_at = now;
     recording.last_used_at = now;
-    recording.last_played_at = None;
 
     diesel::insert_into(recordings::table)
         .values(&recording)
@@ -533,7 +528,6 @@ mod tests {
                     created_at: now,
                     edited_at: now,
                     last_used_at: now,
-                    last_played_at: None,
                 })
                 .execute(&mut from)
                 .unwrap();

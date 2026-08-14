@@ -13,9 +13,7 @@ pub use edit::TrackUpdate;
 pub use generate::GenerateRecordingParams;
 pub use metadata::SearchItem;
 pub use pattern::Patterns;
-pub use query::{Facet, GenerateRecordingParams, LibraryQuery};
 pub use query::{Facet, LibraryQuery};
-
 pub mod audio_tags;
 pub mod edit;
 pub mod exchange;

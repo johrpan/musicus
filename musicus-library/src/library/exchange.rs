@@ -6,7 +6,7 @@ use std::{
 };
 
 use anyhow::{anyhow, bail, Error, Result};
-use diesel::{dsl::exists, prelude::*, SqliteConnection};
+use diesel::{prelude::*, SqliteConnection};
 use futures_util::StreamExt;
 use gettextrs::gettext;
 use tempfile::{NamedTempFile, TempDir};
@@ -183,7 +183,6 @@ impl Library {
     }
 }
 
-// TODO: Add options whether to keep stats.
 fn import_library_from_zip_priv(
     zip_path: impl AsRef<Path>,
     library_folder: impl AsRef<Path>,
@@ -286,22 +285,23 @@ fn copy_to_file(source: impl Read, path: impl AsRef<Path>) -> Result<()> {
     Ok(())
 }
 
-/// Copy the library database into a temporary directory, without the private
-/// tags and without the assignments referring to them.
+/// Copy the library database into a temporary directory, without the listening
+/// history and the privatetags, along with the assignments referring to those
+/// tags.
 ///
-/// An export is meant to be handed to someone else, so a private tag must not
-/// be in the archive at all — not even as a row nothing points at. The copy is
-/// made with `VACUUM INTO`, which writes a consistent snapshot of the database,
-/// and vacuumed once more after the deletes so that no freed page still carries
-/// the removed rows.
+/// An export is meant to be handed to someone else, so neither must be in the
+/// archive at all — not even as a row nothing points at. The copy is made with
+/// `VACUUM INTO`, which writes a consistent snapshot of the database, and
+/// vacuumed once more after the deletes so that no freed page still carries the
+/// removed rows.
 ///
-/// The assignments that stay keep their sequence numbers, which may now have
-/// gaps. Only their order matters, and the editors rewrite a work's or
+/// The tag assignments that stay keep their sequence numbers, which may now
+/// have gaps. Only their order matters, and the editors rewrite a work's or
 /// recording's tags as a whole anyway.
 ///
 /// The returned directory owns the copy and deletes it when dropped, so it has
 /// to outlive the export.
-fn database_without_private_tags(connection: &mut SqliteConnection) -> Result<TempDir> {
+fn database_for_export(connection: &mut SqliteConnection) -> Result<TempDir> {
     let dir = TempDir::new()?;
     let path = dir.path().join("musicus.db");
     let path = path
@@ -315,6 +315,8 @@ fn database_without_private_tags(connection: &mut SqliteConnection) -> Result<Te
     let copy = &mut SqliteConnection::establish(path)?;
 
     copy.transaction::<_, Error, _>(|copy| {
+        diesel::delete(plays::table).execute(copy)?;
+
         let private_tag_ids = tags::table
             .filter(tags::private.eq(true))
             .select(tags::tag_id)
@@ -346,20 +348,15 @@ fn export_library_to_zip_priv(
     sender: &async_channel::Sender<ProcessMsg>,
     cancellation: &Cancellation,
 ) -> Result<()> {
-    // A library without private tags is exported exactly as it is on disk; only
-    // one that has them pays for the sanitized copy. Both the check and the copy
-    // happen here rather than in the caller, so that the work does not block the
-    // thread that started the export.
+    // Every export ships the sanitized copy rather than the file on disk. Every
+    // library has a listening history to strip, so there is no case left where
+    // shipping the original would be correct, and skipping the copy on a library
+    // that happens to have no private tags would silently reintroduce the leak.
+    // The copy happens here rather than in the caller, so that the work does not
+    // block the thread that started the export.
     let database = {
         let connection = &mut *db::lock_connection(&this_connection);
-
-        if diesel::select(exists(tags::table.filter(tags::private.eq(true))))
-            .get_result::<bool>(connection)?
-        {
-            Some(database_without_private_tags(connection)?)
-        } else {
-            None
-        }
+        database_for_export(connection)?
     };
 
     cancellation.check()?;
@@ -380,10 +377,7 @@ fn export_library_to_zip_priv(
 
     // Without the database the archive would be worthless, so this file is the
     // one that is not allowed to be missing.
-    let database_path = match &database {
-        Some(dir) => dir.path().join("musicus.db"),
-        None => library_folder.as_ref().join("musicus.db"),
-    };
+    let database_path = database.path().join("musicus.db");
 
     if !add_file_to_zip(&mut zip, &database_path, "musicus.db")? {
         bail!("The library database is missing");
@@ -833,7 +827,6 @@ fn import_metadata_from_file(
             person.created_at = now;
             person.edited_at = now;
             person.last_used_at = now;
-            person.last_played_at = None;
 
             diesel::insert_into(persons::table)
                 .values(person)
@@ -870,7 +863,6 @@ fn import_metadata_from_file(
             instrument.created_at = now;
             instrument.edited_at = now;
             instrument.last_used_at = now;
-            instrument.last_played_at = None;
 
             diesel::insert_into(instruments::table)
                 .values(instrument)
@@ -883,7 +875,6 @@ fn import_metadata_from_file(
             work.created_at = now;
             work.edited_at = now;
             work.last_used_at = now;
-            work.last_played_at = None;
 
             diesel::insert_into(works::table)
                 .values(work)
@@ -917,7 +908,6 @@ fn import_metadata_from_file(
             ensemble.created_at = now;
             ensemble.edited_at = now;
             ensemble.last_used_at = now;
-            ensemble.last_played_at = None;
 
             diesel::insert_into(ensembles::table)
                 .values(ensemble)
@@ -937,7 +927,6 @@ fn import_metadata_from_file(
             recording.created_at = now;
             recording.edited_at = now;
             recording.last_used_at = now;
-            recording.last_played_at = None;
 
             diesel::insert_into(recordings::table)
                 .values(recording)
@@ -971,7 +960,6 @@ fn import_metadata_from_file(
                 track.created_at = now;
                 track.edited_at = now;
                 track.last_used_at = now;
-                track.last_played_at = None;
 
                 diesel::insert_into(tracks::table)
                     .values(track)
@@ -990,7 +978,6 @@ fn import_metadata_from_file(
                 medium.created_at = now;
                 medium.edited_at = now;
                 medium.last_used_at = now;
-                medium.last_played_at = None;
 
                 diesel::insert_into(mediums::table)
                     .values(medium)
@@ -1004,7 +991,6 @@ fn import_metadata_from_file(
             album.created_at = now;
             album.edited_at = now;
             album.last_used_at = now;
-            album.last_played_at = None;
 
             diesel::insert_into(albums::table)
                 .values(album)
@@ -1221,6 +1207,49 @@ mod tests {
             .unwrap();
 
         recording
+    }
+
+    /// Extract the database out of an archive into `dir` and open it, so that a
+    /// test can look at what an export actually ships rather than at what an
+    /// import chose to keep.
+    fn database_in_archive(zip_path: &Path, dir: &TempDir) -> SqliteConnection {
+        let mut archive = zip::ZipArchive::new(fs::File::open(zip_path).unwrap()).unwrap();
+        let path = dir.path().join("musicus.db");
+        copy_to_file(archive.by_name("musicus.db").unwrap(), &path).unwrap();
+        SqliteConnection::establish(path.to_str().unwrap()).unwrap()
+    }
+
+    /// The listening history is nobody else's business, so an archive must not
+    /// contain it — however the import happens to treat it.
+    #[test]
+    fn export_leaves_out_the_listening_history() {
+        let source_dir = TempDir::new().unwrap();
+        let source_cache_dir = TempDir::new().unwrap();
+        let source = Library::new(source_dir.path(), source_cache_dir.path()).unwrap();
+
+        let track_source_file = source_dir.path().join("source_track.mp3");
+        fs::write(&track_source_file, b"not actually audio").unwrap();
+        let recording = populate(&source, &track_source_file);
+
+        let tracks = source
+            .tracks_for_recording(&recording.recording_id)
+            .unwrap();
+        source.track_played(&tracks[0].track_id).unwrap();
+
+        let zip_path = source_dir.path().join("export.muslib");
+        wait_for_result(source.export_library_to_zip(&zip_path).unwrap()).unwrap();
+
+        let archive_dir = TempDir::new().unwrap();
+        let archive = &mut database_in_archive(&zip_path, &archive_dir);
+        let plays = plays::table.count().get_result::<i64>(archive).unwrap();
+        assert_eq!(plays, 0, "the archive must not carry any plays");
+
+        // Exporting is not supposed to cost the library its own statistics.
+        let plays = plays::table
+            .count()
+            .get_result::<i64>(&mut *source.conn())
+            .unwrap();
+        assert_eq!(plays, 1);
     }
 
     #[test]
@@ -1515,7 +1544,6 @@ mod tests {
                 created_at: now,
                 edited_at: now,
                 last_used_at: now,
-                last_played_at: None,
             })
             .execute(&mut remote_connection)
             .unwrap();

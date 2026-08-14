@@ -26,7 +26,6 @@ pub struct Person {
     pub created_at: NaiveDateTime,
     pub edited_at: NaiveDateTime,
     pub last_used_at: NaiveDateTime,
-    pub last_played_at: Option<NaiveDateTime>,
 }
 
 #[derive(Insertable, Queryable, Selectable, Clone, Debug)]
@@ -51,7 +50,6 @@ pub struct Instrument {
     pub created_at: NaiveDateTime,
     pub edited_at: NaiveDateTime,
     pub last_used_at: NaiveDateTime,
-    pub last_played_at: Option<NaiveDateTime>,
 }
 
 /// A label that can be assigned to works and recordings.
@@ -108,7 +106,6 @@ pub struct Work {
     pub created_at: NaiveDateTime,
     pub edited_at: NaiveDateTime,
     pub last_used_at: NaiveDateTime,
-    pub last_played_at: Option<NaiveDateTime>,
 }
 
 #[derive(Insertable, Queryable, Selectable, Clone, Debug)]
@@ -138,7 +135,6 @@ pub struct Ensemble {
     pub created_at: NaiveDateTime,
     pub edited_at: NaiveDateTime,
     pub last_used_at: NaiveDateTime,
-    pub last_played_at: Option<NaiveDateTime>,
 }
 
 #[derive(Insertable, Queryable, Selectable, Clone, Debug)]
@@ -160,7 +156,6 @@ pub struct Recording {
     pub created_at: NaiveDateTime,
     pub edited_at: NaiveDateTime,
     pub last_used_at: NaiveDateTime,
-    pub last_played_at: Option<NaiveDateTime>,
 }
 
 #[derive(Insertable, Queryable, Selectable, Clone, Debug)]
@@ -194,7 +189,15 @@ pub struct Track {
     pub created_at: NaiveDateTime,
     pub edited_at: NaiveDateTime,
     pub last_used_at: NaiveDateTime,
-    pub last_played_at: Option<NaiveDateTime>,
+}
+
+#[derive(Insertable, Queryable, Selectable, Clone, Debug)]
+#[diesel(check_for_backend(Sqlite))]
+pub struct Play {
+    pub play_id: String,
+    pub track_id: Option<String>,
+    pub recording_id: String,
+    pub played_at: NaiveDateTime,
 }
 
 #[derive(Insertable, Queryable, Selectable, Clone, Debug)]
@@ -215,7 +218,6 @@ pub struct Medium {
     pub created_at: NaiveDateTime,
     pub edited_at: NaiveDateTime,
     pub last_used_at: NaiveDateTime,
-    pub last_played_at: Option<NaiveDateTime>,
 }
 
 #[derive(Insertable, Queryable, Selectable, Clone, Debug)]
@@ -228,7 +230,6 @@ pub struct Album {
     pub created_at: NaiveDateTime,
     pub edited_at: NaiveDateTime,
     pub last_used_at: NaiveDateTime,
-    pub last_played_at: Option<NaiveDateTime>,
 }
 
 #[derive(Insertable, Queryable, Selectable, Clone, Debug)]
