@@ -231,7 +231,7 @@ impl LibraryManager {
     async fn reorganize_files(&self) {
         let dialog = adw::AlertDialog::builder()
             .heading(gettext("Reorganize files?"))
-            .body(gettext("Every track file within your music library folder will be renamed after the file name pattern."))
+            .body(gettext("Every track file within your music library folder will be renamed after the file name pattern, and its tags will be replaced with the ones Musicus generates. Replacing the tags cannot be undone."))
             .build();
 
         dialog.add_responses(&[

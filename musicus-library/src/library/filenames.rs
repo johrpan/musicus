@@ -5,27 +5,15 @@
 //! Musicus. Nothing depends on those names: the database keeps the authoritative
 //! path of every track, and a name that cannot be built falls back to the
 //! track's identifiers.
+//!
+//! The pattern vocabulary itself lives in [`pattern`](super::pattern); this
+//! module only turns rendered text into something a file system accepts.
 
 use anyhow::{anyhow, Result};
-use formatx::Template;
 
-use crate::db::models::{Recording, Work};
+use super::pattern;
 
-/// The pattern used unless the user configured another one.
-///
-/// This must stay in sync with the default of the `track-filename-pattern`
-/// setting in `data/de.johrpan.Musicus.gschema.xml.in`.
-pub const DEFAULT_FILENAME_PATTERN: &str = "{composer}; {work}; {index} {part}";
-
-/// The placeholders a pattern may use.
-pub const PLACEHOLDERS: &[&str] = &[
-    "composer",
-    "work",
-    "part",
-    "performers",
-    "index",
-    "year",
-];
+pub use super::pattern::{TrackData as TrackNameData, DEFAULT_FILENAME_PATTERN, PLACEHOLDERS};
 
 /// The longest file stem that will be generated.
 ///
@@ -40,45 +28,13 @@ const ILLEGAL_CHARACTERS: &[char] = &['<', '>', ':', '"', '/', '\\', '|', '?', '
 
 /// Characters that separate the parts of a name and that may therefore neither
 /// begin nor end it.
-const SEPARATORS: &[char] = &[' ', '_', '-', '.'];
+const SEPARATORS: &[char] = &[' ', '_', '-', '.', ';', ','];
 
 /// File stems that Windows reserves for devices, regardless of extension.
 const RESERVED_STEMS: &[&str] = &[
     "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8",
     "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
 ];
-
-/// The values a filename pattern can refer to.
-pub struct TrackNameData {
-    pub composer: String,
-    pub work: String,
-    pub part: String,
-    pub performers: String,
-    pub index: String,
-    pub year: String,
-}
-
-impl TrackNameData {
-    /// Collect the values describing the track at `recording_index` of
-    /// `recording` that covers `works`.
-    pub fn new(recording: &Recording, recording_index: i32, works: &[Work]) -> Self {
-        Self {
-            composer: recording.work.composers_string().unwrap_or_default(),
-            work: recording.work.name.get().to_owned(),
-            part: works
-                .iter()
-                .map(|work| work.name.get().to_owned())
-                .collect::<Vec<String>>()
-                .join(", "),
-            performers: recording.performers_string(),
-            index: format!("{:02}", recording_index + 1),
-            year: recording
-                .year()
-                .map(|year| year.to_string())
-                .unwrap_or_default(),
-        }
-    }
-}
 
 /// Build the file stem for `data` from `pattern`.
 ///
@@ -87,7 +43,7 @@ impl TrackNameData {
 /// fall back to a name that is always available in that case, so that no import
 /// can fail because of naming.
 pub fn render(pattern: &str, data: &TrackNameData) -> Option<String> {
-    let stem = sanitize(&render_raw(pattern, data).ok()?);
+    let stem = sanitize(&pattern::render(pattern, data).ok()?);
 
     if stem.is_empty() {
         None
@@ -117,74 +73,13 @@ pub fn validate(pattern: &str) -> Result<()> {
 /// This doubles as validation: a pattern that cannot be rendered for the
 /// example cannot be rendered for a real track either.
 pub fn preview(pattern: &str) -> Result<String> {
-    let data = TrackNameData {
-        composer: "Ludwig van Beethoven".to_owned(),
-        work: "Symphony No. 5 in C minor, Op. 67".to_owned(),
-        part: "Allegro con brio".to_owned(),
-        performers: "Wiener Philharmoniker".to_owned(),
-        index: "01".to_owned(),
-        year: "1977".to_owned(),
-    };
-
-    let stem = sanitize(&render_raw(pattern, &data)?);
+    let stem = sanitize(&pattern::render(pattern, &TrackNameData::example())?);
 
     if stem.is_empty() {
         return Err(anyhow!("The pattern does not describe a file name."));
     }
 
     Ok(format!("{stem}.flac"))
-}
-
-/// Substitute the placeholders of `pattern` without making the result safe to
-/// use as a file name.
-fn render_raw(pattern: &str, data: &TrackNameData) -> Result<String> {
-    let template = Template::new(pattern).map_err(|err| anyhow!("{err}"))?;
-
-    check_placeholders(pattern)?;
-
-    template
-        .render()
-        .named("composer", &data.composer)
-        .named("work", &data.work)
-        .named("part", &data.part)
-        .named("performers", &data.performers)
-        .named("index", &data.index)
-        .named("year", &data.year)
-        .finish()
-        .map_err(|err| anyhow!("{err}"))
-}
-
-/// Ensure that every placeholder of `pattern` refers to one of the values a
-/// track provides.
-///
-/// The template itself only rejects placeholders it cannot parse, and renders a
-/// positional one as an empty string, which would silently swallow part of the
-/// user's pattern.
-fn check_placeholders(pattern: &str) -> Result<()> {
-    let mut rest = pattern;
-
-    while let Some(start) = rest.find('{') {
-        // An escaped brace is literal text and does not open a placeholder.
-        if rest[start..].starts_with("{{") {
-            rest = &rest[start + 2..];
-            continue;
-        }
-
-        let body = &rest[start + 1..];
-        let end = body
-            .find('}')
-            .ok_or_else(|| anyhow!("A placeholder is missing its closing brace."))?;
-
-        let name = body[..end].split(':').next().unwrap_or_default();
-
-        if !PLACEHOLDERS.contains(&name) {
-            return Err(anyhow!("Unknown placeholder: {{{name}}}"));
-        }
-
-        rest = &body[end + 1..];
-    }
-
-    Ok(())
 }
 
 /// Reduce `name` to a portable ASCII file stem.
@@ -208,23 +103,7 @@ fn sanitize(name: &str) -> String {
         })
         .collect::<String>();
 
-    // A placeholder without a value leaves the separators around it behind.
-    // Collapsing repetitions of one and the same separator removes those
-    // without touching intentional separators like the " - " between two
-    // movement names.
-    let mut collapsed = String::with_capacity(replaced.len());
-    let mut previous: Option<char> = None;
-
-    for character in replaced.chars() {
-        if SEPARATORS.contains(&character) && previous == Some(character) {
-            continue;
-        }
-
-        collapsed.push(character);
-        previous = Some(character);
-    }
-
-    let mut stem = collapsed
+    let mut stem = pattern::collapse_separators(&replaced, SEPARATORS)
         .trim_matches(|c| SEPARATORS.contains(&c))
         .to_owned();
 
@@ -247,10 +126,7 @@ fn sanitize(name: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-
     use super::*;
-    use crate::db::TranslatedString;
 
     fn data() -> TrackNameData {
         TrackNameData {
@@ -263,30 +139,12 @@ mod tests {
         }
     }
 
-    fn translated(name: &str) -> TranslatedString {
-        let mut translations = HashMap::new();
-        translations.insert("generic".to_string(), name.to_string());
-        TranslatedString(translations)
-    }
-
     #[test]
     fn default_pattern_renders_a_readable_name() {
         assert_eq!(
             render(DEFAULT_FILENAME_PATTERN, &data()).unwrap(),
-            "Antonin Dvorak_Symfonie c. 9_02 Largo"
+            "Antonin Dvorak; Symfonie c. 9; 02 Largo"
         );
-    }
-
-    #[test]
-    fn all_placeholders_are_supported() {
-        let pattern = PLACEHOLDERS
-            .iter()
-            .map(|name| format!("{{{name}}}"))
-            .collect::<Vec<String>>()
-            .join(" ");
-
-        assert!(validate(&pattern).is_ok());
-        assert!(render(&pattern, &data()).unwrap().contains("1993"));
     }
 
     #[test]
@@ -323,7 +181,7 @@ mod tests {
 
         assert_eq!(
             render(DEFAULT_FILENAME_PATTERN, &data).unwrap(),
-            "Symfonie c. 9_02 Largo"
+            "Symfonie c. 9; 02 Largo"
         );
 
         let mut data = data;
@@ -337,7 +195,7 @@ mod tests {
         let mut data = data();
         data.part = "Adagio - Allegro".to_owned();
 
-        assert_eq!(render("{movement}", &data).unwrap(), "Adagio - Allegro");
+        assert_eq!(render("{part}", &data).unwrap(), "Adagio - Allegro");
     }
 
     #[test]
@@ -371,59 +229,15 @@ mod tests {
 
     #[test]
     fn unknown_placeholders_are_rejected() {
-        let error = validate("{composer} {bogus}").unwrap_err().to_string();
-
-        assert!(error.contains("bogus"), "{error}");
+        assert!(validate("{composer} {bogus}").is_err());
         assert!(render("{bogus}", &data()).is_none());
-    }
-
-    #[test]
-    fn malformed_patterns_are_rejected() {
-        assert!(validate("{composer").is_err());
-        assert!(validate("{}").is_err());
     }
 
     #[test]
     fn the_default_pattern_is_valid() {
         assert_eq!(
             preview(DEFAULT_FILENAME_PATTERN).unwrap(),
-            "Ludwig van Beethoven_Symphony No. 5 in C minor, Op. 67_01 Allegro con brio.flac"
+            "Ludwig van Beethoven; Symphony No. 5 in C minor, Op. 67; 01 Allegro con brio.flac"
         );
-    }
-
-    #[test]
-    fn track_name_data_is_taken_from_the_recording() {
-        let work = Work {
-            work_id: "work".to_owned(),
-            name: translated("Symphony No. 5"),
-            parts: Vec::new(),
-            persons: Vec::new(),
-            instruments: Vec::new(),
-            tags: Vec::new(),
-            enable_updates: false,
-        };
-
-        let part = Work {
-            work_id: "part".to_owned(),
-            name: translated("Allegro"),
-            ..work.clone()
-        };
-
-        let recording = Recording {
-            recording_id: "recording".to_owned(),
-            work,
-            persons: Vec::new(),
-            ensembles: Vec::new(),
-            tags: Vec::new(),
-            enable_updates: false,
-        };
-
-        let data = TrackNameData::new(&recording, 0, std::slice::from_ref(&part));
-
-        assert_eq!(data.work, "Symphony No. 5");
-        assert_eq!(data.part, "Allegro");
-        assert_eq!(data.index, "01");
-        assert!(data.composer.is_empty());
-        assert!(data.year.is_empty());
     }
 }

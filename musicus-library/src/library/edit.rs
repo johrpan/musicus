@@ -7,7 +7,7 @@ use std::{
 use anyhow::{bail, Error, Result};
 use diesel::{dsl::exists, prelude::*, QueryDsl, SqliteConnection};
 
-use super::{filenames, Library};
+use super::{audio_tags, filenames, pattern, Library};
 use crate::db::{
     self,
     models::*,
@@ -1145,11 +1145,12 @@ impl Library {
         let mut staged = Vec::new();
         let mut prepared = Vec::with_capacity(tracks.len());
 
-        // Naming the file of a new track needs the metadata of the recording it
-        // belongs to. It is loaded once for the whole batch and before the
-        // connection is locked for the transaction below. A recording that
-        // cannot be loaded only costs the readable name, not the import.
-        let pattern = self.filename_pattern();
+        // Naming and tagging the file of a new track needs the metadata of the
+        // recording it belongs to. It is loaded once for the whole batch and
+        // before the connection is locked for the transaction below. A recording
+        // that cannot be loaded only costs the readable name and the tags, not
+        // the import.
+        let patterns = self.patterns();
         let recording = recording_id
             .filter(|_| {
                 tracks
@@ -1175,14 +1176,13 @@ impl Library {
                         bail!("Cannot import a track without the recording it belongs to");
                     };
 
-                    let stem = recording
+                    let data = recording.as_ref().map(|recording| {
+                        pattern::TrackData::new(recording, recording_index, &works)
+                    });
+
+                    let stem = data
                         .as_ref()
-                        .and_then(|recording| {
-                            filenames::render(
-                                &pattern,
-                                &filenames::TrackNameData::new(recording, recording_index, &works),
-                            )
-                        })
+                        .and_then(|data| filenames::render(&patterns.filename, data))
                         .unwrap_or_else(|| filenames::fallback_stem(recording_id, recording_index));
 
                     let library_path = unused_track_path(&folder, &stem, path.extension(), &staged);
@@ -1194,6 +1194,20 @@ impl Library {
                     if let Err(err) = fs::copy(&path, &tmp_path) {
                         clean_up_staged(&staged, 0);
                         return Err(err.into());
+                    }
+
+                    // The tags go into the staged copy, before it is moved into
+                    // place. This is the one moment where writing them is still
+                    // undoable, because the file belongs to the import until the
+                    // rename below. Like naming, tagging may not fail an import:
+                    // the file the user chose stays untouched either way, and a
+                    // reorganization brings the tags in line later.
+                    if let Some(data) = &data {
+                        let tags = audio_tags::AudioTags::render(&patterns, data, recording_index);
+
+                        if let Err(err) = audio_tags::write(&tmp_path, &tags) {
+                            log::warn!("Failed to tag {}: {err:?}", tmp_path.display());
+                        }
                     }
 
                     staged.push(StagedFile { tmp_path, to_path });
@@ -2041,7 +2055,7 @@ mod tests {
 
         assert_eq!(
             tracks[0].path,
-            PathBuf::from("Beethoven_Symphony No. 5_01 Allegro con brio.mp3")
+            PathBuf::from("Beethoven; Symphony No. 5; 01 Allegro con brio.mp3")
         );
 
         // A second track of the same movement may not take the same file.
@@ -2051,7 +2065,7 @@ mod tests {
             .unwrap();
 
         assert!(library_files(&dir)
-            .contains(&"Beethoven_Symphony No. 5_01 Symphony No. 5.mp3".to_owned()));
+            .contains(&"Beethoven; Symphony No. 5; 01 Symphony No. 5.mp3".to_owned()));
     }
 
     #[test]
@@ -2098,6 +2112,66 @@ mod tests {
         assert_eq!(
             tracks[0].path,
             PathBuf::from(format!("{}_00.mp3", recording.recording_id))
+        );
+    }
+
+    #[test]
+    fn an_imported_track_is_tagged() {
+        use lofty::{file::TaggedFileExt, probe::read_from_path, tag::Accessor};
+
+        let dir = TempDir::new().unwrap();
+        let cache_dir = TempDir::new().unwrap();
+        let source_dir = TempDir::new().unwrap();
+        let library = library(&dir, &cache_dir);
+
+        let (recording, work) = recording_with_tracks(&library, &source_dir, 0);
+
+        // A real container, because the tags are written into it.
+        let source = source_dir.path().join("movement.wav");
+        fs::write(&source, audio_tags::minimal_wav()).unwrap();
+
+        library
+            .import_track(&source, &recording.recording_id, 1, vec![work])
+            .unwrap();
+
+        let tracks = library
+            .tracks_for_recording(&recording.recording_id)
+            .unwrap();
+
+        let file = read_from_path(dir.path().join(&tracks[0].path)).unwrap();
+        let tag = file.primary_tag().unwrap();
+
+        assert_eq!(tag.album().as_deref(), Some("Beethoven: Symphony No. 5"));
+        assert_eq!(tag.title().as_deref(), Some("Symphony No. 5"));
+        assert_eq!(tag.track(), Some(2));
+
+        // The file the user picked belongs to them and is only ever read.
+        assert_eq!(fs::read(&source).unwrap(), audio_tags::minimal_wav());
+    }
+
+    /// Tagging a file may no more fail an import than naming it may.
+    #[test]
+    fn a_track_that_cannot_be_tagged_is_still_imported() {
+        let dir = TempDir::new().unwrap();
+        let cache_dir = TempDir::new().unwrap();
+        let source_dir = TempDir::new().unwrap();
+        let library = library(&dir, &cache_dir);
+
+        let (recording, work) = recording_with_tracks(&library, &source_dir, 0);
+
+        // `track_source` writes bytes that are not audio at all.
+        let source = track_source(&source_dir, "movement");
+        library
+            .import_track(&source, &recording.recording_id, 0, vec![work])
+            .unwrap();
+
+        let tracks = library
+            .tracks_for_recording(&recording.recording_id)
+            .unwrap();
+
+        assert_eq!(
+            fs::read(dir.path().join(&tracks[0].path)).unwrap(),
+            b"audio of movement"
         );
     }
 

@@ -8,6 +8,7 @@ use anyhow::{anyhow, Result};
 use chrono::{Duration, Local};
 use gettextrs::gettext;
 use gtk::{gio, glib, glib::clone};
+use musicus_library::library::Patterns;
 
 use crate::{
     album_page::AlbumPage,
@@ -26,6 +27,14 @@ use crate::{
     util,
     welcome_page::WelcomePage,
 };
+
+/// The settings describing how a track file is named and tagged.
+const PATTERN_KEYS: &[&str] = &[
+    "track-filename-pattern",
+    "track-tag-album-pattern",
+    "track-tag-artist-pattern",
+    "track-tag-title-pattern",
+];
 
 mod imp {
     use super::*;
@@ -194,6 +203,20 @@ mod imp {
                 }
             });
 
+            // Registered once for the lifetime of the window: the settings
+            // object outlives every library, and connecting per library would
+            // stack a handler for each folder the user opens.
+            for key in PATTERN_KEYS {
+                self.settings().connect_changed(
+                    Some(key),
+                    clone!(
+                        #[weak(rename_to = obj)]
+                        self,
+                        move |_, _| obj.obj().push_patterns()
+                    ),
+                );
+            }
+
             let settings = self.settings();
             let library_path = settings.string("library-path").to_string();
             if !library_path.is_empty() {
@@ -309,6 +332,20 @@ impl Window {
         }
     }
 
+    /// Hand the configured patterns to the library that is currently open.
+    fn push_patterns(&self) {
+        if let Some(library) = &*self.imp().library.borrow() {
+            let settings = self.imp().settings();
+
+            library.set_patterns(&Patterns {
+                filename: settings.string("track-filename-pattern").into(),
+                album: settings.string("track-tag-album-pattern").into(),
+                artist: settings.string("track-tag-artist-pattern").into(),
+                title: settings.string("track-tag-title-pattern").into(),
+            });
+        }
+    }
+
     fn load_library(&self, path: impl AsRef<Path>) -> Result<()> {
         let library = Library::new(path)?;
 
@@ -323,20 +360,6 @@ impl Window {
         let is_empty = library.is_empty()?;
 
         let settings = self.imp().settings();
-
-        settings.connect_changed(
-            Some("track-filename-pattern"),
-            clone!(
-                #[weak(rename_to = obj)]
-                self,
-                move |settings, key| if let Some(library) = &*obj.imp().library.borrow() {
-                    log::debug!("Hi");
-                    library.set_filename_pattern(&settings.string(key))
-                }
-            ),
-        );
-
-        library.set_filename_pattern(&settings.string("track-filename-pattern"));
 
         if settings.boolean("enable-automatic-metadata-updates") {
             let last_metadata_download_time = settings.int64("last-metadata-download-time");
@@ -365,6 +388,10 @@ impl Window {
         }
 
         self.imp().library.replace(Some(library));
+
+        // The patterns describe how a track file is named and tagged, so the
+        // library needs them before anything can be imported.
+        self.push_patterns();
 
         if is_empty {
             let navigation = self.imp().navigation_view.get();
