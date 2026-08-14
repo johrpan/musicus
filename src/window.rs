@@ -1,5 +1,5 @@
 use std::{
-    cell::{Cell, RefCell},
+    cell::{Cell, OnceCell, RefCell},
     path::Path,
 };
 
@@ -33,6 +33,7 @@ mod imp {
     #[derive(Debug, Default, gtk::CompositeTemplate)]
     #[template(file = "data/ui/window.blp")]
     pub struct Window {
+        pub settings: OnceCell<gio::Settings>,
         pub library: RefCell<Option<Library>>,
         pub player: Player,
         pub process_manager: ProcessManager,
@@ -193,7 +194,7 @@ mod imp {
                 }
             });
 
-            let settings = gio::Settings::new(config::APP_ID);
+            let settings = self.settings();
             let library_path = settings.string("library-path").to_string();
             if !library_path.is_empty() {
                 if let Err(err) = self.obj().load_library(&library_path) {
@@ -244,6 +245,13 @@ mod imp {
 
     impl ApplicationWindowImpl for Window {}
     impl AdwApplicationWindowImpl for Window {}
+
+    impl Window {
+        pub fn settings(&self) -> &gio::Settings {
+            self.settings
+                .get_or_init(|| gio::Settings::new(config::APP_ID))
+        }
+    }
 }
 
 glib::wrapper! {
@@ -261,13 +269,13 @@ impl Window {
     }
 
     pub fn load_window_state(&self) {
-        let settings = gio::Settings::new(config::APP_ID);
+        let settings = self.imp().settings();
         self.set_default_size(settings.int("window-width"), settings.int("window-height"));
         self.set_property("maximized", settings.boolean("is-maximized"));
     }
 
     pub fn save_window_state(&self) -> Result<(), glib::BoolError> {
-        let settings = gio::Settings::new(config::APP_ID);
+        let settings = self.imp().settings();
 
         let size = self.default_size();
         settings.set_int("window-width", size.0)?;
@@ -314,7 +322,22 @@ impl Window {
 
         let is_empty = library.is_empty()?;
 
-        let settings = gio::Settings::new(config::APP_ID);
+        let settings = self.imp().settings();
+
+        settings.connect_changed(
+            Some("track-filename-pattern"),
+            clone!(
+                #[weak(rename_to = obj)]
+                self,
+                move |settings, key| if let Some(library) = &*obj.imp().library.borrow() {
+                    log::debug!("Hi");
+                    library.set_filename_pattern(&settings.string(key))
+                }
+            ),
+        );
+
+        library.set_filename_pattern(&settings.string("track-filename-pattern"));
+
         if settings.boolean("enable-automatic-metadata-updates") {
             let last_metadata_download_time = settings.int64("last-metadata-download-time");
             let now = Local::now().timestamp();
@@ -367,7 +390,7 @@ impl Window {
     }
 
     fn save_library_path(&self, path: impl AsRef<Path>) -> Result<()> {
-        let settings = gio::Settings::new(config::APP_ID);
+        let settings = self.imp().settings();
         settings.set_string(
             "library-path",
             path.as_ref()

@@ -7,7 +7,7 @@ use std::{
 use anyhow::{bail, Error, Result};
 use diesel::{dsl::exists, prelude::*, QueryDsl, SqliteConnection};
 
-use super::Library;
+use super::{filenames, Library};
 use crate::db::{
     self,
     models::*,
@@ -1109,6 +1109,18 @@ impl Library {
         self.apply_track_changes(None, vec![(recording_index, track)], &[])
     }
 
+    /// Load the recording with the given ID including its work and performers.
+    fn load_recording(&self, recording_id: &str) -> Result<Recording> {
+        let connection = &mut *self.conn();
+
+        let row = recordings::table
+            .filter(recordings::recording_id.eq(recording_id))
+            .select(tables::Recording::as_select())
+            .first::<tables::Recording>(connection)?;
+
+        Recording::from_table(row, connection)
+    }
+
     /// Apply a batch of track changes in a single transaction.
     ///
     /// Each entry of `tracks` carries the `recording_index` its track should end
@@ -1133,6 +1145,25 @@ impl Library {
         let mut staged = Vec::new();
         let mut prepared = Vec::with_capacity(tracks.len());
 
+        // Naming the file of a new track needs the metadata of the recording it
+        // belongs to. It is loaded once for the whole batch and before the
+        // connection is locked for the transaction below. A recording that
+        // cannot be loaded only costs the readable name, not the import.
+        let pattern = self.filename_pattern();
+        let recording = recording_id
+            .filter(|_| {
+                tracks
+                    .iter()
+                    .any(|(_, track)| matches!(track, TrackUpdate::New { .. }))
+            })
+            .and_then(|recording_id| match self.load_recording(recording_id) {
+                Ok(recording) => Some(recording),
+                Err(err) => {
+                    log::warn!("Failed to load recording {recording_id} for naming: {err:?}");
+                    None
+                }
+            });
+
         for (recording_index, track) in tracks {
             match track {
                 TrackUpdate::Existing { track_id, works } => {
@@ -1144,14 +1175,17 @@ impl Library {
                         bail!("Cannot import a track without the recording it belongs to");
                     };
 
-                    // TODO: Human interpretable filenames?
-                    let library_path = unused_track_path(
-                        &folder,
-                        recording_id,
-                        recording_index,
-                        path.extension(),
-                        &staged,
-                    );
+                    let stem = recording
+                        .as_ref()
+                        .and_then(|recording| {
+                            filenames::render(
+                                &pattern,
+                                &filenames::TrackNameData::new(recording, recording_index, &works),
+                            )
+                        })
+                        .unwrap_or_else(|| filenames::fallback_stem(recording_id, recording_index));
+
+                    let library_path = unused_track_path(&folder, &stem, path.extension(), &staged);
 
                     let to_path = folder.join(&library_path);
                     let mut tmp_path = to_path.clone();
@@ -1311,9 +1345,9 @@ enum PreparedTrack {
 
 /// The file of a new track, copied next to its destination and waiting to be
 /// moved into place.
-struct StagedFile {
-    tmp_path: PathBuf,
-    to_path: PathBuf,
+pub(super) struct StagedFile {
+    pub tmp_path: PathBuf,
+    pub to_path: PathBuf,
 }
 
 /// Remove the files that a failed batch left behind.
@@ -1337,27 +1371,23 @@ fn clean_up_staged(staged: &[StagedFile], renamed: usize) {
     }
 }
 
-/// Build a library relative file name for a new track of `recording_id` at
-/// `recording_index` that no file in `folder` and no file staged by the same
-/// batch is using yet.
+/// Build a library relative file name based on `stem` that no file in `folder`
+/// and no file staged by the same batch is using yet.
 ///
 /// The name only serves human orientation. Tracks keep the file they were
-/// imported with even when they are renumbered later, so the obvious name for
-/// an index can already belong to another track, and using it anyway would
-/// overwrite that track's audio.
-fn unused_track_path(
+/// imported with even when they are renamed or renumbered later, so the obvious
+/// name for a track can already belong to another one, and using it anyway
+/// would overwrite that track's audio.
+pub(super) fn unused_track_path(
     folder: &Path,
-    recording_id: &str,
-    recording_index: i32,
+    stem: &str,
     extension: Option<&OsStr>,
     staged: &[StagedFile],
 ) -> PathBuf {
     let mut suffix = 0;
 
     loop {
-        let mut filename = OsString::from(recording_id);
-        filename.push("_");
-        filename.push(format!("{recording_index:02}"));
+        let mut filename = OsString::from(stem);
 
         if suffix > 0 {
             filename.push(format!("_{suffix}"));
@@ -1978,6 +2008,97 @@ mod tests {
             .collect::<Vec<_>>();
         assert!(contents.contains(&b"audio of first".to_vec()));
         assert!(contents.contains(&b"audio of second".to_vec()));
+    }
+
+    #[test]
+    fn an_imported_track_is_named_after_the_pattern() {
+        let dir = TempDir::new().unwrap();
+        let cache_dir = TempDir::new().unwrap();
+        let source_dir = TempDir::new().unwrap();
+        let library = library(&dir, &cache_dir);
+
+        let (recording, work) = recording_with_tracks(&library, &source_dir, 0);
+
+        let part = library
+            .create_work(
+                translated("Allegro con brio"),
+                Vec::new(),
+                Vec::new(),
+                Vec::new(),
+                Vec::new(),
+                true,
+            )
+            .unwrap();
+
+        let source = track_source(&source_dir, "movement");
+        library
+            .import_track(&source, &recording.recording_id, 0, vec![part])
+            .unwrap();
+
+        let tracks = library
+            .tracks_for_recording(&recording.recording_id)
+            .unwrap();
+
+        assert_eq!(
+            tracks[0].path,
+            PathBuf::from("Beethoven_Symphony No. 5_01 Allegro con brio.mp3")
+        );
+
+        // A second track of the same movement may not take the same file.
+        let source = track_source(&source_dir, "again");
+        library
+            .import_track(&source, &recording.recording_id, 0, vec![work])
+            .unwrap();
+
+        assert!(library_files(&dir)
+            .contains(&"Beethoven_Symphony No. 5_01 Symphony No. 5.mp3".to_owned()));
+    }
+
+    #[test]
+    fn a_configured_pattern_is_used() {
+        let dir = TempDir::new().unwrap();
+        let cache_dir = TempDir::new().unwrap();
+        let source_dir = TempDir::new().unwrap();
+        let library = library(&dir, &cache_dir);
+        library.set_filename_pattern("{index} - {work}");
+
+        let (recording, work) = recording_with_tracks(&library, &source_dir, 0);
+        let source = track_source(&source_dir, "movement");
+        library
+            .import_track(&source, &recording.recording_id, 2, vec![work])
+            .unwrap();
+
+        let tracks = library
+            .tracks_for_recording(&recording.recording_id)
+            .unwrap();
+
+        assert_eq!(tracks[0].path, PathBuf::from("03 - Symphony No. 5.mp3"));
+    }
+
+    /// A pattern that cannot produce a name may not keep the user from
+    /// importing music.
+    #[test]
+    fn an_unusable_pattern_falls_back_to_the_identifiers() {
+        let dir = TempDir::new().unwrap();
+        let cache_dir = TempDir::new().unwrap();
+        let source_dir = TempDir::new().unwrap();
+        let library = library(&dir, &cache_dir);
+        library.set_filename_pattern("{bogus}");
+
+        let (recording, work) = recording_with_tracks(&library, &source_dir, 0);
+        let source = track_source(&source_dir, "movement");
+        library
+            .import_track(&source, &recording.recording_id, 0, vec![work])
+            .unwrap();
+
+        let tracks = library
+            .tracks_for_recording(&recording.recording_id)
+            .unwrap();
+
+        assert_eq!(
+            tracks[0].path,
+            PathBuf::from(format!("{}_00.mp3", recording.recording_id))
+        );
     }
 
     #[test]

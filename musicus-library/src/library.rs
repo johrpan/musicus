@@ -15,8 +15,10 @@ pub use query::{Facet, GenerateRecordingParams, LibraryQuery};
 
 pub mod edit;
 pub mod exchange;
+pub mod filenames;
 pub mod metadata;
 pub mod query;
+pub mod reorganize;
 
 /// An open metadata database remembered together with the modification time of
 /// the file it came from.
@@ -31,6 +33,7 @@ pub struct Library {
     metadata_connection: RefCell<Option<CachedMetadataConnection>>,
     metadata_cache_dir: PathBuf,
     changed_senders: RefCell<Vec<async_channel::Sender<()>>>,
+    filename_pattern: RefCell<String>,
 }
 
 impl Library {
@@ -59,11 +62,22 @@ impl Library {
             metadata_connection: RefCell::new(None),
             metadata_cache_dir: metadata_cache_dir.into(),
             changed_senders: RefCell::new(Vec::new()),
+            filename_pattern: RefCell::new(filenames::DEFAULT_FILENAME_PATTERN.to_owned()),
         })
     }
 
     pub fn folder(&self) -> &str {
         &self.folder
+    }
+
+    /// The pattern used to name the files of newly imported tracks.
+    pub fn filename_pattern(&self) -> String {
+        self.filename_pattern.borrow().clone()
+    }
+
+    /// Set the pattern used to name the files of newly imported tracks.
+    pub fn set_filename_pattern(&self, pattern: &str) {
+        self.filename_pattern.replace(pattern.to_owned());
     }
 
     fn conn(&self) -> MutexGuard<'_, SqliteConnection> {

@@ -228,6 +228,50 @@ impl LibraryManager {
     }
 
     #[template_callback]
+    async fn reorganize_files(&self) {
+        let dialog = adw::AlertDialog::builder()
+            .heading(gettext("Reorganize files?"))
+            .body(gettext("Every track file within your music library folder will be renamed after the file name pattern."))
+            .build();
+
+        dialog.add_responses(&[
+            ("cancel", &gettext("Cancel")),
+            ("reorganize", &gettext("Reorganize")),
+        ]);
+
+        dialog.set_response_appearance("reorganize", adw::ResponseAppearance::Suggested);
+        dialog.set_close_response("cancel");
+        dialog.set_default_response(Some("cancel"));
+
+        if dialog.choose_future(Some(self)).await != "reorganize" {
+            return;
+        }
+
+        match self.imp().library.get().unwrap().reorganize_files() {
+            Ok(handle) => {
+                let process = Process::new(&gettext("Reorganizing library files"), handle);
+
+                process.connect_finished_notify(clone!(
+                    #[weak(rename_to = obj)]
+                    self,
+                    move |_| {
+                        obj.imp().library.get().unwrap().changed();
+                    }
+                ));
+
+                self.imp()
+                    .process_manager
+                    .get()
+                    .unwrap()
+                    .add_process(&process);
+
+                self.add_process(&process);
+            }
+            Err(err) => log::error!("Failed to reorganize library files: {err:?}"),
+        }
+    }
+
+    #[template_callback]
     fn update_metadata(&self) {
         let settings = gio::Settings::new(config::APP_ID);
         let url = if settings.boolean("use-custom-metadata-url") {

@@ -17,6 +17,10 @@
       <default>''</default>
       <summary>Path to the music library</summary>
     </key>
+    <key name="track-filename-pattern" type="s">
+      <default>'{composer}; {work}; {index} {part}'</default>
+      <summary>Pattern for the file names of imported tracks</summary>
+    </key>
     <key name="prefer-least-recently-played" type="i">
       <default>20</default>
       <summary>How much recently played items should be penalized (0–100)</summary>

@@ -63,6 +63,12 @@ template $MusicusLibraryManager: Adw.NavigationPage {
             }
 
             Adw.ButtonRow {
+              title: _("Reorganize files");
+              end-icon-name: "go-next-symbolic";
+              activated => $reorganize_files() swapped;
+            }
+
+            Adw.ButtonRow {
               title: _("Update metadata");
               end-icon-name: "go-next-symbolic";
               activated => $update_metadata() swapped;

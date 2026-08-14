@@ -3,7 +3,6 @@ use std::{
     io::{BufReader, BufWriter, Read, Write},
     path::{Path, PathBuf},
     sync::{Arc, Mutex},
-    thread,
 };
 
 use anyhow::{anyhow, bail, Error, Result};
@@ -22,7 +21,7 @@ use crate::{
         tables::{self, Source},
     },
     format_translated,
-    process::{Cancellation, ProcessHandle, ProcessMsg},
+    process::{spawn_process, Cancellation, ProcessHandle, ProcessMsg},
 };
 
 /// The name of the manifest entry inside a `.muslib` archive.
@@ -79,39 +78,6 @@ fn read_manifest(
     }
 
     Ok(Some(manifest))
-}
-
-/// Run `operation` on a background thread, reporting its outcome as the final
-/// message on the returned handle's channel.
-fn spawn_process(
-    operation: impl FnOnce(&async_channel::Sender<ProcessMsg>, &Cancellation) -> Result<()>
-        + Send
-        + 'static,
-) -> ProcessHandle {
-    let (sender, receiver) = async_channel::unbounded::<ProcessMsg>();
-    let cancellation = Cancellation::new();
-
-    let thread_cancellation = cancellation.clone();
-    thread::spawn(move || {
-        let result = operation(&sender, &thread_cancellation);
-
-        // A cancelled operation fails with a sentinel error that must not be
-        // reported to the user as a failure.
-        let msg = if thread_cancellation.is_cancelled() {
-            ProcessMsg::Cancelled
-        } else {
-            ProcessMsg::Result(result)
-        };
-
-        if let Err(err) = sender.send_blocking(msg) {
-            log::error!("Failed to send library action result: {err:?}");
-        }
-    });
-
-    ProcessHandle {
-        receiver,
-        cancellation,
-    }
 }
 
 impl Library {

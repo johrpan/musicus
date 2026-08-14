@@ -1,5 +1,9 @@
-use adw::{prelude::AdwDialogExt, subclass::prelude::*};
+use adw::{
+    prelude::{ActionRowExt, AdwDialogExt},
+    subclass::prelude::*,
+};
 use gtk::{gio, glib, prelude::*};
+use musicus_library::library::filenames;
 
 use crate::{config, slider_row::SliderRow};
 
@@ -19,6 +23,10 @@ mod imp {
         pub avoid_repeated_instruments_adjustment: TemplateChild<gtk::Adjustment>,
         #[template_child]
         pub play_full_recordings_row: TemplateChild<adw::SwitchRow>,
+        #[template_child]
+        pub track_filename_pattern_row: TemplateChild<adw::EntryRow>,
+        #[template_child]
+        pub filename_pattern_preview_row: TemplateChild<adw::ActionRow>,
         #[template_child]
         pub enable_automatic_metadata_updates_row: TemplateChild<adw::SwitchRow>,
         #[template_child]
@@ -94,6 +102,10 @@ mod imp {
                 )
                 .build();
 
+            self.track_filename_pattern_row
+                .set_text(&settings.string("track-filename-pattern"));
+            self.obj().filename_pattern_changed();
+
             settings
                 .bind(
                     "enable-automatic-metadata-updates",
@@ -158,5 +170,46 @@ impl PreferencesDialog {
     pub fn show(parent: &impl IsA<gtk::Widget>) {
         let obj: Self = glib::Object::new();
         obj.present(Some(parent));
+    }
+
+    #[template_callback]
+    fn filename_pattern_changed(&self) {
+        let row = self.imp().track_filename_pattern_row.get();
+        let preview_row = self.imp().filename_pattern_preview_row.get();
+
+        match filenames::preview(&row.text()) {
+            Ok(name) => {
+                row.remove_css_class("error");
+                preview_row.set_subtitle(&name);
+            }
+            Err(err) => {
+                row.add_css_class("error");
+                preview_row.set_subtitle(&err.to_string());
+            }
+        }
+    }
+
+    #[template_callback]
+    fn apply_filename_pattern(&self) {
+        let pattern = self.imp().track_filename_pattern_row.text();
+
+        if let Err(err) = filenames::validate(&pattern) {
+            log::warn!("Not saving an unusable filename pattern: {err:?}");
+            return;
+        }
+
+        let settings = gio::Settings::new(config::APP_ID);
+        if let Err(err) = settings.set_string("track-filename-pattern", &pattern) {
+            log::error!("Failed to save the filename pattern: {err:?}");
+        }
+    }
+
+    #[template_callback]
+    fn reset_filename_pattern(&self) {
+        self.imp()
+            .track_filename_pattern_row
+            .set_text(filenames::DEFAULT_FILENAME_PATTERN);
+
+        self.apply_filename_pattern();
     }
 }
