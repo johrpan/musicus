@@ -10,14 +10,17 @@ use diesel::{prelude::*, SqliteConnection};
 
 use crate::db::{self, schema::*, tables};
 pub use edit::TrackUpdate;
+pub use generate::GenerateRecordingParams;
 pub use metadata::SearchItem;
 pub use pattern::Patterns;
 pub use query::{Facet, GenerateRecordingParams, LibraryQuery};
+pub use query::{Facet, LibraryQuery};
 
 pub mod audio_tags;
 pub mod edit;
 pub mod exchange;
 pub mod filenames;
+pub mod generate;
 pub mod metadata;
 pub mod pattern;
 pub mod query;
