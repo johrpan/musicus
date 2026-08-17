@@ -10,10 +10,18 @@
 use std::collections::HashMap;
 
 use anyhow::Result;
-use diesel::{prelude::*, SqliteConnection};
+use diesel::{prelude::*, sql_query, sql_types, SqliteConnection};
 
 use super::Library;
 use crate::db::{models, schema::*, tables, TranslatedString};
+
+#[derive(QueryableByName)]
+struct WorkPersonRow {
+    #[diesel(sql_type = sql_types::Text)]
+    work_id: String,
+    #[diesel(sql_type = sql_types::Text)]
+    name: TranslatedString,
+}
 
 /// A work together with the persons credited on it.
 #[derive(Clone, Debug)]
@@ -47,18 +55,49 @@ pub struct RecordingListItem {
 }
 
 /// The names credited on each work, keyed by work ID, in their stored order.
+///
+/// A work with no credits of its own still gets an entry here whenever an ancestor
+/// or descendant of it does (e.g. movements that inherit their composer from the
+/// parent work, or a parent work only credited through a single movement) — the
+/// same "ancestor or descendant" rule `query.rs`'s search uses, walking
+/// `parent_work_id` rather than anchoring on the exact work row.
 fn composers_by_work(
     connection: &mut SqliteConnection,
 ) -> Result<HashMap<String, Vec<TranslatedString>>> {
     let mut composers: HashMap<String, Vec<TranslatedString>> = HashMap::new();
 
-    for (work_id, name) in work_persons::table
-        .inner_join(persons::table)
-        .order((work_persons::work_id, work_persons::sequence_number))
-        .select((work_persons::work_id, persons::name))
-        .load::<(String, TranslatedString)>(connection)?
+    for row in sql_query(
+        "WITH RECURSIVE \
+            ancestor_closure(work_id, related_id) AS ( \
+                SELECT work_id, work_id FROM works \
+                UNION \
+                SELECT ancestor_closure.work_id, works.parent_work_id \
+                FROM ancestor_closure \
+                JOIN works ON works.work_id = ancestor_closure.related_id \
+                WHERE works.parent_work_id IS NOT NULL \
+            ), \
+            descendant_closure(work_id, related_id) AS ( \
+                SELECT work_id, work_id FROM works \
+                UNION \
+                SELECT descendant_closure.work_id, works.work_id \
+                FROM descendant_closure \
+                JOIN works ON works.parent_work_id = descendant_closure.related_id \
+            ), \
+            closure(work_id, related_id) AS ( \
+                SELECT work_id, related_id FROM ancestor_closure \
+                UNION \
+                SELECT work_id, related_id FROM descendant_closure \
+            ) \
+        SELECT closure.work_id AS work_id, persons.name AS name \
+        FROM closure \
+        JOIN work_persons ON work_persons.work_id = closure.related_id \
+        JOIN persons ON persons.person_id = work_persons.person_id \
+        ORDER BY closure.work_id, (closure.related_id <> closure.work_id), \
+            work_persons.sequence_number",
+    )
+    .load::<WorkPersonRow>(connection)?
     {
-        composers.entry(work_id).or_default().push(name);
+        composers.entry(row.work_id).or_default().push(row.name);
     }
 
     Ok(composers)
@@ -139,7 +178,7 @@ impl Library {
             .filter(works::parent_work_id.is_null())
             .select(tables::Work::as_select())
             .load(connection)?;
-    
+
         let mut composers = composers_by_work(connection)?;
 
         Ok(works
@@ -154,9 +193,10 @@ impl Library {
     /// List recordings, together with the name of the work each is a
     /// recording of.
     ///
-    /// The composers are those of the recording's own work. A recording of a
-    /// single movement therefore shows none, because the credits sit on the
-    /// parent work rather than on the part.
+    /// The composers include the recording's own work's credits plus any credited
+    /// on an ancestor or descendant of it (see [`composers_by_work`]), so a
+    /// recording of a single movement still shows the parent work's composer, and
+    /// vice versa.
     pub fn list_recordings(&self) -> Result<Vec<RecordingListItem>> {
         let connection = &mut *self.conn();
 
