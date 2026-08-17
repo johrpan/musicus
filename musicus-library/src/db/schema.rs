@@ -34,6 +34,7 @@ diesel::table! {
         person_id -> Text,
         instrument_id -> Nullable<Text>,
         sequence_number -> Integer,
+        role_id -> Nullable<Text>,
     }
 }
 
@@ -228,6 +229,7 @@ diesel::table! {
         created_at -> Timestamp,
         edited_at -> Timestamp,
         last_used_at -> Timestamp,
+        relates_to -> Nullable<Text>,
     }
 }
 
@@ -238,6 +240,7 @@ diesel::joinable!(album_recordings -> recordings (recording_id));
 diesel::joinable!(ensemble_persons -> ensembles (ensemble_id));
 diesel::joinable!(ensemble_persons -> instruments (instrument_id));
 diesel::joinable!(ensemble_persons -> persons (person_id));
+diesel::joinable!(ensemble_persons -> roles (role_id));
 diesel::joinable!(plays -> recordings (recording_id));
 diesel::joinable!(plays -> tracks (track_id));
 diesel::joinable!(recording_ensembles -> ensembles (ensemble_id));

@@ -106,6 +106,7 @@ pub struct Work {
     pub created_at: NaiveDateTime,
     pub edited_at: NaiveDateTime,
     pub last_used_at: NaiveDateTime,
+    pub relates_to: Option<String>,
 }
 
 #[derive(Insertable, Queryable, Selectable, Clone, Debug)]
@@ -144,6 +145,7 @@ pub struct EnsemblePerson {
     pub person_id: String,
     pub instrument_id: Option<String>,
     pub sequence_number: i32,
+    pub role_id: Option<String>,
 }
 
 #[derive(Insertable, Queryable, Selectable, Clone, Debug)]

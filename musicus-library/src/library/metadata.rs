@@ -528,6 +528,7 @@ mod tests {
                     created_at: now,
                     edited_at: now,
                     last_used_at: now,
+                    relates_to: None,
                 })
                 .execute(&mut from)
                 .unwrap();
