@@ -173,6 +173,102 @@ impl LibraryResults {
     }
 }
 
+/// A `{col} IN (...)` SQL fragment matching `col` against the exact work referenced
+/// by `works.work_id` in the enclosing query, any of its ancestors up to the root, or
+/// any of its descendants.
+fn in_work_subtree(col: &str) -> String {
+    format!(
+        "{col} IN (\
+            WITH RECURSIVE \
+                ancestors(work_id) AS (\
+                    SELECT works.work_id \
+                    UNION \
+                    SELECT w.parent_work_id FROM works w \
+                    JOIN ancestors a ON w.work_id = a.work_id \
+                    WHERE w.parent_work_id IS NOT NULL\
+                ), \
+                descendants(work_id) AS (\
+                    SELECT works.work_id \
+                    UNION \
+                    SELECT w.work_id FROM works w \
+                    JOIN descendants d ON w.parent_work_id = d.work_id\
+                ) \
+            SELECT work_id FROM ancestors UNION SELECT work_id FROM descendants\
+        )"
+    )
+}
+
+/// A tag matches if it is on the work itself (or an ancestor/descendant of it, see
+/// [`in_work_subtree`]) or on any of its recordings. Written out because the
+/// subquery needs its own alias for `recordings`, which is already in the outer
+/// query. A valued tag matches only that exact value; a label tag binds NULL, which
+/// matches any assignment.
+fn tag_condition<QS>(
+    tag: &TagValue,
+) -> impl Expression<SqlType = sql_types::Bool>
+       + AppearsOnTable<QS>
+       + diesel::expression::ValidGrouping<(), IsAggregate = diesel::expression::is_aggregate::Never>
+       + diesel::query_builder::QueryFragment<diesel::sqlite::Sqlite> {
+    sql::<sql_types::Bool>(&format!(
+        "(EXISTS (SELECT 1 FROM work_tags WHERE {} AND work_tags.tag_id = ",
+        in_work_subtree("work_tags.work_id"),
+    ))
+    .bind::<sql_types::Text, _>(tag.tag.tag_id.clone())
+    .sql(" AND (")
+    .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
+    .sql(" IS NULL OR work_tags.value = ")
+    .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
+    .sql(&format!(
+        ")) OR EXISTS (SELECT 1 FROM recording_tags \
+          JOIN recordings AS tagged_recordings \
+          ON tagged_recordings.recording_id = recording_tags.recording_id \
+          WHERE {} \
+          AND recording_tags.tag_id = ",
+        in_work_subtree("tagged_recordings.work_id"),
+    ))
+    .bind::<sql_types::Text, _>(tag.tag.tag_id.clone())
+    .sql(" AND (")
+    .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
+    .sql(" IS NULL OR recording_tags.value = ")
+    .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
+    .sql(")))")
+}
+
+/// True if `person` is credited as a composer on the work referenced by
+/// `works.work_id` in the enclosing query, or an ancestor/descendant of it (see
+/// [`in_work_subtree`]).
+fn composer_condition<QS>(
+    person: &Person,
+) -> impl Expression<SqlType = sql_types::Bool>
+       + AppearsOnTable<QS>
+       + diesel::expression::ValidGrouping<(), IsAggregate = diesel::expression::is_aggregate::Never>
+       + diesel::query_builder::QueryFragment<diesel::sqlite::Sqlite> {
+    sql::<sql_types::Bool>("EXISTS (SELECT 1 FROM work_persons WHERE work_persons.person_id = ")
+        .bind::<sql_types::Text, _>(person.person_id.clone())
+        .sql(&format!(
+            " AND {})",
+            in_work_subtree("work_persons.work_id")
+        ))
+}
+
+/// True if `instrument` is included in the work referenced by `works.work_id` in the
+/// enclosing query, or an ancestor/descendant of it (see [`in_work_subtree`]).
+fn work_instrument_condition<QS>(
+    instrument: &Instrument,
+) -> impl Expression<SqlType = sql_types::Bool>
+       + AppearsOnTable<QS>
+       + diesel::expression::ValidGrouping<(), IsAggregate = diesel::expression::is_aggregate::Never>
+       + diesel::query_builder::QueryFragment<diesel::sqlite::Sqlite> {
+    sql::<sql_types::Bool>(
+        "EXISTS (SELECT 1 FROM work_instruments WHERE work_instruments.instrument_id = ",
+    )
+    .bind::<sql_types::Text, _>(instrument.instrument_id.clone())
+    .sql(&format!(
+        " AND {})",
+        in_work_subtree("work_instruments.work_id")
+    ))
+}
+
 impl Library {
     pub fn search(&self, query: &LibraryQuery, search: &str) -> Result<LibraryResults> {
         let search = format!("%{}%", search);
@@ -185,6 +281,9 @@ impl Library {
                         .inner_join(
                             work_persons::table.inner_join(
                                 works::table
+                                    .on(sql::<sql_types::Bool>(&in_work_subtree(
+                                        "work_persons.work_id",
+                                    )))
                                     .inner_join(
                                         recordings::table
                                             .left_join(recording_ensembles::table.inner_join(
@@ -212,42 +311,14 @@ impl Library {
                     }
 
                     if let Some(instrument) = &query.instrument {
-                        statement = statement.filter(
-                            work_instruments::instrument_id
-                                .eq(&instrument.instrument_id)
-                                .or(recording_persons::instrument_id.eq(&instrument.instrument_id)),
-                        );
+                        statement = statement
+                            .filter(work_instrument_condition(instrument).or(
+                                recording_persons::instrument_id.eq(&instrument.instrument_id),
+                            ));
                     }
 
                     if let Some(tag) = &query.tag {
-                        // A tag matches if it is on the work itself or on any of its recordings.
-                        // Written out because the subquery needs its own alias for `recordings`,
-                        // which is already in the outer query. A valued tag matches only that
-                        // exact value; a label tag binds NULL, which matches any assignment.
-                        statement = statement.filter(
-                            sql::<sql_types::Bool>(
-                                "(EXISTS (SELECT 1 FROM work_tags \
-                                  WHERE work_tags.work_id = works.work_id AND work_tags.tag_id = ",
-                            )
-                            .bind::<sql_types::Text, _>(tag.tag.tag_id.clone())
-                            .sql(" AND (")
-                            .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
-                            .sql(" IS NULL OR work_tags.value = ")
-                            .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
-                            .sql(
-                                ")) OR EXISTS (SELECT 1 FROM recording_tags \
-                                 JOIN recordings AS tagged_recordings \
-                                 ON tagged_recordings.recording_id = recording_tags.recording_id \
-                                 WHERE tagged_recordings.work_id = works.work_id \
-                                 AND recording_tags.tag_id = ",
-                            )
-                            .bind::<sql_types::Text, _>(tag.tag.tag_id.clone())
-                            .sql(" AND (")
-                            .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
-                            .sql(" IS NULL OR recording_tags.value = ")
-                            .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
-                            .sql(")))"),
-                        );
+                        statement = statement.filter(tag_condition(tag));
                     }
 
                     statement
@@ -283,7 +354,7 @@ impl Library {
                         .into_boxed();
 
                     if let Some(person) = &query.composer {
-                        statement = statement.filter(work_persons::person_id.eq(&person.person_id));
+                        statement = statement.filter(composer_condition(person));
                     }
 
                     if let Some(ensemble) = &query.ensemble {
@@ -292,42 +363,14 @@ impl Library {
                     }
 
                     if let Some(instrument) = &query.instrument {
-                        statement = statement.filter(
-                            work_instruments::instrument_id
-                                .eq(&instrument.instrument_id)
-                                .or(recording_persons::instrument_id.eq(&instrument.instrument_id)),
-                        );
+                        statement = statement
+                            .filter(work_instrument_condition(instrument).or(
+                                recording_persons::instrument_id.eq(&instrument.instrument_id),
+                            ));
                     }
 
                     if let Some(tag) = &query.tag {
-                        // A tag matches if it is on the work itself or on any of its recordings.
-                        // Written out because the subquery needs its own alias for `recordings`,
-                        // which is already in the outer query. A valued tag matches only that
-                        // exact value; a label tag binds NULL, which matches any assignment.
-                        statement = statement.filter(
-                            sql::<sql_types::Bool>(
-                                "(EXISTS (SELECT 1 FROM work_tags \
-                                  WHERE work_tags.work_id = works.work_id AND work_tags.tag_id = ",
-                            )
-                            .bind::<sql_types::Text, _>(tag.tag.tag_id.clone())
-                            .sql(" AND (")
-                            .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
-                            .sql(" IS NULL OR work_tags.value = ")
-                            .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
-                            .sql(
-                                ")) OR EXISTS (SELECT 1 FROM recording_tags \
-                                 JOIN recordings AS tagged_recordings \
-                                 ON tagged_recordings.recording_id = recording_tags.recording_id \
-                                 WHERE tagged_recordings.work_id = works.work_id \
-                                 AND recording_tags.tag_id = ",
-                            )
-                            .bind::<sql_types::Text, _>(tag.tag.tag_id.clone())
-                            .sql(" AND (")
-                            .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
-                            .sql(" IS NULL OR recording_tags.value = ")
-                            .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
-                            .sql(")))"),
-                        );
+                        statement = statement.filter(tag_condition(tag));
                     }
 
                     statement
@@ -368,7 +411,7 @@ impl Library {
                         .into_boxed();
 
                     if let Some(person) = &query.composer {
-                        statement = statement.filter(work_persons::person_id.eq(&person.person_id));
+                        statement = statement.filter(composer_condition(person));
                     }
 
                     if let Some(person) = &query.performer {
@@ -381,41 +424,13 @@ impl Library {
 
                     if let Some(instrument) = &query.instrument {
                         statement = statement.filter(
-                            work_instruments::instrument_id
-                                .eq(&instrument.instrument_id)
+                            work_instrument_condition(instrument)
                                 .or(ensemble_persons::instrument_id.eq(&instrument.instrument_id)),
                         );
                     }
 
                     if let Some(tag) = &query.tag {
-                        // A tag matches if it is on the work itself or on any of its recordings.
-                        // Written out because the subquery needs its own alias for `recordings`,
-                        // which is already in the outer query. A valued tag matches only that
-                        // exact value; a label tag binds NULL, which matches any assignment.
-                        statement = statement.filter(
-                            sql::<sql_types::Bool>(
-                                "(EXISTS (SELECT 1 FROM work_tags \
-                                  WHERE work_tags.work_id = works.work_id AND work_tags.tag_id = ",
-                            )
-                            .bind::<sql_types::Text, _>(tag.tag.tag_id.clone())
-                            .sql(" AND (")
-                            .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
-                            .sql(" IS NULL OR work_tags.value = ")
-                            .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
-                            .sql(
-                                ")) OR EXISTS (SELECT 1 FROM recording_tags \
-                                 JOIN recordings AS tagged_recordings \
-                                 ON tagged_recordings.recording_id = recording_tags.recording_id \
-                                 WHERE tagged_recordings.work_id = works.work_id \
-                                 AND recording_tags.tag_id = ",
-                            )
-                            .bind::<sql_types::Text, _>(tag.tag.tag_id.clone())
-                            .sql(" AND (")
-                            .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
-                            .sql(" IS NULL OR recording_tags.value = ")
-                            .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
-                            .sql(")))"),
-                        );
+                        statement = statement.filter(tag_condition(tag));
                     }
 
                     statement
@@ -442,8 +457,13 @@ impl Library {
                 let instruments = if query.instrument.is_none() {
                     let mut statement = instruments::table
                         .left_join(
-                            work_instruments::table
-                                .inner_join(works::table.left_join(work_persons::table)),
+                            work_instruments::table.inner_join(
+                                works::table
+                                    .on(sql::<sql_types::Bool>(&in_work_subtree(
+                                        "work_instruments.work_id",
+                                    )))
+                                    .left_join(work_persons::table),
+                            ),
                         )
                         .left_join(recording_persons::table)
                         .left_join(ensemble_persons::table)
@@ -451,7 +471,7 @@ impl Library {
                         .into_boxed();
 
                     if let Some(person) = &query.composer {
-                        statement = statement.filter(work_persons::person_id.eq(&person.person_id));
+                        statement = statement.filter(composer_condition(person));
                     }
 
                     if let Some(person) = &query.performer {
@@ -468,34 +488,7 @@ impl Library {
                     }
 
                     if let Some(tag) = &query.tag {
-                        // A tag matches if it is on the work itself or on any of its recordings.
-                        // Written out because the subquery needs its own alias for `recordings`,
-                        // which is already in the outer query. A valued tag matches only that
-                        // exact value; a label tag binds NULL, which matches any assignment.
-                        statement = statement.filter(
-                            sql::<sql_types::Bool>(
-                                "(EXISTS (SELECT 1 FROM work_tags \
-                                  WHERE work_tags.work_id = works.work_id AND work_tags.tag_id = ",
-                            )
-                            .bind::<sql_types::Text, _>(tag.tag.tag_id.clone())
-                            .sql(" AND (")
-                            .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
-                            .sql(" IS NULL OR work_tags.value = ")
-                            .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
-                            .sql(
-                                ")) OR EXISTS (SELECT 1 FROM recording_tags \
-                                 JOIN recordings AS tagged_recordings \
-                                 ON tagged_recordings.recording_id = recording_tags.recording_id \
-                                 WHERE tagged_recordings.work_id = works.work_id \
-                                 AND recording_tags.tag_id = ",
-                            )
-                            .bind::<sql_types::Text, _>(tag.tag.tag_id.clone())
-                            .sql(" AND (")
-                            .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
-                            .sql(" IS NULL OR recording_tags.value = ")
-                            .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
-                            .sql(")))"),
-                        );
+                        statement = statement.filter(tag_condition(tag));
                     }
 
                     statement
@@ -532,7 +525,7 @@ impl Library {
                         .into_boxed();
 
                     if let Some(person) = &query.composer {
-                        statement = statement.filter(work_persons::person_id.eq(&person.person_id));
+                        statement = statement.filter(composer_condition(person));
                     }
 
                     if let Some(person) = &query.performer {
@@ -545,8 +538,7 @@ impl Library {
 
                     if let Some(instrument) = &query.instrument {
                         statement = statement.filter(
-                            work_instruments::instrument_id
-                                .eq(&instrument.instrument_id)
+                            work_instrument_condition(instrument)
                                 .or(recording_persons::instrument_id.eq(&instrument.instrument_id))
                                 .or(ensemble_persons::instrument_id.eq(&instrument.instrument_id)),
                         );
@@ -558,34 +550,7 @@ impl Library {
                     }
 
                     if let Some(tag) = &query.tag {
-                        // A tag matches if it is on the work itself or on any of its recordings.
-                        // Written out because the subquery needs its own alias for `recordings`,
-                        // which is already in the outer query. A valued tag matches only that
-                        // exact value; a label tag binds NULL, which matches any assignment.
-                        statement = statement.filter(
-                            sql::<sql_types::Bool>(
-                                "(EXISTS (SELECT 1 FROM work_tags \
-                                  WHERE work_tags.work_id = works.work_id AND work_tags.tag_id = ",
-                            )
-                            .bind::<sql_types::Text, _>(tag.tag.tag_id.clone())
-                            .sql(" AND (")
-                            .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
-                            .sql(" IS NULL OR work_tags.value = ")
-                            .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
-                            .sql(
-                                ")) OR EXISTS (SELECT 1 FROM recording_tags \
-                                 JOIN recordings AS tagged_recordings \
-                                 ON tagged_recordings.recording_id = recording_tags.recording_id \
-                                 WHERE tagged_recordings.work_id = works.work_id \
-                                 AND recording_tags.tag_id = ",
-                            )
-                            .bind::<sql_types::Text, _>(tag.tag.tag_id.clone())
-                            .sql(" AND (")
-                            .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
-                            .sql(" IS NULL OR recording_tags.value = ")
-                            .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
-                            .sql(")))"),
-                        );
+                        statement = statement.filter(tag_condition(tag));
                     }
 
                     statement
@@ -626,7 +591,7 @@ impl Library {
                         .into_boxed();
 
                     if let Some(person) = &query.composer {
-                        statement = statement.filter(work_persons::person_id.eq(&person.person_id));
+                        statement = statement.filter(composer_condition(person));
                     }
 
                     if let Some(person) = &query.performer {
@@ -639,8 +604,7 @@ impl Library {
 
                     if let Some(instrument) = &query.instrument {
                         statement = statement.filter(
-                            work_instruments::instrument_id
-                                .eq(&instrument.instrument_id)
+                            work_instrument_condition(instrument)
                                 .or(recording_persons::instrument_id.eq(&instrument.instrument_id))
                                 .or(ensemble_persons::instrument_id.eq(&instrument.instrument_id)),
                         );
@@ -721,7 +685,7 @@ impl Library {
                     .into_boxed();
 
                 if let Some(person) = &query.composer {
-                    statement = statement.filter(work_persons::person_id.eq(&person.person_id));
+                    statement = statement.filter(composer_condition(person));
                 }
 
                 if let Some(person) = &query.performer {
@@ -734,8 +698,7 @@ impl Library {
 
                 if let Some(instrument) = &query.instrument {
                     statement = statement.filter(
-                        work_instruments::instrument_id
-                            .eq(&instrument.instrument_id)
+                        work_instrument_condition(instrument)
                             .or(recording_persons::instrument_id.eq(&instrument.instrument_id))
                             .or(ensemble_persons::instrument_id.eq(&instrument.instrument_id)),
                     );
@@ -747,34 +710,7 @@ impl Library {
                 }
 
                 if let Some(tag) = &query.tag {
-                    // A tag matches if it is on the work itself or on any of its recordings.
-                    // Written out because the subquery needs its own alias for `recordings`,
-                    // which is already in the outer query. A valued tag matches only that
-                    // exact value; a label tag binds NULL, which matches any assignment.
-                    statement = statement.filter(
-                        sql::<sql_types::Bool>(
-                            "(EXISTS (SELECT 1 FROM work_tags \
-                              WHERE work_tags.work_id = works.work_id AND work_tags.tag_id = ",
-                        )
-                        .bind::<sql_types::Text, _>(tag.tag.tag_id.clone())
-                        .sql(" AND (")
-                        .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
-                        .sql(" IS NULL OR work_tags.value = ")
-                        .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
-                        .sql(
-                            ")) OR EXISTS (SELECT 1 FROM recording_tags \
-                             JOIN recordings AS tagged_recordings \
-                             ON tagged_recordings.recording_id = recording_tags.recording_id \
-                             WHERE tagged_recordings.work_id = works.work_id \
-                             AND recording_tags.tag_id = ",
-                        )
-                        .bind::<sql_types::Text, _>(tag.tag.tag_id.clone())
-                        .sql(" AND (")
-                        .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
-                        .sql(" IS NULL OR recording_tags.value = ")
-                        .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
-                        .sql(")))"),
-                    );
+                    statement = statement.filter(tag_condition(tag));
                 }
 
                 let albums = statement
@@ -826,7 +762,7 @@ impl Library {
                         .into_boxed();
 
                     if let Some(person) = &query.composer {
-                        statement = statement.filter(work_persons::person_id.eq(&person.person_id));
+                        statement = statement.filter(composer_condition(person));
                     }
 
                     if let Some(person) = &query.performer {
@@ -839,8 +775,7 @@ impl Library {
 
                     if let Some(instrument) = &query.instrument {
                         statement = statement.filter(
-                            work_instruments::instrument_id
-                                .eq(&instrument.instrument_id)
+                            work_instrument_condition(instrument)
                                 .or(recording_persons::instrument_id.eq(&instrument.instrument_id))
                                 .or(ensemble_persons::instrument_id.eq(&instrument.instrument_id)),
                         );
@@ -881,7 +816,7 @@ impl Library {
                         .into_boxed();
 
                     if let Some(person) = &query.composer {
-                        statement = statement.filter(work_persons::person_id.eq(&person.person_id));
+                        statement = statement.filter(composer_condition(person));
                     }
 
                     if let Some(person) = &query.performer {
@@ -894,8 +829,7 @@ impl Library {
 
                     if let Some(instrument) = &query.instrument {
                         statement = statement.filter(
-                            work_instruments::instrument_id
-                                .eq(&instrument.instrument_id)
+                            work_instrument_condition(instrument)
                                 .or(recording_persons::instrument_id.eq(&instrument.instrument_id))
                                 .or(ensemble_persons::instrument_id.eq(&instrument.instrument_id)),
                         );
@@ -1236,12 +1170,8 @@ impl Library {
         let connection = &mut *self.conn();
 
         let works: Vec<tables::Work> = works::table
-            .left_join(work_persons::table)
-            .filter(
-                works::name
-                    .like(&search)
-                    .and(work_persons::person_id.eq(&composer.person_id)),
-            )
+            .filter(works::name.like(&search).and(composer_condition(composer)))
+            .into_boxed()
             .limit(9)
             .select(works::all_columns)
             .distinct()
@@ -1261,12 +1191,8 @@ impl Library {
             let metadata_connection = &mut *db::lock_connection(&metadata_connection);
 
             let metadata_works: Vec<tables::Work> = works::table
-                .left_join(work_persons::table)
-                .filter(
-                    works::name
-                        .like(&search)
-                        .and(work_persons::person_id.eq(&composer.person_id)),
-                )
+                .filter(works::name.like(&search).and(composer_condition(composer)))
+                .into_boxed()
                 .limit(9)
                 .select(works::all_columns)
                 .distinct()
