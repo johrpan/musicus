@@ -158,6 +158,12 @@ pub struct LibraryResults {
     pub recordings: Vec<Recording>,
     pub albums: Vec<Album>,
     pub tags: Vec<TagValue>,
+    /// The work a selected work is a part of, if it is a part of anything.
+    pub parent_work: Option<Work>,
+    /// The selected work's place in the part structure: its own movements if it
+    /// has any, or otherwise its siblings under [`Self::parent_work`], if it has a
+    /// parent.
+    pub structure: Vec<Work>,
 }
 
 impl LibraryResults {
@@ -170,6 +176,7 @@ impl LibraryResults {
             && self.recordings.is_empty()
             && self.albums.is_empty()
             && self.tags.is_empty()
+            && self.structure.is_empty()
     }
 }
 
@@ -874,6 +881,8 @@ impl Library {
                     recordings,
                     albums,
                     tags,
+                    parent_work: None,
+                    structure: Vec::new(),
                 }
             }
             LibraryQuery {
@@ -945,9 +954,45 @@ impl Library {
                         .collect::<Result<Vec<Work>>>()?,
                 );
 
+                // Where the work sits in the part structure: its own movements if it
+                // has any, or its siblings under the parent otherwise.
+                let parent_work_id = works::table
+                    .filter(works::work_id.eq(&work.work_id))
+                    .select(works::parent_work_id)
+                    .first::<Option<String>>(connection)?;
+
+                let (parent_work, structure) = if !work.parts.is_empty() {
+                    (None, work.parts.clone())
+                } else if let Some(parent_work_id) = parent_work_id {
+                    let parent = Work::from_table(
+                        works::table
+                            .filter(works::work_id.eq(&parent_work_id))
+                            .first::<tables::Work>(connection)?,
+                        connection,
+                    )?;
+
+                    let siblings = works::table
+                        .filter(
+                            works::parent_work_id
+                                .eq(&parent_work_id)
+                                .and(works::work_id.ne(&work.work_id)),
+                        )
+                        .order(works::sequence_number)
+                        .load::<tables::Work>(connection)?
+                        .into_iter()
+                        .map(|w| Work::from_table(w, connection))
+                        .collect::<Result<Vec<Work>>>()?;
+
+                    (Some(parent), siblings)
+                } else {
+                    (None, Vec::new())
+                };
+
                 LibraryResults {
                     works,
                     recordings,
+                    parent_work,
+                    structure,
                     ..Default::default()
                 }
             }

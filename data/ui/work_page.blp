@@ -1,0 +1,154 @@
+using Gtk 4.0;
+using Adw 1;
+
+template $MusicusWorkPage: Adw.NavigationPage {
+  title: _("Work");
+
+  Adw.ToolbarView {
+    [top]
+    Adw.HeaderBar {
+      show-title: false;
+    }
+
+    Gtk.ScrolledWindow {
+      Adw.Clamp {
+        maximum-size: 1000;
+        tightening-threshold: 600;
+
+        Gtk.Box {
+          orientation: vertical;
+          margin-bottom: 24;
+          margin-start: 12;
+          margin-end: 12;
+
+          Gtk.Box {
+            spacing: 12;
+            margin-top: 24;
+
+            Gtk.Box {
+              orientation: vertical;
+              hexpand: true;
+              valign: center;
+
+              Gtk.Label title_label {
+                wrap: true;
+                xalign: 0.0;
+
+                styles [
+                  "title-1",
+                ]
+              }
+
+              Gtk.Label subtitle_label {
+                wrap: true;
+                xalign: 0.0;
+              }
+            }
+
+            Gtk.MenuButton {
+              icon-name: "view-more-symbolic";
+              menu-model: work_menu;
+              valign: center;
+
+              styles [
+                "flat",
+              ]
+            }
+
+            Gtk.Button {
+              label: _("_Play");
+              tooltip-text: _("Play recordings of this work");
+              use-underline: true;
+              valign: center;
+              clicked => $play_button_clicked() swapped;
+
+              styles [
+                "pill",
+                "suggested-action",
+              ]
+            }
+          }
+
+          Gtk.Label structure_heading {
+            styles [
+              "heading",
+            ]
+
+            visible: bind structure_flow_box.visible;
+            xalign: 0;
+            margin-top: 24;
+          }
+
+          Gtk.FlowBox structure_flow_box {
+            margin-top: 12;
+            column-spacing: 12;
+            row-spacing: 12;
+            homogeneous: true;
+            selection-mode: none;
+            child-activated => $work_selected() swapped;
+          }
+
+          Gtk.Label {
+            styles [
+              "heading",
+            ]
+
+            visible: bind related_works_flow_box.visible;
+            xalign: 0;
+            margin-top: 24;
+            label: _("Related works");
+          }
+
+          Gtk.FlowBox related_works_flow_box {
+            margin-top: 12;
+            column-spacing: 12;
+            row-spacing: 12;
+            homogeneous: true;
+            selection-mode: none;
+            child-activated => $work_selected() swapped;
+          }
+
+          Gtk.Label {
+            styles [
+              "heading",
+            ]
+
+            xalign: 0;
+            margin-top: 24;
+            label: _("Recordings");
+          }
+
+          Gtk.FlowBox recordings_flow_box {
+            margin-top: 12;
+            column-spacing: 12;
+            row-spacing: 12;
+            homogeneous: true;
+            selection-mode: none;
+            child-activated => $recording_selected() swapped;
+          }
+        }
+      }
+    }
+  }
+}
+
+menu work_menu {
+  section {
+    item {
+      label: _("_Add to playlist");
+      action: "work.add-to-playlist";
+    }
+  }
+
+  section {
+    item {
+      label: _("_Edit item");
+      action: "work.edit";
+    }
+
+    item {
+      label: _("_Delete item");
+      action: "work.delete";
+    }
+  }
+}
