@@ -385,6 +385,7 @@ impl Library {
         persons: Vec<Composer>,
         instruments: Vec<Instrument>,
         tags: Vec<TagValue>,
+        relates_to: Option<Work>,
         enable_updates: bool,
     ) -> Result<Work> {
         let connection = &mut *self.conn();
@@ -399,6 +400,7 @@ impl Library {
                 tags,
                 None,
                 None,
+                relates_to.map(|w| w.work_id),
                 enable_updates,
             )
         })?;
@@ -408,6 +410,7 @@ impl Library {
         Ok(work)
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn create_work_priv(
         connection: &mut SqliteConnection,
         name: TranslatedString,
@@ -417,6 +420,7 @@ impl Library {
         tags: Vec<TagValue>,
         parent_work_id: Option<&str>,
         sequence_number: Option<i32>,
+        relates_to: Option<String>,
         enable_updates: bool,
     ) -> Result<Work> {
         let work_id = db::generate_id();
@@ -432,7 +436,7 @@ impl Library {
             edited_at: now,
             last_used_at: now,
             enable_updates,
-            relates_to: None,
+            relates_to,
         };
 
         diesel::insert_into(works::table)
@@ -440,6 +444,8 @@ impl Library {
             .execute(connection)?;
 
         for (index, part) in parts.into_iter().enumerate() {
+            let part_relates_to = part.relates_to.map(|w| w.work_id);
+
             Self::create_work_priv(
                 connection,
                 part.name,
@@ -449,6 +455,7 @@ impl Library {
                 part.tags,
                 Some(&work_id),
                 Some(index as i32),
+                part_relates_to,
                 enable_updates,
             )?;
         }
@@ -493,6 +500,7 @@ impl Library {
         persons: Vec<Composer>,
         instruments: Vec<Instrument>,
         tags: Vec<TagValue>,
+        relates_to: Option<Work>,
         enable_updates: bool,
     ) -> Result<()> {
         let connection = &mut *self.conn();
@@ -508,6 +516,7 @@ impl Library {
                 tags,
                 None,
                 None,
+                relates_to.map(|w| w.work_id),
                 enable_updates,
             )
         })?;
@@ -517,6 +526,7 @@ impl Library {
         Ok(())
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn update_work_priv(
         connection: &mut SqliteConnection,
         work_id: &str,
@@ -527,6 +537,7 @@ impl Library {
         tags: Vec<TagValue>,
         parent_work_id: Option<&str>,
         sequence_number: Option<i32>,
+        relates_to: Option<String>,
         enable_updates: bool,
     ) -> Result<()> {
         let now = db::now();
@@ -540,6 +551,7 @@ impl Library {
                 works::edited_at.eq(now),
                 works::last_used_at.eq(now),
                 works::enable_updates.eq(enable_updates),
+                works::relates_to.eq(relates_to),
             ))
             .execute(connection)?;
 
@@ -552,6 +564,8 @@ impl Library {
             .execute(connection)?;
 
         for (index, part) in parts.into_iter().enumerate() {
+            let part_relates_to = part.relates_to.map(|w| w.work_id);
+
             if works::table
                 .filter(works::work_id.eq(&part.work_id))
                 .first::<tables::Work>(connection)
@@ -568,6 +582,7 @@ impl Library {
                     part.tags,
                     Some(work_id),
                     Some(index as i32),
+                    part_relates_to,
                     enable_updates,
                 )?;
             } else {
@@ -582,6 +597,7 @@ impl Library {
                     part.tags,
                     Some(work_id),
                     Some(index as i32),
+                    part_relates_to,
                     enable_updates,
                 )?;
             }
@@ -1480,6 +1496,7 @@ mod tests {
                 vec![Composer { person, role: None }],
                 Vec::new(),
                 Vec::new(),
+                None,
                 true,
             )
             .unwrap();
@@ -1559,6 +1576,7 @@ mod tests {
                 vec![Composer { person, role: None }],
                 Vec::new(),
                 Vec::new(),
+                None,
                 true,
             )
             .unwrap();
@@ -1643,6 +1661,7 @@ mod tests {
                 vec![composer.clone()],
                 vec![instrument.clone()],
                 Vec::new(),
+                None,
                 true,
             )
         });
@@ -1654,6 +1673,7 @@ mod tests {
                 vec![composer.clone()],
                 Vec::new(),
                 Vec::new(),
+                None,
                 true,
             )
         });
@@ -1773,6 +1793,7 @@ mod tests {
                 }],
                 Vec::new(),
                 Vec::new(),
+                None,
                 true,
             )
             .unwrap();
@@ -1803,6 +1824,7 @@ mod tests {
                 vec![Composer { person, role: None }],
                 Vec::new(),
                 Vec::new(),
+                None,
                 true,
             )
             .unwrap();
@@ -2055,6 +2077,7 @@ mod tests {
                 Vec::new(),
                 Vec::new(),
                 Vec::new(),
+                None,
                 true,
             )
             .unwrap();

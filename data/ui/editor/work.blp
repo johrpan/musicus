@@ -86,6 +86,51 @@ template $MusicusWorkEditor: Adw.NavigationPage {
           }
 
           Gtk.Label {
+            label: _("Related work");
+            xalign: 0;
+            margin-top: 24;
+
+            styles [
+              "heading",
+            ]
+          }
+
+          Gtk.ListBox {
+            selection-mode: none;
+            margin-top: 12;
+
+            styles [
+              "boxed-list",
+            ]
+
+            Adw.ActionRow related_work_row {
+              title: _("Select _related work");
+              use-underline: true;
+              activatable: true;
+              activated => $select_related_work() swapped;
+
+              [prefix]
+              Gtk.Box select_related_work_box {
+                Gtk.Image {
+                  icon-name: "document-edit-symbolic";
+                }
+              }
+
+              [suffix]
+              Gtk.Button clear_related_work_button {
+                icon-name: "user-trash-symbolic";
+                valign: center;
+                visible: false;
+                clicked => $clear_related_work() swapped;
+
+                styles [
+                  "flat",
+                ]
+              }
+            }
+          }
+
+          Gtk.Label {
             label: _("Instruments");
             xalign: 0;
             margin-top: 24;

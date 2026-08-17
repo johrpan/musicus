@@ -564,7 +564,6 @@ impl EntityBrowser {
     }
 
     fn reload(&self) {
-        let imp = self.imp();
         let kind = self.kind();
 
         let items = match kind.load(&self.library()) {

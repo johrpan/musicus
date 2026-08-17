@@ -267,6 +267,7 @@ mod tests {
             persons: Vec::new(),
             instruments: Vec::new(),
             tags: Vec::new(),
+            relates_to: None,
             enable_updates: false,
         };
 

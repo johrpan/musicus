@@ -1194,6 +1194,7 @@ mod tests {
                 vec![crate::db::models::Composer { person, role: None }],
                 Vec::new(),
                 Vec::new(),
+                None,
                 true,
             )
             .unwrap();

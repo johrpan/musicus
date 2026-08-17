@@ -452,6 +452,7 @@ mod tests {
                 vec![Composer { person, role: None }],
                 Vec::new(),
                 Vec::new(),
+                None,
                 true,
             )
             .unwrap();
@@ -467,6 +468,7 @@ mod tests {
                     Vec::new(),
                     Vec::new(),
                     Vec::new(),
+                    None,
                     true,
                 )
                 .unwrap();
@@ -544,6 +546,7 @@ mod tests {
                 recording.work.persons.clone(),
                 Vec::new(),
                 Vec::new(),
+                None,
                 true,
             )
             .unwrap();
@@ -725,6 +728,7 @@ mod tests {
                 recording.work.persons.clone(),
                 Vec::new(),
                 Vec::new(),
+                None,
                 true,
             )
             .unwrap();
@@ -766,6 +770,7 @@ mod tests {
                 recording.work.persons.clone(),
                 Vec::new(),
                 Vec::new(),
+                None,
                 true,
             )
             .unwrap();
