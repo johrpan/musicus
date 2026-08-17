@@ -50,6 +50,14 @@ mod imp {
         pub work_scrolled_window: TemplateChild<gtk::ScrolledWindow>,
         #[template_child]
         pub work_list: TemplateChild<gtk::ListBox>,
+        #[template_child]
+        pub part_view: TemplateChild<adw::ToolbarView>,
+        #[template_child]
+        pub part_label: TemplateChild<gtk::Label>,
+        #[template_child]
+        pub part_scrolled_window: TemplateChild<gtk::ScrolledWindow>,
+        #[template_child]
+        pub part_list: TemplateChild<gtk::ListBox>,
     }
 
     #[glib::object_subclass]
@@ -177,6 +185,12 @@ impl WorkSelectorPopover {
     }
 
     #[template_callback]
+    fn part_back_button_clicked(&self) {
+        self.imp().stack.set_visible_child(&*self.imp().work_view);
+        self.imp().work_search_entry.grab_focus();
+    }
+
+    #[template_callback]
     fn work_search_changed(&self, entry: &gtk::SearchEntry) {
         self.search_works(&entry.text());
     }
@@ -204,7 +218,7 @@ impl WorkSelectorPopover {
 
         for result in &persons {
             let text = result.item.to_string();
-            let row = ActivatableRow::new(&super::item_row_child(&text, result.in_library));
+            let row = ActivatableRow::new(&super::item_row_child(&text, result.in_library, 0));
 
             let item = result.clone();
             let obj = self.clone();
@@ -244,7 +258,7 @@ impl WorkSelectorPopover {
 
         for result in &works {
             let text = result.item.name.get().to_owned();
-            let row = ActivatableRow::new(&super::item_row_child(&text, result.in_library));
+            let row = ActivatableRow::new(&super::item_row_child(&text, result.in_library, 0));
 
             let item = result.clone();
             let obj = self.clone();
@@ -312,8 +326,50 @@ impl WorkSelectorPopover {
             }
         };
 
-        self.emit_by_name::<()>("selected", &[&glib::BoxedAnyObject::new(work.clone())]);
+        if work.parts.is_empty() {
+            self.finish(work);
+        } else {
+            self.show_parts(work);
+        }
+    }
+
+    /// Emit the final choice and close the popover.
+    fn finish(&self, work: Work) {
+        self.emit_by_name::<()>("selected", &[&glib::BoxedAnyObject::new(work)]);
         self.popdown();
+    }
+
+    fn show_parts(&self, work: Work) {
+        let imp = self.imp();
+
+        imp.part_label.set_text(work.name.get());
+        while let Some(row) = imp.part_list.first_child() {
+            imp.part_list.remove(&row);
+        }
+
+        let whole_work = work.clone();
+        let obj = self.clone();
+        let row = ActivatableRow::new(&super::item_row_child(
+            &format!("{} ({})", work.name.get(), gettext("whole work")),
+            true,
+            0,
+        ));
+        row.connect_activated(move |_: &ActivatableRow| obj.finish(whole_work.clone()));
+        imp.part_list.append(&row);
+
+        for (part, depth) in flatten_parts(&work.parts, 1) {
+            let row =
+                ActivatableRow::new(&super::item_row_child(part.name.get(), true, depth as u32));
+
+            let obj = self.clone();
+            let part = part.clone();
+            row.connect_activated(move |_: &ActivatableRow| obj.finish(part.clone()));
+
+            imp.part_list.append(&row);
+        }
+
+        imp.part_scrolled_window.vadjustment().set_value(0.0);
+        imp.stack.set_visible_child(&*imp.part_view);
     }
 
     /// What is known about a new work when creating its composer first from within the
@@ -340,4 +396,17 @@ impl WorkSelectorPopover {
         self.emit_by_name::<()>("create", &[&glib::BoxedAnyObject::new(prefill)]);
         self.popdown();
     }
+}
+
+/// Every part in `parts`, depth-first, together with its nesting depth (1 for a
+/// direct part, 2 for a part of a part, and so on).
+fn flatten_parts(parts: &[Work], depth: usize) -> Vec<(Work, usize)> {
+    let mut flattened = Vec::new();
+
+    for part in parts {
+        flattened.push((part.clone(), depth));
+        flattened.extend(flatten_parts(&part.parts, depth + 1));
+    }
+
+    flattened
 }

@@ -124,18 +124,28 @@ pub fn connect_keynav(search_entry: &gtk::SearchEntry, list_box: &gtk::ListBox) 
     list_box.add_controller(controller);
 }
 
-pub fn item_row_child(text: &str, in_library: bool) -> gtk::Widget {
+const ITEM_ROW_INDENT: i32 = 24;
+
+/// Indent once per each `level`.
+pub fn item_row_child(text: &str, in_library: bool, level: u32) -> gtk::Widget {
+    let margin_start = level as i32 * ITEM_ROW_INDENT;
+
     let label = gtk::Label::builder()
         .label(text)
         .halign(gtk::Align::Start)
         .ellipsize(pango::EllipsizeMode::Middle)
         .tooltip_text(text)
+        .margin_start(margin_start)
         .build();
 
     if in_library {
         label.upcast()
     } else {
-        let import_box = gtk::Box::builder().spacing(12).tooltip_text(text).build();
+        let import_box = gtk::Box::builder()
+            .spacing(12)
+            .tooltip_text(text)
+            .margin_start(margin_start)
+            .build();
 
         import_box.append(
             &gtk::Image::builder()

@@ -89,5 +89,48 @@ template $MusicusWorkSelectorPopover: Gtk.Popover {
         }
       }
     }
+
+    Adw.ToolbarView part_view {
+      [top]
+      Gtk.CenterBox {
+        margin-start: 8;
+        margin-end: 8;
+        margin-top: 8;
+        margin-bottom: 6;
+
+        [start]
+        Gtk.Button {
+          styles [
+            "flat"
+          ]
+
+          icon-name: "go-previous-symbolic";
+          clicked => $part_back_button_clicked() swapped;
+        }
+
+        [center]
+        Gtk.Label part_label {
+          styles [
+            "heading"
+          ]
+
+          ellipsize: end;
+          margin-start: 6;
+        }
+      }
+
+      Gtk.ScrolledWindow part_scrolled_window {
+        height-request: 200;
+
+        Gtk.ListBox part_list {
+          styles [
+            "selector-list"
+          ]
+
+          selection-mode: none;
+          activate-on-single-click: true;
+        }
+      }
+    }
   }
 }

@@ -232,7 +232,7 @@ impl SelectorPopover {
         imp.list_box.remove_all();
 
         for (index, row) in rows.iter().enumerate() {
-            let activatable = ActivatableRow::new(&item_row_child(&row.text, row.in_library));
+            let activatable = ActivatableRow::new(&item_row_child(&row.text, row.in_library, 0));
 
             let obj = self.clone();
             activatable.connect_activated(move |_: &ActivatableRow| {

@@ -242,7 +242,7 @@ impl PerformerRoleSelectorPopover {
 
         for result in &roles {
             let text = result.item.to_string();
-            let row = ActivatableRow::new(&super::item_row_child(&text, result.in_library));
+            let row = ActivatableRow::new(&super::item_row_child(&text, result.in_library, 0));
 
             let item = result.clone();
             let obj = self.clone();
@@ -287,7 +287,7 @@ impl PerformerRoleSelectorPopover {
 
         for result in &instruments {
             let text = result.item.to_string();
-            let row = ActivatableRow::new(&super::item_row_child(&text, result.in_library));
+            let row = ActivatableRow::new(&super::item_row_child(&text, result.in_library, 0));
 
             let item = result.clone();
             let obj = self.clone();

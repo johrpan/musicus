@@ -245,7 +245,7 @@ impl RecordingSelectorPopover {
 
         for result in &persons {
             let text = result.item.to_string();
-            let row = ActivatableRow::new(&super::item_row_child(&text, result.in_library));
+            let row = ActivatableRow::new(&super::item_row_child(&text, result.in_library, 0));
 
             let item = result.clone();
             let obj = self.clone();
@@ -285,7 +285,7 @@ impl RecordingSelectorPopover {
 
         for result in &works {
             let text = result.item.name.get().to_owned();
-            let row = ActivatableRow::new(&super::item_row_child(&text, result.in_library));
+            let row = ActivatableRow::new(&super::item_row_child(&text, result.in_library, 0));
 
             let item = result.clone();
             let obj = self.clone();
@@ -330,7 +330,7 @@ impl RecordingSelectorPopover {
                 text.push_str(&format!(" ({year})"));
             }
 
-            let row = ActivatableRow::new(&super::item_row_child(&text, result.in_library));
+            let row = ActivatableRow::new(&super::item_row_child(&text, result.in_library, 0));
 
             let item = result.clone();
             let obj = self.clone();
