@@ -1,6 +1,7 @@
 use std::cell::{OnceCell, RefCell};
 
 use adw::subclass::{navigation_page::NavigationPageImpl, prelude::*};
+use gettextrs::gettext;
 use gtk::{
     gio,
     glib::{self, Properties},
@@ -83,6 +84,8 @@ mod imp {
         pub instruments_flow_box: TemplateChild<gtk::FlowBox>,
         #[template_child]
         pub tags_flow_box: TemplateChild<gtk::FlowBox>,
+        #[template_child]
+        pub works_heading: TemplateChild<gtk::Label>,
         #[template_child]
         pub works_flow_box: TemplateChild<gtk::FlowBox>,
         #[template_child]
@@ -430,6 +433,12 @@ impl SearchPage {
         }
 
         imp.highlight.replace(query.highlight());
+
+        imp.works_heading.set_label(&if query.work.is_some() {
+            gettext("Related works")
+        } else {
+            gettext("Works")
+        });
 
         if results.is_empty() {
             imp.stack.set_visible_child_name("empty");

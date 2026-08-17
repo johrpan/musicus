@@ -993,7 +993,26 @@ impl Library {
                     .map(|r| Recording::from_table(r, connection))
                     .collect::<Result<Vec<Recording>>>()?;
 
+                // Related works in both directions: what this work was derived from, and
+                // whatever else was derived from it (e.g. an arrangement alongside the
+                // original, or siblings sharing an original).
+                let mut works = Vec::new();
+
+                if let Some(relates_to) = &work.relates_to {
+                    works.push((**relates_to).clone());
+                }
+
+                works.extend(
+                    works::table
+                        .filter(works::relates_to.eq(&work.work_id))
+                        .load::<tables::Work>(connection)?
+                        .into_iter()
+                        .map(|w| Work::from_table(w, connection))
+                        .collect::<Result<Vec<Work>>>()?,
+                );
+
                 LibraryResults {
+                    works,
                     recordings,
                     ..Default::default()
                 }
