@@ -1,5 +1,4 @@
 mod ensemble_row;
-mod performer_row;
 
 use std::cell::{OnceCell, RefCell};
 
@@ -8,7 +7,8 @@ use ensemble_row::RecordingEditorEnsembleRow;
 use gettextrs::gettext;
 use gtk::glib::{self, clone, subclass::Signal, Properties};
 use once_cell::sync::Lazy;
-use performer_row::RecordingEditorPerformerRow;
+
+use crate::editor::performer_row::PerformerRow;
 
 use musicus_library::db::models::{
     Ensemble, EnsemblePerformer, Performer, Person, Recording, Tag, TagValue, Work,
@@ -39,7 +39,7 @@ mod imp {
         pub recording_id: OnceCell<String>,
 
         pub work: RefCell<Option<Work>>,
-        pub performer_rows: RefCell<Vec<RecordingEditorPerformerRow>>,
+        pub performer_rows: RefCell<Vec<PerformerRow>>,
         pub ensemble_rows: RefCell<Vec<RecordingEditorEnsembleRow>>,
         pub tag_rows: RefCell<Vec<TagRow>>,
 
@@ -320,7 +320,12 @@ impl RecordingEditor {
     }
 
     fn add_performer_row(&self, performer: Performer) {
-        let row = RecordingEditorPerformerRow::new(&self.navigation(), &self.library(), performer);
+        let row = PerformerRow::new(
+            &self.navigation(),
+            &self.library(),
+            performer,
+            &gettext("Performer"),
+        );
 
         row.connect_move(clone!(
             #[weak(rename_to = this)]

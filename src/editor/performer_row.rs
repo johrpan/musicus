@@ -1,7 +1,6 @@
 use std::cell::{OnceCell, RefCell};
 
 use adw::{prelude::*, subclass::prelude::*};
-use gettextrs::gettext;
 use gtk::{
     gdk,
     glib::{self, clone, subclass::Signal, Properties},
@@ -20,14 +19,19 @@ mod imp {
     use crate::editor::simple_entity::SimpleEntityEditor;
 
     #[derive(Properties, Debug, Default, gtk::CompositeTemplate)]
-    #[properties(wrapper_type = super::RecordingEditorPerformerRow)]
-    #[template(file = "data/ui/editor/recording/performer_row.blp")]
-    pub struct RecordingEditorPerformerRow {
+    #[properties(wrapper_type = super::PerformerRow)]
+    #[template(file = "data/ui/editor/performer_row.blp")]
+    pub struct PerformerRow {
         #[property(get, construct_only)]
         pub navigation: OnceCell<adw::NavigationView>,
 
         #[property(get, construct_only)]
         pub library: OnceCell<Library>,
+
+        /// Shown in place of a role or instrument once none is set, e.g.
+        /// "Performer" for a recording, "Member" for an ensemble.
+        #[property(get, construct_only)]
+        pub placeholder: OnceCell<String>,
 
         pub performer: RefCell<Option<Performer>>,
         pub role_popover: OnceCell<PerformerRoleSelectorPopover>,
@@ -39,9 +43,9 @@ mod imp {
     }
 
     #[glib::object_subclass]
-    impl ObjectSubclass for RecordingEditorPerformerRow {
-        const NAME: &'static str = "MusicusRecordingEditorPerformerRow";
-        type Type = super::RecordingEditorPerformerRow;
+    impl ObjectSubclass for PerformerRow {
+        const NAME: &'static str = "MusicusPerformerRow";
+        type Type = super::PerformerRow;
         type ParentType = adw::ActionRow;
 
         fn class_init(klass: &mut Self::Class) {
@@ -55,13 +59,13 @@ mod imp {
     }
 
     #[glib::derived_properties]
-    impl ObjectImpl for RecordingEditorPerformerRow {
+    impl ObjectImpl for PerformerRow {
         fn signals() -> &'static [Signal] {
             static SIGNALS: Lazy<Vec<Signal>> = Lazy::new(|| {
                 vec![
                     Signal::builder("remove").build(),
                     Signal::builder("move")
-                        .param_types([super::RecordingEditorPerformerRow::static_type()])
+                        .param_types([super::PerformerRow::static_type()])
                         .build(),
                 ]
             });
@@ -115,7 +119,7 @@ mod imp {
             let obj = self.obj().to_owned();
             role_popover.connect_reset(move |_| {
                 if let Some(performer) = &mut *obj.imp().performer.borrow_mut() {
-                    obj.imp().role_label.set_label(&gettext("Performer"));
+                    obj.imp().role_label.set_label(&obj.placeholder());
                     performer.role = None;
                     performer.instrument = None;
                 }
@@ -185,24 +189,30 @@ mod imp {
         }
     }
 
-    impl WidgetImpl for RecordingEditorPerformerRow {}
-    impl ListBoxRowImpl for RecordingEditorPerformerRow {}
-    impl PreferencesRowImpl for RecordingEditorPerformerRow {}
-    impl ActionRowImpl for RecordingEditorPerformerRow {}
+    impl WidgetImpl for PerformerRow {}
+    impl ListBoxRowImpl for PerformerRow {}
+    impl PreferencesRowImpl for PerformerRow {}
+    impl ActionRowImpl for PerformerRow {}
 }
 
 glib::wrapper! {
-    pub struct RecordingEditorPerformerRow(ObjectSubclass<imp::RecordingEditorPerformerRow>)
+    pub struct PerformerRow(ObjectSubclass<imp::PerformerRow>)
         @extends adw::ActionRow, adw::PreferencesRow, gtk::ListBoxRow, gtk::Widget,
         @implements gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget, gtk::Actionable;
 }
 
 #[gtk::template_callbacks]
-impl RecordingEditorPerformerRow {
-    pub fn new(navigation: &adw::NavigationView, library: &Library, performer: Performer) -> Self {
+impl PerformerRow {
+    pub fn new(
+        navigation: &adw::NavigationView,
+        library: &Library,
+        performer: Performer,
+        placeholder: &str,
+    ) -> Self {
         let obj: Self = glib::Object::builder()
             .property("navigation", navigation)
             .property("library", library)
+            .property("placeholder", placeholder)
             .build();
         obj.set_performer(performer);
         obj
@@ -238,10 +248,10 @@ impl RecordingEditorPerformerRow {
                 .role
                 .as_ref()
                 .map(ToString::to_string)
-                .unwrap_or_else(|| gettext("Performer")),
+                .unwrap_or_else(|| self.placeholder()),
         };
 
-        self.imp().role_label.set_label(&label.to_string());
+        self.imp().role_label.set_label(&label);
         self.imp().performer.replace(Some(performer));
     }
 

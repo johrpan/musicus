@@ -1,17 +1,17 @@
-mod member_row;
-
 use std::cell::{OnceCell, RefCell};
 
 use adw::{prelude::*, subclass::prelude::*};
 use gettextrs::gettext;
 use gtk::glib::{self, clone, subclass::Signal};
-use member_row::EnsembleEditorMemberRow;
 use once_cell::sync::Lazy;
 
-use musicus_library::db::models::{Ensemble, Instrument, Person};
+use musicus_library::db::models::{Ensemble, Performer, Person};
 
 use crate::{
-    editor::{simple_entity::SimpleEntityEditor, translation::TranslationEditor},
+    editor::{
+        performer_row::PerformerRow, simple_entity::SimpleEntityEditor,
+        translation::TranslationEditor,
+    },
     library::Library,
     selector::SelectorPopover,
 };
@@ -26,7 +26,7 @@ mod imp {
         pub navigation: OnceCell<adw::NavigationView>,
         pub library: OnceCell<Library>,
         pub ensemble_id: OnceCell<String>,
-        pub member_rows: RefCell<Vec<EnsembleEditorMemberRow>>,
+        pub member_rows: RefCell<Vec<PerformerRow>>,
         pub persons_popover: OnceCell<SelectorPopover>,
 
         #[template_child]
@@ -134,8 +134,8 @@ impl EnsembleEditor {
                 .enable_updates_row
                 .set_active(ensemble.enable_updates);
 
-            for (person, instrument) in ensemble.persons.clone() {
-                obj.add_member_row(person, instrument);
+            for member in ensemble.persons.clone() {
+                obj.add_member_row(member);
             }
         }
 
@@ -165,15 +165,19 @@ impl EnsembleEditor {
     }
 
     fn new_member(&self, person: Person) {
-        self.add_member_row(person, None);
+        self.add_member_row(Performer {
+            person,
+            role: None,
+            instrument: None,
+        });
     }
 
-    fn add_member_row(&self, person: Person, instrument: Option<Instrument>) {
-        let row = EnsembleEditorMemberRow::new(
+    fn add_member_row(&self, member: Performer) {
+        let row = PerformerRow::new(
             self.imp().navigation.get().unwrap(),
             self.imp().library.get().unwrap(),
-            person,
-            instrument,
+            member,
+            &gettext("Member"),
         );
 
         row.connect_move(clone!(
@@ -217,8 +221,8 @@ impl EnsembleEditor {
             .member_rows
             .borrow()
             .iter()
-            .map(EnsembleEditorMemberRow::member)
-            .collect::<Vec<(Person, Option<Instrument>)>>();
+            .map(PerformerRow::performer)
+            .collect::<Vec<Performer>>();
 
         if !crate::editor::require_name(self, &name) {
             return;

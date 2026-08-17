@@ -641,7 +641,7 @@ impl Library {
     pub fn create_ensemble(
         &self,
         name: TranslatedString,
-        persons: Vec<(Person, Option<Instrument>)>,
+        persons: Vec<Performer>,
         enable_updates: bool,
     ) -> Result<Ensemble> {
         let connection = &mut *self.conn();
@@ -663,13 +663,13 @@ impl Library {
                 .values(&ensemble_data)
                 .execute(connection)?;
 
-            for (index, (person, instrument)) in persons.into_iter().enumerate() {
+            for (index, member) in persons.into_iter().enumerate() {
                 let ensemble_person_data = tables::EnsemblePerson {
                     ensemble_id: ensemble_data.ensemble_id.clone(),
-                    person_id: person.person_id,
-                    instrument_id: instrument.map(|i| i.instrument_id),
+                    person_id: member.person.person_id,
+                    role_id: member.role.map(|r| r.role_id),
+                    instrument_id: member.instrument.map(|i| i.instrument_id),
                     sequence_number: index as i32,
-                    role_id: None,
                 };
 
                 diesel::insert_into(ensemble_persons::table)
@@ -689,7 +689,7 @@ impl Library {
         &self,
         id: &str,
         name: TranslatedString,
-        persons: Vec<(Person, Option<Instrument>)>,
+        persons: Vec<Performer>,
         enable_updates: bool,
     ) -> Result<()> {
         let connection = &mut *self.conn();
@@ -711,13 +711,13 @@ impl Library {
                 .filter(ensemble_persons::ensemble_id.eq(id))
                 .execute(connection)?;
 
-            for (index, (person, instrument)) in persons.into_iter().enumerate() {
+            for (index, member) in persons.into_iter().enumerate() {
                 let ensemble_person_data = tables::EnsemblePerson {
                     ensemble_id: id.to_string(),
-                    person_id: person.person_id,
-                    instrument_id: instrument.map(|i| i.instrument_id),
+                    person_id: member.person.person_id,
+                    role_id: member.role.map(|r| r.role_id),
+                    instrument_id: member.instrument.map(|i| i.instrument_id),
                     sequence_number: index as i32,
-                    role_id: None,
                 };
 
                 diesel::insert_into(ensemble_persons::table)
@@ -1661,7 +1661,11 @@ mod tests {
         let ensemble = assert_notifies(&library, "create_ensemble", || {
             library.create_ensemble(
                 translated("Berliner Philharmoniker"),
-                vec![(person.clone(), Some(instrument.clone()))],
+                vec![Performer {
+                    person: person.clone(),
+                    role: None,
+                    instrument: Some(instrument.clone()),
+                }],
                 true,
             )
         });
@@ -2202,7 +2206,11 @@ mod tests {
         let ensemble = library
             .create_ensemble(
                 translated("Berliner Philharmoniker"),
-                vec![(person.clone(), None)],
+                vec![Performer {
+                    person: person.clone(),
+                    role: None,
+                    instrument: None,
+                }],
                 true,
             )
             .unwrap();
@@ -2217,7 +2225,18 @@ mod tests {
             .update_ensemble(
                 &ensemble.ensemble_id,
                 translated("Renamed"),
-                vec![(person, None), (missing, None)],
+                vec![
+                    Performer {
+                        person,
+                        role: None,
+                        instrument: None,
+                    },
+                    Performer {
+                        person: missing,
+                        role: None,
+                        instrument: None,
+                    },
+                ],
                 true,
             )
             .is_err());
