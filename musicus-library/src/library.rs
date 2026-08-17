@@ -11,12 +11,14 @@ use diesel::{prelude::*, SqliteConnection};
 use crate::db::{self, schema::*, tables};
 pub use edit::TrackUpdate;
 pub use generate::GenerateRecordingParams;
+pub use manage::{EnsembleListItem, RecordingListItem, WorkListItem};
 pub use metadata::SearchItem;
 pub use query::{Facet, LibraryQuery};
 
 pub mod edit;
 pub mod exchange;
 pub mod generate;
+pub mod manage;
 pub mod metadata;
 pub mod query;
 

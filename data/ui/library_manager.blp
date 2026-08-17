@@ -51,6 +51,31 @@ template $MusicusLibraryManager: Adw.NavigationPage {
             }
 
             Adw.ButtonRow {
+              title: _("Library contents");
+              end-icon-name: "go-next-symbolic";
+              activated => $open_entity_browser() swapped;
+            }
+          }
+
+          Gtk.Label {
+            label: _("Exchange");
+            xalign: 0;
+            margin-top: 24;
+
+            styles [
+              "heading",
+            ]
+          }
+
+          Gtk.ListBox {
+            selection-mode: none;
+            margin-top: 12;
+
+            styles [
+              "boxed-list-separate",
+            ]
+
+            Adw.ButtonRow {
               title: _("Import from archive");
               end-icon-name: "go-next-symbolic";
               activated => $import_archive() swapped;

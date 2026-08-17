@@ -11,8 +11,8 @@ use musicus_library::format_translated;
 use musicus_library::db::tables::Source;
 
 use crate::{
-    config, library::Library, process::Process, process_manager::ProcessManager,
-    process_row::ProcessRow, window::Window,
+    config, entity_browser::EntityBrowser, library::Library, process::Process,
+    process_manager::ProcessManager, process_row::ProcessRow, window::Window,
 };
 
 mod imp {
@@ -107,6 +107,16 @@ impl LibraryManager {
             }
             Ok(folder) => window.set_library_folder(&folder),
         }
+    }
+
+    #[template_callback]
+    fn open_entity_browser(&self) {
+        let navigation = self.imp().navigation.get().unwrap();
+
+        navigation.push(&EntityBrowser::new(
+            navigation,
+            self.imp().library.get().unwrap(),
+        ));
     }
 
     #[template_callback]
