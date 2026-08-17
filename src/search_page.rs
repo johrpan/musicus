@@ -1,7 +1,6 @@
 use std::cell::{OnceCell, RefCell};
 
 use adw::subclass::{navigation_page::NavigationPageImpl, prelude::*};
-use gettextrs::gettext;
 use gtk::{
     gio,
     glib::{self, Properties},
@@ -24,6 +23,7 @@ use crate::{
     program_tile::ProgramTile,
     recording_tile::RecordingTile,
     util,
+    work_page::WorkPage,
 };
 
 mod imp {
@@ -84,8 +84,6 @@ mod imp {
         pub instruments_flow_box: TemplateChild<gtk::FlowBox>,
         #[template_child]
         pub tags_flow_box: TemplateChild<gtk::FlowBox>,
-        #[template_child]
-        pub works_heading: TemplateChild<gtk::Label>,
         #[template_child]
         pub works_flow_box: TemplateChild<gtk::FlowBox>,
         #[template_child]
@@ -292,6 +290,7 @@ impl SearchPage {
             }
         } else {
             let mut new_query = self.imp().query.get().unwrap().clone();
+            let mut work_selected = None;
 
             let query_changed = if let Some(person) = imp.composers.borrow().first().cloned() {
                 new_query.composer = Some(person);
@@ -309,7 +308,7 @@ impl SearchPage {
                 new_query.tag = Some(tag_value);
                 true
             } else if let Some(work) = imp.works.borrow().first().cloned() {
-                new_query.work = Some(work);
+                work_selected = Some(work);
                 true
             } else if let Some(recording) = imp.recordings.borrow().first().cloned() {
                 let playlist = self.player().recording_to_playlist(&recording);
@@ -322,7 +321,16 @@ impl SearchPage {
                 false
             };
 
-            if query_changed {
+            if let Some(work) = work_selected {
+                new_query.work = Some(work);
+                self.navigation().push(&WorkPage::new(
+                    &self.toast_overlay(),
+                    &self.navigation(),
+                    &self.library(),
+                    &self.player(),
+                    new_query,
+                ));
+            } else if query_changed {
                 self.navigation().push(&SearchPage::new(
                     &self.toast_overlay(),
                     &self.navigation(),
@@ -349,7 +357,17 @@ impl SearchPage {
             Facet::Performer(person) => new_query.performer = Some(person),
             Facet::Ensemble(ensemble) => new_query.ensemble = Some(ensemble),
             Facet::Instrument(instrument) => new_query.instrument = Some(instrument),
-            Facet::Work(work) => new_query.work = Some(work),
+            Facet::Work(work) => {
+                new_query.work = Some(work);
+                self.navigation().push(&WorkPage::new(
+                    &self.toast_overlay(),
+                    &self.navigation(),
+                    &self.library(),
+                    &self.player(),
+                    new_query,
+                ));
+                return;
+            }
             Facet::Tag(tag) => new_query.tag = Some(tag),
         }
 
@@ -433,12 +451,6 @@ impl SearchPage {
         }
 
         imp.highlight.replace(query.highlight());
-
-        imp.works_heading.set_label(&if query.work.is_some() {
-            gettext("Related works")
-        } else {
-            gettext("Works")
-        });
 
         if results.is_empty() {
             imp.stack.set_visible_child_name("empty");

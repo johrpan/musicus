@@ -27,6 +27,7 @@ mod slider_row;
 mod util;
 mod welcome_page;
 mod window;
+mod work_page;
 
 use gettextrs::LocaleCategory;
 use gstreamer_play::gst;
