@@ -4,6 +4,7 @@ mod application;
 mod config;
 mod editor;
 mod empty_page;
+mod entity_browser;
 mod facet_tile;
 mod library;
 mod library_manager;

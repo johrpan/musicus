@@ -1130,18 +1130,6 @@ impl Library {
         Ok(())
     }
 
-    /// Load the recording with the given ID including its work and performers.
-    fn load_recording(&self, recording_id: &str) -> Result<Recording> {
-        let connection = &mut *self.conn();
-
-        let row = recordings::table
-            .filter(recordings::recording_id.eq(recording_id))
-            .select(tables::Recording::as_select())
-            .first::<tables::Recording>(connection)?;
-
-        Recording::from_table(row, connection)
-    }
-
     /// Apply a batch of track changes in a single transaction.
     ///
     /// Each entry of `tracks` carries the `recording_index` its track should end

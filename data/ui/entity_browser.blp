@@ -1,0 +1,98 @@
+using Gtk 4.0;
+using Adw 1;
+
+template $MusicusEntityBrowser: Adw.NavigationPage {
+  title: _("Entities");
+  tag: "entities";
+
+  Adw.ToolbarView {
+    [top]
+    Adw.HeaderBar {
+      [end]
+      Gtk.Button new_button {
+        label: _("_New");
+        use-underline: true;
+        tooltip-text: _("Add a new item of this kind");
+        clicked => $create_entity() swapped;
+      }
+    }
+
+    [top]
+    Gtk.Box {
+      spacing: 6;
+      margin-top: 3;
+      margin-bottom: 3;
+      margin-start: 6;
+      margin-end: 6;
+
+      Gtk.DropDown kind_drop_down {
+        tooltip-text: _("The kind of item to show");
+      }
+
+      Gtk.SearchEntry search_entry {
+        hexpand: true;
+        placeholder-text: _("Filter…");
+        search-changed => $search_changed() swapped;
+      }
+    }
+
+    Gtk.Stack stack {
+      Gtk.StackPage {
+        name: "list";
+
+        child: Gtk.ScrolledWindow {
+          hexpand: true;
+          vexpand: true;
+
+          Gtk.ColumnView column_view {
+            show-row-separators: true;
+            show-column-separators: true;
+            enable-rubberband: true;
+          }
+        };
+      }
+
+      Gtk.StackPage {
+        name: "empty";
+
+        child: Adw.StatusPage status_page {
+          icon-name: "system-search-symbolic";
+          title: _("Nothing to show");
+        };
+      }
+    }
+
+    [bottom]
+    Gtk.ActionBar {
+      [start]
+      Gtk.Label count_label {
+        margin-start: 6;
+
+        styles [
+          "dim-label",
+        ]
+      }
+
+      [end]
+      Gtk.Button clear_selection_button {
+        label: _("Clear selection");
+        sensitive: false;
+        clicked => $clear_selection() swapped;
+
+        styles [
+          "flat",
+        ]
+      }
+
+      [end]
+      Gtk.Button select_all_button {
+        label: _("Select all");
+        clicked => $select_all() swapped;
+
+        styles [
+          "flat",
+        ]
+      }
+    }
+  }
+}
