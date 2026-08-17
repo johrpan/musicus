@@ -338,7 +338,19 @@ impl Library {
         }
 
         if let Some(work_id) = &params.work_id {
-            query = query.filter(recordings::work_id.eq(work_id));
+            query = query.filter(
+                diesel::dsl::sql::<Bool>("(recordings.work_id = ")
+                    .bind::<sql_types::Text, _>(work_id.clone())
+                    .sql(
+                        " OR EXISTS (SELECT 1 FROM works \
+                          WHERE works.work_id = recordings.work_id \
+                          AND (works.relates_to = ",
+                    )
+                    .bind::<sql_types::Text, _>(work_id.clone())
+                    .sql(" OR works.work_id = (SELECT relates_to FROM works WHERE work_id = ")
+                    .bind::<sql_types::Text, _>(work_id.clone())
+                    .sql("))))"),
+            );
         }
 
         // As in `search`, a tag counts if it is on the recording or on its work,
@@ -460,4 +472,113 @@ fn most_recent(rows: Vec<(String, NaiveDateTime)>) -> HashMap<String, NaiveDateT
     }
 
     latest
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{collections::HashSet, fs};
+
+    use tempfile::TempDir;
+
+    use super::*;
+    use crate::db::TranslatedString;
+
+    fn translated(name: &str) -> TranslatedString {
+        let mut translations = HashMap::new();
+        translations.insert("generic".to_string(), name.to_string());
+        TranslatedString(translations)
+    }
+
+    fn library(dir: &TempDir, cache_dir: &TempDir) -> Library {
+        Library::new(dir.path(), cache_dir.path()).unwrap()
+    }
+
+    /// A work with one recording that has one track, so it is a valid candidate.
+    fn work_with_recording(
+        library: &Library,
+        source_dir: &TempDir,
+        name: &str,
+        relates_to: Option<Work>,
+    ) -> (Work, Recording) {
+        let work = library
+            .create_work(
+                translated(name),
+                Vec::new(),
+                Vec::new(),
+                Vec::new(),
+                Vec::new(),
+                relates_to,
+                true,
+            )
+            .unwrap();
+
+        let recording = library
+            .create_recording(work.clone(), Vec::new(), Vec::new(), Vec::new(), true)
+            .unwrap();
+
+        let source = source_dir.path().join(format!("{name}.mp3"));
+        fs::write(&source, format!("audio of {name}").as_bytes()).unwrap();
+
+        library
+            .import_track(&source, &recording.recording_id, 0, Vec::new())
+            .unwrap();
+
+        (work, recording)
+    }
+
+    fn recording_ids(candidates: Vec<Candidate>) -> HashSet<String> {
+        candidates.into_iter().map(|c| c.recording_id).collect()
+    }
+
+    #[test]
+    fn a_work_query_also_matches_what_was_derived_from_it() {
+        let dir = TempDir::new().unwrap();
+        let cache_dir = TempDir::new().unwrap();
+        let source_dir = TempDir::new().unwrap();
+        let library = library(&dir, &cache_dir);
+
+        let (original, original_recording) =
+            work_with_recording(&library, &source_dir, "Original", None);
+        let (_, arrangement_recording) =
+            work_with_recording(&library, &source_dir, "Arrangement", Some(original.clone()));
+        let (_, unrelated_recording) =
+            work_with_recording(&library, &source_dir, "Unrelated", None);
+
+        let params = GenerateRecordingParams {
+            work_id: Some(original.work_id.clone()),
+            ..Default::default()
+        };
+
+        let recording_ids = recording_ids(library.candidates(&params).unwrap());
+
+        assert!(recording_ids.contains(&original_recording.recording_id));
+        assert!(recording_ids.contains(&arrangement_recording.recording_id));
+        assert!(!recording_ids.contains(&unrelated_recording.recording_id));
+    }
+
+    #[test]
+    fn a_work_query_also_reaches_back_to_what_it_was_derived_from() {
+        let dir = TempDir::new().unwrap();
+        let cache_dir = TempDir::new().unwrap();
+        let source_dir = TempDir::new().unwrap();
+        let library = library(&dir, &cache_dir);
+
+        let (original, original_recording) =
+            work_with_recording(&library, &source_dir, "Original", None);
+        let (arrangement, arrangement_recording) =
+            work_with_recording(&library, &source_dir, "Arrangement", Some(original.clone()));
+        let (_, unrelated_recording) =
+            work_with_recording(&library, &source_dir, "Unrelated", None);
+
+        let params = GenerateRecordingParams {
+            work_id: Some(arrangement.work_id.clone()),
+            ..Default::default()
+        };
+
+        let recording_ids = recording_ids(library.candidates(&params).unwrap());
+
+        assert!(recording_ids.contains(&original_recording.recording_id));
+        assert!(recording_ids.contains(&arrangement_recording.recording_id));
+        assert!(!recording_ids.contains(&unrelated_recording.recording_id));
+    }
 }
