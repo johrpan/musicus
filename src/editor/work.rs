@@ -18,11 +18,11 @@ use musicus_library::db::{
 
 use crate::{
     editor::{
-        simple_entity::SimpleEntityEditor, tag::TagEditor, tag_row::TagRow,
+        create, simple_entity::SimpleEntityEditor, tag::TagEditor, tag_row::TagRow,
         translation::TranslationEditor,
     },
     library::Library,
-    selector::{ComposerPrefill, SelectorPopover, WorkPrefill},
+    selector::{work::WorkSelectorPopover, ComposerPrefill, SelectorPopover, WorkPrefill},
 };
 use instrument_row::InstrumentRow;
 
@@ -49,10 +49,12 @@ mod imp {
         pub part_rows: RefCell<Vec<WorkEditorPartRow>>,
         pub instrument_rows: RefCell<Vec<InstrumentRow>>,
         pub tag_rows: RefCell<Vec<TagRow>>,
+        pub relates_to: RefCell<Option<Work>>,
 
         pub persons_popover: OnceCell<SelectorPopover>,
         pub instruments_popover: OnceCell<SelectorPopover>,
         pub tags_popover: OnceCell<SelectorPopover>,
+        pub work_selector_popover: OnceCell<WorkSelectorPopover>,
 
         #[template_child]
         pub name_editor: TemplateChild<TranslationEditor>,
@@ -70,6 +72,12 @@ mod imp {
         pub tags_box: TemplateChild<gtk::Box>,
         #[template_child]
         pub tag_list: TemplateChild<gtk::ListBox>,
+        #[template_child]
+        pub related_work_row: TemplateChild<adw::ActionRow>,
+        #[template_child]
+        pub select_related_work_box: TemplateChild<gtk::Box>,
+        #[template_child]
+        pub clear_related_work_button: TemplateChild<gtk::Button>,
         #[template_child]
         pub enable_updates_row: TemplateChild<adw::SwitchRow>,
         #[template_child]
@@ -186,6 +194,34 @@ mod imp {
 
             self.tags_box.append(&tags_popover);
             self.tags_popover.set(tags_popover).unwrap();
+
+            let work_selector_popover = WorkSelectorPopover::new(self.library.get().unwrap());
+
+            let obj = self.obj().clone();
+            work_selector_popover.connect_selected(move |_, work| {
+                obj.set_relates_to(Some(work));
+            });
+
+            let obj = self.obj().clone();
+            work_selector_popover.connect_create(move |_, prefill| {
+                create::work(
+                    &obj.navigation(),
+                    &obj.library(),
+                    prefill,
+                    clone!(
+                        #[weak]
+                        obj,
+                        move |work| {
+                            obj.set_relates_to(Some(work));
+                        }
+                    ),
+                );
+            });
+
+            self.select_related_work_box.append(&work_selector_popover);
+            self.work_selector_popover
+                .set(work_selector_popover)
+                .unwrap();
         }
     }
 
@@ -238,6 +274,10 @@ impl WorkEditor {
 
             for tag_value in &work.tags {
                 obj.add_tag_row(tag_value.clone());
+            }
+
+            if let Some(relates_to) = &work.relates_to {
+                obj.set_relates_to(Some((**relates_to).clone()));
             }
 
             obj.imp().enable_updates_row.set_active(work.enable_updates);
@@ -295,6 +335,39 @@ impl WorkEditor {
     #[template_callback]
     fn add_tag(&self) {
         self.imp().tags_popover.get().unwrap().popup();
+    }
+
+    #[template_callback]
+    fn select_related_work(&self) {
+        self.imp().work_selector_popover.get().unwrap().popup();
+    }
+
+    #[template_callback]
+    fn clear_related_work(&self) {
+        self.set_relates_to(None);
+    }
+
+    fn set_relates_to(&self, relates_to: Option<Work>) {
+        match &relates_to {
+            Some(work) => {
+                self.imp().related_work_row.set_title(work.name.get());
+                self.imp().related_work_row.set_subtitle(
+                    &work
+                        .composers_string()
+                        .unwrap_or_else(|| gettext("No composers")),
+                );
+                self.imp().clear_related_work_button.set_visible(true);
+            }
+            None => {
+                self.imp()
+                    .related_work_row
+                    .set_title(&gettext("Select _related work"));
+                self.imp().related_work_row.set_subtitle("");
+                self.imp().clear_related_work_button.set_visible(false);
+            }
+        }
+
+        self.imp().relates_to.replace(relates_to);
     }
 
     fn add_composer(&self, person: Person) {
@@ -472,6 +545,8 @@ impl WorkEditor {
             .map(|r| r.tag_value())
             .collect::<Vec<TagValue>>();
 
+        let relates_to = self.imp().relates_to.borrow().clone();
+
         let enable_updates = self.imp().enable_updates_row.is_active();
 
         if !crate::editor::require_name(self, &name) {
@@ -493,6 +568,7 @@ impl WorkEditor {
                 persons: composers,
                 instruments,
                 tags,
+                relates_to: relates_to.map(Box::new),
                 enable_updates,
             };
 
@@ -507,6 +583,7 @@ impl WorkEditor {
                     composers,
                     instruments,
                     tags,
+                    relates_to,
                     enable_updates,
                 ),
             )
@@ -517,7 +594,15 @@ impl WorkEditor {
         } else {
             let Some(work) = crate::editor::handle_save(
                 self,
-                library.create_work(name, parts, composers, instruments, tags, enable_updates),
+                library.create_work(
+                    name,
+                    parts,
+                    composers,
+                    instruments,
+                    tags,
+                    relates_to,
+                    enable_updates,
+                ),
             ) else {
                 return;
             };

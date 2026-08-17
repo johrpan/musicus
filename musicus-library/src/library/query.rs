@@ -1459,6 +1459,7 @@ mod tests {
                     tag: baroque.clone(),
                     value: None,
                 }],
+                None,
                 true,
             )
             .unwrap();
@@ -1649,6 +1650,7 @@ mod tests {
                 }],
                 Vec::new(),
                 Vec::new(),
+                None,
                 true,
             )
             .unwrap();

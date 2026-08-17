@@ -18,6 +18,7 @@ pub struct Work {
     pub persons: Vec<Composer>,
     pub instruments: Vec<Instrument>,
     pub tags: Vec<TagValue>,
+    pub relates_to: Option<Box<Work>>,
     pub enable_updates: bool,
 }
 
@@ -216,6 +217,18 @@ impl Work {
 
         let tags = TagValue::load_for_work(&data.work_id, connection)?;
 
+        // Note: Loaded the same way as a part, so this recurses through the whole
+        // relation chain. Like the part tree above, it does not check for circularity.
+        let relates_to = match &data.relates_to {
+            Some(relates_to) => Some(Box::new(Work::from_table(
+                works::table
+                    .filter(works::work_id.eq(relates_to))
+                    .first::<tables::Work>(connection)?,
+                connection,
+            )?)),
+            None => None,
+        };
+
         Ok(Self {
             work_id: data.work_id,
             name: data.name,
@@ -223,6 +236,7 @@ impl Work {
             persons,
             instruments,
             tags,
+            relates_to,
             enable_updates: data.enable_updates,
         })
     }
