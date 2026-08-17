@@ -8,7 +8,9 @@ use std::{collections::HashMap, fs, path::Path};
 use anyhow::{Context, Result};
 use musicus_library::{
     db::{
-        models::{Composer, Ensemble, EnsemblePerformer, Instrument, Performer, Person, Role, Work},
+        models::{
+            Composer, Ensemble, EnsemblePerformer, Instrument, Performer, Person, Role, Work,
+        },
         TranslatedString,
     },
     Library,
@@ -241,10 +243,14 @@ fn pick_members(
     rng: &mut StdRng,
     persons: &[Person],
     instruments: &[Instrument],
-) -> Vec<(Person, Option<Instrument>)> {
+) -> Vec<Performer> {
     sample(rng, persons, 2, 8)
         .into_iter()
-        .map(|person| (person, maybe(rng, instruments, 0.8)))
+        .map(|person| Performer {
+            person,
+            role: None,
+            instrument: maybe(rng, instruments, 0.8),
+        })
         .collect()
 }
 

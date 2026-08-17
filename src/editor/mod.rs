@@ -2,6 +2,7 @@ pub mod album;
 pub mod create;
 pub mod default_program;
 pub mod ensemble;
+pub mod performer_row;
 pub mod program;
 pub mod program_settings;
 pub mod recording;

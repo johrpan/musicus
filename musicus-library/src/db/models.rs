@@ -41,7 +41,7 @@ pub struct Composer {
 pub struct Ensemble {
     pub ensemble_id: String,
     pub name: TranslatedString,
-    pub persons: Vec<(Person, Option<Instrument>)>,
+    pub persons: Vec<Performer>,
     pub enable_updates: bool,
 }
 
@@ -290,15 +290,13 @@ impl Display for Composer {
 
 impl Ensemble {
     pub fn from_table(data: tables::Ensemble, connection: &mut SqliteConnection) -> Result<Self> {
-        let persons: Vec<(Person, Option<Instrument>)> = persons::table
-            .inner_join(ensemble_persons::table.left_join(instruments::table))
+        let persons = ensemble_persons::table
             .order(ensemble_persons::sequence_number)
             .filter(ensemble_persons::ensemble_id.eq(&data.ensemble_id))
-            .select((
-                tables::Person::as_select(),
-                Option::<tables::Instrument>::as_select(),
-            ))
-            .load(connection)?;
+            .load::<tables::EnsemblePerson>(connection)?
+            .into_iter()
+            .map(|r| Performer::from_ensemble_person(r, connection))
+            .collect::<Result<Vec<Performer>>>()?;
 
         Ok(Self {
             ensemble_id: data.ensemble_id,
@@ -312,12 +310,7 @@ impl Ensemble {
         let members_string = self
             .persons
             .iter()
-            .map(|(person, instrument)| match instrument {
-                Some(instrument) => {
-                    format!("{} ({})", person.name.get(), instrument.name.get())
-                }
-                None => person.name.get().to_string(),
-            })
+            .map(ToString::to_string)
             .collect::<Vec<String>>()
             .join(", ");
 
@@ -430,11 +423,39 @@ impl Performer {
         data: tables::RecordingPerson,
         connection: &mut SqliteConnection,
     ) -> Result<Self> {
+        Self::load(
+            &data.person_id,
+            &data.role_id,
+            &data.instrument_id,
+            connection,
+        )
+    }
+
+    /// The same (person, role, instrument) shape, read off an ensemble member row
+    /// instead of a recording's own performer row.
+    pub fn from_ensemble_person(
+        data: tables::EnsemblePerson,
+        connection: &mut SqliteConnection,
+    ) -> Result<Self> {
+        Self::load(
+            &data.person_id,
+            &data.role_id,
+            &data.instrument_id,
+            connection,
+        )
+    }
+
+    fn load(
+        person_id: &str,
+        role_id: &Option<String>,
+        instrument_id: &Option<String>,
+        connection: &mut SqliteConnection,
+    ) -> Result<Self> {
         let person: Person = persons::table
-            .filter(persons::person_id.eq(&data.person_id))
+            .filter(persons::person_id.eq(person_id))
             .first(connection)?;
 
-        let role = match &data.role_id {
+        let role = match role_id {
             Some(role_id) => Some(
                 roles::table
                     .filter(roles::role_id.eq(role_id))
@@ -443,7 +464,7 @@ impl Performer {
             None => None,
         };
 
-        let instrument = match &data.instrument_id {
+        let instrument = match instrument_id {
             Some(instrument_id) => Some(
                 instruments::table
                     .filter(instruments::instrument_id.eq(instrument_id))
