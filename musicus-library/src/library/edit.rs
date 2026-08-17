@@ -432,6 +432,7 @@ impl Library {
             edited_at: now,
             last_used_at: now,
             enable_updates,
+            relates_to: None,
         };
 
         diesel::insert_into(works::table)
@@ -668,6 +669,7 @@ impl Library {
                     person_id: person.person_id,
                     instrument_id: instrument.map(|i| i.instrument_id),
                     sequence_number: index as i32,
+                    role_id: None,
                 };
 
                 diesel::insert_into(ensemble_persons::table)
@@ -715,6 +717,7 @@ impl Library {
                     person_id: person.person_id,
                     instrument_id: instrument.map(|i| i.instrument_id),
                     sequence_number: index as i32,
+                    role_id: None,
                 };
 
                 diesel::insert_into(ensemble_persons::table)
