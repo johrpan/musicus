@@ -23,19 +23,15 @@
   margin: 6px 12px;
 }
 
-.tile .subtitle {
+.recording-tile .subtitle {
   font-size: smaller;
 }
 
-.tile .work {
+.recording-tile .title {
   margin-top: 3px;
 }
 
-.tile .composer {
-  font-size: smaller;
-}
-
-.tile .performances {
+.recording-tile .description {
   margin-top: 3px;
   margin-bottom: 3px;
   font-size: smaller;

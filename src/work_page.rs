@@ -200,6 +200,7 @@ impl WorkPage {
                 library,
                 player,
                 recording,
+                Some(&work),
             ));
         }
 

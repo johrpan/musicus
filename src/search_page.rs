@@ -508,6 +508,7 @@ impl SearchPage {
                     &self.library(),
                     &self.player(),
                     recording,
+                    None,
                 ));
             }
 
