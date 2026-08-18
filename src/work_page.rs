@@ -240,9 +240,10 @@ impl WorkPage {
 
     #[template_callback]
     fn recording_selected(&self, tile: &gtk::FlowBoxChild) {
+        let recording = tile.downcast_ref::<RecordingTile>().unwrap().recording();
         let playlist = self
             .player()
-            .recording_to_playlist(tile.downcast_ref::<RecordingTile>().unwrap().recording());
+            .recording_to_playlist_for_work(recording, self.imp().work.get().unwrap());
         self.player().append_and_play(playlist);
     }
 }

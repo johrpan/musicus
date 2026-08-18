@@ -14,7 +14,7 @@ use gtk::{
     subclass::prelude::*,
 };
 use musicus_library::{
-    db::models::{Recording, Track},
+    db::models::{Recording, Track, Work},
     format_translated,
 };
 use once_cell::sync::Lazy;
@@ -273,11 +273,7 @@ impl Player {
     }
 
     pub fn recording_to_playlist(&self, recording: &Recording) -> Vec<PlaylistItem> {
-        let tracks = &self
-            .library()
-            .unwrap()
-            .tracks_for_recording(&recording.recording_id)
-            .unwrap();
+        let tracks = self.matching_tracks(recording, None);
 
         if tracks.is_empty() {
             log::warn!("Recording without tracks: {}.", &recording.recording_id);
@@ -294,13 +290,59 @@ impl Player {
         self.tracks_to_playlist(recording, &tracks, part_titles)
     }
 
+    /// Create playlist items for the tracks of `recording` that explicitly carry `work`
+    /// (or one of `work`'s own parts) among their assigned works — i.e. only the
+    /// track(s) that are actually the part being viewed, not the whole recording.
+    /// A track with no assigned works at all stands for the recording's whole work, so
+    /// it only matches here when `work` is exactly that whole work.
+    pub fn recording_to_playlist_for_work(
+        &self,
+        recording: &Recording,
+        work: &Work,
+    ) -> Vec<PlaylistItem> {
+        let tracks = self.matching_tracks(recording, Some(work));
+
+        if tracks.is_empty() {
+            log::warn!(
+                "No tracks of recording {} carry work {}.",
+                &recording.recording_id,
+                &work.work_id
+            );
+            return Vec::new();
+        }
+
+        let tracks = tracks
+            .iter()
+            .enumerate()
+            .map(|(index, track)| (track, index + 1))
+            .collect::<Vec<(&Track, usize)>>();
+
+        let part_titles = tracks.len() > 1;
+        self.tracks_to_playlist(recording, &tracks, part_titles)
+    }
+
     /// Create playlist items for one randomly selected track of `recording`.
     pub fn recording_to_playlist_single_track(&self, recording: &Recording) -> Vec<PlaylistItem> {
-        let tracks = &self
-            .library()
-            .unwrap()
-            .tracks_for_recording(&recording.recording_id)
-            .unwrap();
+        self.playlist_for_single_track(recording, None)
+    }
+
+    /// Like [`Self::recording_to_playlist_single_track`], but the track is drawn only
+    /// from among those matching `work`, the same way [`Self::recording_to_playlist_for_work`]
+    /// restricts them.
+    pub fn recording_to_playlist_for_work_single_track(
+        &self,
+        recording: &Recording,
+        work: &Work,
+    ) -> Vec<PlaylistItem> {
+        self.playlist_for_single_track(recording, Some(work))
+    }
+
+    fn playlist_for_single_track(
+        &self,
+        recording: &Recording,
+        work: Option<&Work>,
+    ) -> Vec<PlaylistItem> {
+        let tracks = self.matching_tracks(recording, work);
 
         if tracks.is_empty() {
             log::warn!("Recording without tracks: {}.", &recording.recording_id);
@@ -313,6 +355,30 @@ impl Player {
         let part_titles = tracks.len() > 1;
 
         self.tracks_to_playlist(recording, &[(&tracks[index], index + 1)], part_titles)
+    }
+
+    /// The tracks of `recording`, restricted to those explicitly carrying `work` (or
+    /// one of its own parts) when `work` is given — see [`Self::recording_to_playlist_for_work`].
+    fn matching_tracks(&self, recording: &Recording, work: Option<&Work>) -> Vec<Track> {
+        let tracks = self
+            .library()
+            .unwrap()
+            .tracks_for_recording(&recording.recording_id)
+            .unwrap();
+
+        match work {
+            None => tracks,
+            Some(work) => tracks
+                .into_iter()
+                .filter(|track| {
+                    if track.works.is_empty() {
+                        work.work_id == recording.work.work_id
+                    } else {
+                        track.works.iter().any(|w| work.contains(&w.work_id))
+                    }
+                })
+                .collect(),
+        }
     }
 
     /// Create playlist items for the provided tracks of `recording`. Each track is accompanied by
@@ -664,10 +730,24 @@ impl Player {
             .generate_recording(&params)
             .context("Failed to generate playlist items from program")?;
 
-        let playlist = if program.play_full_recordings() {
-            self.recording_to_playlist(&recording)
-        } else {
-            self.recording_to_playlist_single_track(&recording)
+        // A program's `work_id` also matches recordings of an arrangement derived from
+        // that work (see `candidates`), which is a different work entirely and has no
+        // parts in common with it, so only scope down to specific tracks when the
+        // chosen recording is actually hierarchically related to the target work.
+        let target_work = program
+            .work_id()
+            .and_then(|work_id| self.library().unwrap().work(&work_id).ok())
+            .filter(|work| {
+                work.contains(&recording.work.work_id) || recording.work.contains(&work.work_id)
+            });
+
+        let playlist = match (target_work, program.play_full_recordings()) {
+            (Some(work), true) => self.recording_to_playlist_for_work(&recording, &work),
+            (Some(work), false) => {
+                self.recording_to_playlist_for_work_single_track(&recording, &work)
+            }
+            (None, true) => self.recording_to_playlist(&recording),
+            (None, false) => self.recording_to_playlist_single_track(&recording),
         };
 
         self.append(playlist)
