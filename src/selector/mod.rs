@@ -158,3 +158,16 @@ pub fn item_row_child(text: &str, in_library: bool, level: u32) -> gtk::Widget {
         import_box.upcast()
     }
 }
+
+/// Every part in `parts`, depth-first, together with its nesting depth (1 for a
+/// direct part, 2 for a part of a part, and so on).
+pub fn flatten_parts(parts: &[Work], depth: usize) -> Vec<(Work, usize)> {
+    let mut flattened = Vec::new();
+
+    for part in parts {
+        flattened.push((part.clone(), depth));
+        flattened.extend(flatten_parts(&part.parts, depth + 1));
+    }
+
+    flattened
+}

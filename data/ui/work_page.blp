@@ -42,6 +42,22 @@ template $MusicusWorkPage: Adw.NavigationPage {
               Gtk.Label subtitle_label {
                 wrap: true;
                 xalign: 0.0;
+                visible: false;
+              }
+
+              Gtk.Button parent_button {
+                visible: false;
+                halign: fill;
+
+                styles [
+                  "flat",
+                  "work-parent-button",
+                ]
+
+                Gtk.Label parent_label {
+                  xalign: 0.0;
+                  wrap: true;
+                }
               }
             }
 
@@ -69,23 +85,10 @@ template $MusicusWorkPage: Adw.NavigationPage {
             }
           }
 
-          Gtk.Label structure_heading {
-            styles [
-              "heading",
-            ]
-
-            visible: bind structure_flow_box.visible;
-            xalign: 0;
-            margin-top: 24;
-          }
-
-          Gtk.FlowBox structure_flow_box {
-            margin-top: 12;
-            column-spacing: 12;
-            row-spacing: 12;
-            homogeneous: true;
-            selection-mode: none;
-            child-activated => $work_selected() swapped;
+          Gtk.Box structure_box {
+            visible: false;
+            orientation: vertical;
+            margin-top: 6;
           }
 
           Gtk.Label {
