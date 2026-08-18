@@ -47,9 +47,11 @@ mod imp {
         #[template_child]
         pub subtitle_label: TemplateChild<gtk::Label>,
         #[template_child]
-        pub structure_heading: TemplateChild<gtk::Label>,
+        pub parent_button: TemplateChild<gtk::Button>,
         #[template_child]
-        pub structure_flow_box: TemplateChild<gtk::FlowBox>,
+        pub parent_label: TemplateChild<gtk::Label>,
+        #[template_child]
+        pub structure_box: TemplateChild<gtk::Box>,
         #[template_child]
         pub related_works_flow_box: TemplateChild<gtk::FlowBox>,
         #[template_child]
@@ -147,11 +149,11 @@ impl WorkPage {
         let work = query.work.clone().expect("WorkPage requires query.work");
 
         obj.imp().title_label.set_label(work.name.get());
-        obj.imp().subtitle_label.set_label(
-            &work
-                .composers_string()
-                .unwrap_or_else(|| gettext("No composers")),
-        );
+
+        if let Some(label) = work.composers_string() {
+            obj.imp().subtitle_label.set_label(&label);
+            obj.imp().subtitle_label.set_visible(true);
+        }
 
         let results = match library.search(&query, "") {
             Ok(results) => results,
@@ -161,22 +163,26 @@ impl WorkPage {
             }
         };
 
-        match &results.parent_work {
-            Some(parent) => obj.imp().structure_heading.set_label(&format_translated!(
-                gettext("Part of {}"),
-                parent.name.get()
-            )),
-            None => obj.imp().structure_heading.set_label(&gettext("Movements")),
+        if let Some(parent) = &results.parent_work {
+            let label = match parent.composers_string() {
+                Some(composers) => {
+                    format_translated!(gettext("Part of {} ({})"), parent.name.get(), composers,)
+                }
+                None => format_translated!(gettext("Part of {}"), parent.name.get()),
+            };
+
+            let this = obj.clone();
+            let parent = parent.clone();
+            obj.imp()
+                .parent_button
+                .connect_clicked(move |_| this.open_work(parent.clone()));
+
+            obj.imp().parent_label.set_label(&label);
+            obj.imp().parent_button.set_visible(true);
         }
 
-        obj.imp()
-            .structure_flow_box
-            .set_visible(!results.structure.is_empty());
-        for part in &results.structure {
-            obj.imp()
-                .structure_flow_box
-                .append(&FacetTile::new(Facet::Work(part.clone())));
-        }
+        obj.imp().structure_box.set_visible(!work.parts.is_empty());
+        append_structure(&obj, &obj.imp().structure_box, &work.parts, 0);
 
         obj.imp()
             .related_works_flow_box
@@ -203,19 +209,7 @@ impl WorkPage {
         obj
     }
 
-    #[template_callback]
-    fn play_button_clicked(&self) {
-        let program = Program::from_query(self.imp().query.get().unwrap().clone());
-        self.player().set_program(program);
-        self.player().play_from_program();
-    }
-
-    #[template_callback]
-    fn work_selected(&self, tile: &gtk::FlowBoxChild) {
-        let Facet::Work(work) = tile.downcast_ref::<FacetTile>().unwrap().facet().clone() else {
-            return;
-        };
-
+    fn open_work(&self, work: Work) {
         let mut new_query = self.imp().query.get().unwrap().clone();
         new_query.work = Some(work);
 
@@ -229,10 +223,58 @@ impl WorkPage {
     }
 
     #[template_callback]
+    fn play_button_clicked(&self) {
+        let program = Program::from_query(self.imp().query.get().unwrap().clone());
+        self.player().set_program(program);
+        self.player().play_from_program();
+    }
+
+    #[template_callback]
+    fn work_selected(&self, tile: &gtk::FlowBoxChild) {
+        let Facet::Work(work) = tile.downcast_ref::<FacetTile>().unwrap().facet().clone() else {
+            return;
+        };
+
+        self.open_work(work);
+    }
+
+    #[template_callback]
     fn recording_selected(&self, tile: &gtk::FlowBoxChild) {
         let playlist = self
             .player()
             .recording_to_playlist(tile.downcast_ref::<RecordingTile>().unwrap().recording());
         self.player().append_and_play(playlist);
     }
+}
+
+/// Add one flat-button row per part in `parts` to `container`, depth-first, each
+/// clicking through to that part's own page.
+fn append_structure(page: &WorkPage, container: &gtk::Box, parts: &[Work], depth: usize) {
+    for part in parts {
+        let button = structure_button(part.name.get(), depth, "work-part");
+
+        let click_page = page.clone();
+        let click_part = part.clone();
+        button.connect_clicked(move |_| click_page.open_work(click_part.clone()));
+
+        container.append(&button);
+
+        append_structure(page, container, &part.parts, depth + 1);
+    }
+}
+
+fn structure_button(label: &str, depth: usize, style: &str) -> gtk::Button {
+    let label = gtk::Label::builder()
+        .label(label)
+        .xalign(0.0)
+        .wrap(true)
+        .margin_start((depth * 20) as i32)
+        .css_classes([style])
+        .build();
+
+    gtk::Button::builder()
+        .child(&label)
+        .halign(gtk::Align::Fill)
+        .css_classes(["flat"])
+        .build()
 }

@@ -357,7 +357,7 @@ impl WorkSelectorPopover {
         row.connect_activated(move |_: &ActivatableRow| obj.finish(whole_work.clone()));
         imp.part_list.append(&row);
 
-        for (part, depth) in flatten_parts(&work.parts, 1) {
+        for (part, depth) in super::flatten_parts(&work.parts, 1) {
             let row =
                 ActivatableRow::new(&super::item_row_child(part.name.get(), true, depth as u32));
 
@@ -396,17 +396,4 @@ impl WorkSelectorPopover {
         self.emit_by_name::<()>("create", &[&glib::BoxedAnyObject::new(prefill)]);
         self.popdown();
     }
-}
-
-/// Every part in `parts`, depth-first, together with its nesting depth (1 for a
-/// direct part, 2 for a part of a part, and so on).
-fn flatten_parts(parts: &[Work], depth: usize) -> Vec<(Work, usize)> {
-    let mut flattened = Vec::new();
-
-    for part in parts {
-        flattened.push((part.clone(), depth));
-        flattened.extend(flatten_parts(&part.parts, depth + 1));
-    }
-
-    flattened
 }

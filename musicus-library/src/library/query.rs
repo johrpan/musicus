@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use anyhow::Result;
-use diesel::{dsl::sql, prelude::*, sql_types, QueryDsl};
+use diesel::{dsl::sql, prelude::*, sql_query, sql_types, QueryDsl, SqliteConnection};
 
 use gettextrs::gettext;
 
@@ -158,12 +158,7 @@ pub struct LibraryResults {
     pub recordings: Vec<Recording>,
     pub albums: Vec<Album>,
     pub tags: Vec<TagValue>,
-    /// The work a selected work is a part of, if it is a part of anything.
     pub parent_work: Option<Work>,
-    /// The selected work's place in the part structure: its own movements if it
-    /// has any, or otherwise its siblings under [`Self::parent_work`], if it has a
-    /// parent.
-    pub structure: Vec<Work>,
 }
 
 impl LibraryResults {
@@ -176,7 +171,6 @@ impl LibraryResults {
             && self.recordings.is_empty()
             && self.albums.is_empty()
             && self.tags.is_empty()
-            && self.structure.is_empty()
     }
 }
 
@@ -274,6 +268,31 @@ fn work_instrument_condition<QS>(
         " AND {})",
         in_work_subtree("work_instruments.work_id")
     ))
+}
+
+#[derive(QueryableByName)]
+struct WorkIdRow {
+    #[diesel(sql_type = sql_types::Text)]
+    work_id: String,
+}
+
+/// `work_id` itself, plus every descendant of it at any depth (not ancestors, not
+/// siblings).
+fn descendant_work_ids(connection: &mut SqliteConnection, work_id: &str) -> Result<Vec<String>> {
+    Ok(sql_query(
+        "WITH RECURSIVE descendants(work_id) AS ( \
+            SELECT ? \
+            UNION \
+            SELECT works.work_id FROM works \
+            JOIN descendants ON works.parent_work_id = descendants.work_id \
+        ) \
+        SELECT work_id FROM descendants",
+    )
+    .bind::<sql_types::Text, _>(work_id)
+    .load::<WorkIdRow>(connection)?
+    .into_iter()
+    .map(|row| row.work_id)
+    .collect())
 }
 
 impl Library {
@@ -882,14 +901,15 @@ impl Library {
                     albums,
                     tags,
                     parent_work: None,
-                    structure: Vec::new(),
                 }
             }
             LibraryQuery {
                 work: Some(work), ..
             } => {
+                let ids = descendant_work_ids(connection, &work.work_id)?;
+
                 let mut statement = recordings::table
-                    .filter(recordings::work_id.eq(&work.work_id))
+                    .filter(recordings::work_id.eq_any(&ids))
                     .into_boxed();
 
                 if let Some(tag) = &query.tag {
@@ -954,45 +974,36 @@ impl Library {
                         .collect::<Result<Vec<Work>>>()?,
                 );
 
-                // Where the work sits in the part structure: its own movements if it
-                // has any, or its siblings under the parent otherwise.
-                let parent_work_id = works::table
-                    .filter(works::work_id.eq(&work.work_id))
-                    .select(works::parent_work_id)
-                    .first::<Option<String>>(connection)?;
+                // Walk up to the root ancestor, this should be a single-digit
+                // number, so it is easier than a recursive query.
+                let mut root_id = work.work_id.clone();
+                loop {
+                    let parent_id = works::table
+                        .filter(works::work_id.eq(&root_id))
+                        .select(works::parent_work_id)
+                        .first::<Option<String>>(connection)?;
 
-                let (parent_work, structure) = if !work.parts.is_empty() {
-                    (None, work.parts.clone())
-                } else if let Some(parent_work_id) = parent_work_id {
-                    let parent = Work::from_table(
+                    match parent_id {
+                        Some(parent_id) => root_id = parent_id,
+                        None => break,
+                    }
+                }
+
+                let parent_work = if root_id != work.work_id {
+                    Some(Work::from_table(
                         works::table
-                            .filter(works::work_id.eq(&parent_work_id))
+                            .filter(works::work_id.eq(&root_id))
                             .first::<tables::Work>(connection)?,
                         connection,
-                    )?;
-
-                    let siblings = works::table
-                        .filter(
-                            works::parent_work_id
-                                .eq(&parent_work_id)
-                                .and(works::work_id.ne(&work.work_id)),
-                        )
-                        .order(works::sequence_number)
-                        .load::<tables::Work>(connection)?
-                        .into_iter()
-                        .map(|w| Work::from_table(w, connection))
-                        .collect::<Result<Vec<Work>>>()?;
-
-                    (Some(parent), siblings)
+                    )?)
                 } else {
-                    (None, Vec::new())
+                    None
                 };
 
                 LibraryResults {
                     works,
                     recordings,
                     parent_work,
-                    structure,
                     ..Default::default()
                 }
             }
