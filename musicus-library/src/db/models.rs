@@ -241,6 +241,11 @@ impl Work {
         })
     }
 
+    /// Whether `work_id` is this work itself or one of its parts, at any depth.
+    pub fn contains(&self, work_id: &str) -> bool {
+        self.work_id == work_id || self.parts.iter().any(|part| part.contains(work_id))
+    }
+
     pub fn composers_string(&self) -> Option<String> {
         let composers_string = self
             .persons

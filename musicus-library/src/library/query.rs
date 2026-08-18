@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use anyhow::Result;
-use diesel::{dsl::sql, prelude::*, sql_query, sql_types, QueryDsl, SqliteConnection};
+use diesel::{dsl::sql, prelude::*, sql_types, QueryDsl};
 
 use gettextrs::gettext;
 
@@ -270,32 +270,59 @@ fn work_instrument_condition<QS>(
     ))
 }
 
-#[derive(QueryableByName)]
-struct WorkIdRow {
-    #[diesel(sql_type = sql_types::Text)]
-    work_id: String,
-}
-
-/// `work_id` itself, plus every descendant of it at any depth (not ancestors, not
-/// siblings).
-fn descendant_work_ids(connection: &mut SqliteConnection, work_id: &str) -> Result<Vec<String>> {
-    Ok(sql_query(
-        "WITH RECURSIVE descendants(work_id) AS ( \
-            SELECT ? \
+/// True if the recording referenced by `recordings.recording_id`/`recordings.work_id`
+/// in the enclosing query is "of" `work_id`: either directly (its own work is
+/// `work_id` or one of `work_id`'s descendants, at any depth), or one of its tracks is
+/// explicitly tagged (via `track_works`) with `work_id` or one of its descendants.
+///
+/// A recording of an *ancestor* of `work_id` does not count on its own — a recording
+/// of the whole work does not necessarily include every one of its parts, so only a
+/// track explicitly assigned to the part (or something within it) counts. See
+/// [`crate::db::models::Work::contains`] and [`Player::recording_to_playlist_for_work`]
+/// for the same rule applied once a recording has already been chosen.
+pub(crate) fn recording_covers_work_condition<QS>(
+    work_id: &str,
+) -> impl Expression<SqlType = sql_types::Bool>
+       + AppearsOnTable<QS>
+       + diesel::expression::ValidGrouping<(), IsAggregate = diesel::expression::is_aggregate::Never>
+       + diesel::query_builder::QueryFragment<diesel::sqlite::Sqlite> {
+    const DESCENDANTS_OF_START: &str = "( \
+        WITH RECURSIVE descendants(work_id) AS ( \
+            SELECT ";
+    const DESCENDANTS_OF_END: &str = " \
             UNION \
             SELECT works.work_id FROM works \
             JOIN descendants ON works.parent_work_id = descendants.work_id \
-        ) \
-        SELECT work_id FROM descendants",
-    )
-    .bind::<sql_types::Text, _>(work_id)
-    .load::<WorkIdRow>(connection)?
-    .into_iter()
-    .map(|row| row.work_id)
-    .collect())
+        ) SELECT work_id FROM descendants \
+    )";
+
+    sql::<sql_types::Bool>(&format!("(recordings.work_id IN {DESCENDANTS_OF_START}"))
+        .bind::<sql_types::Text, _>(work_id.to_owned())
+        .sql(&format!(
+            "{DESCENDANTS_OF_END} \
+              OR EXISTS ( \
+                  SELECT 1 FROM tracks \
+                  JOIN track_works ON track_works.track_id = tracks.track_id \
+                  WHERE tracks.recording_id = recordings.recording_id \
+                  AND track_works.work_id IN {DESCENDANTS_OF_START}"
+        ))
+        .bind::<sql_types::Text, _>(work_id.to_owned())
+        .sql(&format!("{DESCENDANTS_OF_END} ))"))
 }
 
 impl Library {
+    /// The work identified by `work_id`, with its parts loaded recursively.
+    pub fn work(&self, work_id: &str) -> Result<Work> {
+        let connection = &mut *self.conn();
+
+        Work::from_table(
+            works::table
+                .filter(works::work_id.eq(work_id))
+                .first::<tables::Work>(connection)?,
+            connection,
+        )
+    }
+
     pub fn search(&self, query: &LibraryQuery, search: &str) -> Result<LibraryResults> {
         let search = format!("%{}%", search);
         let connection = &mut *self.conn();
@@ -906,10 +933,8 @@ impl Library {
             LibraryQuery {
                 work: Some(work), ..
             } => {
-                let ids = descendant_work_ids(connection, &work.work_id)?;
-
                 let mut statement = recordings::table
-                    .filter(recordings::work_id.eq_any(&ids))
+                    .filter(recording_covers_work_condition(&work.work_id))
                     .into_boxed();
 
                 if let Some(tag) = &query.tag {
