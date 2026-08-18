@@ -4,7 +4,7 @@ use adw::prelude::*;
 use gettextrs::gettext;
 use gtk::{gio, glib, subclass::prelude::*};
 
-use musicus_library::db::models::Recording;
+use musicus_library::db::models::{Recording, Work};
 
 use crate::{editor::recording::RecordingEditor, library::Library, player::Player};
 
@@ -16,17 +16,20 @@ mod imp {
     #[template(file = "data/ui/recording_tile.blp")]
     pub struct RecordingTile {
         #[template_child]
-        pub composer_label: TemplateChild<gtk::Label>,
+        pub title_label: TemplateChild<gtk::Label>,
         #[template_child]
-        pub work_label: TemplateChild<gtk::Label>,
+        pub subtitle_label: TemplateChild<gtk::Label>,
         #[template_child]
-        pub performances_label: TemplateChild<gtk::Label>,
+        pub description_label: TemplateChild<gtk::Label>,
 
         pub toast_overlay: OnceCell<adw::ToastOverlay>,
         pub navigation: OnceCell<adw::NavigationView>,
         pub library: OnceCell<Library>,
         pub player: OnceCell<Player>,
         pub recording: OnceCell<Recording>,
+
+        /// The work whose page this tile is shown on.
+        pub work: OnceCell<Option<Work>>,
     }
 
     #[glib::object_subclass]
@@ -52,7 +55,13 @@ mod imp {
             let append_action = gio::ActionEntry::builder("add-to-playlist")
                 .activate(move |_, _, _| {
                     let player = obj.imp().player.get().unwrap();
-                    let playlist = player.recording_to_playlist(obj.imp().recording.get().unwrap());
+                    let recording = obj.imp().recording.get().unwrap();
+
+                    let playlist = match obj.imp().work.get().unwrap() {
+                        Some(work) => player.recording_to_playlist_for_work(recording, work),
+                        None => player.recording_to_playlist(recording),
+                    };
+
                     if let Err(err) = player.append(playlist) {
                         log::error!("Failed to add recording to playlist: {err:?}");
                     }
@@ -139,25 +148,50 @@ impl RecordingTile {
         library: &Library,
         player: &Player,
         recording: &Recording,
+        work: Option<&Work>,
     ) -> Self {
         let obj: Self = glib::Object::new();
         let imp = obj.imp();
 
-        imp.work_label.set_label(recording.work.name.get());
-        imp.composer_label.set_label(
-            &recording
-                .work
-                .composers_string()
-                .unwrap_or_else(|| gettext("No composers")),
-        );
-        imp.performances_label
-            .set_label(&recording.performers_string());
+        let performers = recording.performers_string();
+
+        let pieces: Vec<String> = if work.is_some() {
+            Some(performers)
+                .filter(|s| !s.is_empty())
+                .into_iter()
+                .collect()
+        } else {
+            [
+                Some(recording.work.name.get().to_string()),
+                recording.work.composers_string(),
+                Some(performers).filter(|s| !s.is_empty()),
+            ]
+            .into_iter()
+            .flatten()
+            .collect()
+        };
+
+        let labels = [
+            &imp.title_label,
+            &imp.subtitle_label,
+            &imp.description_label,
+        ];
+
+        for (label, text) in labels.iter().zip(&pieces) {
+            label.set_label(text);
+            label.set_visible(true);
+        }
+
+        for label in &labels[pieces.len()..] {
+            label.set_visible(false);
+        }
 
         imp.toast_overlay.set(toast_overlay.to_owned()).unwrap();
         imp.navigation.set(navigation.to_owned()).unwrap();
         imp.library.set(library.to_owned()).unwrap();
         imp.player.set(player.to_owned()).unwrap();
         imp.recording.set(recording.to_owned()).unwrap();
+        imp.work.set(work.cloned()).unwrap();
 
         obj
     }

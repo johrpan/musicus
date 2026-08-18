@@ -286,8 +286,7 @@ impl Player {
             .map(|(index, track)| (track, index + 1))
             .collect::<Vec<(&Track, usize)>>();
 
-        let part_titles = tracks.len() > 1;
-        self.tracks_to_playlist(recording, &tracks, part_titles)
+        self.tracks_to_playlist(recording, &tracks)
     }
 
     /// Create playlist items for the tracks of `recording` that explicitly carry `work`
@@ -317,8 +316,7 @@ impl Player {
             .map(|(index, track)| (track, index + 1))
             .collect::<Vec<(&Track, usize)>>();
 
-        let part_titles = tracks.len() > 1;
-        self.tracks_to_playlist(recording, &tracks, part_titles)
+        self.tracks_to_playlist(recording, &tracks)
     }
 
     /// Create playlist items for one randomly selected track of `recording`.
@@ -351,10 +349,7 @@ impl Player {
 
         let index = glib::random_int_range(0, tracks.len() as i32) as usize;
 
-        // The track is presented as a part of the recording, unless it is the only one.
-        let part_titles = tracks.len() > 1;
-
-        self.tracks_to_playlist(recording, &[(&tracks[index], index + 1)], part_titles)
+        self.tracks_to_playlist(recording, &[(&tracks[index], index + 1)])
     }
 
     /// The tracks of `recording`, restricted to those explicitly carrying `work` (or
@@ -381,60 +376,53 @@ impl Player {
         }
     }
 
-    /// Create playlist items for the provided tracks of `recording`. Each track is accompanied by
-    /// its one based number within the recording. The first item will be marked as the title item.
-    /// If `part_titles` is set, the items will be titled by their respective part of the work.
+    /// Create playlist items for the provided tracks of `recording`. Each track is
+    /// accompanied by its one based number within the recording. The first item will
+    /// be marked as the title item.
+    ///
+    /// A track explicitly assigned its own part of the work (see `track.works`) is
+    /// titled with that part, even if it is the only track. A track with no assigned part
+    /// is titled generically ("Track N") only when there is more than one track to tell
+    /// apart.
     fn tracks_to_playlist(
         &self,
         recording: &Recording,
         tracks: &[(&Track, usize)],
-        part_titles: bool,
     ) -> Vec<PlaylistItem> {
         let performances = recording.performers_string();
 
-        let mut items = Vec::new();
+        let track_title = |track: &Track, number: usize| -> Option<String> {
+            let title = track
+                .works
+                .iter()
+                .map(|w| w.name.get().to_string())
+                .collect::<Vec<String>>()
+                .join(", ");
 
-        if !part_titles {
-            let (track, _) = tracks[0];
-            items.push(PlaylistItem::new(
-                true,
-                recording.work.composers_string(),
-                recording.work.name.get(),
-                Some(&performances),
-                None,
-                self.library_path_to_file_path(&track.path),
-                &track.track_id,
-            ));
-        } else {
-            let track_title = |track: &Track, number: usize| -> String {
-                let title = track
-                    .works
-                    .iter()
-                    .map(|w| w.name.get().to_string())
-                    .collect::<Vec<String>>()
-                    .join(", ");
+            if !title.is_empty() {
+                Some(title)
+            } else if tracks.len() > 1 {
+                Some(format!("Track {number}"))
+            } else {
+                None
+            }
+        };
 
-                if title.is_empty() {
-                    format!("Track {number}")
-                } else {
-                    title
-                }
-            };
-
-            for (index, (track, number)) in tracks.iter().enumerate() {
-                items.push(PlaylistItem::new(
+        tracks
+            .iter()
+            .enumerate()
+            .map(|(index, (track, number))| {
+                PlaylistItem::new(
                     index == 0,
                     recording.work.composers_string(),
                     recording.work.name.get(),
                     Some(&performances),
-                    Some(&track_title(track, *number)),
+                    track_title(track, *number).as_deref(),
                     self.library_path_to_file_path(&track.path),
                     &track.track_id,
-                ));
-            }
-        }
-
-        items
+                )
+            })
+            .collect()
     }
 
     /// Append playlist items to the playlist and return the index of the first newly added item.

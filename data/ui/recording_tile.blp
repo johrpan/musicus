@@ -4,7 +4,8 @@ template $MusicusRecordingTile: Gtk.FlowBoxChild {
   styles [
     "card",
     "activatable",
-    "tile"
+    "tile",
+    "recording-tile",
   ]
 
   Gtk.Box {
@@ -12,36 +13,40 @@ template $MusicusRecordingTile: Gtk.FlowBoxChild {
 
     Gtk.Image {
       icon-name: "media-playback-start-symbolic";
-      valign: start;
-      margin-top: 12;
+      valign: center;
     }
 
     Gtk.Box {
       orientation: vertical;
       hexpand: true;
+      valign: center;
 
-      Gtk.Label work_label {
+      Gtk.Label title_label {
         styles [
-          "work"
+          "title",
         ]
 
         halign: start;
         wrap: true;
       }
 
-      Gtk.Label composer_label {
+      Gtk.Label subtitle_label {
+        visible: false;
+
         styles [
-          "composer"
+          "subtitle",
         ]
 
         halign: start;
         wrap: true;
       }
 
-      Gtk.Label performances_label {
+      Gtk.Label description_label {
+        visible: false;
+
         styles [
-          "performances",
-          "dim-label"
+          "description",
+          "dim-label",
         ]
 
         halign: start;
@@ -51,11 +56,10 @@ template $MusicusRecordingTile: Gtk.FlowBoxChild {
 
     Gtk.MenuButton {
       styles [
-        "flat"
+        "flat",
       ]
 
-      valign: start;
-      margin-top: 12;
+      valign: center;
       icon-name: "view-more-symbolic";
 
       popover: Gtk.PopoverMenu {

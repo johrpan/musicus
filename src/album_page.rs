@@ -150,6 +150,7 @@ impl AlbumPage {
                 library,
                 player,
                 recording,
+                None,
             ));
         }
 
