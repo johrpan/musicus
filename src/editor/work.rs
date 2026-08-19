@@ -553,7 +553,7 @@ impl WorkEditor {
             return;
         }
 
-        if self.imp().is_part_editor.get() {
+        let created = if self.imp().is_part_editor.get() {
             let work_id = self
                 .imp()
                 .work_id
@@ -572,7 +572,7 @@ impl WorkEditor {
                 enable_updates,
             };
 
-            self.emit_by_name::<()>("created", &[&glib::BoxedAnyObject::new(part.clone())]);
+            Some(glib::BoxedAnyObject::new(part))
         } else if let Some(work_id) = self.imp().work_id.get() {
             if crate::editor::handle_save(
                 self,
@@ -591,6 +591,8 @@ impl WorkEditor {
             {
                 return;
             }
+
+            None
         } else {
             let Some(work) = crate::editor::handle_save(
                 self,
@@ -607,9 +609,16 @@ impl WorkEditor {
                 return;
             };
 
-            self.emit_by_name::<()>("created", &[&glib::BoxedAnyObject::new(work.clone())]);
-        }
+            Some(glib::BoxedAnyObject::new(work))
+        };
 
+        // Popping before emitting "created" lets the next step of a guided
+        // creation push its editor right away, instead of having to defer
+        // until this editor has left the navigation stack.
         self.imp().navigation.get().unwrap().pop();
+
+        if let Some(item) = created {
+            self.emit_by_name::<()>("created", &[&item]);
+        }
     }
 }
