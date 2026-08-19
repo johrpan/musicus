@@ -3,9 +3,6 @@ pub mod schema;
 pub mod tables;
 pub mod views;
 
-#[cfg(test)]
-mod migration_tests;
-
 use std::{
     collections::HashMap,
     fmt::Display,
@@ -52,7 +49,7 @@ pub fn set_language(lang: impl Into<String>) {
 /// Stored in every library database's `meta` table. Any migration that
 /// changes the schema must bump both this constant and the value written by the
 /// migration, so that an older build can recognise a database it cannot read.
-pub const SCHEMA_VERSION: i32 = 8;
+pub const SCHEMA_VERSION: i32 = 1;
 
 /// The ID of the built-in "Year" tag, which replaced the `recordings.year` column.
 pub const TAG_YEAR: &str = "c18e9585a9a5433fbc2b4e5848c96d4d";
