@@ -248,10 +248,8 @@ impl SimpleEntityEditor {
         }
 
         let result = match imp.entity_id.get() {
-            Some(id) => source.update(library, id, name, enable_updates),
-            None => source
-                .create(library, name, enable_updates)
-                .map(|item| self.emit_by_name::<()>("created", &[&item])),
+            Some(id) => source.update(library, id, name, enable_updates).map(|_| None),
+            None => source.create(library, name, enable_updates).map(Some),
         };
 
         match result {
@@ -259,11 +257,18 @@ impl SimpleEntityEditor {
                 Some(toast_overlay) => util::error_toast("Failed to save", err, &toast_overlay),
                 None => log::error!("Failed to save: {err:?}"),
             },
-            Ok(_) => {
+            Ok(created) => {
+                // Popping before emitting "created" lets the next step of a guided
+                // creation push its editor right away, instead of having to defer
+                // until this editor has left the navigation stack.
                 imp.navigation
                     .get()
                     .expect("editor should have a navigation view")
                     .pop();
+
+                if let Some(item) = created {
+                    self.emit_by_name::<()>("created", &[&item]);
+                }
             }
         }
     }
