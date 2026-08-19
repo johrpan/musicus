@@ -13,7 +13,6 @@ pub enum EntityKind {
     Ensemble,
     Recording,
     Album,
-    Medium,
     Track,
 }
 
@@ -28,7 +27,6 @@ impl Display for EntityKind {
             EntityKind::Ensemble => "ensemble",
             EntityKind::Recording => "recording",
             EntityKind::Album => "album",
-            EntityKind::Medium => "medium",
             EntityKind::Track => "track",
         };
 

@@ -79,14 +79,6 @@ table! {
     }
 }
 
-table! {
-    medium_last_played (medium_id) {
-        medium_id -> Text,
-        last_played_at -> Timestamp,
-        play_count -> BigInt,
-    }
-}
-
 joinable!(recording_last_played -> recordings (recording_id));
 joinable!(track_last_played -> tracks (track_id));
 joinable!(work_last_played -> works (work_id));
@@ -95,7 +87,6 @@ joinable!(performer_last_played -> persons (person_id));
 joinable!(instrument_last_played -> instruments (instrument_id));
 joinable!(ensemble_last_played -> ensembles (ensemble_id));
 joinable!(album_last_played -> albums (album_id));
-joinable!(medium_last_played -> mediums (medium_id));
 
 /// Permit one view to appear alongside each of the given tables.
 ///
@@ -117,13 +108,11 @@ macro_rules! allow_view_everywhere {
     ($($view:ident),+ $(,)?) => {
         $(allow_view_with_tables!(
             $view;
-            album_mediums,
             album_recordings,
             albums,
             ensemble_persons,
             ensembles,
             instruments,
-            mediums,
             meta,
             persons,
             plays,
@@ -154,5 +143,4 @@ allow_view_everywhere!(
     instrument_last_played,
     ensemble_last_played,
     album_last_played,
-    medium_last_played,
 );

@@ -810,9 +810,9 @@ fn update_metadata_from_file(
 
 /// Import metadata from the database file at `path`.
 ///
-/// If `ignore_tracks` is `true`, tracks and associated items like mediums will not be imported
-/// from the database. In that case, if the database contains tracks, a warning will be logged.
-/// In any case, tracks are returned.
+/// If `ignore_tracks` is `true`, tracks will not be imported from the database.
+/// In that case, if the database contains tracks, a warning will be logged. In
+/// any case, tracks are returned.
 fn import_metadata_from_file(
     path: impl AsRef<Path>,
     source: Source,
@@ -841,11 +841,9 @@ fn import_metadata_from_file(
         recording_ensembles::table.load::<tables::RecordingEnsemble>(&mut other_connection)?;
     let tracks = tracks::table.load::<tables::Track>(&mut other_connection)?;
     let track_works = track_works::table.load::<tables::TrackWork>(&mut other_connection)?;
-    let mediums = mediums::table.load::<tables::Medium>(&mut other_connection)?;
     let albums = albums::table.load::<tables::Album>(&mut other_connection)?;
     let album_recordings =
         album_recordings::table.load::<tables::AlbumRecording>(&mut other_connection)?;
-    let album_mediums = album_mediums::table.load::<tables::AlbumMedium>(&mut other_connection)?;
     let tags = tags::table.load::<tables::Tag>(&mut other_connection)?;
     let work_tags = work_tags::table.load::<tables::WorkTag>(&mut other_connection)?;
     let recording_tags =
@@ -1007,17 +1005,6 @@ fn import_metadata_from_file(
                     .on_conflict_do_nothing()
                     .execute(connection)?;
             }
-
-            for mut medium in mediums {
-                medium.created_at = now;
-                medium.edited_at = now;
-                medium.last_used_at = now;
-
-                diesel::insert_into(mediums::table)
-                    .values(medium)
-                    .on_conflict_do_nothing()
-                    .execute(connection)?;
-            }
         }
 
         for mut album in albums {
@@ -1035,13 +1022,6 @@ fn import_metadata_from_file(
         for album_recording in album_recordings {
             diesel::insert_into(album_recordings::table)
                 .values(album_recording)
-                .on_conflict_do_nothing()
-                .execute(connection)?;
-        }
-
-        for album_medium in album_mediums {
-            diesel::insert_into(album_mediums::table)
-                .values(album_medium)
                 .on_conflict_do_nothing()
                 .execute(connection)?;
         }
