@@ -25,7 +25,6 @@ const ENTITY_ROWS: &[(&str, &str, &str)] = &[
     ("ensembles", "ensemble_id", "ensemble-1"),
     ("recordings", "recording_id", "recording-1"),
     ("tracks", "track_id", "track-1"),
-    ("mediums", "medium_id", "medium-1"),
     ("albums", "album_id", "album-1"),
 ];
 
@@ -65,9 +64,6 @@ fn full_migration_history_round_trips() {
     )
     .execute(&mut conn)
     .unwrap();
-    sql_query("INSERT INTO mediums (medium_id, discid) VALUES ('medium-1', 'test-discid')")
-        .execute(&mut conn)
-        .unwrap();
     sql_query(
         "INSERT INTO albums (album_id, name) VALUES ('album-1', '{\"generic\":\"Test Album\"}')",
     )
@@ -366,7 +362,10 @@ fn normalize_schema_merges_duplicate_discids() {
     .execute(&mut conn)
     .unwrap();
 
-    conn.run_pending_migrations(MIGRATIONS).unwrap();
+    // Only the migration under test: a later migration drops `mediums` and
+    // `album_mediums` entirely, and this case is about what `normalize_schema`
+    // does to them while they still exist.
+    conn.run_next_migration(MIGRATIONS).unwrap();
 
     let mediums: CountRow = sql_query("SELECT COUNT(*) AS count FROM mediums")
         .get_result(&mut conn)

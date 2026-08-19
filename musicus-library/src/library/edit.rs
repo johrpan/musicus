@@ -1068,7 +1068,6 @@ impl Library {
     ///
     /// Either all of the deletions, updates and imports are applied or none of
     /// them are, so a failed save can simply be retried.
-    // TODO: Support mediums, think about albums.
     pub fn set_recording_tracks(
         &self,
         recording_id: &str,
@@ -1085,7 +1084,6 @@ impl Library {
     }
 
     /// Import a track into the music library.
-    // TODO: Support mediums.
     pub fn import_track(
         &self,
         path: impl AsRef<Path>,
@@ -1101,13 +1099,11 @@ impl Library {
         self.apply_track_changes(Some(recording_id), vec![(recording_index, track)], &[])
     }
 
-    // TODO: Support mediums, think about albums.
     pub fn delete_track(&self, track: &Track) -> Result<()> {
         // No recording is needed: without an import there is no file to name.
         self.apply_track_changes(None, Vec::new(), std::slice::from_ref(track))
     }
 
-    // TODO: Support mediums, think about albums.
     pub fn update_track(
         &self,
         track_id: &str,
@@ -1296,8 +1292,6 @@ impl Library {
                             // recording they belong to.
                             recording_id: recording_id.unwrap_or_default().to_owned(),
                             recording_index,
-                            medium_id: None,
-                            medium_index: None,
                             path: library_path.into(),
                             created_at: now,
                             edited_at: now,

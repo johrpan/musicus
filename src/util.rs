@@ -64,7 +64,6 @@ fn expected_error_message(err: &LibraryError) -> Option<String> {
                 gettext("This recording is still used by tracks or albums in the library.")
             }
             EntityKind::Album => gettext("This album is still used elsewhere in the library."),
-            EntityKind::Medium => gettext("This medium is still used elsewhere in the library."),
             EntityKind::Track => gettext("This track is still used elsewhere in the library."),
         },
         LibraryError::SchemaTooNew { .. } => gettext(

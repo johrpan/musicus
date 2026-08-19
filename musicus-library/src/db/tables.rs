@@ -185,8 +185,6 @@ pub struct Track {
     pub track_id: String,
     pub recording_id: String,
     pub recording_index: i32,
-    pub medium_id: Option<String>,
-    pub medium_index: Option<i32>,
     pub path: PathBufWrapper,
     pub created_at: NaiveDateTime,
     pub edited_at: NaiveDateTime,
@@ -212,18 +210,6 @@ pub struct TrackWork {
 
 #[derive(Insertable, Queryable, Selectable, Clone, Debug)]
 #[diesel(check_for_backend(Sqlite))]
-pub struct Medium {
-    pub medium_id: String,
-    pub discid: String,
-    pub source: Source,
-    pub enable_updates: bool,
-    pub created_at: NaiveDateTime,
-    pub edited_at: NaiveDateTime,
-    pub last_used_at: NaiveDateTime,
-}
-
-#[derive(Insertable, Queryable, Selectable, Clone, Debug)]
-#[diesel(check_for_backend(Sqlite))]
 pub struct Album {
     pub album_id: String,
     pub name: TranslatedString,
@@ -239,14 +225,6 @@ pub struct Album {
 pub struct AlbumRecording {
     pub album_id: String,
     pub recording_id: String,
-    pub sequence_number: i32,
-}
-
-#[derive(Insertable, Queryable, Selectable, Clone, Debug)]
-#[diesel(check_for_backend(Sqlite))]
-pub struct AlbumMedium {
-    pub album_id: String,
-    pub medium_id: String,
     pub sequence_number: i32,
 }
 
