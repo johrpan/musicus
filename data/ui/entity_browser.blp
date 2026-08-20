@@ -74,6 +74,19 @@ template $MusicusEntityBrowser: Adw.NavigationPage {
       }
 
       [end]
+      Gtk.Button delete_button {
+        icon-name: "user-trash-symbolic";
+        tooltip-text: _("Delete the selected items");
+        sensitive: false;
+        clicked => $delete_selected() swapped;
+
+        styles [
+          "flat",
+          "destructive-action",
+        ]
+      }
+
+      [end]
       Gtk.Button clear_selection_button {
         label: _("Clear selection");
         sensitive: false;
