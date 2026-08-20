@@ -45,6 +45,252 @@ $ diesel migration run --database-url test.sqlite
 
 This file should never be edited manually.
 
+### Schema overview
+
+This is an overview of the database schema used by Musicus. Every entity
+also carries `created_at`, `edited_at`, `last_used_at`, `source` and
+`enable_updates` bookkeeping columns, which are omitted here for clarity.
+
+#### Works, composers, instruments
+
+Works form a tree of work parts (`parent_work_id`) and can point at a related
+work, e.g. an arrangement (`relates_to`). Composers, arrangers and the like
+are credited on the work itself, each qualified by a role; instrumentation is
+recorded separately.
+
+```mermaid
+erDiagram
+    works {
+        text work_id PK
+        text parent_work_id FK
+        text relates_to FK
+        text name
+    }
+
+    persons {
+        text person_id PK
+        text name
+    }
+
+    roles {
+        text role_id PK
+        text name
+    }
+
+    instruments {
+        text instrument_id PK
+        text name
+    }
+
+    work_persons {
+        text work_id FK
+        text person_id FK
+        text role_id FK
+        int sequence_number
+    }
+
+    work_instruments {
+        text work_id FK
+        text instrument_id FK
+        int sequence_number
+    }
+
+    works ||--o{ work_persons : composed
+    persons ||--o{ work_persons : "credited on"
+    roles ||--o{ work_persons : qualifies
+
+    works ||--o{ work_instruments : "scored for"
+    instruments ||--o{ work_instruments : "used in"
+```
+
+#### Recordings, performers, ensembles, instruments
+
+Performers are credited on a recording independently of the work's own
+composer credits, each qualified by a role and optionally an instrument.
+Ensembles are credited the same way, and their own members are credited on
+the ensemble itself.
+
+```mermaid
+erDiagram
+    recordings {
+        text recording_id PK
+        text work_id FK
+        text comment
+    }
+
+    persons {
+        text person_id PK
+        text name
+    }
+
+    roles {
+        text role_id PK
+        text name
+    }
+
+    instruments {
+        text instrument_id PK
+        text name
+    }
+
+    ensembles {
+        text ensemble_id PK
+        text name
+    }
+
+    recording_persons {
+        text recording_id FK
+        text person_id FK
+        text role_id FK
+        text instrument_id FK
+        int sequence_number
+    }
+
+    recording_ensembles {
+        text recording_id FK
+        text ensemble_id FK
+        text role_id FK
+        int sequence_number
+    }
+
+    ensemble_persons {
+        text ensemble_id FK
+        text person_id FK
+        text instrument_id FK
+        text role_id FK
+        int sequence_number
+    }
+
+    recordings ||--o{ recording_persons : credits
+    persons ||--o{ recording_persons : "credited on"
+    roles ||--o{ recording_persons : qualifies
+    instruments ||--o{ recording_persons : "played on"
+
+    recordings ||--o{ recording_ensembles : credits
+    ensembles ||--o{ recording_ensembles : "credited on"
+    roles ||--o{ recording_ensembles : qualifies
+
+    ensembles ||--o{ ensemble_persons : "has member"
+    persons ||--o{ ensemble_persons : "member of"
+    instruments ||--o{ ensemble_persons : plays
+    roles ||--o{ ensemble_persons : qualifies
+```
+
+#### Works, recordings, tracks, albums
+
+A work is recorded as one or more recordings, each split into tracks. A track
+can belong to more than one work, which happens when a recording runs
+movements together without a break. Albums group recordings independently of
+how their tracks are organized on disk.
+
+```mermaid
+erDiagram
+    works {
+        text work_id PK
+        text name
+    }
+
+    recordings {
+        text recording_id PK
+        text work_id FK
+        text comment
+    }
+
+    tracks {
+        text track_id PK
+        text recording_id FK
+        text path
+    }
+
+    albums {
+        text album_id PK
+        text name
+    }
+
+    album_recordings {
+        text album_id FK
+        text recording_id FK
+        int sequence_number
+    }
+
+    track_works {
+        text track_id FK
+        text work_id FK
+        int sequence_number
+    }
+
+    works ||--o{ recordings : "recorded as"
+    recordings ||--o{ tracks : "split into"
+    albums ||--o{ album_recordings : contains
+    recordings ||--o{ album_recordings : "appears on"
+    tracks ||--o{ track_works : renders
+    works ||--o{ track_works : "rendered by"
+```
+
+#### Tags and listening history
+
+Tags can be attached to both works and recordings, optionally carrying a
+value (e.g. a "Year" tag with `takes_value` set). Plays are logged per track
+when known, and always per recording; the `*_last_played` views aggregate
+`plays` for every other entity.
+
+```mermaid
+erDiagram
+    tags {
+        text tag_id PK
+        text name
+        bool takes_value
+        bool private
+    }
+
+    works {
+        text work_id PK
+        text name
+    }
+
+    recordings {
+        text recording_id PK
+        text work_id FK
+        text comment
+    }
+
+    tracks {
+        text track_id PK
+        text recording_id FK
+    }
+
+    work_tags {
+        text work_id FK
+        text tag_id FK
+        text value
+        int sequence_number
+    }
+
+    recording_tags {
+        text recording_id FK
+        text tag_id FK
+        text value
+        int sequence_number
+    }
+
+    plays {
+        text play_id PK
+        text track_id FK
+        text recording_id FK
+        timestamp played_at
+    }
+
+    works ||--o{ work_tags : "tagged with"
+    tags ||--o{ work_tags : "assigned to"
+
+    recordings ||--o{ recording_tags : "tagged with"
+    tags ||--o{ recording_tags : "assigned to"
+
+    recordings ||--o{ tracks : "split into"
+    recordings ||--o{ plays : "logs a"
+    tracks ||--o{ plays : "logs a"
+```
+
 ### Internationalization
 
 Execute the following commands from the project root directory to update
