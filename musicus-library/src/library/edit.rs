@@ -768,6 +768,7 @@ impl Library {
         performers: Vec<Performer>,
         ensembles: Vec<EnsemblePerformer>,
         tags: Vec<TagValue>,
+        comment: Option<String>,
         enable_updates: bool,
     ) -> Result<Recording> {
         let connection = &mut *self.conn();
@@ -783,6 +784,7 @@ impl Library {
                 created_at: now,
                 edited_at: now,
                 last_used_at: now,
+                comment,
                 enable_updates,
             };
 
@@ -834,6 +836,7 @@ impl Library {
         performers: Vec<Performer>,
         ensembles: Vec<EnsemblePerformer>,
         tags: Vec<TagValue>,
+        comment: Option<String>,
         enable_updates: bool,
     ) -> Result<()> {
         let connection = &mut *self.conn();
@@ -847,6 +850,7 @@ impl Library {
                     recordings::work_id.eq(work.work_id),
                     recordings::edited_at.eq(now),
                     recordings::last_used_at.eq(now),
+                    recordings::comment.eq(comment),
                     recordings::enable_updates.eq(enable_updates),
                 ))
                 .execute(connection)?;
@@ -1495,7 +1499,7 @@ mod tests {
             )
             .unwrap();
         let recording = library
-            .create_recording(work.clone(), Vec::new(), Vec::new(), Vec::new(), true)
+            .create_recording(work.clone(), Vec::new(), Vec::new(), Vec::new(), None, true)
             .unwrap();
 
         for index in 0..n_tracks {
@@ -1583,6 +1587,7 @@ mod tests {
                     tag: tag.clone(),
                     value: Some("1963".to_string()),
                 }],
+                None,
                 true,
             )
             .unwrap();
@@ -1693,7 +1698,7 @@ mod tests {
         });
 
         let recording = assert_notifies(&library, "create_recording", || {
-            library.create_recording(work.clone(), Vec::new(), Vec::new(), Vec::new(), true)
+            library.create_recording(work.clone(), Vec::new(), Vec::new(), Vec::new(), None, true)
         });
         assert_notifies(&library, "update_recording", || {
             library.update_recording(
@@ -1702,6 +1707,7 @@ mod tests {
                 Vec::new(),
                 Vec::new(),
                 Vec::new(),
+                None,
                 true,
             )
         });
@@ -1823,7 +1829,7 @@ mod tests {
             )
             .unwrap();
         let recording = library
-            .create_recording(work.clone(), Vec::new(), Vec::new(), Vec::new(), true)
+            .create_recording(work.clone(), Vec::new(), Vec::new(), Vec::new(), None, true)
             .unwrap();
 
         let track_source = dir.path().join("source_track.mp3");

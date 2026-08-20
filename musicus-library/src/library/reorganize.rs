@@ -457,7 +457,7 @@ mod tests {
             )
             .unwrap();
         let recording = library
-            .create_recording(work, Vec::new(), Vec::new(), Vec::new(), true)
+            .create_recording(work, Vec::new(), Vec::new(), Vec::new(), None, true)
             .unwrap();
 
         for (index, movement) in movements.iter().enumerate() {

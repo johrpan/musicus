@@ -283,6 +283,7 @@ mod tests {
             persons: Vec::new(),
             ensembles: Vec::new(),
             tags: Vec::new(),
+            comment: None,
             enable_updates: false,
         };
 

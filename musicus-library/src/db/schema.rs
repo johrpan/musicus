@@ -121,6 +121,7 @@ diesel::table! {
         created_at -> Timestamp,
         edited_at -> Timestamp,
         last_used_at -> Timestamp,
+        comment -> Nullable<Text>,
     }
 }
 

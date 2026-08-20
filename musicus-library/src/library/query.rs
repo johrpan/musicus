@@ -1499,6 +1499,7 @@ mod tests {
                     tag: year.clone(),
                     value: Some("1963".to_string()),
                 }],
+                None,
                 true,
             )
             .unwrap();
@@ -1512,6 +1513,7 @@ mod tests {
                     tag: year.clone(),
                     value: Some("1964".to_string()),
                 }],
+                None,
                 true,
             )
             .unwrap();
@@ -1681,7 +1683,7 @@ mod tests {
             )
             .unwrap();
         library
-            .create_recording(other_work, Vec::new(), Vec::new(), Vec::new(), true)
+            .create_recording(other_work, Vec::new(), Vec::new(), Vec::new(), None, true)
             .unwrap();
 
         let bach = first.work.persons[0].person.clone();

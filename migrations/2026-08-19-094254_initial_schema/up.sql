@@ -73,7 +73,8 @@ CREATE TABLE recordings (
     enable_updates BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMP NOT NULL DEFAULT (DATETIME('now')),
     edited_at TIMESTAMP NOT NULL DEFAULT (DATETIME('now')),
-    last_used_at TIMESTAMP NOT NULL DEFAULT (DATETIME('now'))
+    last_used_at TIMESTAMP NOT NULL DEFAULT (DATETIME('now')),
+    comment TEXT
 );
 
 CREATE INDEX recordings_work_id ON recordings (work_id);

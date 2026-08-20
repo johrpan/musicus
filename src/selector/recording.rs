@@ -324,7 +324,11 @@ impl RecordingSelectorPopover {
         imp.recording_list.remove_all();
 
         for result in &recordings {
-            let text = result.item.performers_string();
+            let mut text = result.item.performers_string();
+
+            if let Some(comment) = &result.item.comment {
+                text.push_str(&format!(" ({comment})"));
+            }
 
             let row = ActivatableRow::new(&super::item_row_child(&text, result.in_library, 0));
 

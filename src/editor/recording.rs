@@ -65,6 +65,8 @@ mod imp {
         #[template_child]
         pub tag_list: TemplateChild<gtk::ListBox>,
         #[template_child]
+        pub comment_row: TemplateChild<adw::EntryRow>,
+        #[template_child]
         pub enable_updates_row: TemplateChild<adw::SwitchRow>,
         #[template_child]
         pub save_row: TemplateChild<adw::ButtonRow>,
@@ -250,6 +252,10 @@ impl RecordingEditor {
 
             for tag_value in recording.tags.clone() {
                 obj.add_tag_row(tag_value);
+            }
+
+            if let Some(comment) = &recording.comment {
+                obj.imp().comment_row.set_text(comment);
             }
         }
 
@@ -472,6 +478,11 @@ impl RecordingEditor {
                 .map(|r| r.tag_value())
                 .collect::<Vec<TagValue>>();
 
+            let comment = {
+                let text = self.imp().comment_row.text();
+                (!text.is_empty()).then(|| text.to_string())
+            };
+
             let enable_updates = self.imp().enable_updates_row.is_active();
 
             let created = if let Some(recording_id) = self.imp().recording_id.get() {
@@ -483,6 +494,7 @@ impl RecordingEditor {
                         performers,
                         ensembles,
                         tags,
+                        comment,
                         enable_updates,
                     ),
                 )
@@ -495,7 +507,14 @@ impl RecordingEditor {
             } else {
                 let Some(recording) = crate::editor::handle_save(
                     self,
-                    library.create_recording(work, performers, ensembles, tags, enable_updates),
+                    library.create_recording(
+                        work,
+                        performers,
+                        ensembles,
+                        tags,
+                        comment,
+                        enable_updates,
+                    ),
                 ) else {
                     return;
                 };
