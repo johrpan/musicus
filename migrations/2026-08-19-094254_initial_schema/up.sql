@@ -112,9 +112,6 @@ CREATE TABLE tags (
     private BOOLEAN NOT NULL DEFAULT FALSE
 );
 
-INSERT INTO tags (tag_id, name, takes_value)
-VALUES ('c18e9585a9a5433fbc2b4e5848c96d4d', '{"generic":"Year"}', TRUE);
-
 CREATE TABLE work_persons (
     work_id TEXT NOT NULL REFERENCES works(work_id) ON DELETE CASCADE,
     person_id TEXT NOT NULL REFERENCES persons(person_id) ON DELETE RESTRICT,

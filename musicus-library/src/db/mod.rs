@@ -51,9 +51,6 @@ pub fn set_language(lang: impl Into<String>) {
 /// migration, so that an older build can recognise a database it cannot read.
 pub const SCHEMA_VERSION: i32 = 1;
 
-/// The ID of the built-in "Year" tag, which replaced the `recordings.year` column.
-pub const TAG_YEAR: &str = "c18e9585a9a5433fbc2b4e5848c96d4d";
-
 #[derive(QueryableByName)]
 struct SchemaVersionRow {
     #[diesel(sql_type = diesel::sql_types::Integer)]

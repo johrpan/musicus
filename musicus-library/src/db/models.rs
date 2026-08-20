@@ -8,7 +8,7 @@ use diesel::prelude::*;
 // Re-exports for tables that don't need additional information.
 pub use tables::{Instrument, Person, Role, Tag};
 
-use super::{schema::*, tables, TranslatedString, TAG_YEAR};
+use super::{schema::*, tables, TranslatedString};
 
 #[derive(Clone, Debug)]
 pub struct Work {
@@ -391,18 +391,6 @@ impl Recording {
             tags,
             enable_updates: data.enable_updates,
         })
-    }
-
-    /// The recording year, read from the built-in Year tag.
-    ///
-    /// A tag value is free text, so a value that is not a plain number reads as
-    /// no year rather than as an error.
-    pub fn year(&self) -> Option<i32> {
-        self.tags
-            .iter()
-            .find(|tag_value| tag_value.tag.tag_id == TAG_YEAR)
-            .and_then(|tag_value| tag_value.value.as_deref())
-            .and_then(|value| value.trim().parse().ok())
     }
 
     pub fn performers_string(&self) -> String {
