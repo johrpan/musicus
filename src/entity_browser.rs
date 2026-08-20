@@ -10,7 +10,7 @@ use gtk::{
 };
 use musicus_library::{
     db::{tables::Source, TranslatedString},
-    format_translated,
+    format_translated, LibraryError,
 };
 
 use crate::{
@@ -242,6 +242,21 @@ impl BrowserKind {
         })
     }
 
+    fn delete(self, library: &Library, id: &str) -> Result<()> {
+        match self {
+            BrowserKind::Persons => library.delete_person(id)?,
+            BrowserKind::Instruments => library.delete_instrument(id)?,
+            BrowserKind::Roles => library.delete_role(id)?,
+            BrowserKind::Tags => library.delete_tag(id)?,
+            BrowserKind::Ensembles => library.delete_ensemble(id)?,
+            BrowserKind::Works => library.delete_work(id)?,
+            BrowserKind::Recordings => library.delete_recording_and_tracks(id)?,
+            BrowserKind::Albums => library.delete_album(id)?,
+        }
+
+        Ok(())
+    }
+
     fn create(self, navigation: &adw::NavigationView, library: &Library) -> adw::NavigationPage {
         match self {
             BrowserKind::Persons => SimpleEntityEditor::person(navigation, library, None).upcast(),
@@ -355,6 +370,8 @@ mod imp {
         pub select_all_button: TemplateChild<gtk::Button>,
         #[template_child]
         pub clear_selection_button: TemplateChild<gtk::Button>,
+        #[template_child]
+        pub delete_button: TemplateChild<gtk::Button>,
         #[template_child]
         pub new_button: TemplateChild<gtk::Button>,
     }
@@ -543,6 +560,72 @@ impl EntityBrowser {
         self.selection().unselect_all();
     }
 
+    /// Delete every selected item, after confirming once for the whole batch.
+    #[template_callback]
+    async fn delete_selected(&self) {
+        let ids = self.selected_ids();
+
+        if ids.is_empty() {
+            return;
+        }
+
+        let dialog = adw::AlertDialog::builder()
+            .heading(format_translated!(
+                gettext("Delete {}?"),
+                ids.len().to_string()
+            ))
+            .body(gettext(
+                "This cannot be undone. Items still used elsewhere in the library are kept.",
+            ))
+            .build();
+
+        dialog.add_responses(&[
+            ("cancel", &gettext("Cancel")),
+            ("delete", &gettext("Delete")),
+        ]);
+        dialog.set_response_appearance("delete", adw::ResponseAppearance::Destructive);
+        dialog.set_close_response("cancel");
+        dialog.set_default_response(Some("cancel"));
+
+        if dialog.choose_future(Some(self)).await != "delete" {
+            return;
+        }
+
+        let kind = self.kind();
+        let library = self.library();
+        let mut deleted = 0usize;
+        let mut skipped = 0usize;
+
+        for id in &ids {
+            match kind.delete(&library, id) {
+                Ok(()) => deleted += 1,
+                Err(err) => match err.downcast_ref::<LibraryError>() {
+                    Some(LibraryError::StillReferenced(_)) => skipped += 1,
+                    _ => {
+                        self.report("Failed to delete item", err);
+                        break;
+                    }
+                },
+            }
+        }
+
+        self.reload();
+
+        if let Some(toast_overlay) = util::find_toast_overlay(self) {
+            let message = if skipped == 0 {
+                format_translated!(gettext("Deleted {}"), deleted.to_string())
+            } else {
+                format_translated!(
+                    gettext("Deleted {}; kept {}"),
+                    deleted.to_string(),
+                    skipped.to_string()
+                )
+            };
+
+            toast_overlay.add_toast(adw::Toast::new(&message));
+        }
+    }
+
     #[template_callback]
     fn create_entity(&self) {
         let page = self.kind().create(&self.navigation(), &self.library());
@@ -620,6 +703,8 @@ impl EntityBrowser {
         } else {
             gettext("Clear selection")
         });
+
+        imp.delete_button.set_sensitive(n_selected > 0);
     }
 
     pub fn selected_ids(&self) -> Vec<String> {
