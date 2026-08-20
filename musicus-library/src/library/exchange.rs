@@ -1214,7 +1214,7 @@ mod tests {
             .unwrap();
 
         let recording = library
-            .create_recording(work.clone(), Vec::new(), Vec::new(), Vec::new(), true)
+            .create_recording(work.clone(), Vec::new(), Vec::new(), Vec::new(), None, true)
             .unwrap();
 
         library
@@ -1338,6 +1338,7 @@ mod tests {
                         value: None,
                     },
                 ],
+                None,
                 true,
             )
             .unwrap();

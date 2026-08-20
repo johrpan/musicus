@@ -163,7 +163,7 @@ pub fn generate(
 
         recordings.push(
             library
-                .create_recording(work, performers, ensemble_performers, Vec::new(), false)
+                .create_recording(work, performers, ensemble_performers, Vec::new(), None, false)
                 .context("Failed to create a recording")?,
         );
     }

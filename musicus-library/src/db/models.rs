@@ -53,6 +53,7 @@ pub struct Recording {
     pub persons: Vec<Performer>,
     pub ensembles: Vec<EnsemblePerformer>,
     pub tags: Vec<TagValue>,
+    pub comment: Option<String>,
     pub enable_updates: bool,
 }
 
@@ -389,6 +390,7 @@ impl Recording {
             persons,
             ensembles,
             tags,
+            comment: data.comment,
             enable_updates: data.enable_updates,
         })
     }

@@ -158,6 +158,7 @@ pub struct Recording {
     pub created_at: NaiveDateTime,
     pub edited_at: NaiveDateTime,
     pub last_used_at: NaiveDateTime,
+    pub comment: Option<String>,
 }
 
 #[derive(Insertable, Queryable, Selectable, Clone, Debug)]
