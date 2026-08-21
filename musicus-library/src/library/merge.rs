@@ -12,6 +12,22 @@ use diesel::prelude::*;
 use super::Library;
 use crate::db::schema::*;
 
+/// Reference counts within the library for one entity.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct EntityUsage {
+    pub works: usize,
+    pub recordings: usize,
+    pub ensembles: usize,
+    pub parts: usize,
+    pub tracks: usize,
+}
+
+impl EntityUsage {
+    pub fn total(&self) -> usize {
+        self.works + self.recordings + self.ensembles + self.parts + self.tracks
+    }
+}
+
 impl Library {
     /// Merge one person into another.
     pub fn merge_persons(&self, from: &str, into: &str) -> Result<()> {
@@ -260,4 +276,157 @@ impl Library {
 
         Ok(())
     }
+
+    /// How much else in the library refers to this person.
+    pub fn usage_of_person(&self, id: &str) -> Result<EntityUsage> {
+        let connection = &mut *self.conn();
+
+        Ok(EntityUsage {
+            works: as_usize(
+                work_persons::table
+                    .filter(work_persons::person_id.eq(id))
+                    .count()
+                    .get_result(connection),
+            )?,
+            ensembles: as_usize(
+                ensemble_persons::table
+                    .filter(ensemble_persons::person_id.eq(id))
+                    .count()
+                    .get_result(connection),
+            )?,
+            recordings: as_usize(
+                recording_persons::table
+                    .filter(recording_persons::person_id.eq(id))
+                    .count()
+                    .get_result(connection),
+            )?,
+            ..EntityUsage::default()
+        })
+    }
+
+    /// How much else in the library refers to this role.
+    pub fn usage_of_role(&self, id: &str) -> Result<EntityUsage> {
+        let connection = &mut *self.conn();
+
+        Ok(EntityUsage {
+            works: as_usize(
+                work_persons::table
+                    .filter(work_persons::role_id.eq(id))
+                    .count()
+                    .get_result(connection),
+            )?,
+            ensembles: as_usize(
+                ensemble_persons::table
+                    .filter(ensemble_persons::role_id.eq(id))
+                    .count()
+                    .get_result(connection),
+            )?,
+            recordings: as_usize(
+                recording_persons::table
+                    .filter(recording_persons::role_id.eq(id))
+                    .count()
+                    .get_result(connection),
+            )? + as_usize(
+                recording_ensembles::table
+                    .filter(recording_ensembles::role_id.eq(id))
+                    .count()
+                    .get_result(connection),
+            )?,
+            ..EntityUsage::default()
+        })
+    }
+
+    /// How much else in the library refers to this instrument.
+    pub fn usage_of_instrument(&self, id: &str) -> Result<EntityUsage> {
+        let connection = &mut *self.conn();
+
+        Ok(EntityUsage {
+            works: as_usize(
+                work_instruments::table
+                    .filter(work_instruments::instrument_id.eq(id))
+                    .count()
+                    .get_result(connection),
+            )?,
+            ensembles: as_usize(
+                ensemble_persons::table
+                    .filter(ensemble_persons::instrument_id.eq(id))
+                    .count()
+                    .get_result(connection),
+            )?,
+            recordings: as_usize(
+                recording_persons::table
+                    .filter(recording_persons::instrument_id.eq(id))
+                    .count()
+                    .get_result(connection),
+            )?,
+            ..EntityUsage::default()
+        })
+    }
+
+    /// How much else in the library refers to this tag.
+    pub fn usage_of_tag(&self, id: &str) -> Result<EntityUsage> {
+        let connection = &mut *self.conn();
+
+        Ok(EntityUsage {
+            works: as_usize(
+                work_tags::table
+                    .filter(work_tags::tag_id.eq(id))
+                    .count()
+                    .get_result(connection),
+            )?,
+            recordings: as_usize(
+                recording_tags::table
+                    .filter(recording_tags::tag_id.eq(id))
+                    .count()
+                    .get_result(connection),
+            )?,
+            ..EntityUsage::default()
+        })
+    }
+
+    /// How much else in the library refers to this ensemble.
+    pub fn usage_of_ensemble(&self, id: &str) -> Result<EntityUsage> {
+        let connection = &mut *self.conn();
+
+        Ok(EntityUsage {
+            recordings: as_usize(
+                recording_ensembles::table
+                    .filter(recording_ensembles::ensemble_id.eq(id))
+                    .count()
+                    .get_result(connection),
+            )?,
+            ..EntityUsage::default()
+        })
+    }
+
+    /// How much else in the library refers to this work.
+    pub fn usage_of_work(&self, id: &str) -> Result<EntityUsage> {
+        let connection = &mut *self.conn();
+
+        Ok(EntityUsage {
+            parts: as_usize(
+                works::table
+                    .filter(works::parent_work_id.eq(id))
+                    .count()
+                    .get_result(connection),
+            )?,
+            recordings: as_usize(
+                recordings::table
+                    .filter(recordings::work_id.eq(id))
+                    .count()
+                    .get_result(connection),
+            )?,
+            tracks: as_usize(
+                track_works::table
+                    .filter(track_works::work_id.eq(id))
+                    .count()
+                    .get_result(connection),
+            )?,
+            ..EntityUsage::default()
+        })
+    }
+}
+
+fn as_usize(count: std::result::Result<i64, diesel::result::Error>) -> Result<usize> {
+    Ok(count?.max(0) as usize)
 }
