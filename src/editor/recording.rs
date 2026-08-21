@@ -485,7 +485,7 @@ impl RecordingEditor {
 
             let enable_updates = self.imp().enable_updates_row.is_active();
 
-            let created = if let Some(recording_id) = self.imp().recording_id.get() {
+            if let Some(recording_id) = self.imp().recording_id.get() {
                 if crate::editor::handle_save(
                     self,
                     library.update_recording(
@@ -502,8 +502,6 @@ impl RecordingEditor {
                 {
                     return;
                 }
-
-                None
             } else {
                 let Some(recording) = crate::editor::handle_save(
                     self,
@@ -519,17 +517,13 @@ impl RecordingEditor {
                     return;
                 };
 
-                Some(glib::BoxedAnyObject::new(recording))
-            };
-
-            // Popping before emitting "created" lets the next step of a guided
-            // creation push its editor right away, instead of having to defer
-            // until this editor has left the navigation stack.
-            self.imp().navigation.get().unwrap().pop();
-
-            if let Some(item) = created {
-                self.emit_by_name::<()>("created", &[&item]);
+                self.emit_by_name::<()>(
+                    "created",
+                    &[&glib::BoxedAnyObject::new(recording.clone())],
+                );
             }
+
+            self.imp().navigation.get().unwrap().pop();
         }
     }
 }
