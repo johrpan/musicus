@@ -21,6 +21,7 @@ pub mod exchange;
 pub mod filenames;
 pub mod generate;
 pub mod manage;
+pub mod merge;
 pub mod metadata;
 pub mod pattern;
 pub mod query;
