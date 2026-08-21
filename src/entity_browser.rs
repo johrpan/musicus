@@ -1,4 +1,5 @@
 use std::cell::{Cell, OnceCell, RefCell};
+use std::collections::HashSet;
 
 use adw::{prelude::*, subclass::prelude::*};
 use anyhow::{anyhow, bail, Result};
@@ -998,6 +999,7 @@ impl EntityBrowser {
 
     fn reload(&self) {
         let kind = self.kind();
+        let old_selected_ids: HashSet<String> = self.selected_ids().into_iter().collect();
 
         let items = match kind.load(&self.library()) {
             Ok(items) => items,
@@ -1010,6 +1012,18 @@ impl EntityBrowser {
         let store = self.items();
         store.remove_all();
         store.extend_from_slice(&items);
+
+        // Restore selection by ID
+        if !old_selected_ids.is_empty() {
+            let selection = self.selection();
+            for position in 0..selection.n_items() {
+                if let Some(entity) = selection.item(position).and_downcast::<EntityObject>() {
+                    if old_selected_ids.contains(&entity.id()) {
+                        selection.select_item(position, false);
+                    }
+                }
+            }
+        }
 
         self.set_title(&kind.title());
         self.imp()
