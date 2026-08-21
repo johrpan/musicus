@@ -19,6 +19,7 @@ pub mod edit;
 pub mod exchange;
 pub mod generate;
 pub mod manage;
+pub mod merge;
 pub mod metadata;
 pub mod query;
 
