@@ -1,7 +1,7 @@
 use std::cell::{Cell, OnceCell, RefCell};
 
 use adw::{prelude::*, subclass::prelude::*};
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, bail, Result};
 use chrono::{Local, NaiveDateTime, TimeZone, Utc};
 use gettextrs::gettext;
 use gtk::{
@@ -13,7 +13,9 @@ use musicus_library::{
         tables::{Source, Tag},
         TranslatedString,
     },
-    format_translated, LibraryError,
+    format_translated,
+    library::EntityUsage,
+    LibraryError,
 };
 
 use crate::{
@@ -266,6 +268,64 @@ impl BrowserKind {
         }
     }
 
+    /// Whether this kind supports the "Merge" action.
+    fn supports_merging(self) -> bool {
+        matches!(
+            self,
+            BrowserKind::Persons
+                | BrowserKind::Roles
+                | BrowserKind::Instruments
+                | BrowserKind::Tags
+                | BrowserKind::Ensembles
+                | BrowserKind::Works
+        )
+    }
+
+    /// Merge one item of this kind into another.
+    fn merge(self, library: &Library, from: &str, into: &str) -> Result<()> {
+        match self {
+            BrowserKind::Persons => {
+                library.merge_persons(from, into)?;
+                Ok(())
+            }
+            BrowserKind::Roles => {
+                library.merge_roles(from, into)?;
+                Ok(())
+            }
+            BrowserKind::Instruments => {
+                library.merge_instruments(from, into)?;
+                Ok(())
+            }
+            BrowserKind::Tags => {
+                library.merge_tags(from, into)?;
+                Ok(())
+            }
+            BrowserKind::Ensembles => {
+                library.merge_ensembles(from, into)?;
+                Ok(())
+            }
+            BrowserKind::Works => {
+                library.merge_works(from, into)?;
+                Ok(())
+            }
+            _ => Err(anyhow!("merging not supported for this entity")),
+        }
+    }
+
+    /// How much else in the library refers to one item of this kind.
+    fn usage(self, library: &Library, id: &str) -> Result<EntityUsage> {
+        match self {
+            BrowserKind::Persons => Ok(library.usage_of_person(id)?),
+            BrowserKind::Roles => Ok(library.usage_of_role(id)?),
+            BrowserKind::Instruments => Ok(library.usage_of_instrument(id)?),
+            BrowserKind::Tags => Ok(library.usage_of_tag(id)?),
+            BrowserKind::Ensembles => Ok(library.usage_of_ensemble(id)?),
+            BrowserKind::Works => Ok(library.usage_of_work(id)?),
+            _ => Err(anyhow!("not supported for this entity")),
+        }
+    }
+
+    /// Delete one item of this kind, by ID.
     fn delete(self, library: &Library, id: &str) -> Result<()> {
         match self {
             BrowserKind::Persons => library.delete_person(id)?,
@@ -295,6 +355,11 @@ impl BrowserKind {
             BrowserKind::Recordings => RecordingEditor::new(navigation, library, None).upcast(),
         }
     }
+}
+
+struct MergeAction<'a> {
+    from: &'a EntityObject,
+    into: &'a EntityObject,
 }
 
 fn source_label(source: Source) -> String {
@@ -395,6 +460,8 @@ mod imp {
         pub select_all_button: TemplateChild<gtk::Button>,
         #[template_child]
         pub clear_selection_button: TemplateChild<gtk::Button>,
+        #[template_child]
+        pub merge_button: TemplateChild<gtk::Button>,
         #[template_child]
         pub add_tag_button: TemplateChild<gtk::Button>,
         #[template_child]
@@ -771,6 +838,144 @@ impl EntityBrowser {
         }
     }
 
+    /// Show a dialog to pick which of two items survives a merge.
+    async fn show_merge_dialog<'a>(
+        &'a self,
+        item1: &'a EntityObject,
+        usage1: &'a EntityUsage,
+        item2: &'a EntityObject,
+        usage2: &'a EntityUsage,
+    ) -> Option<MergeAction<'a>> {
+        fn merge_item_row(
+            object: &EntityObject,
+            usage: &EntityUsage,
+        ) -> (gtk::CheckButton, adw::ActionRow) {
+            let check = gtk::CheckButton::new();
+
+            let mut lines = Vec::new();
+            for (count, label) in [
+                (usage.works, gettext("Works")),
+                (usage.recordings, gettext("Recordings")),
+                (usage.ensembles, gettext("Ensembles")),
+                (usage.parts, gettext("Parts")),
+                (usage.tracks, gettext("Tracks")),
+            ] {
+                if count > 0 {
+                    lines.push(format_translated!(
+                        gettext("{}: {}"),
+                        label,
+                        count.to_string()
+                    ));
+                }
+            }
+
+            let subtitle = if lines.is_empty() {
+                gettext("Not used")
+            } else {
+                lines.join("\n")
+            };
+
+            let row = adw::ActionRow::builder()
+                .title(object.name())
+                .subtitle(subtitle)
+                .subtitle_lines(0)
+                .activatable(true)
+                .activatable_widget(&check)
+                .build();
+
+            row.add_prefix(&check);
+
+            (check, row)
+        }
+
+        let (check1, row1) = merge_item_row(item1, usage1);
+        let (check2, row2) = merge_item_row(item2, usage2);
+
+        check2.set_group(Some(&check1));
+
+        if usage1.total() >= usage2.total() {
+            check1.set_active(true);
+        } else {
+            check2.set_active(true);
+        }
+
+        let list = gtk::ListBox::builder()
+            .selection_mode(gtk::SelectionMode::None)
+            .activate_on_single_click(true)
+            .css_classes(["boxed-list"])
+            .build();
+
+        list.append(&row1);
+        list.append(&row2);
+
+        let dialog = adw::AlertDialog::builder()
+            .heading(gettext("Which entity should be kept?"))
+            .body(gettext("All references are moved to the selected entity. The other one is discarded. This cannot be undone."))
+            .extra_child(&list)
+            .build();
+
+        dialog.add_responses(&[("cancel", &gettext("Cancel")), ("merge", &gettext("Merge"))]);
+        dialog.set_response_appearance("merge", adw::ResponseAppearance::Destructive);
+        dialog.set_close_response("cancel");
+        dialog.set_default_response(Some("cancel"));
+
+        if dialog.choose_future(Some(self)).await == "merge" {
+            let merge = if check1.is_active() {
+                MergeAction {
+                    from: item2,
+                    into: item1,
+                }
+            } else {
+                MergeAction {
+                    from: item1,
+                    into: item2,
+                }
+            };
+
+            Some(merge)
+        } else {
+            None
+        }
+    }
+
+    /// Merge the two selected items into one, after picking which survives.
+    #[template_callback]
+    async fn merge_selected(&self) {
+        match self.merge_selected_priv().await {
+            Ok(_) => {
+                self.reload();
+
+                if let Some(toast_overlay) = util::find_toast_overlay(self) {
+                    toast_overlay.add_toast(adw::Toast::new(&gettext("Merged items")));
+                }
+            }
+            Err(err) => self.report("Failed to merge selected items", err),
+        }
+    }
+
+    async fn merge_selected_priv(&self) -> Result<()> {
+        let items = self.selected_objects();
+
+        if items.len() != 2 {
+            bail!("exactly two items have to be selected")
+        }
+
+        let library = self.library();
+        let kind = self.kind();
+
+        let item1 = &items[0];
+        let item2 = &items[1];
+
+        let usage1 = kind.usage(&library, &item1.id())?;
+        let usage2 = kind.usage(&library, &item2.id())?;
+
+        if let Some(merge_action) = self.show_merge_dialog(item1, &usage1, item2, &usage2).await {
+            kind.merge(&library, &merge_action.from.id(), &merge_action.into.id())?;
+        }
+
+        Ok(())
+    }
+
     #[template_callback]
     fn create_entity(&self) {
         let page = self.kind().create(&self.navigation(), &self.library());
@@ -810,6 +1015,7 @@ impl EntityBrowser {
         self.imp()
             .add_tag_button
             .set_visible(kind.supports_tagging());
+        self.imp().merge_button.set_visible(kind.supports_merging());
 
         self.update_view_state();
     }
@@ -854,6 +1060,8 @@ impl EntityBrowser {
 
         imp.delete_button.set_sensitive(n_selected > 0);
         imp.add_tag_button.set_sensitive(n_selected > 0);
+        imp.merge_button
+            .set_sensitive(self.kind().supports_merging() && n_selected == 2);
     }
 
     pub fn selected_ids(&self) -> Vec<String> {
@@ -867,6 +1075,15 @@ impl EntityBrowser {
                     .and_downcast::<EntityObject>()
                     .map(|item| item.id())
             })
+            .collect()
+    }
+
+    fn selected_objects(&self) -> Vec<EntityObject> {
+        let selection = self.selection();
+
+        (0..selection.n_items())
+            .filter(|position| selection.is_selected(*position))
+            .filter_map(|position| selection.item(position).and_downcast::<EntityObject>())
             .collect()
     }
 

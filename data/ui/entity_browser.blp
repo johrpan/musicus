@@ -74,6 +74,18 @@ template $MusicusEntityBrowser: Adw.NavigationPage {
       }
 
       [end]
+      Gtk.Button merge_button {
+        label: _("Merge…");
+        tooltip-text: _("Merge the two selected items into one");
+        sensitive: false;
+        clicked => $merge_selected() swapped;
+
+        styles [
+          "flat",
+        ]
+      }
+
+      [end]
       Gtk.Button add_tag_button {
         label: _("Add tag…");
         tooltip-text: _("Assign a tag to the selected items");
