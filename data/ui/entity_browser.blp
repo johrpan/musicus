@@ -74,6 +74,18 @@ template $MusicusEntityBrowser: Adw.NavigationPage {
       }
 
       [end]
+      Gtk.Button add_tag_button {
+        label: _("Add tag…");
+        tooltip-text: _("Assign a tag to the selected items");
+        sensitive: false;
+        clicked => $add_tag_clicked() swapped;
+
+        styles [
+          "flat",
+        ]
+      }
+
+      [end]
       Gtk.Button delete_button {
         icon-name: "user-trash-symbolic";
         tooltip-text: _("Delete the selected items");

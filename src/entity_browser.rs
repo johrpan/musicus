@@ -1,7 +1,7 @@
 use std::cell::{Cell, OnceCell, RefCell};
 
 use adw::{prelude::*, subclass::prelude::*};
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use chrono::{Local, NaiveDateTime, TimeZone, Utc};
 use gettextrs::gettext;
 use gtk::{
@@ -9,7 +9,10 @@ use gtk::{
     glib::{self, clone, Properties},
 };
 use musicus_library::{
-    db::{tables::Source, TranslatedString},
+    db::{
+        tables::{Source, Tag},
+        TranslatedString,
+    },
     format_translated, LibraryError,
 };
 
@@ -19,6 +22,7 @@ use crate::{
         simple_entity::SimpleEntityEditor, tag::TagEditor, work::WorkEditor,
     },
     library::Library,
+    selector::SelectorPopover,
     util,
 };
 
@@ -242,6 +246,26 @@ impl BrowserKind {
         })
     }
 
+    /// Whether this kind supports the bulk "Add tag" action.
+    fn supports_tagging(self) -> bool {
+        matches!(self, BrowserKind::Works | BrowserKind::Recordings)
+    }
+
+    /// Assign a tag to several items of this kind at once.
+    fn add_tag(
+        self,
+        library: &Library,
+        ids: &[&str],
+        tag: &Tag,
+        value: Option<&str>,
+    ) -> Result<usize> {
+        match self {
+            BrowserKind::Works => Ok(library.add_tag_to_works(ids, tag, value)?),
+            BrowserKind::Recordings => Ok(library.add_tag_to_recordings(ids, tag, value)?),
+            _ => Err(anyhow!("tagging not supported for this entity")),
+        }
+    }
+
     fn delete(self, library: &Library, id: &str) -> Result<()> {
         match self {
             BrowserKind::Persons => library.delete_person(id)?,
@@ -353,6 +377,7 @@ mod imp {
         pub items: OnceCell<gio::ListStore>,
         pub filter: OnceCell<gtk::CustomFilter>,
         pub selection: OnceCell<gtk::MultiSelection>,
+        pub add_tag_popover: OnceCell<SelectorPopover>,
 
         #[template_child]
         pub kind_drop_down: TemplateChild<gtk::DropDown>,
@@ -370,6 +395,8 @@ mod imp {
         pub select_all_button: TemplateChild<gtk::Button>,
         #[template_child]
         pub clear_selection_button: TemplateChild<gtk::Button>,
+        #[template_child]
+        pub add_tag_button: TemplateChild<gtk::Button>,
         #[template_child]
         pub delete_button: TemplateChild<gtk::Button>,
         #[template_child]
@@ -468,6 +495,46 @@ impl EntityBrowser {
                 }
             }
         ));
+
+        let add_tag_popover = SelectorPopover::tags(library);
+        add_tag_popover.set_parent(&imp.add_tag_button.get());
+
+        add_tag_popover.connect_selected(clone!(
+            #[weak]
+            obj,
+            move |_, tag: Tag| {
+                glib::spawn_future_local(clone!(
+                    #[weak]
+                    obj,
+                    async move { obj.tag_picked(tag).await }
+                ));
+            }
+        ));
+
+        add_tag_popover.connect_create(clone!(
+            #[weak]
+            obj,
+            move |_, search| {
+                let editor = TagEditor::new(&obj.navigation(), &obj.library(), None);
+                editor.set_name(&search);
+
+                editor.connect_created(clone!(
+                    #[weak]
+                    obj,
+                    move |_, tag| {
+                        glib::spawn_future_local(clone!(
+                            #[weak]
+                            obj,
+                            async move { obj.tag_picked(tag).await }
+                        ));
+                    }
+                ));
+
+                obj.navigation().push(&editor);
+            }
+        ));
+
+        let _ = imp.add_tag_popover.set(add_tag_popover);
 
         let kinds = BrowserKind::ALL
             .iter()
@@ -627,6 +694,84 @@ impl EntityBrowser {
     }
 
     #[template_callback]
+    fn add_tag_clicked(&self) {
+        self.imp()
+            .add_tag_popover
+            .get()
+            .expect("the browser has an add-tag popover")
+            .popup();
+    }
+
+    async fn tag_picked(&self, tag: Tag) {
+        let value = if tag.takes_value {
+            match self.prompt_for_value(&tag).await {
+                Some(value) => Some(value),
+                None => return,
+            }
+        } else {
+            None
+        };
+
+        self.apply_tag(&tag, value.as_deref());
+    }
+
+    async fn prompt_for_value(&self, tag: &Tag) -> Option<String> {
+        let entry = gtk::Entry::builder()
+            .placeholder_text(gettext("Value"))
+            .activates_default(true)
+            .build();
+
+        let dialog = adw::AlertDialog::builder()
+            .heading(format_translated!(
+                gettext("Value for \"{}\""),
+                tag.name.get()
+            ))
+            .extra_child(&entry)
+            .build();
+
+        dialog.add_responses(&[("cancel", &gettext("Cancel")), ("add", &gettext("Add"))]);
+        dialog.set_response_appearance("add", adw::ResponseAppearance::Suggested);
+        dialog.set_default_response(Some("add"));
+        dialog.set_close_response("cancel");
+
+        if dialog.choose_future(Some(self)).await != "add" {
+            return None;
+        }
+
+        let value = entry.text().trim().to_string();
+
+        if value.is_empty() {
+            None
+        } else {
+            Some(value)
+        }
+    }
+
+    fn apply_tag(&self, tag: &Tag, value: Option<&str>) {
+        let ids = self.selected_ids();
+
+        if ids.is_empty() {
+            return;
+        }
+
+        let id_refs = ids.iter().map(String::as_str).collect::<Vec<_>>();
+
+        match self.kind().add_tag(&self.library(), &id_refs, tag, value) {
+            Ok(changed) => {
+                self.reload();
+
+                if let Some(toast_overlay) = util::find_toast_overlay(self) {
+                    toast_overlay.add_toast(adw::Toast::new(&format_translated!(
+                        gettext("Tagged {}"),
+                        changed.to_string()
+                    )));
+                }
+            }
+            Err(err) => self.report("Failed to assign tag", err),
+        }
+    }
+
+    #[template_callback]
     fn create_entity(&self) {
         let page = self.kind().create(&self.navigation(), &self.library());
         self.navigation().push(&page);
@@ -662,6 +807,9 @@ impl EntityBrowser {
         store.extend_from_slice(&items);
 
         self.set_title(&kind.title());
+        self.imp()
+            .add_tag_button
+            .set_visible(kind.supports_tagging());
 
         self.update_view_state();
     }
@@ -705,6 +853,7 @@ impl EntityBrowser {
         });
 
         imp.delete_button.set_sensitive(n_selected > 0);
+        imp.add_tag_button.set_sensitive(n_selected > 0);
     }
 
     pub fn selected_ids(&self) -> Vec<String> {
