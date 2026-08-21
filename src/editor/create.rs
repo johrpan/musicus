@@ -7,6 +7,8 @@
 
 use std::rc::Rc;
 
+use gtk::glib;
+
 use musicus_library::db::models::{Person, Recording, Work};
 
 use crate::{
@@ -60,7 +62,12 @@ fn push_work(
                 name: work_name.to_owned(),
             };
 
-            push_work(&navigation_, &library_, prefill, Rc::clone(&handler));
+            push_next(
+                &navigation_,
+                &library_,
+                Rc::clone(&handler),
+                move |n, l, h| push_work(n, l, prefill, h),
+            );
         });
 
         navigation.push(&editor);
@@ -93,7 +100,12 @@ fn push_recording(
                     work: RecordingWork::Work(work),
                 };
 
-                push_recording(&navigation_, &library_, prefill, Rc::clone(&handler));
+                push_next(
+                    &navigation_,
+                    &library_,
+                    Rc::clone(&handler),
+                    move |n, l, h| push_recording(n, l, prefill, h),
+                );
             }),
         );
 
@@ -105,4 +117,25 @@ fn push_recording(
     editor.connect_created(move |_, recording| handler(recording));
 
     navigation.push(&editor);
+}
+
+/// Push the next step of the process once the editor that finished has popped itself.
+///
+/// Editors emit their result before popping their own page, so the next editor has to
+/// wait for that to happen. Otherwise it would be popped instead.
+//
+// TODO: This transition does not look clean due to this.
+fn push_next<T, F>(
+    navigation: &adw::NavigationView,
+    library: &Library,
+    handler: Handler<T>,
+    push: F,
+) where
+    T: 'static,
+    F: FnOnce(&adw::NavigationView, &Library, Handler<T>) + 'static,
+{
+    let navigation = navigation.to_owned();
+    let library = library.to_owned();
+
+    glib::idle_add_local_once(move || push(&navigation, &library, handler));
 }
