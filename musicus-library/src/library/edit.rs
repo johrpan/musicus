@@ -378,6 +378,141 @@ impl Library {
         Ok(())
     }
 
+    /// Assign a tag to several works at once.
+    ///
+    /// Returns how many works have been updated. Existing associations are
+    /// skipped.
+    pub fn add_tag_to_works(
+        &self,
+        work_ids: &[&str],
+        tag: &Tag,
+        value: Option<&str>,
+    ) -> Result<usize> {
+        let connection = &mut *self.conn();
+        let value = value.filter(|_| tag.takes_value).map(str::to_owned);
+        let now = db::now();
+
+        let changed = connection.transaction::<usize, Error, _>(|connection| {
+            let mut changed = 0usize;
+
+            for &work_id in work_ids {
+                let existing = work_tags::table
+                    .filter(work_tags::work_id.eq(work_id))
+                    .select((
+                        work_tags::tag_id,
+                        work_tags::value,
+                        work_tags::sequence_number,
+                    ))
+                    .load::<(String, Option<String>, i32)>(connection)?;
+
+                let already_tagged = existing.iter().any(|(tag_id, existing_value, _)| {
+                    tag_id == &tag.tag_id && existing_value == &value
+                });
+
+                if already_tagged {
+                    continue;
+                }
+
+                let next_sequence = existing
+                    .iter()
+                    .map(|(_, _, sequence_number)| *sequence_number)
+                    .max()
+                    .map_or(0, |n| n + 1);
+
+                diesel::insert_into(work_tags::table)
+                    .values(tables::WorkTag {
+                        work_id: work_id.to_string(),
+                        tag_id: tag.tag_id.clone(),
+                        value: value.clone(),
+                        sequence_number: next_sequence,
+                    })
+                    .execute(connection)?;
+
+                diesel::update(works::table)
+                    .filter(works::work_id.eq(work_id))
+                    .set((works::edited_at.eq(now), works::last_used_at.eq(now)))
+                    .execute(connection)?;
+
+                changed += 1;
+            }
+
+            Ok(changed)
+        })?;
+
+        self.changed();
+
+        Ok(changed)
+    }
+
+    /// Assign a tag to several recordings at once.
+    ///
+    /// Returns how many recordings have been updated. Existing associations
+    /// are skipped.
+    pub fn add_tag_to_recordings(
+        &self,
+        recording_ids: &[&str],
+        tag: &Tag,
+        value: Option<&str>,
+    ) -> Result<usize> {
+        let connection = &mut *self.conn();
+        let value = value.filter(|_| tag.takes_value).map(str::to_owned);
+        let now = db::now();
+
+        let changed = connection.transaction::<usize, Error, _>(|connection| {
+            let mut changed = 0usize;
+
+            for &recording_id in recording_ids {
+                let existing = recording_tags::table
+                    .filter(recording_tags::recording_id.eq(recording_id))
+                    .select((
+                        recording_tags::tag_id,
+                        recording_tags::value,
+                        recording_tags::sequence_number,
+                    ))
+                    .load::<(String, Option<String>, i32)>(connection)?;
+
+                let already_tagged = existing.iter().any(|(tag_id, existing_value, _)| {
+                    tag_id == &tag.tag_id && existing_value == &value
+                });
+
+                if already_tagged {
+                    continue;
+                }
+
+                let next_sequence = existing
+                    .iter()
+                    .map(|(_, _, sequence_number)| *sequence_number)
+                    .max()
+                    .map_or(0, |n| n + 1);
+
+                diesel::insert_into(recording_tags::table)
+                    .values(tables::RecordingTag {
+                        recording_id: recording_id.to_string(),
+                        tag_id: tag.tag_id.clone(),
+                        value: value.clone(),
+                        sequence_number: next_sequence,
+                    })
+                    .execute(connection)?;
+
+                diesel::update(recordings::table)
+                    .filter(recordings::recording_id.eq(recording_id))
+                    .set((
+                        recordings::edited_at.eq(now),
+                        recordings::last_used_at.eq(now),
+                    ))
+                    .execute(connection)?;
+
+                changed += 1;
+            }
+
+            Ok(changed)
+        })?;
+
+        self.changed();
+
+        Ok(changed)
+    }
+
     pub fn create_work(
         &self,
         name: TranslatedString,
@@ -1712,6 +1847,13 @@ mod tests {
             )
         });
 
+        assert_notifies(&library, "add_tag_to_works", || {
+            library.add_tag_to_works(&[&work.work_id], &tag, None)
+        });
+        assert_notifies(&library, "add_tag_to_recordings", || {
+            library.add_tag_to_recordings(&[&recording.recording_id], &tag, None)
+        });
+
         let album = assert_notifies(&library, "create_album", || {
             library.create_album(translated("The Symphonies"), vec![recording.clone()], true)
         });
@@ -1770,6 +1912,96 @@ mod tests {
         assert_notifies(&library, "delete_person", || {
             library.delete_person(&person.person_id)
         });
+    }
+
+    /// Assigning a tag in bulk adds to what a work or recording already
+    /// carries, keeps the value only for a tag that takes one, and does
+    /// nothing to an item that already has the exact same tag and value —
+    /// which is what makes it safe to run again over an overlapping
+    /// selection.
+    #[test]
+    fn bulk_tagging_adds_the_tag_and_is_idempotent() {
+        let dir = TempDir::new().unwrap();
+        let cache_dir = TempDir::new().unwrap();
+        let library = library(&dir, &cache_dir);
+
+        let person = library
+            .create_person(translated("Beethoven"), true)
+            .unwrap();
+        let composer = Composer { person, role: None };
+
+        let label = library
+            .create_tag(translated("Baroque"), false, false, true)
+            .unwrap();
+        let valued = library
+            .create_tag(translated("Year"), true, false, true)
+            .unwrap();
+
+        let work_a = library
+            .create_work(
+                translated("Symphony No. 5"),
+                Vec::new(),
+                vec![composer.clone()],
+                Vec::new(),
+                Vec::new(),
+                true,
+            )
+            .unwrap();
+        let work_b = library
+            .create_work(
+                translated("Symphony No. 6"),
+                Vec::new(),
+                vec![composer],
+                Vec::new(),
+                vec![TagValue {
+                    tag: label.clone(),
+                    value: None,
+                }],
+                true,
+            )
+            .unwrap();
+
+        let changed = library
+            .add_tag_to_works(&[&work_a.work_id, &work_b.work_id], &valued, Some("1808"))
+            .unwrap();
+        assert_eq!(changed, 2, "both works are newly tagged");
+
+        // Running the exact same assignment again changes nothing.
+        let changed = library
+            .add_tag_to_works(&[&work_a.work_id, &work_b.work_id], &valued, Some("1808"))
+            .unwrap();
+        assert_eq!(changed, 0, "both already carry this tag and value");
+
+        let work_a = library.load_work(&work_a.work_id).unwrap();
+        let work_b = library.load_work(&work_b.work_id).unwrap();
+
+        // Adding the tag did not remove the tag work_b already had.
+        assert_eq!(work_b.tags.len(), 2);
+        assert!(work_a
+            .tags
+            .iter()
+            .any(|t| t.tag.tag_id == valued.tag_id && t.value.as_deref() == Some("1808")));
+
+        // A plain tag never gets a value through the bulk path either.
+        let changed = library
+            .add_tag_to_works(&[&work_a.work_id], &label, Some("ignored"))
+            .unwrap();
+        assert_eq!(changed, 1);
+        let work_a = library.load_work(&work_a.work_id).unwrap();
+        assert!(work_a
+            .tags
+            .iter()
+            .any(|t| t.tag.tag_id == label.tag_id && t.value.is_none()));
+
+        let recording = library
+            .create_recording(work_a.clone(), Vec::new(), Vec::new(), Vec::new(), true)
+            .unwrap();
+        let changed = library
+            .add_tag_to_recordings(&[&recording.recording_id], &label, None)
+            .unwrap();
+        assert_eq!(changed, 1);
+        let recording = library.load_recording(&recording.recording_id).unwrap();
+        assert_eq!(recording.tags.len(), 1);
     }
 
     /// Deleting something still in use must be reported as such, not as an
