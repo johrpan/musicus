@@ -13,9 +13,9 @@ pub use edit::TrackUpdate;
 pub use generate::GenerateRecordingParams;
 pub use list::{EnsembleListItem, RecordingListItem, WorkListItem};
 pub use merge::EntityUsage;
-pub use metadata::SearchItem;
 pub use pattern::Patterns;
 pub use query::{Facet, LibraryQuery};
+pub use search::SearchItem;
 pub mod audio_tags;
 pub mod list;
 pub mod edit;
@@ -28,6 +28,7 @@ pub mod pattern;
 pub mod process;
 pub mod query;
 pub mod reorganize;
+pub mod search;
 
 /// An open metadata database remembered together with the modification time of
 /// the file it came from.
