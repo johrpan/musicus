@@ -123,6 +123,7 @@ impl BrowserKind {
                         item.work.last_used_at,
                     );
                     object.set_details(join_names(&item.composers));
+                    object.set_tags(join_tags(&item.tags));
                     object
                 })
                 .collect(),
@@ -143,6 +144,7 @@ impl BrowserKind {
                     );
                     object.set_details(join_names(&item.performers));
                     object.set_n_tracks(item.n_tracks.max(0) as u32);
+                    object.set_tags(join_tags(&item.tags));
                     object
                 })
                 .collect(),
@@ -412,6 +414,8 @@ mod entity_object_imp {
         #[property(get, set)]
         pub details: RefCell<String>,
         #[property(get, set)]
+        pub tags: RefCell<String>,
+        #[property(get, set)]
         pub source: RefCell<String>,
         #[property(get, set)]
         pub last_used: RefCell<String>,
@@ -446,6 +450,16 @@ fn join_names(names: &[TranslatedString]) -> String {
     names
         .iter()
         .map(|name| name.get())
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+fn join_tags(tags: &[(TranslatedString, Option<String>)]) -> String {
+    tags.iter()
+        .map(|(name, value)| match value {
+            Some(value) => format!("{}: {value}", name.get()),
+            None => name.get().to_owned(),
+        })
         .collect::<Vec<_>>()
         .join(", ")
 }
@@ -546,6 +560,7 @@ impl EntityBrowser {
 
             item.name().to_lowercase().contains(&needle)
                 || item.details().to_lowercase().contains(&needle)
+                || item.tags().to_lowercase().contains(&needle)
         });
         let _ = imp.filter.set(filter.clone());
 
@@ -1266,6 +1281,10 @@ impl EntityBrowser {
 
         if kind == BrowserKind::Recordings {
             column_view.append_column(&self.number_column(&gettext("Tracks"), "n-tracks"));
+        }
+
+        if kind == BrowserKind::Works || kind == BrowserKind::Recordings {
+            column_view.append_column(&self.text_column(&gettext("Tags"), "tags", false));
         }
 
         column_view.append_column(&self.text_column(&gettext("Source"), "source", false));
