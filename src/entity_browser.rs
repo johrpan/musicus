@@ -25,8 +25,9 @@ use crate::{
         simple_entity::SimpleEntityEditor, tag::TagEditor, work::WorkEditor,
     },
     library::Library,
-    selector::SelectorPopover,
+    selector::{item_row_child, SelectorPopover},
     util,
+    util::activatable_row::ActivatableRow,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -269,6 +270,24 @@ impl BrowserKind {
         }
     }
 
+    /// The tags currently applied to any of the given items of this kind.
+    fn tags_in_selection(self, library: &Library, ids: &[&str]) -> Result<Vec<Tag>> {
+        match self {
+            BrowserKind::Works => Ok(library.tags_used_by_works(ids)?),
+            BrowserKind::Recordings => Ok(library.tags_used_by_recordings(ids)?),
+            _ => Err(anyhow!("tagging not supported for this entity")),
+        }
+    }
+
+    /// Remove a tag from several items of this kind at once.
+    fn remove_tag(self, library: &Library, ids: &[&str], tag_id: &str) -> Result<usize> {
+        match self {
+            BrowserKind::Works => Ok(library.remove_tag_from_works(ids, tag_id)?),
+            BrowserKind::Recordings => Ok(library.remove_tag_from_recordings(ids, tag_id)?),
+            _ => Err(anyhow!("tagging not supported for this entity")),
+        }
+    }
+
     /// Whether this kind supports the "Merge" action.
     fn supports_merging(self) -> bool {
         matches!(
@@ -444,6 +463,7 @@ mod imp {
         pub filter: OnceCell<gtk::CustomFilter>,
         pub selection: OnceCell<gtk::MultiSelection>,
         pub add_tag_popover: OnceCell<SelectorPopover>,
+        pub remove_tag_popover: RefCell<Option<gtk::Popover>>,
 
         #[template_child]
         pub kind_drop_down: TemplateChild<gtk::DropDown>,
@@ -465,6 +485,8 @@ mod imp {
         pub merge_button: TemplateChild<gtk::Button>,
         #[template_child]
         pub add_tag_button: TemplateChild<gtk::Button>,
+        #[template_child]
+        pub remove_tag_button: TemplateChild<gtk::Button>,
         #[template_child]
         pub delete_button: TemplateChild<gtk::Button>,
         #[template_child]
@@ -839,6 +861,121 @@ impl EntityBrowser {
         }
     }
 
+    #[template_callback]
+    fn remove_tag_clicked(&self) {
+        let ids = self.selected_ids();
+
+        if ids.is_empty() {
+            return;
+        }
+
+        let id_refs = ids.iter().map(String::as_str).collect::<Vec<_>>();
+
+        let tags = match self.kind().tags_in_selection(&self.library(), &id_refs) {
+            Ok(tags) => tags,
+            Err(err) => {
+                self.report("Failed to list tags", err);
+                return;
+            }
+        };
+
+        if let Some(previous) = self.imp().remove_tag_popover.take() {
+            previous.unparent();
+        }
+
+        let popover = gtk::Popover::builder().autohide(true).build();
+        popover.add_css_class("selector");
+        popover.set_parent(&self.imp().remove_tag_button.get());
+
+        popover.connect_closed(clone!(
+            #[weak(rename_to = obj)]
+            self,
+            move |popover| {
+                popover.unparent();
+                obj.imp().remove_tag_popover.take();
+            }
+        ));
+
+        let toolbar_view = adw::ToolbarView::new();
+        toolbar_view.set_width_request(250);
+
+        if tags.is_empty() {
+            toolbar_view.set_content(Some(
+                &gtk::Label::builder()
+                    .label(gettext("None of the selected items are tagged"))
+                    .margin_top(9)
+                    .margin_bottom(9)
+                    .margin_start(12)
+                    .margin_end(12)
+                    .build(),
+            ));
+        } else {
+            let list_box = gtk::ListBox::builder()
+                .selection_mode(gtk::SelectionMode::None)
+                .margin_top(6)
+                .css_classes(["selector-list"])
+                .build();
+
+            for tag in &tags {
+                let row = ActivatableRow::new(&item_row_child(&tag.name.get(), true, 0));
+
+                let obj = self.clone();
+                let tag = tag.clone();
+                row.connect_activated(clone!(
+                    #[weak]
+                    obj,
+                    move |_: &ActivatableRow| {
+                        if let Some(popover) = obj.imp().remove_tag_popover.take() {
+                            popover.popdown();
+                        }
+                        obj.apply_remove_tag(&tag);
+                    }
+                ));
+
+                list_box.append(&row);
+            }
+
+            let scrolled_window = gtk::ScrolledWindow::builder()
+                .height_request(200)
+                .child(&list_box)
+                .build();
+
+            toolbar_view.set_content(Some(&scrolled_window));
+        }
+
+        popover.set_child(Some(&toolbar_view));
+
+        popover.popup();
+        self.imp().remove_tag_popover.replace(Some(popover));
+    }
+
+    fn apply_remove_tag(&self, tag: &Tag) {
+        let ids = self.selected_ids();
+
+        if ids.is_empty() {
+            return;
+        }
+
+        let id_refs = ids.iter().map(String::as_str).collect::<Vec<_>>();
+
+        match self
+            .kind()
+            .remove_tag(&self.library(), &id_refs, &tag.tag_id)
+        {
+            Ok(changed) => {
+                self.reload();
+
+                if let Some(toast_overlay) = util::find_toast_overlay(self) {
+                    toast_overlay.add_toast(adw::Toast::new(&format_translated!(
+                        gettext("Removed from {} items"),
+                        changed.to_string()
+                    )));
+                }
+            }
+            Err(err) => self.report("Failed to remove tag", err),
+        }
+    }
+
     /// Show a dialog to pick which of two items survives a merge.
     async fn show_merge_dialog<'a>(
         &'a self,
@@ -1029,6 +1166,9 @@ impl EntityBrowser {
         self.imp()
             .add_tag_button
             .set_visible(kind.supports_tagging());
+        self.imp()
+            .remove_tag_button
+            .set_visible(kind.supports_tagging());
         self.imp().merge_button.set_visible(kind.supports_merging());
 
         self.update_view_state();
@@ -1074,6 +1214,7 @@ impl EntityBrowser {
 
         imp.delete_button.set_sensitive(n_selected > 0);
         imp.add_tag_button.set_sensitive(n_selected > 0);
+        imp.remove_tag_button.set_sensitive(n_selected > 0);
         imp.merge_button
             .set_sensitive(self.kind().supports_merging() && n_selected == 2);
     }
