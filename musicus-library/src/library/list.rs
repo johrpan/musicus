@@ -1,9 +1,8 @@
-//! Library management: listing what is in the library, so that it can be
-//! reviewed and worked on in bulk.
+//! List library contents.
 //!
-//! This is deliberately separate from [`super::query`]. Searching merges in
-//! results from the downloaded metadata database and reports them as
-//! [`SearchItem`](super::SearchItem)s that are not in the library yet.
+//! This module contains code for listing library content. This is separate
+//! from search (which includes the metadata database) and query (which is for
+//! item discovery).
 
 use std::collections::HashMap;
 
