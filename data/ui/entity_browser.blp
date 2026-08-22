@@ -73,36 +73,21 @@ template $MusicusEntityBrowser: Adw.NavigationPage {
         ]
       }
 
-      [end]
-      Gtk.Button merge_button {
-        label: _("Merge…");
-        tooltip-text: _("Merge the two selected items into one");
+      [start]
+      Gtk.Button clear_selection_button {
+        label: _("Clear");
         sensitive: false;
-        clicked => $merge_selected() swapped;
+        clicked => $clear_selection() swapped;
 
         styles [
           "flat",
         ]
       }
 
-      [end]
-      Gtk.Button add_tag_button {
-        label: _("Add tag…");
-        tooltip-text: _("Assign a tag to the selected items");
-        sensitive: false;
-        clicked => $add_tag_clicked() swapped;
-
-        styles [
-          "flat",
-        ]
-      }
-
-      [end]
-      Gtk.Button remove_tag_button {
-        label: _("Remove tag…");
-        tooltip-text: _("Remove a tag from the selected items");
-        sensitive: false;
-        clicked => $remove_tag_clicked() swapped;
+      [start]
+      Gtk.Button select_all_button {
+        label: _("Select all");
+        clicked => $select_all() swapped;
 
         styles [
           "flat",
@@ -111,7 +96,7 @@ template $MusicusEntityBrowser: Adw.NavigationPage {
 
       [end]
       Gtk.Button delete_button {
-        icon-name: "user-trash-symbolic";
+        label: _("Delete");
         tooltip-text: _("Delete the selected items");
         sensitive: false;
         clicked => $delete_selected() swapped;
@@ -123,10 +108,11 @@ template $MusicusEntityBrowser: Adw.NavigationPage {
       }
 
       [end]
-      Gtk.Button clear_selection_button {
-        label: _("Clear selection");
+      Gtk.Button merge_button {
+        label: _("Merge");
+        tooltip-text: _("Merge the two selected items into one");
         sensitive: false;
-        clicked => $clear_selection() swapped;
+        clicked => $merge_selected() swapped;
 
         styles [
           "flat",
@@ -134,9 +120,23 @@ template $MusicusEntityBrowser: Adw.NavigationPage {
       }
 
       [end]
-      Gtk.Button select_all_button {
-        label: _("Select all");
-        clicked => $select_all() swapped;
+      Gtk.Button add_tag_button {
+        label: _("Add tag");
+        tooltip-text: _("Assign a tag to the selected items");
+        sensitive: false;
+        clicked => $add_tag_clicked() swapped;
+
+        styles [
+          "flat",
+        ]
+      }
+
+      [end]
+      Gtk.Button remove_tag_button {
+        label: _("Remove tag");
+        tooltip-text: _("Remove a tag from the selected items");
+        sensitive: false;
+        clicked => $remove_tag_clicked() swapped;
 
         styles [
           "flat",
