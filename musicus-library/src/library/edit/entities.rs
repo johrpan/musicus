@@ -1337,6 +1337,7 @@ mod tests {
                 vec![composer.clone()],
                 Vec::new(),
                 Vec::new(),
+                None,
                 true,
             )
             .unwrap();
@@ -1350,6 +1351,7 @@ mod tests {
                     tag: label.clone(),
                     value: None,
                 }],
+                None,
                 true,
             )
             .unwrap();
@@ -1387,7 +1389,7 @@ mod tests {
             .any(|t| t.tag.tag_id == label.tag_id && t.value.is_none()));
 
         let recording = library
-            .create_recording(work_a.clone(), Vec::new(), Vec::new(), Vec::new(), true)
+            .create_recording(work_a.clone(), Vec::new(), Vec::new(), Vec::new(), None, true)
             .unwrap();
         let changed = library
             .add_tag_to_recordings(&[&recording.recording_id], &label, None)
