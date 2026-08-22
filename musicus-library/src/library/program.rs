@@ -480,8 +480,6 @@ impl Library {
             Ok(())
         })?;
 
-        self.changed();
-
         Ok(())
     }
 }
