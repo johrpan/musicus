@@ -513,6 +513,89 @@ impl Library {
         Ok(changed)
     }
 
+    /// Remove a tag from several works at once.
+    ///
+    /// Returns how many works have been updated.
+    pub fn remove_tag_from_works(&self, work_ids: &[&str], tag_id: &str) -> Result<usize> {
+        let connection = &mut *self.conn();
+        let now = db::now();
+
+        let changed = connection.transaction::<usize, Error, _>(|connection| {
+            let mut changed = 0usize;
+
+            for &work_id in work_ids {
+                let deleted = diesel::delete(
+                    work_tags::table
+                        .filter(work_tags::work_id.eq(work_id))
+                        .filter(work_tags::tag_id.eq(tag_id)),
+                )
+                .execute(connection)?;
+
+                if deleted == 0 {
+                    continue;
+                }
+
+                diesel::update(works::table)
+                    .filter(works::work_id.eq(work_id))
+                    .set((works::edited_at.eq(now), works::last_used_at.eq(now)))
+                    .execute(connection)?;
+
+                changed += 1;
+            }
+
+            Ok(changed)
+        })?;
+
+        self.changed();
+
+        Ok(changed)
+    }
+
+    /// Remove a tag from several recordings at once.
+    ///
+    /// Returns how many recordings have been updated.
+    pub fn remove_tag_from_recordings(
+        &self,
+        recording_ids: &[&str],
+        tag_id: &str,
+    ) -> Result<usize> {
+        let connection = &mut *self.conn();
+        let now = db::now();
+
+        let changed = connection.transaction::<usize, Error, _>(|connection| {
+            let mut changed = 0usize;
+
+            for &recording_id in recording_ids {
+                let deleted = diesel::delete(
+                    recording_tags::table
+                        .filter(recording_tags::recording_id.eq(recording_id))
+                        .filter(recording_tags::tag_id.eq(tag_id)),
+                )
+                .execute(connection)?;
+
+                if deleted == 0 {
+                    continue;
+                }
+
+                diesel::update(recordings::table)
+                    .filter(recordings::recording_id.eq(recording_id))
+                    .set((
+                        recordings::edited_at.eq(now),
+                        recordings::last_used_at.eq(now),
+                    ))
+                    .execute(connection)?;
+
+                changed += 1;
+            }
+
+            Ok(changed)
+        })?;
+
+        self.changed();
+
+        Ok(changed)
+    }
+
     pub fn create_work(
         &self,
         name: TranslatedString,

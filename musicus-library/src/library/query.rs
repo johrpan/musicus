@@ -1196,6 +1196,38 @@ impl Library {
         Ok(results)
     }
 
+    /// The tags currently applied to any of the given works.
+    pub fn tags_used_by_works(&self, work_ids: &[&str]) -> Result<Vec<Tag>> {
+        let connection = &mut *self.conn();
+
+        let tag_ids: Vec<String> = work_tags::table
+            .filter(work_tags::work_id.eq_any(work_ids))
+            .select(work_tags::tag_id)
+            .distinct()
+            .load(connection)?;
+
+        Ok(tags::table
+            .filter(tags::tag_id.eq_any(&tag_ids))
+            .order(tags::last_used_at.desc())
+            .load(connection)?)
+    }
+
+    /// The tags currently applied to any of the given recordings.
+    pub fn tags_used_by_recordings(&self, recording_ids: &[&str]) -> Result<Vec<Tag>> {
+        let connection = &mut *self.conn();
+
+        let tag_ids: Vec<String> = recording_tags::table
+            .filter(recording_tags::recording_id.eq_any(recording_ids))
+            .select(recording_tags::tag_id)
+            .distinct()
+            .load(connection)?;
+
+        Ok(tags::table
+            .filter(tags::tag_id.eq_any(&tag_ids))
+            .order(tags::last_used_at.desc())
+            .load(connection)?)
+    }
+
     pub fn search_instruments(&self, search: &str) -> Result<Vec<SearchItem<Instrument>>> {
         let search = format!("%{}%", search);
         let connection = &mut *self.conn();

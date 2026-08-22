@@ -98,6 +98,18 @@ template $MusicusEntityBrowser: Adw.NavigationPage {
       }
 
       [end]
+      Gtk.Button remove_tag_button {
+        label: _("Remove tag…");
+        tooltip-text: _("Remove a tag from the selected items");
+        sensitive: false;
+        clicked => $remove_tag_clicked() swapped;
+
+        styles [
+          "flat",
+        ]
+      }
+
+      [end]
       Gtk.Button delete_button {
         icon-name: "user-trash-symbolic";
         tooltip-text: _("Delete the selected items");
