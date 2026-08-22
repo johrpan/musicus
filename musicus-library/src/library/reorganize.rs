@@ -21,7 +21,7 @@ use crate::{
         tables::{self},
     },
     format_translated,
-    process::{spawn_process, Cancellation, ProcessHandle, ProcessMsg},
+    library::process::{spawn_process, Cancellation, ProcessHandle, ProcessMsg},
 };
 
 /// What a reorganization has to do to the file of one track.

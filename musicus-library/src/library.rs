@@ -25,6 +25,7 @@ pub mod manage;
 pub mod merge;
 pub mod metadata;
 pub mod pattern;
+pub mod process;
 pub mod query;
 pub mod reorganize;
 

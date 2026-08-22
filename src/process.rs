@@ -5,8 +5,8 @@ use gtk::{
     prelude::*,
     subclass::prelude::*,
 };
-use musicus_library::process::Cancellation;
-pub use musicus_library::process::{ProcessHandle, ProcessMsg};
+use musicus_library::library::process::Cancellation;
+pub use musicus_library::library::process::{ProcessHandle, ProcessMsg};
 
 mod imp {
     use super::*;
