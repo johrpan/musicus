@@ -1340,33 +1340,6 @@ impl Library {
         self.apply_track_changes(None, vec![(recording_index, track)], &[])
     }
 
-    /// Record that a track was played.
-    pub fn track_played(&self, track_id: &str) -> Result<()> {
-        let connection = &mut *self.conn();
-
-        connection.transaction::<(), diesel::result::Error, _>(|connection| {
-            let recording_id = tracks::table
-                .filter(tracks::track_id.eq(track_id))
-                .select(tracks::recording_id)
-                .first::<String>(connection)?;
-
-            diesel::insert_into(plays::table)
-                .values(tables::Play {
-                    play_id: db::generate_id(),
-                    track_id: Some(track_id.to_owned()),
-                    recording_id,
-                    played_at: db::now(),
-                })
-                .execute(connection)?;
-
-            Ok(())
-        })?;
-
-        self.changed();
-
-        Ok(())
-    }
-
     /// Apply a batch of track changes in a single transaction.
     ///
     /// Each entry of `tracks` carries the `recording_index` its track should end
