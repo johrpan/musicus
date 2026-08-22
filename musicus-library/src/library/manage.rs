@@ -3,9 +3,7 @@
 //!
 //! This is deliberately separate from [`super::query`]. Searching merges in
 //! results from the downloaded metadata database and reports them as
-//! [`SearchItem`](super::SearchItem)s that are not in the library yet; a manager
-//! may only ever act on items that really are in the library, so nothing here
-//! ever looks at the metadata database.
+//! [`SearchItem`](super::SearchItem)s that are not in the library yet.
 
 use std::collections::HashMap;
 
@@ -23,15 +21,13 @@ struct WorkPersonRow {
     name: TranslatedString,
 }
 
-/// A work together with the persons credited on it.
 #[derive(Clone, Debug)]
 pub struct WorkListItem {
     pub work: tables::Work,
-    /// The names of the work's credited persons, in their stored order.
     pub composers: Vec<TranslatedString>,
+    pub tags: Vec<(TranslatedString, Option<String>)>,
 }
 
-/// An ensemble together with the persons in it.
 #[derive(Clone, Debug)]
 pub struct EnsembleListItem {
     pub ensemble: tables::Ensemble,
@@ -39,19 +35,14 @@ pub struct EnsembleListItem {
     pub members: Vec<TranslatedString>,
 }
 
-/// A recording has no name of its own, so a list row carries the work it is a
-/// recording of, who wrote it, who performed it, and how many tracks it has.
 #[derive(Clone, Debug)]
 pub struct RecordingListItem {
     pub recording: tables::Recording,
     pub work_name: TranslatedString,
-    /// The names of the persons credited on the work.
     pub composers: Vec<TranslatedString>,
-    /// The names of the performers, persons and ensembles together, in their
-    /// stored order. Which of the two a name came from does not survive; a
-    /// listing only ever shows them side by side.
     pub performers: Vec<TranslatedString>,
     pub n_tracks: i64,
+    pub tags: Vec<(TranslatedString, Option<String>)>,
 }
 
 /// The names credited on each work, keyed by work ID, in their stored order.
@@ -101,6 +92,42 @@ fn composers_by_work(
     }
 
     Ok(composers)
+}
+
+/// The tags applied to each work, keyed by work ID, in their stored order.
+fn tags_by_work(
+    connection: &mut SqliteConnection,
+) -> Result<HashMap<String, Vec<(TranslatedString, Option<String>)>>> {
+    let mut tags: HashMap<String, Vec<(TranslatedString, Option<String>)>> = HashMap::new();
+
+    for (work_id, name, value) in work_tags::table
+        .inner_join(tags::table)
+        .order((work_tags::work_id, work_tags::sequence_number))
+        .select((work_tags::work_id, tags::name, work_tags::value))
+        .load::<(String, TranslatedString, Option<String>)>(connection)?
+    {
+        tags.entry(work_id).or_default().push((name, value));
+    }
+
+    Ok(tags)
+}
+
+/// The tags applied to each recording, keyed by recording ID, in their stored order.
+fn tags_by_recording(
+    connection: &mut SqliteConnection,
+) -> Result<HashMap<String, Vec<(TranslatedString, Option<String>)>>> {
+    let mut tags: HashMap<String, Vec<(TranslatedString, Option<String>)>> = HashMap::new();
+
+    for (recording_id, name, value) in recording_tags::table
+        .inner_join(tags::table)
+        .order((recording_tags::recording_id, recording_tags::sequence_number))
+        .select((recording_tags::recording_id, tags::name, recording_tags::value))
+        .load::<(String, TranslatedString, Option<String>)>(connection)?
+    {
+        tags.entry(recording_id).or_default().push((name, value));
+    }
+
+    Ok(tags)
 }
 
 impl Library {
@@ -180,11 +207,13 @@ impl Library {
             .load(connection)?;
 
         let mut composers = composers_by_work(connection)?;
+        let mut tags = tags_by_work(connection)?;
 
         Ok(works
             .into_iter()
             .map(|work| WorkListItem {
                 composers: composers.remove(&work.work_id).unwrap_or_default(),
+                tags: tags.remove(&work.work_id).unwrap_or_default(),
                 work,
             })
             .collect())
@@ -214,6 +243,7 @@ impl Library {
             .collect::<HashMap<String, i64>>();
 
         let composers = composers_by_work(connection)?;
+        let mut tags = tags_by_recording(connection)?;
 
         // Performing persons and ensembles are two tables but one column, so
         // they are gathered together, each keeping its own stored order.
@@ -254,6 +284,7 @@ impl Library {
                 performers: performers
                     .remove(&recording.recording_id)
                     .unwrap_or_default(),
+                tags: tags.remove(&recording.recording_id).unwrap_or_default(),
                 recording,
                 work_name,
             })
