@@ -1,7 +1,8 @@
-//! Random track selection from programs.
+//! Listening history and program generation: recording that a track was
+//! played, and using that history to choose what to play next.
 //!
-//! This module contains code for choosing tracks based on settings within a
-//! program. The main concept is based an exponential function of the form:
+//! Track selection is based on settings within a program. The main concept is
+//! based an exponential function of the form:
 //!
 //! `exp(STRENGTH * preference * (score - 1))`
 //!
@@ -455,6 +456,33 @@ impl Library {
         }
 
         Ok(repetition)
+    }
+
+    /// Record that a track was played.
+    pub fn track_played(&self, track_id: &str) -> Result<()> {
+        let connection = &mut *self.conn();
+
+        connection.transaction::<(), diesel::result::Error, _>(|connection| {
+            let recording_id = tracks::table
+                .filter(tracks::track_id.eq(track_id))
+                .select(tracks::recording_id)
+                .first::<String>(connection)?;
+
+            diesel::insert_into(plays::table)
+                .values(tables::Play {
+                    play_id: db::generate_id(),
+                    track_id: Some(track_id.to_owned()),
+                    recording_id,
+                    played_at: db::now(),
+                })
+                .execute(connection)?;
+
+            Ok(())
+        })?;
+
+        self.changed();
+
+        Ok(())
     }
 }
 
