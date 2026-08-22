@@ -4,7 +4,7 @@ use adw::{
 };
 use gettextrs::gettext;
 use gtk::{gio, glib, prelude::*};
-use musicus_library::library::{audio_tags, filenames, pattern};
+use musicus_library::library::naming::{audio_tags, filenames, pattern};
 
 use crate::{config, slider_row::SliderRow};
 

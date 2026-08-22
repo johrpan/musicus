@@ -212,7 +212,7 @@ impl Library {
     /// If `into` has work parts itself, work parts of `from` are discarded.
     /// Only if `into` does not have any children, they are moved to point to
     /// `into` instead.
-    /// 
+    ///
     /// Merging a work into its own children will fail to avoid circular
     /// references.
     pub fn merge_works(&self, from: &str, into: &str) -> Result<()> {

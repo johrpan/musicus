@@ -10,7 +10,10 @@ use anyhow::{bail, Error, Result};
 use diesel::prelude::*;
 
 use crate::db::{self, models::*, schema::*, tables};
-use crate::library::{audio_tags, filenames, pattern, Library};
+use crate::library::{
+    naming::{audio_tags, filenames, pattern},
+    Library,
+};
 
 impl Library {
     /// Delete a recording along with its tracks' files.

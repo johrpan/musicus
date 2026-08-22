@@ -10,8 +10,11 @@ use diesel::{prelude::*, SqliteConnection};
 use gettextrs::gettext;
 
 use super::{
-    audio_tags::{self, AudioTags},
-    filenames, pattern, Library, Patterns,
+    naming::{
+        audio_tags::{self, AudioTags},
+        filenames, pattern,
+    },
+    Library, Patterns,
 };
 use crate::{
     db::{
@@ -422,7 +425,7 @@ mod tests {
     use super::*;
     use crate::{
         db::{models::*, TranslatedString},
-        library::{audio_tags::minimal_wav, TrackUpdate},
+        library::{naming::audio_tags::minimal_wav, TrackUpdate},
     };
 
     fn translated(name: &str) -> TranslatedString {
