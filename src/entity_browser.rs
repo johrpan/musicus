@@ -1221,12 +1221,6 @@ impl EntityBrowser {
         let n_selected = self.selected_ids().len();
 
         imp.clear_selection_button.set_sensitive(n_selected > 0);
-        imp.clear_selection_button.set_label(&if n_selected > 0 {
-            format_translated!(gettext("Clear {} selected"), n_selected.to_string())
-        } else {
-            gettext("Clear selection")
-        });
-
         imp.delete_button.set_sensitive(n_selected > 0);
         imp.add_tag_button.set_sensitive(n_selected > 0);
         imp.remove_tag_button.set_sensitive(n_selected > 0);
