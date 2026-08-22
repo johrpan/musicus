@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
-members = ["musicus-library", "."]
+members = ["musicus-library", "musicus-testgen", "."]
+default-members = ["musicus-library", "."]
 
 [package]
 name = "musicus"
