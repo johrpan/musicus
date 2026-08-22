@@ -1,7 +1,7 @@
 # musicus-testgen
 
 A generator for exemplary Musicus libraries. It writes a complete library
-folder — `musicus.db` plus track files — filled with procedurally generated
+folder — `musicus.musdb` plus track files — filled with procedurally generated
 metadata, so that search, browsing, program generation, export and
 reorganization can be tried out at a realistic scale without building a library
 by hand.

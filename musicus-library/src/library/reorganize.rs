@@ -708,7 +708,7 @@ mod tests {
             track_paths(&library, &recording),
             vec![PathBuf::from("Notes_1.wav")]
         );
-        assert!(dir.path().join("musicus.db").exists());
+        assert!(dir.path().join("musicus.musdb").exists());
     }
 
     #[test]

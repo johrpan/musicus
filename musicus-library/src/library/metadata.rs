@@ -502,8 +502,8 @@ mod tests {
     fn copy_work_rejects_a_cyclic_parent_chain() {
         let from_dir = TempDir::new().unwrap();
         let to_dir = TempDir::new().unwrap();
-        let mut from = db::connect(from_dir.path().join("musicus.db").to_str().unwrap()).unwrap();
-        let mut to = db::connect(to_dir.path().join("musicus.db").to_str().unwrap()).unwrap();
+        let mut from = db::connect(from_dir.path().join("musicus.musdb").to_str().unwrap()).unwrap();
+        let mut to = db::connect(to_dir.path().join("musicus.musdb").to_str().unwrap()).unwrap();
 
         // Foreign keys are enforced, so the cycle has to be introduced after
         // both rows exist.

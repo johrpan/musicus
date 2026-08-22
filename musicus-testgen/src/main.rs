@@ -1,6 +1,6 @@
 //! Generator for exemplary Musicus libraries.
 //!
-//! Writes a complete library folder — `musicus.db` plus track files — filled
+//! Writes a complete library folder — `musicus.musdb` plus track files — filled
 //! with procedurally generated metadata, for testing search, browsing and the
 //! other library features at a realistic scale.
 
@@ -21,7 +21,7 @@ use crate::generate::Counts;
 /// audio: the generated library is complete and browsable, but not playable.
 ///
 /// The same seed always produces the same names and structure. Entity IDs and
-/// timestamps are minted by the library itself, so `musicus.db` is not
+/// timestamps are minted by the library itself, so `musicus.musdb` is not
 /// byte-identical between two runs.
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
