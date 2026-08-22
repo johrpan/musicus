@@ -3,7 +3,6 @@ use std::{
     io::{BufReader, BufWriter, Read, Write},
     path::{Path, PathBuf},
     sync::{Arc, Mutex},
-    thread,
 };
 
 use anyhow::{anyhow, bail, Error, Result};
@@ -41,7 +40,7 @@ const ARCHIVE_FORMAT_VERSION: u32 = 1;
 #[derive(serde::Serialize, serde::Deserialize, Debug)]
 struct ArchiveManifest {
     format_version: u32,
-    /// The schema version of the `musicus.db` inside the archive, so that an
+    /// The schema version of the `musicus.musdb` inside the archive, so that an
     /// unreadable archive can be rejected before anything is extracted.
     schema_version: i32,
     created_at: String,
@@ -79,39 +78,6 @@ fn read_manifest(
     }
 
     Ok(Some(manifest))
-}
-
-/// Run `operation` on a background thread, reporting its outcome as the final
-/// message on the returned handle's channel.
-fn spawn_process(
-    operation: impl FnOnce(&async_channel::Sender<ProcessMsg>, &Cancellation) -> Result<()>
-        + Send
-        + 'static,
-) -> ProcessHandle {
-    let (sender, receiver) = async_channel::unbounded::<ProcessMsg>();
-    let cancellation = Cancellation::new();
-
-    let thread_cancellation = cancellation.clone();
-    thread::spawn(move || {
-        let result = operation(&sender, &thread_cancellation);
-
-        // A cancelled operation fails with a sentinel error that must not be
-        // reported to the user as a failure.
-        let msg = if thread_cancellation.is_cancelled() {
-            ProcessMsg::Cancelled
-        } else {
-            ProcessMsg::Result(result)
-        };
-
-        if let Err(err) = sender.send_blocking(msg) {
-            log::error!("Failed to send library action result: {err:?}");
-        }
-    });
-
-    ProcessHandle {
-        receiver,
-        cancellation,
-    }
 }
 
 impl Library {
@@ -230,7 +196,7 @@ fn import_library_from_zip_priv(
     // Refuse an archive this build cannot read before extracting anything.
     read_manifest(&mut archive)?;
 
-    let archive_db_file = archive.by_name("musicus.db")?;
+    let archive_db_file = archive.by_name("musicus.musdb")?;
     let tmp_db_file = NamedTempFile::new()?;
     std::io::copy(
         &mut BufReader::new(archive_db_file),
@@ -337,7 +303,7 @@ fn copy_to_file(source: impl Read, path: impl AsRef<Path>) -> Result<()> {
 /// to outlive the export.
 fn database_for_export(connection: &mut SqliteConnection) -> Result<TempDir> {
     let dir = TempDir::new()?;
-    let path = dir.path().join("musicus.db");
+    let path = dir.path().join("musicus.musdb");
     let path = path
         .to_str()
         .ok_or_else(|| anyhow!("The temporary directory path is not valid Unicode"))?;
@@ -411,9 +377,9 @@ fn export_library_to_zip_priv(
 
     // Without the database the archive would be worthless, so this file is the
     // one that is not allowed to be missing.
-    let database_path = database.path().join("musicus.db");
+    let database_path = database.path().join("musicus.musdb");
 
-    if !add_file_to_zip(&mut zip, &database_path, "musicus.db")? {
+    if !add_file_to_zip(&mut zip, &database_path, "musicus.musdb")? {
         bail!("The library database is missing");
     }
 
@@ -1143,7 +1109,7 @@ fn path_to_zip(path: impl AsRef<Path>) -> Result<String> {
 }
 
 pub fn metadata_file_path(cache_dir: &Path) -> PathBuf {
-    cache_dir.join("metadata.muslib")
+    cache_dir.join("metadata.musdb")
 }
 
 #[cfg(test)]
@@ -1229,8 +1195,8 @@ mod tests {
     /// import chose to keep.
     fn database_in_archive(zip_path: &Path, dir: &TempDir) -> SqliteConnection {
         let mut archive = zip::ZipArchive::new(fs::File::open(zip_path).unwrap()).unwrap();
-        let path = dir.path().join("musicus.db");
-        copy_to_file(archive.by_name("musicus.db").unwrap(), &path).unwrap();
+        let path = dir.path().join("musicus.musdb");
+        copy_to_file(archive.by_name("musicus.musdb").unwrap(), &path).unwrap();
         SqliteConnection::establish(path.to_str().unwrap()).unwrap()
     }
 
@@ -1548,7 +1514,7 @@ mod tests {
 
         // A separate "remote" metadata database with a same-ID person under a different name.
         let remote_dir = TempDir::new().unwrap();
-        let remote_db_path = remote_dir.path().join("musicus.db");
+        let remote_db_path = remote_dir.path().join("musicus.musdb");
         let mut remote_connection = db::connect(remote_db_path.to_str().unwrap()).unwrap();
         let now = db::now();
         diesel::insert_into(persons::table)
@@ -1696,7 +1662,7 @@ mod tests {
         let mut archive =
             zip::ZipArchive::new(BufReader::new(fs::File::open(&zip_path).unwrap())).unwrap();
         assert!(archive.by_name(MANIFEST_NAME).is_ok());
-        assert!(archive.by_name("musicus.db").is_ok());
+        assert!(archive.by_name("musicus.musdb").is_ok());
         assert!(
             archive.by_name(&path_to_zip(&track_path).unwrap()).is_err(),
             "the missing track must simply not be in the archive"

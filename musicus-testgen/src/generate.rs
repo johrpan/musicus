@@ -317,7 +317,7 @@ mod tests {
         let files = fs::read_dir(folder.path())
             .unwrap()
             .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
-            .filter(|name| name != "musicus.db")
+            .filter(|name| name != "musicus.musdb")
             .count();
 
         assert_eq!(files, summary.tracks);

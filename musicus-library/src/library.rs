@@ -53,7 +53,7 @@ impl Library {
             .ok_or_else(|| anyhow!("Failed to convert library path to string"))?
             .to_owned();
 
-        let db_path = PathBuf::from(&folder).join("musicus.db");
+        let db_path = PathBuf::from(&folder).join("musicus.musdb");
         let connection = db::connect(
             db_path
                 .to_str()

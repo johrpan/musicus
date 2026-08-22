@@ -1,9 +1,45 @@
-use std::sync::{
-    atomic::{AtomicBool, Ordering},
-    Arc,
+use std::{
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+    thread,
 };
 
 use anyhow::{bail, Result};
+
+/// Run `operation` on a background thread, reporting its outcome as the final
+/// message on the returned handle's channel.
+pub fn spawn_process(
+    operation: impl FnOnce(&async_channel::Sender<ProcessMsg>, &Cancellation) -> Result<()>
+        + Send
+        + 'static,
+) -> ProcessHandle {
+    let (sender, receiver) = async_channel::unbounded::<ProcessMsg>();
+    let cancellation = Cancellation::new();
+
+    let thread_cancellation = cancellation.clone();
+    thread::spawn(move || {
+        let result = operation(&sender, &thread_cancellation);
+
+        // A cancelled operation fails with a sentinel error that must not be
+        // reported to the user as a failure.
+        let msg = if thread_cancellation.is_cancelled() {
+            ProcessMsg::Cancelled
+        } else {
+            ProcessMsg::Result(result)
+        };
+
+        if let Err(err) = sender.send_blocking(msg) {
+            log::error!("Failed to send library action result: {err:?}");
+        }
+    });
+
+    ProcessHandle {
+        receiver,
+        cancellation,
+    }
+}
 
 /// A progress update sent from a background library operation.
 ///

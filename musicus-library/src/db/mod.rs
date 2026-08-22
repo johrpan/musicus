@@ -226,7 +226,7 @@ mod tests {
     #[test]
     fn connect_refuses_a_newer_schema_version() {
         let dir = tempfile::TempDir::new().unwrap();
-        let path = dir.path().join("musicus.db");
+        let path = dir.path().join("musicus.musdb");
         let path = path.to_str().unwrap();
 
         connect(path).unwrap();
@@ -255,7 +255,7 @@ mod tests {
     #[test]
     fn connect_accepts_a_database_without_a_recorded_version() {
         let dir = tempfile::TempDir::new().unwrap();
-        let path = dir.path().join("musicus.db");
+        let path = dir.path().join("musicus.musdb");
         let path = path.to_str().unwrap();
 
         connect(path).unwrap();
