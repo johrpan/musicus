@@ -15,14 +15,6 @@ use crate::db::{
     tables::{self, Source},
 };
 
-/// A search result item that is either already part of the library or only available from the
-/// separate metadata database.
-#[derive(Clone, Debug)]
-pub struct SearchItem<T> {
-    pub item: T,
-    pub in_library: bool,
-}
-
 impl Library {
     pub fn metadata_connection(&self) -> Option<Arc<Mutex<SqliteConnection>>> {
         let mut metadata_connection = self.metadata_connection.borrow_mut();
