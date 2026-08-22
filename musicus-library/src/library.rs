@@ -22,6 +22,7 @@ pub mod generate;
 pub mod manage;
 pub mod merge;
 pub mod metadata;
+pub mod process;
 pub mod query;
 
 /// An open metadata database remembered together with the modification time of

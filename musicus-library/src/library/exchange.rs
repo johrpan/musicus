@@ -22,7 +22,7 @@ use crate::{
         tables::{self, Source},
     },
     format_translated,
-    process::{Cancellation, ProcessHandle, ProcessMsg},
+    library::process::{spawn_process, Cancellation, ProcessHandle, ProcessMsg},
 };
 
 /// The name of the manifest entry inside a `.muslib` archive.
