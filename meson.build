@@ -8,14 +8,14 @@ project(
 i18n = import('i18n')
 gnome = import('gnome')
 
-dependency('libadwaita-1', version: '>= 1.7')
+dependency('libadwaita-1', version: '>= 1.8')
 dependency('sqlite3', version: '>= 3.38')
-dependency('glib-2.0', version: '>= 2.84')
+dependency('glib-2.0', version: '>= 2.88')
 dependency('gstreamer-1.0', version: '>= 1.16')
-dependency('gstreamer-play-1.0', version: '>= 1.16')
-dependency('gtk4', version: '>= 4.18')
-dependency('dbus-1')
-dependency('openssl', version: '>= 1.0')
+dependency('gstreamer-play-1.0', version: '>= 1.20')
+dependency('gtk4', version: '>= 4.20')
+
+find_program('blueprint-compiler', version: '>= 0.16.0')
 
 name = 'Musicus'
 base_id = 'de.johrpan.Musicus'
