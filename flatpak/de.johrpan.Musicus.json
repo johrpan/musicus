@@ -1,11 +1,11 @@
 {
     "id": "de.johrpan.Musicus",
     "runtime": "org.gnome.Platform",
-    "runtime-version": "48",
+    "runtime-version": "50",
     "sdk": "org.gnome.Sdk",
     "sdk-extensions": [
         "org.freedesktop.Sdk.Extension.rust-stable",
-        "org.freedesktop.Sdk.Extension.llvm20"
+        "org.freedesktop.Sdk.Extension.llvm22"
     ],
     "command": "musicus",
     "finish-args": [
@@ -15,33 +15,21 @@
         "--socket=wayland",
         "--socket=pulseaudio",
         "--device=dri",
-        "--env=RUST_LOG=musicus=debug",
+        "--env=RUST_LOG=musicus=info",
         "--env=RUST_BACKTRACE=1",
         "--env=G_MESSAGES_DEBUG=none"
     ],
     "build-options": {
-        "append-path": "/usr/lib/sdk/rust-stable/bin:/usr/lib/sdk/llvm20/bin",
+        "append-path": "/usr/lib/sdk/rust-stable/bin:/usr/lib/sdk/llvm22/bin",
         "build-args": [
             "--share=network"
         ],
         "env": {
-            "CARGO_REGISTRIES_CRATES_IO_PROTOCOL": "sparse",
             "CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER": "clang",
             "CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUSTFLAGS": "-C link-arg=-fuse-ld=/usr/lib/sdk/rust-stable/bin/mold"
         }
     },
     "modules": [
-        {
-            "name": "blueprint-compiler",
-            "buildsystem": "meson",
-            "sources": [
-                {
-                    "type": "git",
-                    "url": "https://gitlab.gnome.org/jwestman/blueprint-compiler.git",
-                    "tag": "v0.16.0"
-                }
-            ]
-        },
         {
             "name": "musicus",
             "buildsystem": "meson",
