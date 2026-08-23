@@ -2007,7 +2007,6 @@ name = "musicus"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "async-channel",
  "chrono",
  "formatx",
  "fragile",
@@ -2038,7 +2037,6 @@ dependencies = [
  "futures-util",
  "gettext-rs",
  "log",
- "once_cell",
  "rand",
  "reqwest",
  "serde",
