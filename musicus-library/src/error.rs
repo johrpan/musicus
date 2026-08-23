@@ -34,12 +34,7 @@ impl Display for EntityKind {
     }
 }
 
-/// Whether a Diesel error is SQLite refusing to break a foreign key.
-///
-/// Diesel's SQLite backend does not classify these as
-/// [`DatabaseErrorKind::ForeignKeyViolation`] — they arrive as an unspecified
-/// database error — so the message has to be checked as well. The kind is still
-/// matched first, so this keeps working if Diesel starts classifying them.
+/// Whether a Diesel error is a foreign key violation.
 fn is_foreign_key_violation(error: &DieselError) -> bool {
     match error {
         DieselError::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => true,
@@ -51,9 +46,6 @@ fn is_foreign_key_violation(error: &DieselError) -> bool {
 #[derive(Debug)]
 pub enum LibraryError {
     /// The item cannot be deleted because something else still refers to it.
-    ///
-    /// Deletion relies on the database's foreign keys to refuse this, so
-    /// without this variant the user was shown a raw Diesel error string.
     StillReferenced(EntityKind),
 
     /// The database was written by a newer version of Musicus.
@@ -67,7 +59,7 @@ pub enum LibraryError {
 
 impl LibraryError {
     /// Interpret a Diesel error from deleting `kind`.
-    pub(crate) fn from_delete(kind: EntityKind, error: DieselError) -> Self {
+    pub fn from_delete(kind: EntityKind, error: DieselError) -> Self {
         if is_foreign_key_violation(&error) {
             LibraryError::StillReferenced(kind)
         } else {

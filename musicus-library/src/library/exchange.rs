@@ -175,7 +175,7 @@ impl Library {
 
         let url = url.to_owned();
         let this_connection = self.connection.clone();
-        let cache_dir = self.metadata_cache_dir.clone();
+        let cache_dir = self.cache_dir.clone();
 
         Ok(spawn_process(move |sender, cancellation| {
             import_metadata_from_url_priv(url, cache_dir, this_connection, sender, cancellation)

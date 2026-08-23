@@ -52,16 +52,6 @@ pub struct Instrument {
     pub last_used_at: NaiveDateTime,
 }
 
-/// A label that can be assigned to works and recordings.
-///
-/// `takes_value` distinguishes the two kinds of tag: a plain label such as
-/// "Baroque" is shared by many items and is offered as a search facet, while a
-/// tag like "Catalogue" names a property whose value ("BWV 1043") is stored on
-/// the assignment itself.
-///
-/// A `private` tag is personal to this library: it works like any other tag
-/// locally, but neither it nor the assignments referring to it leave the
-/// library in an export.
 #[derive(Insertable, Queryable, Selectable, Clone, Debug)]
 #[diesel(check_for_backend(Sqlite))]
 pub struct Tag {

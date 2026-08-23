@@ -5,6 +5,7 @@ use std::{collections::HashSet, fmt::Display, path::PathBuf};
 
 use anyhow::Result;
 use diesel::prelude::*;
+
 // Re-exports for tables that don't need additional information.
 pub use tables::{Instrument, Person, Role, Tag};
 

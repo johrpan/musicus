@@ -58,8 +58,8 @@ struct CountRow {
     count: i32,
 }
 
-/// The schema version recorded in an existing database, or `None` for a
-/// database that predates `meta` (or is brand new).
+/// The schema version recorded in an existing database, or `None` if the
+/// database is not populated yet.
 fn schema_version(connection: &mut SqliteConnection) -> Result<Option<i32>> {
     let exists = diesel::sql_query(
         "SELECT COUNT(*) AS count FROM sqlite_master \
@@ -82,8 +82,7 @@ fn schema_version(connection: &mut SqliteConnection) -> Result<Option<i32>> {
 
 /// Connect to a Musicus database and apply any pending migrations.
 ///
-/// Fails if the database was written by a newer version of Musicus, rather than
-/// migrating or reading a schema this build does not understand.
+/// Fails if the database was written by a newer version of Musicus.
 pub fn connect(file_name: &str) -> Result<SqliteConnection, LibraryError> {
     log::info!("Opening database file '{}'", file_name);
     let mut connection = SqliteConnection::establish(file_name).map_err(anyhow::Error::from)?;
@@ -108,13 +107,7 @@ pub fn connect(file_name: &str) -> Result<SqliteConnection, LibraryError> {
     Ok(connection)
 }
 
-/// The current time, in the form all database timestamps are stored in.
-///
-/// Timestamps are stored in UTC. They used to be naive local time, which made
-/// `last_played_at` non-monotonic across DST transitions and machine
-/// relocations, and was inconsistent with the `UNIXEPOCH()` calls that
-/// `generate_recording` scores playlists with. Always go through this function
-/// rather than reaching for `Local::now()` or `Utc::now()` directly.
+/// The current time as used within the database.
 pub fn now() -> chrono::NaiveDateTime {
     chrono::Utc::now().naive_utc()
 }

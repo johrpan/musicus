@@ -53,10 +53,6 @@ impl Library {
         Self::tag_is_in_use_priv(connection, tag_id)
     }
 
-    /// The body of [`Library::tag_is_in_use`], for callers that already hold the
-    /// connection. Taking it twice would deadlock: the guard lives until the end
-    /// of the enclosing function, and dropping the `&mut` to it does not release
-    /// it.
     fn tag_is_in_use_priv(connection: &mut SqliteConnection, tag_id: &str) -> Result<bool> {
         Ok(diesel::select(exists(
             work_tags::table.filter(work_tags::tag_id.eq(tag_id)),
@@ -71,11 +67,7 @@ impl Library {
     /// Update a tag.
     ///
     /// Whether a tag takes a value cannot be changed once anything is tagged
-    /// with it. It decides what the existing assignments mean and how they are
-    /// found: dropping the value would discard every value already recorded,
-    /// and adding one would leave every existing assignment without the value
-    /// that a valued tag is searched by. A tag nothing uses yet can still be
-    /// corrected.
+    /// with it.
     pub fn update_tag(
         &self,
         id: &str,
@@ -130,10 +122,6 @@ impl Library {
     }
 
     /// Replace a work's tag assignments.
-    ///
-    /// Assignments are keyed by `(work_id, sequence_number)`, so they are
-    /// rewritten wholesale rather than diffed, matching how the other ordered
-    /// relations of a work are updated.
     pub(super) fn set_work_tags(
         connection: &mut SqliteConnection,
         work_id: &str,
@@ -159,7 +147,7 @@ impl Library {
         Ok(())
     }
 
-    /// Replace a recording's tag assignments. See [`Library::set_work_tags`].
+    /// Replace a recording's tag assignments.
     pub(super) fn set_recording_tags(
         connection: &mut SqliteConnection,
         recording_id: &str,

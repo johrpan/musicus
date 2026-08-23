@@ -26,27 +26,26 @@ pub mod program;
 pub mod query;
 pub mod search;
 
-/// An open metadata database remembered together with the modification time of
-/// the file it came from.
-///
-/// Downloading a new metadata database replaces that file, which invalidates the connection.
-type CachedMetadataConnection = (Option<SystemTime>, Arc<Mutex<SqliteConnection>>);
-
 /// A music library backed by a SQLite database in a given folder.
 pub struct Library {
     folder: String,
     connection: Arc<Mutex<SqliteConnection>>,
-    metadata_connection: RefCell<Option<CachedMetadataConnection>>,
-    metadata_cache_dir: PathBuf,
+
+    /// The current metadata database connection including its database files'
+    /// modification time as the cache key.
+    metadata_connection: RefCell<Option<(Option<SystemTime>, Arc<Mutex<SqliteConnection>>)>>,
+    
+    /// Directory for cache files.
+    cache_dir: PathBuf,
+    
     changed_senders: RefCell<Vec<async_channel::Sender<()>>>,
 }
 
 impl Library {
     /// Open (and if necessary create/migrate) the library database in `path`.
     ///
-    /// `metadata_cache_dir` is the directory used to cache the downloaded metadata
-    /// database (see [`exchange`]).
-    pub fn new(path: impl AsRef<Path>, metadata_cache_dir: impl Into<PathBuf>) -> Result<Self> {
+    /// `cache_dir` is used for the metadata database file.
+    pub fn new(path: impl AsRef<Path>, cache_dir: impl Into<PathBuf>) -> Result<Self> {
         let folder = path
             .as_ref()
             .to_str()
@@ -65,7 +64,7 @@ impl Library {
             folder,
             connection: Arc::new(Mutex::new(connection)),
             metadata_connection: RefCell::new(None),
-            metadata_cache_dir: metadata_cache_dir.into(),
+            cache_dir: cache_dir.into(),
             changed_senders: RefCell::new(Vec::new()),
         })
     }
@@ -86,6 +85,9 @@ impl Library {
         receiver
     }
 
+    /// Notify all receivers that the library has been changed.
+    // Having this public is a compromise for allowing the UI to update itself
+    // after library processes finish.
     pub fn changed(&self) {
         self.changed_senders
             .borrow_mut()

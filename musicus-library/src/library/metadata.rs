@@ -16,9 +16,11 @@ use crate::db::{
 };
 
 impl Library {
+    /// Get the cached metadata database connection or reopen it if a new
+    /// database was downloaded.
     pub fn metadata_connection(&self) -> Option<Arc<Mutex<SqliteConnection>>> {
         let mut metadata_connection = self.metadata_connection.borrow_mut();
-        let path = exchange::metadata_file_path(&self.metadata_cache_dir);
+        let path = exchange::metadata_file_path(&self.cache_dir);
 
         if !path.exists() {
             *metadata_connection = None;
