@@ -633,9 +633,9 @@ checksum = "7cd812cc2bc1d69d4764bd80df88b4317eaef9e773c75226407d9bc0876b211c"
 
 [[package]]
 name = "diesel"
-version = "2.3.11"
+version = "2.3.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e54d1f576cd3a3460f212a4615fd12ce1b6303c095b79a44449ffbe627753dc1"
+checksum = "715377c6e464cb44bb89bd8487584240516c8d5052bc645d6babc50bb8be46c3"
 dependencies = [
  "chrono",
  "diesel_derives",
@@ -1857,9 +1857,9 @@ checksum = "3eaf3ede3fee6db1a4c2ee091bf8a8b4dccdc6d17f656fb07896ee72867612f2"
 
 [[package]]
 name = "libsqlite3-sys"
-version = "0.37.0"
+version = "0.38.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b1f111c8c41e7c61a49cd34e44c7619462967221a6443b0ec299e0ac30cfb9b1"
+checksum = "f1d20bef17f513b9b3004532233187769cd072d790971f4e4da0e346eb6401e8"
 dependencies = [
  "pkg-config",
  "vcpkg",

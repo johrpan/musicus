@@ -39,7 +39,7 @@ fn main() -> glib::ExitCode {
     // SAFETY: `gettextrs::setlocale()` is called as early as possible, prior
     // to starting any more threads.
     unsafe { gettextrs::setlocale(LocaleCategory::LcAll, "") };
-    gettextrs::bindtextdomain(config::PKGNAME, config::LOCALEDIR).unwrap();
+    gettextrs::bindtextdomain(config::PKGNAME, locale_dir()).unwrap();
     gettextrs::textdomain(config::PKGNAME).unwrap();
 
     tracing_subscriber::fmt::init();
@@ -55,7 +55,7 @@ fn main() -> glib::ExitCode {
     gio::resources_register(
         &gio::Resource::load(format!(
             "{}/{}/{}.gresource",
-            config::DATADIR,
+            data_dir(),
             config::PKGNAME,
             config::APP_ID
         ))
@@ -63,4 +63,30 @@ fn main() -> glib::ExitCode {
     );
 
     Application::new().run()
+}
+
+/// Data directory, dependent on current platform.
+fn data_dir() -> String {
+    #[cfg(windows)]
+    if let Some(dir) = exe_relative_share_dir() {
+        return dir.to_string_lossy().into_owned();
+    }
+
+    config::DATADIR.to_string()
+}
+
+/// Locale directory, dependent on current platform.
+fn locale_dir() -> String {
+    #[cfg(windows)]
+    if let Some(dir) = exe_relative_share_dir() {
+        return dir.join("locale").to_string_lossy().into_owned();
+    }
+
+    config::LOCALEDIR.to_string()
+}
+
+/// Find the shared files directory relative to the EXE on windows.
+#[cfg(windows)]
+fn exe_relative_share_dir() -> Option<std::path::PathBuf> {
+    Some(std::env::current_exe().ok()?.parent()?.parent()?.join("share"))
 }
