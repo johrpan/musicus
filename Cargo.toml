@@ -15,7 +15,7 @@ async-channel = "2.3"
 chrono = "0.4"
 formatx = "0.4"
 fragile = "2"
-gettext-rs = { version = "0.7", features = ["gettext-system"] }
+gettext-rs = { version = "0.8", features = ["gettext-system"] }
 glib = { version = "0.22", features = ["v2_88"] }
 gstreamer-play = "0.25"
 gtk = { package = "gtk4", version = "0.11", features = ["v4_22", "blueprint"] }

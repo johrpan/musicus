@@ -36,7 +36,14 @@ use gtk::{gio, glib, prelude::*};
 use self::{application::Application, window::Window};
 
 fn main() -> glib::ExitCode {
+    // SAFETY: `gettextrs::setlocale()` is called as early as possible, prior
+    // to starting any more threads.
+    unsafe { gettextrs::setlocale(LocaleCategory::LcAll, "") };
+    gettextrs::bindtextdomain(config::PKGNAME, config::LOCALEDIR).unwrap();
+    gettextrs::textdomain(config::PKGNAME).unwrap();
+
     tracing_subscriber::fmt::init();
+
     gtk::init().expect("Failed to initialize GTK!");
     gst::init().expect("Failed to initialize GStreamer!");
 
@@ -44,10 +51,6 @@ fn main() -> glib::ExitCode {
 
     glib::set_application_name(config::NAME);
     gtk::Window::set_default_icon_name(config::APP_ID);
-
-    gettextrs::setlocale(LocaleCategory::LcAll, "");
-    gettextrs::bindtextdomain(config::PKGNAME, config::LOCALEDIR).unwrap();
-    gettextrs::textdomain(config::PKGNAME).unwrap();
 
     gio::resources_register(
         &gio::Resource::load(format!(
