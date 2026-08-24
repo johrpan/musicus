@@ -13,7 +13,6 @@ BUILD_DIR="${BUILD_DIR:-builddir}"
 PREFIX_NAME="${PREFIX_NAME:-$(basename "$EXE_NAME" .exe)_windows_portable}"
 MSYS_SYS="${MSYS_SYS:-ucrt64}"
 
-
 EXTRA_DLLS="${EXTRA_DLLS:-librsvg-2-2.dll}"
 
 ROOT_DIR="$(pwd)"
@@ -26,6 +25,7 @@ fi
 
 echo "# Resetting $PREFIX_NAME"
 rm -rf "$PREFIX"
+rm -f "${PREFIX_NAME}.zip"
 mkdir -p "$PREFIX/lib/"
 
 echo "# meson setup/compile"
