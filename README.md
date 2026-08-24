@@ -330,3 +330,83 @@ translation files whenever translatable strings have been changed.
         po/de.po \
         po/template.pot
     ```
+
+### Building
+
+#### Flatpak
+
+```
+flatpak-builder --repo=repo --force-clean build-dir flatpak/de.johrpan.Musicus.Devel.json
+flatpak build-bundle repo de.johrpan.Musicus.Devel.flatpak de.johrpan.Musicus.Devel
+flatpak install --user de.johrpan.Musicus.Devel.flatpak
+```
+
+#### Meson
+
+```
+meson setup _build --prefix="$HOME/.local"
+ninja -C _build install
+```
+
+Ensure that `$HOME/.local/bin` is in `$PATH` and run the `musicus`
+executable.
+
+#### Windows
+
+You will need MSYS2 installed.
+
+Install Rust using `rustup` on your Windows system and switch to the
+`x86_64-pc-windows-gnu` toolchain. Make sure `$USERPROFILE/.cargo/bin` is in
+`$PATH` within your MSYS2 shell.
+
+Install the dependencies:
+
+```
+pacman -S mingw-w64-ucrt-x86_64-gtk4 \
+          mingw-w64-ucrt-x86_64-libadwaita \
+          mingw-w64-ucrt-x86_64-gstreamer \
+          mingw-w64-ucrt-x86_64-gst-plugins-base \
+          mingw-w64-ucrt-x86_64-gst-plugins-good \
+          mingw-w64-ucrt-x86_64-gst-libav \
+          mingw-w64-ucrt-x86_64-gettext \
+          mingw-w64-ucrt-x86_64-pkgconf \
+          mingw-w64-ucrt-x86_64-gcc \
+          mingw-w64-ucrt-x86_64-meson \
+          mingw-w64-ucrt-x86_64-ninja \
+          mingw-w64-ucrt-x86_64-python \
+          mingw-w64-ucrt-x86_64-sqlite3 \
+          zip
+```
+
+Install blueprint-compiler using PIP:
+
+```
+sudo pacman -S mingw-w64-ucrt-x86_64-python-pipx
+pipx install blueprint-compiler
+```
+
+Make sure `$USERPROFILE/.local/bin` is in `$PATH`.
+
+Build using Meson:
+
+```
+meson configure _build --prefix=$PWD/_build/install
+ninja -C _build install
+```
+
+Run the application for testing:
+
+```
+export GSETTINGS_SCHEMA_DIR="$PWD/_build/install/share/glib-2.0/schemas"
+export XDG_DATA_DIRS="$PWD/_build/install/share:$XDG_DATA_DIRS"
+_build/install/bin/musicus.exe
+```
+
+Package the application:
+
+```
+bash build-aux/windows-package.sh
+```
+
+This will output a relocatable output directory `musicus_windows_portable` and
+create `musicus_windows_portable.zip`.
