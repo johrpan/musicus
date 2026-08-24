@@ -55,7 +55,7 @@ cargo_build = custom_target(
   install_dir: bindir,
   env: cargo_env,
   command: [
-    sh_bin, meson.project_source_root() / 'src' / 'cargo-build.sh',
+    sh_bin, meson.project_source_root() / 'build-aux' / 'cargo-build.sh',
     cargo_bin.full_path(),
     meson.project_build_root() / 'src' / rust_target / exe_name,
     '@OUTPUT@',
