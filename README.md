@@ -353,16 +353,12 @@ executable.
 
 #### Windows
 
-You will need MSYS2 installed.
-
-Install Rust using `rustup` on your Windows system and switch to the
-`x86_64-pc-windows-gnu` toolchain. Make sure `$USERPROFILE/.cargo/bin` is in
-`$PATH` within your MSYS2 shell.
-
-Install the dependencies:
+You will need MSYS2 installed. Install the following dependencies from within
+the MSYS2 UCRT shell:
 
 ```
-pacman -S mingw-w64-ucrt-x86_64-gtk4 \
+pacman -S mingw-w64-ucrt-x86_64-rust \
+          mingw-w64-ucrt-x86_64-gtk4 \
           mingw-w64-ucrt-x86_64-libadwaita \
           mingw-w64-ucrt-x86_64-gstreamer \
           mingw-w64-ucrt-x86_64-gst-plugins-base \
@@ -374,18 +370,18 @@ pacman -S mingw-w64-ucrt-x86_64-gtk4 \
           mingw-w64-ucrt-x86_64-meson \
           mingw-w64-ucrt-x86_64-ninja \
           mingw-w64-ucrt-x86_64-python \
+          mingw-w64-ucrt-x86_64-python-pip \
+          mingw-w64-ucrt-x86_64-python-pygobject \
           mingw-w64-ucrt-x86_64-sqlite3 \
           zip
 ```
 
-Install blueprint-compiler using PIP:
+Install blueprint-compiler using PIP (the MSYS2 package does not provide an
+EXE wrapper which is needed for the gtk-rs macros):
 
 ```
-sudo pacman -S mingw-w64-ucrt-x86_64-python-pipx
-pipx install blueprint-compiler
+pip install --break-system-packages blueprint-compiler
 ```
-
-Make sure `$USERPROFILE/.local/bin` is in `$PATH`.
 
 Build using Meson:
 

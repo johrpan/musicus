@@ -3,6 +3,7 @@ name: Build and Release Flatpak
 on:
   release:
     types: [published]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -11,7 +12,7 @@ jobs:
       image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-48
       options: --privileged
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
 
     - name: Build Flatpak
       uses: flatpak/flatpak-github-actions/flatpak-builder@v6
@@ -21,6 +22,8 @@ jobs:
         cache-key: flatpak-builder-${{ github.sha }}
 
     - name: Upload Flatpak to Release
+      if: github.event_name == 'release'
       uses: softprops/action-gh-release@v2
       with:
+        tag_name: ${{ github.event.release.tag_name }}
         files: de.johrpan.Musicus.flatpak

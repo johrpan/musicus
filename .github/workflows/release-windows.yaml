@@ -1,0 +1,66 @@
+name: Build and Release Windows ZIP
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    defaults:
+      run:
+        # Execute within MSYS2 UCRT64 shell by default.
+        shell: msys2 {0}
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            zip
+            unzip
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-rust
+            mingw-w64-ucrt-x86_64-gtk4
+            mingw-w64-ucrt-x86_64-libadwaita
+            mingw-w64-ucrt-x86_64-gstreamer
+            mingw-w64-ucrt-x86_64-gst-plugins-base
+            mingw-w64-ucrt-x86_64-gst-plugins-good
+            mingw-w64-ucrt-x86_64-gst-libav
+            mingw-w64-ucrt-x86_64-gettext
+            mingw-w64-ucrt-x86_64-pkgconf
+            mingw-w64-ucrt-x86_64-meson
+            mingw-w64-ucrt-x86_64-ninja
+            mingw-w64-ucrt-x86_64-python
+            mingw-w64-ucrt-x86_64-python-pip
+            mingw-w64-ucrt-x86_64-python-gobject
+            mingw-w64-ucrt-x86_64-sqlite3
+
+      - name: Install blueprint-compiler
+        run: |
+          pip install blueprint-compiler --break-system-packages
+
+      - name: Package for Windows
+        run: |
+          build-aux/windows-package.sh
+
+      - name: Verify package
+        run: |
+          test -f musicus_windows_portable.zip
+          unzip -l musicus_windows_portable.zip
+
+      - name: Upload ZIP to Release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.release.tag_name }}
+          files: musicus_windows_portable.zip
