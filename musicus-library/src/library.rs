@@ -34,10 +34,10 @@ pub struct Library {
     /// The current metadata database connection including its database files'
     /// modification time as the cache key.
     metadata_connection: RefCell<Option<(Option<SystemTime>, Arc<Mutex<SqliteConnection>>)>>,
-    
+
     /// Directory for cache files.
     cache_dir: PathBuf,
-    
+
     changed_senders: RefCell<Vec<async_channel::Sender<()>>>,
 }
 

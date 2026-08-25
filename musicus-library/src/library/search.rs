@@ -77,7 +77,13 @@ impl Library {
                 .into_iter()
                 .collect();
 
-            merge_metadata_only(&mut results, metadata_persons, &existing, |p| &p.person_id, Ok)?;
+            merge_metadata_only(
+                &mut results,
+                metadata_persons,
+                &existing,
+                |p| &p.person_id,
+                Ok,
+            )?;
         }
 
         Ok(results)

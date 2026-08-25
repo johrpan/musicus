@@ -88,5 +88,11 @@ fn locale_dir() -> String {
 /// Find the shared files directory relative to the EXE on windows.
 #[cfg(windows)]
 fn exe_relative_share_dir() -> Option<std::path::PathBuf> {
-    Some(std::env::current_exe().ok()?.parent()?.parent()?.join("share"))
+    Some(
+        std::env::current_exe()
+            .ok()?
+            .parent()?
+            .parent()?
+            .join("share"),
+    )
 }

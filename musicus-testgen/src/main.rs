@@ -73,7 +73,9 @@ impl Args {
     /// Every kind gets at least one entity as long as recordings were asked
     /// for, so that a tiny library is still fully wired up.
     fn counts(&self) -> Counts {
-        let works = self.works.unwrap_or_else(|| at_least_one(self.recordings / 2));
+        let works = self
+            .works
+            .unwrap_or_else(|| at_least_one(self.recordings / 2));
         let persons = self.persons.unwrap_or_else(|| at_least_one(works / 3));
         let ensembles = self.ensembles.unwrap_or_else(|| at_least_one(persons / 4));
 

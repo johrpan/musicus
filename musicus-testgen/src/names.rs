@@ -45,14 +45,46 @@ const SURNAME_ENDS: &[&str] = &[
 const SURNAME_PARTICLES: &[&str] = &["van", "von", "de", "di", "del", "da"];
 
 const INSTRUMENT_MODIFIERS: &[&str] = &[
-    "", "", "", "Alto", "Baritone", "Bass", "Contrabass", "Descant", "Great", "Piccolo", "Soprano",
-    "Tenor", "Treble",
+    "",
+    "",
+    "",
+    "Alto",
+    "Baritone",
+    "Bass",
+    "Contrabass",
+    "Descant",
+    "Great",
+    "Piccolo",
+    "Soprano",
+    "Tenor",
+    "Treble",
 ];
 
 const INSTRUMENT_STEMS: &[&str] = &[
-    "Cithern", "Clarion", "Cornett", "Crembalum", "Dulcian", "Fidula", "Flageolet", "Gemshorn",
-    "Hurdy", "Kantele", "Lirone", "Lute", "Nyckelharp", "Ocarina", "Psaltery", "Rebec",
-    "Sackbut", "Serpent", "Shawm", "Theorbo", "Tromba", "Viol", "Virginal", "Zink",
+    "Cithern",
+    "Clarion",
+    "Cornett",
+    "Crembalum",
+    "Dulcian",
+    "Fidula",
+    "Flageolet",
+    "Gemshorn",
+    "Hurdy",
+    "Kantele",
+    "Lirone",
+    "Lute",
+    "Nyckelharp",
+    "Ocarina",
+    "Psaltery",
+    "Rebec",
+    "Sackbut",
+    "Serpent",
+    "Shawm",
+    "Theorbo",
+    "Tromba",
+    "Viol",
+    "Virginal",
+    "Zink",
 ];
 
 const ROLE_WORDS: &[&str] = &[
@@ -174,7 +206,11 @@ impl Names {
     /// A person's name, in "given name surname" form.
     pub fn person(&mut self) -> String {
         self.unique(|rng| {
-            let given = format!("{}{}", pick(rng, GIVEN_NAME_STARTS), pick(rng, GIVEN_NAME_ENDS));
+            let given = format!(
+                "{}{}",
+                pick(rng, GIVEN_NAME_STARTS),
+                pick(rng, GIVEN_NAME_ENDS)
+            );
             let family = surname(rng);
 
             match rng.random_range(0..10) {
@@ -307,9 +343,7 @@ mod tests {
     fn the_same_seed_produces_the_same_names() {
         let generate = |seed| {
             let mut names = Names::new(seed);
-            (0..50)
-                .map(|_| names.person())
-                .collect::<Vec<String>>()
+            (0..50).map(|_| names.person()).collect::<Vec<String>>()
         };
 
         assert_eq!(generate(42), generate(42));

@@ -119,8 +119,15 @@ fn tags_by_recording(
 
     for (recording_id, name, value) in recording_tags::table
         .inner_join(tags::table)
-        .order((recording_tags::recording_id, recording_tags::sequence_number))
-        .select((recording_tags::recording_id, tags::name, recording_tags::value))
+        .order((
+            recording_tags::recording_id,
+            recording_tags::sequence_number,
+        ))
+        .select((
+            recording_tags::recording_id,
+            tags::name,
+            recording_tags::value,
+        ))
         .load::<(String, TranslatedString, Option<String>)>(connection)?
     {
         tags.entry(recording_id).or_default().push((name, value));
