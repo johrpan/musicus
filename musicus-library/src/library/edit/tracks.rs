@@ -9,8 +9,13 @@ use std::{
 use anyhow::{bail, Error, Result};
 use diesel::prelude::*;
 
-use crate::db::{self, models::*, schema::*, tables};
-use crate::library::Library;
+use crate::{
+    db::{self, models::*, schema::*, tables},
+    library::{
+        naming::{audio_tags, filenames, pattern},
+        Library, Patterns,
+    },
+};
 
 impl Library {
     /// Delete a recording along with its tracks' files.
@@ -73,6 +78,7 @@ impl Library {
         recording_id: &str,
         tracks: Vec<TrackUpdate>,
         deleted_tracks: &[Track],
+        patterns: &Patterns,
     ) -> Result<()> {
         let tracks = tracks
             .into_iter()
@@ -80,7 +86,7 @@ impl Library {
             .map(|(index, track)| (index as i32, track))
             .collect();
 
-        self.apply_track_changes(Some(recording_id), tracks, deleted_tracks)
+        self.apply_track_changes(Some(recording_id), tracks, deleted_tracks, patterns)
     }
 
     /// Import a track into the music library.
@@ -90,18 +96,24 @@ impl Library {
         recording_id: &str,
         recording_index: i32,
         works: Vec<Work>,
+        patterns: &Patterns,
     ) -> Result<()> {
         let track = TrackUpdate::New {
             path: path.as_ref().to_owned(),
             works,
         };
 
-        self.apply_track_changes(Some(recording_id), vec![(recording_index, track)], &[])
+        self.apply_track_changes(
+            Some(recording_id),
+            vec![(recording_index, track)],
+            &[],
+            patterns,
+        )
     }
 
-    pub fn delete_track(&self, track: &Track) -> Result<()> {
+    pub fn delete_track(&self, track: &Track, patterns: &Patterns) -> Result<()> {
         // No recording is needed: without an import there is no file to name.
-        self.apply_track_changes(None, Vec::new(), std::slice::from_ref(track))
+        self.apply_track_changes(None, Vec::new(), std::slice::from_ref(track), patterns)
     }
 
     pub fn update_track(
@@ -109,13 +121,14 @@ impl Library {
         track_id: &str,
         recording_index: i32,
         works: Vec<Work>,
+        patterns: &Patterns,
     ) -> Result<()> {
         let track = TrackUpdate::Existing {
             track_id: track_id.to_owned(),
             works,
         };
 
-        self.apply_track_changes(None, vec![(recording_index, track)], &[])
+        self.apply_track_changes(None, vec![(recording_index, track)], &[], &patterns)
     }
 
     /// Apply a batch of track changes in a single transaction.
@@ -131,6 +144,7 @@ impl Library {
         recording_id: Option<&str>,
         tracks: Vec<(i32, TrackUpdate)>,
         deleted_tracks: &[Track],
+        patterns: &Patterns,
     ) -> Result<()> {
         let folder = PathBuf::from(self.folder());
 
@@ -141,6 +155,25 @@ impl Library {
         // library folder.
         let mut staged = Vec::new();
         let mut prepared = Vec::with_capacity(tracks.len());
+
+        // Naming and tagging the file of a new track needs the metadata of the
+        // recording it belongs to. It is loaded once for the whole batch and
+        // before the connection is locked for the transaction below. A recording
+        // that cannot be loaded only costs the readable name and the tags, not
+        // the import.
+        let recording = recording_id
+            .filter(|_| {
+                tracks
+                    .iter()
+                    .any(|(_, track)| matches!(track, TrackUpdate::New { .. }))
+            })
+            .and_then(|recording_id| match self.load_recording(recording_id) {
+                Ok(recording) => Some(recording),
+                Err(err) => {
+                    log::warn!("Failed to load recording {recording_id} for naming: {err:?}");
+                    None
+                }
+            });
 
         for (recording_index, track) in tracks {
             match track {
@@ -153,14 +186,16 @@ impl Library {
                         bail!("Cannot import a track without the recording it belongs to");
                     };
 
-                    // TODO: Human interpretable filenames?
-                    let library_path = unused_track_path(
-                        &folder,
-                        recording_id,
-                        recording_index,
-                        path.extension(),
-                        &staged,
-                    );
+                    let data = recording.as_ref().map(|recording| {
+                        pattern::TrackData::new(recording, recording_index, &works)
+                    });
+
+                    let stem = data
+                        .as_ref()
+                        .and_then(|data| filenames::render(&patterns.filename, data))
+                        .unwrap_or_else(|| filenames::fallback_stem(recording_id, recording_index));
+
+                    let library_path = unused_track_path(&folder, &stem, path.extension(), &staged);
 
                     let to_path = folder.join(&library_path);
                     let mut tmp_path = to_path.clone();
@@ -169,6 +204,20 @@ impl Library {
                     if let Err(err) = fs::copy(&path, &tmp_path) {
                         clean_up_staged(&staged, 0);
                         return Err(err.into());
+                    }
+
+                    // The tags go into the staged copy, before it is moved into
+                    // place. This is the one moment where writing them is still
+                    // undoable, because the file belongs to the import until the
+                    // rename below. Like naming, tagging may not fail an import:
+                    // the file the user chose stays untouched either way, and a
+                    // reorganization brings the tags in line later.
+                    if let Some(data) = &data {
+                        let tags = audio_tags::AudioTags::render(&patterns, data, recording_index);
+
+                        if let Err(err) = audio_tags::write(&tmp_path, &tags) {
+                            log::warn!("Failed to tag {}: {err:?}", tmp_path.display());
+                        }
                     }
 
                     staged.push(StagedFile { tmp_path, to_path });
@@ -352,17 +401,14 @@ fn clean_up_staged(staged: &[StagedFile], renamed: usize) {
 /// would overwrite that track's audio.
 fn unused_track_path(
     folder: &Path,
-    recording_id: &str,
-    recording_index: i32,
+    stem: &str,
     extension: Option<&OsStr>,
     staged: &[StagedFile],
 ) -> PathBuf {
     let mut suffix = 0;
 
     loop {
-        let mut filename = OsString::from(recording_id);
-        filename.push("_");
-        filename.push(format!("{recording_index:02}"));
+        let mut filename = OsString::from(stem);
 
         if suffix > 0 {
             filename.push(format!("_{suffix}"));

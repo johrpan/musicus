@@ -69,6 +69,86 @@ template $MusicusPreferencesDialog: Adw.PreferencesDialog {
     icon-name: "library-symbolic";
 
     Adw.PreferencesGroup {
+      title: _("File names");
+      description: _("How the audio files of imported tracks are named. Use “Reorganize files” in the library manager to update existing files. Available placeholders: {composer}, {work}, {part}, {performers}, {index}");
+
+      Adw.EntryRow track_filename_pattern_row {
+        title: _("File name pattern");
+        show-apply-button: true;
+        changed => $filename_pattern_changed() swapped;
+        apply => $apply_filename_pattern() swapped;
+      }
+
+      Adw.ActionRow filename_pattern_preview_row {
+        title: _("Example");
+
+        styles [
+          "property",
+        ]
+      }
+
+      Adw.ButtonRow {
+        title: _("Reset to default pattern");
+        activated => $reset_filename_pattern() swapped;
+      }
+    }
+
+    Adw.PreferencesGroup {
+      title: _("Tags");
+      description: _("How the tags within the audio files of imported tracks are written. Use “Reorganize files” in the library manager to update existing files. Available placeholders: {composer}, {work}, {part}, {performers}, {index}");
+
+      Adw.EntryRow album_pattern_row {
+        title: _("Album");
+        show-apply-button: true;
+        changed => $album_pattern_changed() swapped;
+        apply => $apply_album_pattern() swapped;
+      }
+
+      Adw.ActionRow album_pattern_preview_row {
+        title: _("Example");
+
+        styles [
+          "property",
+        ]
+      }
+
+      Adw.EntryRow artist_pattern_row {
+        title: _("Artist");
+        show-apply-button: true;
+        changed => $artist_pattern_changed() swapped;
+        apply => $apply_artist_pattern() swapped;
+      }
+
+      Adw.ActionRow artist_pattern_preview_row {
+        title: _("Example");
+
+        styles [
+          "property",
+        ]
+      }
+
+      Adw.EntryRow title_pattern_row {
+        title: _("Title");
+        show-apply-button: true;
+        changed => $title_pattern_changed() swapped;
+        apply => $apply_title_pattern() swapped;
+      }
+
+      Adw.ActionRow title_pattern_preview_row {
+        title: _("Example");
+
+        styles [
+          "property",
+        ]
+      }
+
+      Adw.ButtonRow {
+        title: _("Reset to default patterns");
+        activated => $reset_tag_patterns() swapped;
+      }
+    }
+
+    Adw.PreferencesGroup {
       title: _("Metadata updates");
 
       Adw.SwitchRow enable_automatic_metadata_updates_row {

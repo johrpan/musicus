@@ -12,18 +12,20 @@ use crate::db::{self, schema::*, tables};
 pub use edit::TrackUpdate;
 pub use list::{EnsembleListItem, RecordingListItem, WorkListItem};
 pub use merge::EntityUsage;
+pub use naming::pattern::Patterns;
 pub use program::GenerateRecordingParams;
 pub use query::{Facet, LibraryQuery};
 pub use search::SearchItem;
-
 pub mod edit;
 pub mod exchange;
 pub mod list;
 pub mod merge;
 pub mod metadata;
+pub mod naming;
 pub mod process;
 pub mod program;
 pub mod query;
+pub mod reorganize;
 pub mod search;
 
 /// A music library backed by a SQLite database in a given folder.
@@ -34,10 +36,10 @@ pub struct Library {
     /// The current metadata database connection including its database files'
     /// modification time as the cache key.
     metadata_connection: RefCell<Option<(Option<SystemTime>, Arc<Mutex<SqliteConnection>>)>>,
-
+    
     /// Directory for cache files.
     cache_dir: PathBuf,
-
+    
     changed_senders: RefCell<Vec<async_channel::Sender<()>>>,
 }
 

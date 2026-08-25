@@ -13,6 +13,7 @@ use musicus_library::{
         },
         TranslatedString,
     },
+    library::Patterns,
     Library,
 };
 use rand::prelude::*;
@@ -186,6 +187,7 @@ pub fn generate(
                     &recording.recording_id,
                     track_index as i32,
                     Vec::new(),
+                    &Patterns::default(),
                 )
                 .context("Failed to import a track")?;
 

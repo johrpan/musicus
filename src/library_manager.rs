@@ -12,7 +12,7 @@ use musicus_library::db::tables::Source;
 
 use crate::{
     config, entity_browser::EntityBrowser, library::Library, process::Process,
-    process_manager::ProcessManager, process_row::ProcessRow, window::Window,
+    process_manager::ProcessManager, process_row::ProcessRow, settings, window::Window,
 };
 
 mod imp {
@@ -234,6 +234,56 @@ impl LibraryManager {
                     }
                 }
             }
+        }
+    }
+
+    #[template_callback]
+    async fn reorganize_files(&self) {
+        let dialog = adw::AlertDialog::builder()
+            .heading(gettext("Reorganize files?"))
+            .body(gettext("Every track file within your music library folder will be renamed after the file name pattern, and its tags will be replaced with the ones Musicus generates. Replacing the tags cannot be undone."))
+            .build();
+
+        dialog.add_responses(&[
+            ("cancel", &gettext("Cancel")),
+            ("reorganize", &gettext("Reorganize")),
+        ]);
+
+        dialog.set_response_appearance("reorganize", adw::ResponseAppearance::Suggested);
+        dialog.set_close_response("cancel");
+        dialog.set_default_response(Some("cancel"));
+
+        if dialog.choose_future(Some(self)).await != "reorganize" {
+            return;
+        }
+
+        match self
+            .imp()
+            .library
+            .get()
+            .unwrap()
+            .reorganize_files(&settings::patterns())
+        {
+            Ok(handle) => {
+                let process = Process::new(&gettext("Reorganizing library files"), handle);
+
+                process.connect_finished_notify(clone!(
+                    #[weak(rename_to = obj)]
+                    self,
+                    move |_| {
+                        obj.imp().library.get().unwrap().changed();
+                    }
+                ));
+
+                self.imp()
+                    .process_manager
+                    .get()
+                    .unwrap()
+                    .add_process(&process);
+
+                self.add_process(&process);
+            }
+            Err(err) => log::error!("Failed to reorganize library files: {err:?}"),
         }
     }
 

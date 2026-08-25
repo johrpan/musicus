@@ -22,7 +22,7 @@ use musicus_library::{
 };
 
 use crate::{
-    editor::create, library::Library, selector::recording::RecordingSelectorPopover, util,
+    editor::create, library::Library, selector::recording::RecordingSelectorPopover, settings, util,
 };
 
 mod imp {
@@ -364,8 +364,12 @@ impl TracksEditor {
         // subscribers, which can call back into this page.
         let removed_tracks = self.imp().removed_tracks.borrow().clone();
 
-        self.library()
-            .set_recording_tracks(&recording.recording_id, tracks, &removed_tracks)?;
+        self.library().set_recording_tracks(
+            &recording.recording_id,
+            tracks,
+            &removed_tracks,
+            &settings::patterns(),
+        )?;
 
         // Only once everything has been saved may the pending changes be
         // forgotten, so that a failed save stays retryable.

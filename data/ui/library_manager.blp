@@ -101,6 +101,31 @@ template $MusicusLibraryManager: Adw.NavigationPage {
           }
 
           Gtk.Label {
+            label: _("Tools");
+            xalign: 0;
+            margin-top: 24;
+
+            styles [
+              "heading",
+            ]
+          }
+
+          Gtk.ListBox {
+            selection-mode: none;
+            margin-top: 12;
+
+            styles [
+              "boxed-list-separate",
+            ]
+
+            Adw.ButtonRow {
+              title: _("Reorganize files");
+              end-icon-name: "go-next-symbolic";
+              activated => $reorganize_files() swapped;
+            }
+          }
+
+          Gtk.Label {
             label: _("Progress");
             visible: bind process_list.visible;
             xalign: 0;

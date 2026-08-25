@@ -17,6 +17,22 @@
       <default>''</default>
       <summary>Path to the music library</summary>
     </key>
+    <key name="track-filename-pattern" type="s">
+      <default>'{composer}; {work}; {index} {part}'</default>
+      <summary>Pattern for the file names of imported tracks</summary>
+    </key>
+    <key name="track-tag-album-pattern" type="s">
+      <default>'{composer}'</default>
+      <summary>Pattern for the album tag of track files</summary>
+    </key>
+    <key name="track-tag-artist-pattern" type="s">
+      <default>'{performers}'</default>
+      <summary>Pattern for the artist tag of track files</summary>
+    </key>
+    <key name="track-tag-title-pattern" type="s">
+      <default>'{work}: {part}'</default>
+      <summary>Pattern for the title tag of track files</summary>
+    </key>
     <key name="prefer-least-recently-played" type="i">
       <default>20</default>
       <summary>How much recently played items should be penalized (0–100)</summary>
