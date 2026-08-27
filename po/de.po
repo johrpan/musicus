@@ -9,7 +9,7 @@ msgstr ""
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2026-08-26 14:45+0200\n"
-"PO-Revision-Date: 2025-04-27 18:23+0200\n"
+"PO-Revision-Date: 2026-08-26 15:08+0200\n"
 "Last-Translator: elias@johrpan.de\n"
 "Language-Team: German <translation-team-de@lists.sourceforge.net>\n"
 "Language: de\n"
@@ -17,7 +17,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
-"X-Generator: Poedit 3.5\n"
+"X-Generator: Poedit 3.9\n"
 
 #. Translators: Do not translate
 #: data/de.johrpan.Musicus.desktop.in.in:3
@@ -27,7 +27,7 @@ msgstr "@NAME@"
 #. Translators: Search terms to find this application. The list must be separated and terminated by semicolons.
 #: data/de.johrpan.Musicus.desktop.in.in:10
 msgid "Music;Player;Library;"
-msgstr "Musik,Player,Bibliothek;"
+msgstr "Musik;Player;Bibliothek;"
 
 #: data/de.johrpan.Musicus.gschema.xml.in:6
 msgid "Window width"
@@ -74,6 +74,9 @@ msgid ""
 "music from across the whole library.\",\"design\":\"Slate\","
 "\"prefer_recently_added\":0.0,\"prefer_least_recently_played\":0.1,\"avoid_repeated_composers\":60,\"avoid_repeated_instruments\":60,\"play_full_recordings\":true}'"
 msgstr ""
+"'{\"title\":\"Musik abspielen\",\"description\":\"Zufällig ausgewähltes "
+"Programm aus der ganzen Bibliothek.\",\"design\":\"Slate\","
+"\"prefer_recently_added\":0.0,\"prefer_least_recently_played\":0.1,\"avoid_repeated_composers\":60,\"avoid_repeated_instruments\":60,\"play_full_recordings\":true}'"
 
 #: data/de.johrpan.Musicus.gschema.xml.in:43
 msgid "Default settings for program 1"
@@ -123,7 +126,7 @@ msgstr "Eigene URL für Metadatenupdates"
 
 #: data/de.johrpan.Musicus.gschema.xml.in:69
 msgid "Last metadata download (Unix timestamp)"
-msgstr ""
+msgstr "Letzter Metadaten-Download (Unix-Zeitstempel)"
 
 #: data/de.johrpan.Musicus.gschema.xml.in:73
 msgid "Use a custom URL for library downloads"
@@ -280,11 +283,11 @@ msgstr "Ensemble"
 
 #: data/ui/editor/ensemble.blp:34 src/entity_browser.rs:81
 msgid "Members"
-msgstr ""
+msgstr "Mitglieder"
 
 #: data/ui/editor/ensemble.blp:54
 msgid "Add _member"
-msgstr ""
+msgstr "_Mitglied hinzufügen"
 
 #: data/ui/editor/ensemble.blp:77
 msgid "_Create ensemble"
@@ -322,10 +325,11 @@ msgstr "Programm _speichern"
 #: data/ui/editor/program.blp:25
 msgid "These settings only apply to the program that is currently playing."
 msgstr ""
+"Diese Einstellungen wirken sich nur auf das aktuell abgespielte Programm aus."
 
 #: data/ui/editor/program.blp:47
 msgid "_Apply"
-msgstr ""
+msgstr "_Anwenden"
 
 #: data/ui/editor/program_settings.blp:13 data/ui/preferences_dialog.blp:14
 msgid "Prefer recordings that haven't been played for a long time"
@@ -361,27 +365,27 @@ msgstr "Ganze Aufnahmen abspielen"
 
 #: data/ui/editor/tag_row.blp:17 src/entity_browser.rs:825
 msgid "Value"
-msgstr ""
+msgstr "Wert"
 
 #: data/ui/editor/tag.blp:5
 msgid "Tag"
-msgstr ""
+msgstr "Tag"
 
 #: data/ui/editor/tag.blp:42 src/entity_browser.rs:199
 msgid "Takes a value"
-msgstr ""
+msgstr "Wert hinzufügen"
 
 #: data/ui/editor/tag.blp:43
 msgid "Let items set a custom value for this tag"
-msgstr ""
+msgstr "Benutzerdefinierten Wert für Dinge mit diesem Tag festlegen"
 
 #: data/ui/editor/tag.blp:47 src/entity_browser.rs:205
 msgid "Private"
-msgstr ""
+msgstr "Privat"
 
 #: data/ui/editor/tag.blp:48
 msgid "Exclude this tag from library exports"
-msgstr ""
+msgstr "Diesen Tag von Exporten der Musikbibliothek ausschließen"
 
 #: data/ui/editor/work.blp:5 data/ui/work_page.blp:5 src/entity_browser.rs:72
 msgid "Work"
@@ -406,11 +410,11 @@ msgstr "_Teil hinzufügen"
 
 #: data/ui/editor/work.blp:89
 msgid "Related work"
-msgstr ""
+msgstr "Verwandtes Werk"
 
 #: data/ui/editor/work.blp:107 src/editor/work.rs:364
 msgid "Select _related work"
-msgstr ""
+msgstr "_Verwandtes Werk auswählen"
 
 #: data/ui/editor/work.blp:134 data/ui/search_page.blp:174
 #: src/entity_browser.rs:64
@@ -425,11 +429,11 @@ msgstr "_Instrument hinzufügen"
 #: data/ui/search_page.blp:194 src/entity_browser.rs:66
 #: src/entity_browser.rs:1281
 msgid "Tags"
-msgstr ""
+msgstr "Tags"
 
 #: data/ui/editor/work.blp:183 data/ui/editor/recording.blp:135
 msgid "Add _tag"
-msgstr ""
+msgstr "_Tag hinzufügen"
 
 #: data/ui/editor/work.blp:206
 msgid "_Create work"
@@ -445,7 +449,7 @@ msgstr "_Werk auswählen"
 
 #: data/ui/editor/recording.blp:52
 msgid "Comment"
-msgstr ""
+msgstr "Kommentar"
 
 #: data/ui/editor/recording.blp:57 data/ui/search_page.blp:134
 #: src/entity_browser.rs:80
@@ -495,7 +499,7 @@ msgstr "Rollen suchen…"
 
 #: data/ui/selector/performer_role.blp:70 src/editor/simple_entity.rs:353
 msgid "Instrument"
-msgstr "_Instrument"
+msgstr "Instrument"
 
 #: data/ui/selector/performer_role.blp:75 src/selector/kind.rs:174
 msgid "Search instruments…"
@@ -562,15 +566,15 @@ msgstr "_Bibliotheksverwaltung"
 
 #: data/ui/program_section.blp:11
 msgid "Currently playing"
-msgstr ""
+msgstr "Aktuelles Programm"
 
 #: data/ui/program_section.blp:56
 msgid "Customize program"
-msgstr ""
+msgstr "Programm konfigurieren"
 
 #: data/ui/program_section.blp:68
 msgid "Cancel program"
-msgstr ""
+msgstr "Programm abbrechen"
 
 #: data/ui/process_row.blp:37
 msgid "Process finished"
@@ -578,7 +582,7 @@ msgstr "Vorgang abgeschlossen"
 
 #: data/ui/process_row.blp:71
 msgid "Process cancelled"
-msgstr ""
+msgstr "Vorgang abgebrochen"
 
 #: data/ui/process_row.blp:85 src/empty_page.rs:104 src/recording_tile.rs:108
 #: src/entity_browser.rs:755 src/entity_browser.rs:837
@@ -617,11 +621,11 @@ msgstr "Probieren Sie eine andere Suche."
 
 #: data/ui/work_page.blp:76
 msgid "Play recordings of this work"
-msgstr ""
+msgstr "Aufnahmen dieses Werks abspielen"
 
 #: data/ui/work_page.blp:102
 msgid "Related works"
-msgstr ""
+msgstr "Verwandte Werke"
 
 #: data/ui/recording_tile.blp:74
 msgid "Edit _recording"
@@ -637,35 +641,35 @@ msgstr "Aus der Bibliothek _löschen"
 
 #: data/ui/entity_browser.blp:5
 msgid "Entities"
-msgstr ""
+msgstr "Elemente"
 
 #: data/ui/entity_browser.blp:13
 msgid "_New"
-msgstr ""
+msgstr "_Neu"
 
 #: data/ui/entity_browser.blp:15
 msgid "Add a new item of this kind"
-msgstr ""
+msgstr "Neu erstellen"
 
 #: data/ui/entity_browser.blp:29
 msgid "The kind of item to show"
-msgstr ""
+msgstr "Angezeigter Typ"
 
 #: data/ui/entity_browser.blp:34
 msgid "Filter…"
-msgstr ""
+msgstr "Filtern…"
 
 #: data/ui/entity_browser.blp:60
 msgid "Nothing to show"
-msgstr ""
+msgstr "Nichts gefunden"
 
 #: data/ui/entity_browser.blp:78
 msgid "Clear"
-msgstr ""
+msgstr "Zurücksetzen"
 
 #: data/ui/entity_browser.blp:89
 msgid "Select all"
-msgstr ""
+msgstr "Alle auswählen"
 
 #: data/ui/entity_browser.blp:99 src/recording_tile.rs:106
 #: src/entity_browser.rs:756
@@ -674,31 +678,31 @@ msgstr "Löschen"
 
 #: data/ui/entity_browser.blp:100
 msgid "Delete the selected items"
-msgstr ""
+msgstr "Ausgewählte Elemente löschen"
 
 #: data/ui/entity_browser.blp:112 src/entity_browser.rs:1070
 msgid "Merge"
-msgstr ""
+msgstr "Zusammenführen"
 
 #: data/ui/entity_browser.blp:113
 msgid "Merge the two selected items into one"
-msgstr ""
+msgstr "Zwei Elemente zusammenführen"
 
 #: data/ui/entity_browser.blp:124
 msgid "Add tag"
-msgstr ""
+msgstr "Tag hinzufügen"
 
 #: data/ui/entity_browser.blp:125
 msgid "Assign a tag to the selected items"
-msgstr ""
+msgstr "Tag zu den ausgewählten Elementen hinzufügen"
 
 #: data/ui/entity_browser.blp:136
 msgid "Remove tag"
-msgstr ""
+msgstr "Tag entfernen"
 
 #: data/ui/entity_browser.blp:137
 msgid "Remove a tag from the selected items"
-msgstr ""
+msgstr "Tag von den ausgewählten Elementen entfernen"
 
 #: data/ui/library_manager.blp:5
 msgid "Music Library"
@@ -714,11 +718,11 @@ msgstr "Bibliotheksordner"
 
 #: data/ui/library_manager.blp:54
 msgid "Library contents"
-msgstr ""
+msgstr "Inhalte der Bibliothek"
 
 #: data/ui/library_manager.blp:61
 msgid "Exchange"
-msgstr ""
+msgstr "Austauschen"
 
 #: data/ui/library_manager.blp:79
 msgid "Import from archive"
@@ -811,19 +815,19 @@ msgstr "Änderungen _speichern"
 
 #: src/editor/tag.rs:78
 msgid "_Create tag"
-msgstr ""
+msgstr "Tag _erstellen"
 
 #: src/editor/tag.rs:104
 msgid "Cannot be changed once the tag is in use"
-msgstr ""
+msgstr "Kann nicht verändert werden, wenn der Tag bereits benutzt wird."
 
 #: src/editor/tag.rs:139 src/editor/mod.rs:48 src/editor/simple_entity.rs:246
 msgid "Please enter a name."
-msgstr ""
+msgstr "Bitte einen Namen eingeben."
 
 #: src/editor/ensemble.rs:180
 msgid "Member"
-msgstr ""
+msgstr "Mitglied"
 
 #: src/editor/recording.rs:307 src/editor/work.rs:357
 msgid "No composers"
@@ -884,11 +888,11 @@ msgstr "Neue Rolle erstellen"
 
 #: src/selector/kind.rs:222
 msgid "Search tags…"
-msgstr ""
+msgstr "Tags suchen…"
 
 #: src/selector/kind.rs:226
 msgid "Create new tag"
-msgstr ""
+msgstr "Neuen Tag erstellen"
 
 #: src/selector/work.rs:240 src/selector/work.rs:274
 #: src/selector/recording.rs:301
@@ -897,7 +901,7 @@ msgstr "Neues Werk erstellen"
 
 #: src/selector/work.rs:353
 msgid "whole work"
-msgstr ""
+msgstr "Ganzes Werk"
 
 #: src/selector/recording.rs:267 src/selector/recording.rs:307
 #: src/selector/recording.rs:346
@@ -938,7 +942,7 @@ msgstr "Musikbibliothek wird heruntergeladen"
 
 #: src/process_row.rs:135
 msgid "Cancelling…"
-msgstr ""
+msgstr "Abbrechen…"
 
 #: src/process_row.rs:177
 #, rust-format
@@ -947,32 +951,32 @@ msgstr "Vorgang fehlgeschlagen: {}"
 
 #: src/program.rs:95
 msgid "Whole library"
-msgstr ""
+msgstr "Ganze Bibliothek"
 
 #: src/program.rs:101
 msgid "Randomly selected music"
-msgstr ""
+msgstr "Zufällig ausgewählte Musik"
 
 #: src/player.rs:119
 msgid "This track cannot be played."
-msgstr ""
+msgstr "Dieser Track kann nicht abgespielt werden."
 
 #: src/player.rs:200
 #, rust-format
 msgid "Could not play {}."
-msgstr ""
+msgstr "{} konnte nicht abgespielt werden."
 
 #: src/player.rs:201
 msgid "Could not play this track."
-msgstr ""
+msgstr "Track konnte nicht abgespielt werden."
 
 #: src/player.rs:477
 msgid "No music matches this program."
-msgstr ""
+msgstr "Keine zum Programm passende Musik gefunden."
 
 #: src/player.rs:628
 msgid "No more music matches this program."
-msgstr ""
+msgstr "Keine weitere zum Programm passende Musik."
 
 #: src/recording_tile.rs:102
 msgid "Delete recording?"
@@ -990,182 +994,189 @@ msgstr ""
 #: src/work_page.rs:169
 #, rust-format
 msgid "Part of {} ({})"
-msgstr ""
+msgstr "Teil von {} ({})"
 
 #: src/work_page.rs:171
 #, rust-format
 msgid "Part of {}"
-msgstr ""
+msgstr "Teil von {}"
 
 #: src/util.rs:51
 msgid "This person is still used elsewhere in the library."
-msgstr ""
+msgstr "Diese Person wird noch in der Bibliothek verwendet."
 
 #: src/util.rs:52
 msgid "This role is still used elsewhere in the library."
-msgstr ""
+msgstr "Diese Rolle wird noch in der Bibliothek verwendet."
 
 #: src/util.rs:54
 msgid "This instrument is still used elsewhere in the library."
-msgstr ""
+msgstr "Dieses Instrument wird noch in der Bibliothek verwendet."
 
 #: src/util.rs:57
 msgid "This tag is still assigned to works or recordings in the library."
 msgstr ""
+"Dieser Tag ist noch Werken oder Aufnahmen in der Bibliothek zugeordnet."
 
 #: src/util.rs:59
 msgid "This work still has recordings in the library."
-msgstr ""
+msgstr "Zu diesem Werk existieren noch Aufnahmen in der Bibliothek."
 
 #: src/util.rs:61
 msgid "This ensemble is still used elsewhere in the library."
-msgstr ""
+msgstr "Dieses Ensemble wird noch in der Bibliothek verwendet."
 
 #: src/util.rs:64
 msgid "This recording is still used by tracks or albums in the library."
-msgstr ""
+msgstr "Diese Aufnahme hat noch Tracks oder Alben in der Bibliothek."
 
 #: src/util.rs:66
 msgid "This album is still used elsewhere in the library."
-msgstr ""
+msgstr "Dieses Album wird noch in der Bibliothek verwendet."
 
 #: src/util.rs:67
 msgid "This track is still used elsewhere in the library."
-msgstr ""
+msgstr "Dieser Track wird noch in der Bibliothek verwendet."
 
 #: src/util.rs:70
 msgid ""
 "This library was created by a newer version of Musicus. Please update "
 "Musicus to open it."
 msgstr ""
+"Diese Bibliothek wurde von einer neueren Version von Musicus erstellt. Bitte "
+"aktualisieren Sie Musicus, um sie zu öffnen."
 
 #: src/util.rs:98
 msgid "Details"
-msgstr ""
+msgstr "Details"
 
 #: src/entity_browser.rs:59
 msgid "Persons"
-msgstr ""
+msgstr "Personen"
 
 #: src/entity_browser.rs:65
 msgid "Roles"
-msgstr ""
+msgstr "Rollen"
 
 #: src/entity_browser.rs:82
 msgid "Kind"
-msgstr ""
+msgstr "Typ"
 
 #: src/entity_browser.rs:201
 msgid "Label"
-msgstr ""
+msgstr "Bezeichnung"
 
 #: src/entity_browser.rs:390
 msgid "Created here"
-msgstr ""
+msgstr "Hier erstellt"
 
 #: src/entity_browser.rs:391
 msgid "Imported"
-msgstr ""
+msgstr "Importiert"
 
 #: src/entity_browser.rs:746
 #, rust-format
 msgid "Delete {}?"
-msgstr ""
+msgstr "{} löschen?"
 
 #: src/entity_browser.rs:750
 msgid ""
 "This cannot be undone. Items still used elsewhere in the library are kept."
 msgstr ""
+"Dies kann nicht rückgängig gemacht werden. Elemente, die noch in der "
+"Bibliothek verwendet werden, werden nicht gelöscht."
 
 #: src/entity_browser.rs:788
 #, rust-format
 msgid "Deleted {}"
-msgstr ""
+msgstr "{} gelöscht"
 
 #: src/entity_browser.rs:791
 #, rust-format
 msgid "Deleted {}; kept {}"
-msgstr ""
+msgstr "{} gelöscht, {} behalten"
 
 #: src/entity_browser.rs:831
 #, rust-format
 msgid "Value for \"{}\""
-msgstr ""
+msgstr "Wert für „{}“"
 
 #: src/entity_browser.rs:837
 msgid "Add"
-msgstr ""
+msgstr "Hinzufügen"
 
 #: src/entity_browser.rs:870
 #, rust-format
 msgid "Tagged {}"
-msgstr ""
+msgstr "{} getaggt"
 
 #: src/entity_browser.rs:920
 msgid "None of the selected items are tagged"
-msgstr ""
+msgstr "Keines der ausgewählten Elemente wurde getaggt."
 
 #: src/entity_browser.rs:985
 #, rust-format
 msgid "Removed from {} items"
-msgstr ""
+msgstr "Von {} Elementen entfernt"
 
 #: src/entity_browser.rs:1013
 msgid "Parts"
-msgstr ""
+msgstr "Teile"
 
 #: src/entity_browser.rs:1018
 #, rust-format
 msgid "{}: {}"
-msgstr ""
+msgstr "{}: {}"
 
 #: src/entity_browser.rs:1026
 msgid "Not used"
-msgstr ""
+msgstr "Nicht benutzt"
 
 #: src/entity_browser.rs:1065
 msgid "Which entity should be kept?"
-msgstr ""
+msgstr "Welches Element soll behalten werden?"
 
 #: src/entity_browser.rs:1066
 msgid ""
 "All references are moved to the selected entity. The other one is discarded. "
 "This cannot be undone."
 msgstr ""
+"Alle Zuordnungen werden zu dem ausgewählten Element übertragen. Das andere "
+"wird gelöscht. Dies kann nicht rückgängig gemacht werden."
 
 #: src/entity_browser.rs:1102
 msgid "Merged items"
-msgstr ""
+msgstr "Elemente zusammengeführt"
 
 #: src/entity_browser.rs:1202
 #, rust-format
 msgid "No {} yet"
-msgstr ""
+msgstr "Keine {}"
 
 #: src/entity_browser.rs:1204
 msgid "No matches"
-msgstr ""
+msgstr "Nichts gefunden"
 
 #: src/entity_browser.rs:1208
 msgid "Items you add to your music library show up here."
-msgstr ""
+msgstr "Elemente, die Sie zur Bibliothek hinzufügen, erscheinen hier."
 
 #: src/entity_browser.rs:1210
 msgid "Try a different filter."
-msgstr ""
+msgstr "Probieren Sie eine andere Suche."
 
 #: src/entity_browser.rs:1214
 #, rust-format
 msgid "{} items"
-msgstr ""
+msgstr "{} Elemente"
 
 #: src/entity_browser.rs:1284
 msgid "Source"
-msgstr ""
+msgstr "Quelle"
 
 #: src/entity_browser.rs:1285
 msgid "Last used"
-msgstr ""
+msgstr "Zuletzt benutzt"
 
 #: src/library_manager.rs:125
 msgid "Import from library archive"
@@ -1220,7 +1231,7 @@ msgstr "Fenster schließen"
 #: musicus-library/src/library/exchange.rs:410
 #, rust-format
 msgid "{} track files were missing and could not be exported."
-msgstr ""
+msgstr "{} Audiodateien fehlen und konnten nicht exportiert werden."
 
 #: musicus-library/src/library/exchange.rs:465
 #: musicus-library/src/library/exchange.rs:492
@@ -1267,7 +1278,7 @@ msgstr "Gespielt mit {}"
 #: musicus-library/src/library/query.rs:120
 #, rust-format
 msgid "Members: {}"
-msgstr ""
+msgstr "Mitglieder: {}"
 
 #~ msgid ""
 #~ "'{\"title\":\"Just play some music\",\"description\":\"Randomly select "
