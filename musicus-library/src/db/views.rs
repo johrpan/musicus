@@ -116,6 +116,7 @@ macro_rules! allow_view_everywhere {
             tracks,
             work_instruments,
             work_persons,
+            work_relations,
             work_tags,
             works,
         );)+

@@ -44,7 +44,7 @@ pub fn set_language(lang: impl Into<String>) {
 /// Stored in every library database's `meta` table. Any migration that
 /// changes the schema must bump both this constant and the value written by the
 /// migration, so that an older build can recognise a database it cannot read.
-pub const SCHEMA_VERSION: i32 = 1;
+pub const SCHEMA_VERSION: i32 = 2;
 
 #[derive(QueryableByName)]
 struct SchemaVersionRow {

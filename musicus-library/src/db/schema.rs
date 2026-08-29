@@ -198,6 +198,13 @@ diesel::table! {
 }
 
 diesel::table! {
+    work_relations (work_id, related_work_id) {
+        work_id -> Text,
+        related_work_id -> Text,
+    }
+}
+
+diesel::table! {
     works (work_id) {
         work_id -> Text,
         parent_work_id -> Nullable<Text>,
@@ -208,7 +215,6 @@ diesel::table! {
         created_at -> Timestamp,
         edited_at -> Timestamp,
         last_used_at -> Timestamp,
-        relates_to -> Nullable<Text>,
     }
 }
 
@@ -238,6 +244,7 @@ diesel::joinable!(work_instruments -> works (work_id));
 diesel::joinable!(work_persons -> persons (person_id));
 diesel::joinable!(work_persons -> roles (role_id));
 diesel::joinable!(work_persons -> works (work_id));
+diesel::joinable!(work_relations -> works (work_id));
 diesel::joinable!(work_tags -> tags (tag_id));
 diesel::joinable!(work_tags -> works (work_id));
 
@@ -260,6 +267,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     tracks,
     work_instruments,
     work_persons,
+    work_relations,
     work_tags,
     works,
 );

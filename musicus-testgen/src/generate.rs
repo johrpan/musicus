@@ -131,7 +131,7 @@ pub fn generate(
                     composer,
                     work_instruments,
                     Vec::new(),
-                    None,
+                    Vec::new(),
                     false,
                 )
                 .context("Failed to create a work")?,

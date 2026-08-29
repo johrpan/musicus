@@ -1,4 +1,5 @@
 use std::{
+    collections::HashSet,
     fs::{self, File},
     io::{BufReader, BufWriter, Read, Write},
     path::{Path, PathBuf},
@@ -520,6 +521,8 @@ fn update_metadata_from_file(
     let roles = roles::table.load::<tables::Role>(&mut other_connection)?;
     let instruments = instruments::table.load::<tables::Instrument>(&mut other_connection)?;
     let works = works::table.load::<tables::Work>(&mut other_connection)?;
+    let work_relations =
+        work_relations::table.load::<tables::WorkRelation>(&mut other_connection)?;
     let work_persons = work_persons::table.load::<tables::WorkPerson>(&mut other_connection)?;
     let work_instruments =
         work_instruments::table.load::<tables::WorkInstrument>(&mut other_connection)?;
@@ -542,6 +545,12 @@ fn update_metadata_from_file(
     let mut this_connection = db::lock_connection(&this_connection);
 
     this_connection.transaction::<(), Error, _>(|connection| {
+        let existing_work_ids = works::table
+            .select(works::work_id)
+            .load::<String>(connection)?
+            .into_iter()
+            .collect::<HashSet<_>>();
+
         for person in persons {
             let enable_updates = persons::table
                 .filter(persons::person_id.eq(&person.person_id))
@@ -632,7 +641,6 @@ fn update_metadata_from_file(
                     work_instruments::table.filter(work_instruments::work_id.eq(&work.work_id)),
                 )
                 .execute(connection)?;
-
                 for work_instrument in work_instruments
                     .iter()
                     .filter(|work_instrument| work_instrument.work_id == work.work_id)
@@ -640,6 +648,25 @@ fn update_metadata_from_file(
                     diesel::insert_into(work_instruments::table)
                         .values(work_instrument)
                         .execute(connection)?;
+                }
+
+                // Relations are replaced like any other owned association. Rows
+                // whose target is not part of this library are skipped, because
+                // a relation row must never point at a missing work.
+                diesel::delete(
+                    work_relations::table.filter(work_relations::work_id.eq(&work.work_id)),
+                )
+                .execute(connection)?;
+
+                for relation in work_relations
+                    .iter()
+                    .filter(|relation| relation.work_id == work.work_id)
+                {
+                    if existing_work_ids.contains(&relation.related_work_id) {
+                        diesel::insert_into(work_relations::table)
+                            .values(relation)
+                            .execute(connection)?;
+                    }
                 }
 
                 diesel::delete(work_tags::table.filter(work_tags::work_id.eq(&work.work_id)))
@@ -794,6 +821,8 @@ fn import_metadata_from_file(
     let roles = roles::table.load::<tables::Role>(&mut other_connection)?;
     let instruments = instruments::table.load::<tables::Instrument>(&mut other_connection)?;
     let works = works::table.load::<tables::Work>(&mut other_connection)?;
+    let work_relations =
+        work_relations::table.load::<tables::WorkRelation>(&mut other_connection)?;
     let work_persons = work_persons::table.load::<tables::WorkPerson>(&mut other_connection)?;
     let work_instruments =
         work_instruments::table.load::<tables::WorkInstrument>(&mut other_connection)?;
@@ -876,6 +905,13 @@ fn import_metadata_from_file(
 
             diesel::insert_into(works::table)
                 .values(work)
+                .on_conflict_do_nothing()
+                .execute(connection)?;
+        }
+
+        for work_relation in work_relations {
+            diesel::insert_into(work_relations::table)
+                .values(work_relation)
                 .on_conflict_do_nothing()
                 .execute(connection)?;
         }

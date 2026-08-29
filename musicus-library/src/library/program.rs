@@ -347,14 +347,18 @@ impl Library {
             query = query.filter(
                 super::query::recording_covers_work_condition(work_id).or(
                     diesel::dsl::sql::<Bool>(
-                        "EXISTS (SELECT 1 FROM works \
-                          WHERE works.work_id = recordings.work_id \
-                          AND (works.relates_to = ",
+                        "EXISTS (SELECT 1 FROM work_relations \
+                          WHERE work_relations.work_id = recordings.work_id \
+                          AND work_relations.related_work_id = ",
                     )
                     .bind::<sql_types::Text, _>(work_id.clone())
-                    .sql(" OR works.work_id = (SELECT relates_to FROM works WHERE work_id = ")
+                    .sql(
+                        ") OR EXISTS (SELECT 1 FROM work_relations \
+                         WHERE work_relations.related_work_id = recordings.work_id \
+                         AND work_relations.work_id = ",
+                    )
                     .bind::<sql_types::Text, _>(work_id.clone())
-                    .sql(")))"),
+                    .sql("))"),
                 ),
             );
         }

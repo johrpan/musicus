@@ -284,22 +284,30 @@ fn copy_instrument(
 }
 
 fn copy_work(from: &mut SqliteConnection, to: &mut SqliteConnection, work_id: &str) -> Result<()> {
-    copy_work_priv(from, to, work_id, &mut HashSet::new())
+    // `parents` guards the parent chain, `copied` guards the related-work
+    // graph, which may cycle.
+    copy_work_priv(from, to, work_id, &mut Vec::new(), &mut HashSet::new())
 }
 
 /// Copy a work and its parents.
 ///
-/// `ancestors` holds the works currently being copied further up the parent
+/// `parents` holds the works currently being copied further up the parent
 /// chain. A metadata database with a cyclic parent chain would otherwise
-/// recurse until the stack overflows.
+/// recurse until the stack overflows. `copied` holds every work already
+/// visited in this call, so that cycles in the related-work graph terminate.
 fn copy_work_priv(
     from: &mut SqliteConnection,
     to: &mut SqliteConnection,
     work_id: &str,
-    ancestors: &mut HashSet<String>,
+    parents: &mut Vec<String>,
+    copied: &mut HashSet<String>,
 ) -> Result<()> {
-    if !ancestors.insert(work_id.to_owned()) {
+    if parents.contains(&work_id.to_owned()) {
         bail!("Work {work_id} is its own ancestor in the metadata database");
+    }
+
+    if copied.contains(work_id) {
+        return Ok(());
     }
 
     let now = db::now();
@@ -308,7 +316,9 @@ fn copy_work_priv(
         .first::<tables::Work>(from)?;
 
     if let Some(parent_work_id) = work.parent_work_id.clone() {
-        copy_work_priv(from, to, &parent_work_id, ancestors)?;
+        parents.push(work_id.to_owned());
+        copy_work_priv(from, to, &parent_work_id, parents, copied)?;
+        parents.pop();
     }
 
     work.source = Source::Metadata;
@@ -320,6 +330,8 @@ fn copy_work_priv(
         .values(&work)
         .on_conflict_do_nothing()
         .execute(to)?;
+
+    copied.insert(work_id.to_owned());
 
     let work_persons = work_persons::table
         .filter(work_persons::work_id.eq(work_id))
@@ -360,6 +372,21 @@ fn copy_work_priv(
 
         diesel::insert_into(work_tags::table)
             .values(work_tag)
+            .on_conflict_do_nothing()
+            .execute(to)?;
+    }
+
+    // Related works: the target is copied first so that the relation row can
+    // never violate a foreign key. The `copied` set terminates relation cycles.
+    let work_relations = work_relations::table
+        .filter(work_relations::work_id.eq(work_id))
+        .load::<tables::WorkRelation>(from)?;
+
+    for relation in work_relations {
+        copy_work_priv(from, to, &relation.related_work_id, parents, copied)?;
+
+        diesel::insert_into(work_relations::table)
+            .values(relation)
             .on_conflict_do_nothing()
             .execute(to)?;
     }

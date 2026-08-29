@@ -459,7 +459,7 @@ fn write_database(metadata: &MetadataFile, works: &WorksFile, output: &Path) -> 
             }
 
             for work in &works.works {
-                set_relates_to(connection, work)?;
+                insert_relations(connection, work)?;
             }
 
             Ok(())
@@ -504,7 +504,6 @@ fn insert_work(
             created_at: now,
             edited_at: now,
             last_used_at: now,
-            relates_to: None,
         })
         .execute(connection)?;
 
@@ -576,16 +575,22 @@ fn insert_work_instruments(connection: &mut SqliteConnection, work: &WorkEntity)
     Ok(())
 }
 
-/// Point each derivative at its related work, recursing into parts.
-fn set_relates_to(connection: &mut SqliteConnection, work: &WorkEntity) -> Result<()> {
+/// Insert each work's related-work relations, recursing into parts.
+///
+/// Runs after every work exists, so a relation can point at a work defined
+/// later in the file.
+fn insert_relations(connection: &mut SqliteConnection, work: &WorkEntity) -> Result<()> {
     if let Some(related) = &work.related_work {
-        diesel::update(works::table.filter(works::work_id.eq(&work.key)))
-            .set(works::relates_to.eq(related.as_str()))
+        diesel::insert_into(work_relations::table)
+            .values(tables::WorkRelation {
+                work_id: work.key.clone(),
+                related_work_id: related.clone(),
+            })
             .execute(connection)?;
     }
 
     for part in &work.parts {
-        set_relates_to(connection, part)?;
+        insert_relations(connection, part)?;
     }
 
     Ok(())
@@ -793,7 +798,13 @@ mod tests {
             .filter(works::work_id.eq("suite-arrangement"))
             .first::<tables::Work>(&mut connection)
             .unwrap();
-        assert_eq!(arrangement.relates_to.as_deref(), Some("suite"));
+        assert_eq!(arrangement.work_id, "suite-arrangement");
+
+        let relation = work_relations::table
+            .filter(work_relations::work_id.eq("suite-arrangement"))
+            .first::<tables::WorkRelation>(&mut connection)
+            .unwrap();
+        assert_eq!(relation.related_work_id, "suite");
     }
 
     #[test]

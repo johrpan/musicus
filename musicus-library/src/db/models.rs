@@ -19,8 +19,35 @@ pub struct Work {
     pub persons: Vec<WorkPerson>,
     pub instruments: Vec<Instrument>,
     pub tags: Vec<TagValue>,
-    pub relates_to: Option<Box<Work>>,
+    pub related_works: Vec<RelatedWork>,
     pub enable_updates: bool,
+}
+
+/// A work related to another one, without the related work's own parts or
+/// relations: the relation graph may cycle, so it must not be loaded
+/// recursively.
+#[derive(Clone, Debug)]
+pub struct RelatedWork {
+    pub work_id: String,
+    pub name: TranslatedString,
+    pub work_persons: Vec<WorkPerson>,
+}
+
+impl RelatedWork {
+    pub fn work_persons_string(&self) -> Option<String> {
+        let work_persons_string = self
+            .work_persons
+            .iter()
+            .map(ToString::to_string)
+            .collect::<Vec<String>>()
+            .join(", ");
+
+        if work_persons_string.is_empty() {
+            None
+        } else {
+            Some(work_persons_string)
+        }
+    }
 }
 
 /// A tag as assigned to a work or recording.
@@ -219,17 +246,36 @@ impl Work {
 
         let tags = TagValue::load_for_work(&data.work_id, connection)?;
 
-        // Note: Loaded the same way as a part, so this recurses through the whole
-        // relation chain. Like the part tree above, it does not check for circularity.
-        let relates_to = match &data.relates_to {
-            Some(relates_to) => Some(Box::new(Work::from_table(
-                works::table
-                    .filter(works::work_id.eq(relates_to))
-                    .first::<tables::Work>(connection)?,
-                connection,
-            )?)),
-            None => None,
-        };
+        // Related works are loaded as summaries only: the relation graph may
+        // cycle, so it must not be loaded recursively (in contrast to parts,
+        // which form a tree).
+        let related_work_rows = works::table
+            .inner_join(
+                work_relations::table.on(work_relations::related_work_id.eq(works::work_id)),
+            )
+            .order(work_relations::related_work_id)
+            .filter(work_relations::work_id.eq(&data.work_id))
+            .select(tables::Work::as_select())
+            .load::<tables::Work>(connection)?;
+
+        let related_works = related_work_rows
+            .into_iter()
+            .map(|related| {
+                let work_persons = work_persons::table
+                    .order(work_persons::sequence_number)
+                    .filter(work_persons::work_id.eq(&related.work_id))
+                    .load::<tables::WorkPerson>(connection)?
+                    .into_iter()
+                    .map(|r| WorkPerson::from_table(r, connection))
+                    .collect::<Result<Vec<WorkPerson>>>()?;
+
+                Ok(RelatedWork {
+                    work_id: related.work_id,
+                    name: related.name,
+                    work_persons,
+                })
+            })
+            .collect::<Result<Vec<RelatedWork>>>()?;
 
         Ok(Self {
             work_id: data.work_id,
@@ -238,7 +284,7 @@ impl Work {
             persons,
             instruments,
             tags,
-            relates_to,
+            related_works,
             enable_updates: data.enable_updates,
         })
     }

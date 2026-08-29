@@ -13,7 +13,7 @@ use part_row::WorkEditorPartRow;
 
 use musicus_library::db::{
     self,
-    models::{Instrument, Person, Tag, TagValue, Work, WorkPerson},
+    models::{Instrument, Person, RelatedWork, Tag, TagValue, Work, WorkPerson},
 };
 
 use crate::{
@@ -49,7 +49,7 @@ mod imp {
         pub part_rows: RefCell<Vec<WorkEditorPartRow>>,
         pub instrument_rows: RefCell<Vec<InstrumentRow>>,
         pub tag_rows: RefCell<Vec<TagRow>>,
-        pub relates_to: RefCell<Option<Work>>,
+        pub relates_to: RefCell<Option<RelatedWork>>,
 
         pub persons_popover: OnceCell<SelectorPopover>,
         pub instruments_popover: OnceCell<SelectorPopover>,
@@ -276,8 +276,8 @@ impl WorkEditor {
                 obj.add_tag_row(tag_value.clone());
             }
 
-            if let Some(relates_to) = &work.relates_to {
-                obj.set_relates_to(Some((**relates_to).clone()));
+            if let Some(related) = work.related_works.first() {
+                obj.set_related(Some(related.clone()));
             }
 
             obj.imp().enable_updates_row.set_active(work.enable_updates);
@@ -348,6 +348,16 @@ impl WorkEditor {
     }
 
     fn set_relates_to(&self, relates_to: Option<Work>) {
+        let related = relates_to.map(|work| RelatedWork {
+            work_id: work.work_id,
+            name: work.name,
+            work_persons: work.persons,
+        });
+
+        self.set_related(related);
+    }
+
+    fn set_related(&self, relates_to: Option<RelatedWork>) {
         match &relates_to {
             Some(work) => {
                 self.imp().related_work_row.set_title(work.name.get());
@@ -545,7 +555,7 @@ impl WorkEditor {
             .map(|r| r.tag_value())
             .collect::<Vec<TagValue>>();
 
-        let relates_to = self.imp().relates_to.borrow().clone();
+        let related_work = self.imp().relates_to.borrow().clone();
 
         let enable_updates = self.imp().enable_updates_row.is_active();
 
@@ -568,12 +578,17 @@ impl WorkEditor {
                 persons: composers,
                 instruments,
                 tags,
-                relates_to: relates_to.map(Box::new),
+                related_works: related_work.into_iter().collect(),
                 enable_updates,
             };
 
             self.emit_by_name::<()>("created", &[&glib::BoxedAnyObject::new(part.clone())]);
         } else if let Some(work_id) = self.imp().work_id.get() {
+            let related_works = related_work
+                .iter()
+                .map(|work| work.work_id.clone())
+                .collect::<Vec<String>>();
+
             if crate::editor::handle_save(
                 self,
                 library.update_work(
@@ -583,7 +598,7 @@ impl WorkEditor {
                     composers,
                     instruments,
                     tags,
-                    relates_to,
+                    related_works,
                     enable_updates,
                 ),
             )
@@ -592,6 +607,11 @@ impl WorkEditor {
                 return;
             }
         } else {
+            let related_works = related_work
+                .iter()
+                .map(|work| work.work_id.clone())
+                .collect::<Vec<String>>();
+
             let Some(work) = crate::editor::handle_save(
                 self,
                 library.create_work(
@@ -600,7 +620,7 @@ impl WorkEditor {
                     composers,
                     instruments,
                     tags,
-                    relates_to,
+                    related_works,
                     enable_updates,
                 ),
             ) else {

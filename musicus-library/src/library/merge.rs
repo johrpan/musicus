@@ -259,6 +259,30 @@ impl Library {
                     .execute(connection)?;
             }
 
+            // Repoint relations in both directions, then drop self-relations and
+            // deduplicate collisions that the merge created.
+            diesel::update(work_relations::table.filter(work_relations::work_id.eq(from)))
+                .set(work_relations::work_id.eq(into))
+                .execute(connection)?;
+
+            diesel::update(work_relations::table.filter(work_relations::related_work_id.eq(from)))
+                .set(work_relations::related_work_id.eq(into))
+                .execute(connection)?;
+
+            diesel::delete(
+                work_relations::table
+                    .filter(work_relations::work_id.eq(into))
+                    .filter(work_relations::related_work_id.eq(into)),
+            )
+            .execute(connection)?;
+
+            diesel::sql_query(
+                "DELETE FROM work_relations WHERE rowid NOT IN (\
+                    SELECT MIN(rowid) FROM work_relations GROUP BY work_id, related_work_id\
+                )",
+            )
+            .execute(connection)?;
+
             diesel::update(recordings::table.filter(recordings::work_id.eq(from)))
                 .set(recordings::work_id.eq(into))
                 .execute(connection)?;

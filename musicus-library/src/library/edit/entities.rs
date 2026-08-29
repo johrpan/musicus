@@ -1,6 +1,6 @@
 //! CRUD for library entities.
 
-use anyhow::{Error, Result};
+use anyhow::{bail, Error, Result};
 use diesel::{prelude::*, QueryDsl, SqliteConnection};
 
 use crate::db::{
@@ -211,7 +211,7 @@ impl Library {
         persons: Vec<WorkPerson>,
         instruments: Vec<Instrument>,
         tags: Vec<TagValue>,
-        relates_to: Option<Work>,
+        related_works: Vec<String>,
         enable_updates: bool,
     ) -> Result<Work> {
         let connection = &mut *self.conn();
@@ -226,7 +226,7 @@ impl Library {
                 tags,
                 None,
                 None,
-                relates_to.map(|w| w.work_id),
+                related_works,
                 enable_updates,
             )
         })?;
@@ -246,7 +246,7 @@ impl Library {
         tags: Vec<TagValue>,
         parent_work_id: Option<&str>,
         sequence_number: Option<i32>,
-        relates_to: Option<String>,
+        related_works: Vec<String>,
         enable_updates: bool,
     ) -> Result<Work> {
         let work_id = db::generate_id();
@@ -262,7 +262,6 @@ impl Library {
             edited_at: now,
             last_used_at: now,
             enable_updates,
-            relates_to,
         };
 
         diesel::insert_into(works::table)
@@ -270,7 +269,7 @@ impl Library {
             .execute(connection)?;
 
         for (index, part) in parts.into_iter().enumerate() {
-            let part_relates_to = part.relates_to.map(|w| w.work_id);
+            let part_related_works = part.related_works.into_iter().map(|w| w.work_id).collect();
 
             Self::create_work_priv(
                 connection,
@@ -281,10 +280,12 @@ impl Library {
                 part.tags,
                 Some(&work_id),
                 Some(index as i32),
-                part_relates_to,
+                part_related_works,
                 enable_updates,
             )?;
         }
+
+        Self::replace_work_relations(connection, &work_id, related_works)?;
 
         Self::set_work_tags(connection, &work_id, tags)?;
 
@@ -326,7 +327,7 @@ impl Library {
         persons: Vec<WorkPerson>,
         instruments: Vec<Instrument>,
         tags: Vec<TagValue>,
-        relates_to: Option<Work>,
+        related_works: Vec<String>,
         enable_updates: bool,
     ) -> Result<()> {
         let connection = &mut *self.conn();
@@ -342,7 +343,7 @@ impl Library {
                 tags,
                 None,
                 None,
-                relates_to.map(|w| w.work_id),
+                related_works,
                 enable_updates,
             )
         })?;
@@ -363,7 +364,7 @@ impl Library {
         tags: Vec<TagValue>,
         parent_work_id: Option<&str>,
         sequence_number: Option<i32>,
-        relates_to: Option<String>,
+        related_works: Vec<String>,
         enable_updates: bool,
     ) -> Result<()> {
         let now = db::now();
@@ -377,7 +378,6 @@ impl Library {
                 works::edited_at.eq(now),
                 works::last_used_at.eq(now),
                 works::enable_updates.eq(enable_updates),
-                works::relates_to.eq(relates_to),
             ))
             .execute(connection)?;
 
@@ -390,7 +390,7 @@ impl Library {
             .execute(connection)?;
 
         for (index, part) in parts.into_iter().enumerate() {
-            let part_relates_to = part.relates_to.map(|w| w.work_id);
+            let part_related_works = part.related_works.into_iter().map(|w| w.work_id).collect();
 
             if works::table
                 .filter(works::work_id.eq(&part.work_id))
@@ -408,7 +408,7 @@ impl Library {
                     part.tags,
                     Some(work_id),
                     Some(index as i32),
-                    part_relates_to,
+                    part_related_works,
                     enable_updates,
                 )?;
             } else {
@@ -423,11 +423,13 @@ impl Library {
                     part.tags,
                     Some(work_id),
                     Some(index as i32),
-                    part_relates_to,
+                    part_related_works,
                     enable_updates,
                 )?;
             }
         }
+
+        Self::replace_work_relations(connection, work_id, related_works)?;
 
         diesel::delete(work_persons::table)
             .filter(work_persons::work_id.eq(work_id))
@@ -463,6 +465,42 @@ impl Library {
         }
 
         Self::set_work_tags(connection, work_id, tags)?;
+
+        Ok(())
+    }
+
+    /// Replace a work's outgoing relation rows, validating the new targets.
+    pub(super) fn replace_work_relations(
+        connection: &mut SqliteConnection,
+        work_id: &str,
+        related_works: Vec<String>,
+    ) -> Result<()> {
+        let mut seen = std::collections::HashSet::new();
+
+        for related_work_id in &related_works {
+            if related_work_id == work_id {
+                bail!("Work {work_id} cannot relate to itself");
+            }
+
+            if !seen.insert(related_work_id.clone()) {
+                bail!("Work {work_id} relates to {related_work_id} more than once");
+            }
+        }
+
+        diesel::delete(work_relations::table)
+            .filter(work_relations::work_id.eq(work_id))
+            .execute(connection)?;
+
+        for related_work_id in related_works {
+            let relation = tables::WorkRelation {
+                work_id: work_id.to_string(),
+                related_work_id,
+            };
+
+            diesel::insert_into(work_relations::table)
+                .values(relation)
+                .execute(connection)?;
+        }
 
         Ok(())
     }

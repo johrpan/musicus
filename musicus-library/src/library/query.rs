@@ -985,21 +985,38 @@ impl Library {
 
                 // Related works in both directions: what this work was derived from, and
                 // whatever else was derived from it (e.g. an arrangement alongside the
-                // original, or siblings sharing an original).
+                // original, or siblings sharing an original). The relation graph may
+                // cycle, so the references are loaded one level at a time rather than
+                // recursively embedded in the model.
                 let mut works = Vec::new();
 
-                if let Some(relates_to) = &work.relates_to {
-                    works.push((**relates_to).clone());
+                let outgoing_ids = work_relations::table
+                    .filter(work_relations::work_id.eq(&work.work_id))
+                    .order(work_relations::related_work_id)
+                    .select(work_relations::related_work_id)
+                    .load::<String>(connection)?;
+
+                for related_work_id in outgoing_ids {
+                    let row = works::table
+                        .filter(works::work_id.eq(&related_work_id))
+                        .first::<tables::Work>(connection)?;
+
+                    works.push(Work::from_table(row, connection)?);
                 }
 
-                works.extend(
-                    works::table
-                        .filter(works::relates_to.eq(&work.work_id))
-                        .load::<tables::Work>(connection)?
-                        .into_iter()
-                        .map(|w| Work::from_table(w, connection))
-                        .collect::<Result<Vec<Work>>>()?,
-                );
+                let incoming_ids = work_relations::table
+                    .filter(work_relations::related_work_id.eq(&work.work_id))
+                    .order(work_relations::work_id)
+                    .select(work_relations::work_id)
+                    .load::<String>(connection)?;
+
+                for related_work_id in incoming_ids {
+                    let row = works::table
+                        .filter(works::work_id.eq(&related_work_id))
+                        .first::<tables::Work>(connection)?;
+
+                    works.push(Work::from_table(row, connection)?);
+                }
 
                 // Walk up to the root ancestor, this should be a single-digit
                 // number, so it is easier than a recursive query.

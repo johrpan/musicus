@@ -96,7 +96,13 @@ pub struct Work {
     pub created_at: NaiveDateTime,
     pub edited_at: NaiveDateTime,
     pub last_used_at: NaiveDateTime,
-    pub relates_to: Option<String>,
+}
+
+#[derive(Insertable, Queryable, Selectable, Clone, Debug)]
+#[diesel(check_for_backend(Sqlite))]
+pub struct WorkRelation {
+    pub work_id: String,
+    pub related_work_id: String,
 }
 
 #[derive(Insertable, Queryable, Selectable, Clone, Debug)]
