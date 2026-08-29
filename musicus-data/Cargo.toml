@@ -1,0 +1,17 @@
+[package]
+name = "musicus-data"
+version = "0.1.0"
+edition = "2021"
+description = "Build the pre-made Musicus metadata database from its JSON definitions"
+
+[dependencies]
+anyhow = "1"
+chrono = "0.4"
+clap = { version = "4", features = ["derive"] }
+diesel = { version = "2.2", features = ["chrono", "sqlite"] }
+musicus-library = { path = "../musicus-library" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[dev-dependencies]
+tempfile = "3"

@@ -2025,6 +2025,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "musicus-data"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "clap",
+ "diesel",
+ "musicus-library",
+ "serde",
+ "serde_json",
+ "tempfile",
+]
+
+[[package]]
 name = "musicus-library"
 version = "0.2.0"
 dependencies = [
