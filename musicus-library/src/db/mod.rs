@@ -128,7 +128,9 @@ pub fn lock_connection(connection: &Mutex<SqliteConnection>) -> MutexGuard<'_, S
 /// Backed by a `BTreeMap` rather than a `HashMap` so that serialization is
 /// deterministic — this lets `work_tags.value`/`recording_tags.value` be
 /// compared for exact equality directly in SQL.
-#[derive(Serialize, Deserialize, AsExpression, FromSqlRow, Clone, Default, Debug, PartialEq, Eq, Hash)]
+#[derive(
+    Serialize, Deserialize, AsExpression, FromSqlRow, Clone, Default, Debug, PartialEq, Eq, Hash,
+)]
 #[diesel(sql_type = Text)]
 pub struct TranslatedString(pub BTreeMap<String, String>);
 
@@ -174,8 +176,10 @@ where
 {
     fn from_sql(bytes: DB::RawValue<'_>) -> deserialize::Result<Self> {
         let text = String::from_sql(bytes)?;
-        let translated_string = serde_json::from_str(&text)?;
-        Ok(translated_string)
+        serde_json::from_str(&text).or_else(|err| {
+            log::warn!("Failed to parse translated string: {err}");
+            Ok(TranslatedString::generic(text))
+        })
     }
 }
 
