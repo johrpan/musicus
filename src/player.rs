@@ -741,12 +741,8 @@ impl Player {
         self.append(playlist)
     }
 
-    fn library_path_to_file_path(&self, path: impl AsRef<Path>) -> String {
-        PathBuf::from(self.library().unwrap().folder())
-            .join(path)
-            .to_str()
-            .unwrap()
-            .to_owned()
+    fn library_path_to_file_path(&self, path: impl AsRef<Path>) -> PathBuf {
+        self.library().unwrap().folder().join(path)
     }
 }
 

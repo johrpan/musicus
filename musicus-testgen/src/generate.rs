@@ -320,10 +320,9 @@ mod tests {
 
         let summary = generate(folder.path(), 2, counts(), |_, _| {}).unwrap();
 
-        let files = fs::read_dir(folder.path())
+        // Every track file lives in the managed `tracks` subtree.
+        let files = fs::read_dir(folder.path().join("tracks"))
             .unwrap()
-            .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
-            .filter(|name| name != "musicus.musdb")
             .count();
 
         assert_eq!(files, summary.tracks);

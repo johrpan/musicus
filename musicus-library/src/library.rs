@@ -5,7 +5,7 @@ use std::{
     time::SystemTime,
 };
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result};
 use diesel::{prelude::*, SqliteConnection};
 
 use crate::db::{self, schema::*, tables};
@@ -28,7 +28,7 @@ pub mod search;
 
 /// A music library backed by a SQLite database in a given folder.
 pub struct Library {
-    folder: String,
+    folder: PathBuf,
     connection: Arc<Mutex<SqliteConnection>>,
 
     /// The current metadata database connection including its database files'
@@ -46,19 +46,10 @@ impl Library {
     ///
     /// `cache_dir` is used for the metadata database file.
     pub fn new(path: impl AsRef<Path>, cache_dir: impl Into<PathBuf>) -> Result<Self> {
-        let folder = path
-            .as_ref()
-            .to_str()
-            .ok_or_else(|| anyhow!("Failed to convert library path to string"))?
-            .to_owned();
-
-        let db_path = PathBuf::from(&folder).join("musicus.musdb");
-        let connection = db::connect(
-            db_path
-                .to_str()
-                .ok_or_else(|| anyhow!("Failed to convert library path to string"))?,
-        )
-        .context("Failed to connect to music library database")?;
+        let folder = path.as_ref().to_owned();
+        let db_path = folder.join("musicus.musdb");
+        let connection =
+            db::connect(&db_path).context("Failed to connect to music library database")?;
 
         Ok(Self {
             folder,
@@ -69,8 +60,14 @@ impl Library {
         })
     }
 
-    pub fn folder(&self) -> &str {
+    /// The folder the library's database and track files live in.
+    pub fn folder(&self) -> &Path {
         &self.folder
+    }
+
+    /// Resolve a validated library-relative track path to an absolute path.
+    pub fn track_file_path(&self, path: &tables::LibraryTrackPath) -> PathBuf {
+        path.resolve(&self.folder)
     }
 
     fn conn(&self) -> MutexGuard<'_, SqliteConnection> {

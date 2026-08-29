@@ -757,8 +757,7 @@ mod tests {
         assert_eq!(summary.instrumentations, 2);
         assert_eq!(summary.derived, 1);
 
-        let path = path.to_str().unwrap();
-        let mut connection = db::connect(path).unwrap();
+        let mut connection = db::connect(&path).unwrap();
 
         let persons = persons::table
             .load::<tables::Person>(&mut connection)

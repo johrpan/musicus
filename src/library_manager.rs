@@ -1,4 +1,4 @@
-use std::{cell::OnceCell, ffi::OsStr, path::Path};
+use std::{cell::OnceCell, ffi::OsStr};
 
 use adw::{prelude::*, subclass::prelude::*};
 use gettextrs::gettext;
@@ -71,7 +71,7 @@ impl LibraryManager {
             obj.add_process(&process);
         }
 
-        if let Some(Some(filename)) = Path::new(&library.folder()).file_name().map(OsStr::to_str) {
+        if let Some(Some(filename)) = library.folder().file_name().map(OsStr::to_str) {
             obj.imp().library_path_row.set_subtitle(filename);
         }
 

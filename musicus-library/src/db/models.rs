@@ -1,13 +1,13 @@
 //! This module contains higher-level models combining information from
 //! multiple database tables.
 
-use std::{collections::HashSet, fmt::Display, path::PathBuf};
+use std::{collections::HashSet, fmt::Display};
 
 use anyhow::Result;
 use diesel::prelude::*;
 
 // Re-exports for tables that don't need additional information.
-pub use tables::{Instrument, Person, Role, Tag};
+pub use tables::{Instrument, LibraryTrackPath, Person, Role, Tag};
 
 use super::{schema::*, tables, TranslatedString};
 
@@ -101,7 +101,7 @@ pub struct RecordingEnsemble {
 #[derive(Clone, Debug)]
 pub struct Track {
     pub track_id: String,
-    pub path: PathBuf,
+    pub path: LibraryTrackPath,
     pub works: Vec<Work>,
 }
 
@@ -593,7 +593,7 @@ impl Track {
 
         Ok(Self {
             track_id: data.track_id,
-            path: data.path.0,
+            path: data.path,
             works,
         })
     }

@@ -148,15 +148,18 @@ impl TracksEditorTrackRow {
 
         obj.set_subtitle(&match &track_data.location {
             TrackLocation::Undefined => String::new(),
-            TrackLocation::Library(track) => track.path.to_string_lossy().into_owned(),
+            TrackLocation::Library(track) => track.path.to_string(),
             TrackLocation::System(path) => {
                 let format_string = gettext("Import from {}");
-                let file_name = path.file_name().unwrap().to_str().unwrap();
+                let file_name = path
+                    .file_name()
+                    .map(|name| name.to_string_lossy().into_owned())
+                    .unwrap_or_else(|| gettext("file"));
                 match formatx!(&format_string, file_name) {
                     Ok(title) => title,
                     Err(_) => {
                         log::error!("Error in translated format string: {format_string}");
-                        file_name.to_owned()
+                        file_name
                     }
                 }
             }

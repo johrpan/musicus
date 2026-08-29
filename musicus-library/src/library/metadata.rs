@@ -36,7 +36,7 @@ impl Library {
             .as_ref()
             .is_none_or(|(cached, _)| *cached != modified)
         {
-            match db::connect(path.to_str()?) {
+            match db::connect(&path) {
                 Ok(connection) => {
                     *metadata_connection = Some((modified, Arc::new(Mutex::new(connection))));
                 }

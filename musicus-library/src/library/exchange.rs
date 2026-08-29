@@ -104,7 +104,7 @@ impl Library {
             path.as_ref().to_string_lossy()
         );
         let path = path.as_ref().to_owned();
-        let library_folder = PathBuf::from(&self.folder());
+        let library_folder = self.folder().to_owned();
         let this_connection = self.connection.clone();
 
         Ok(spawn_process(move |sender, cancellation| {
@@ -132,7 +132,7 @@ impl Library {
         let connection = &mut *self.conn();
 
         let path = path.as_ref().to_owned();
-        let library_folder = PathBuf::from(&self.folder());
+        let library_folder = self.folder().to_owned();
         let tracks = tracks::table.load::<tables::Track>(connection)?;
         let this_connection = self.connection.clone();
 
@@ -155,7 +155,7 @@ impl Library {
     pub fn import_library_from_url(&self, url: &str, source: Source) -> Result<ProcessHandle> {
         log::info!("Importing library from URL {url}");
         let url = url.to_owned();
-        let library_folder = PathBuf::from(&self.folder());
+        let library_folder = self.folder().to_owned();
         let this_connection = self.connection.clone();
 
         Ok(spawn_process(move |sender, cancellation| {
@@ -217,7 +217,7 @@ fn import_library_from_zip_priv(
     for (index, track) in tracks.into_iter().enumerate() {
         cancellation.check()?;
 
-        let library_track_file_path = library_folder.as_ref().join(&track.path);
+        let library_track_file_path = track.path.resolve(library_folder.as_ref());
         let mut part_path = library_track_file_path.clone();
         part_path.as_mut_os_string().push(".part");
 
@@ -239,7 +239,7 @@ fn import_library_from_zip_priv(
                 fs::create_dir_all(parent)?;
             }
 
-            let archive_track_file = archive.by_name(&path_to_zip(&track.path)?)?;
+            let archive_track_file = archive.by_name(track.path.to_zip_name())?;
 
             // Copy through a temporary file next to the destination and only
             // move it into place once it is whole. A crash, a kill or a full
@@ -394,8 +394,8 @@ fn export_library_to_zip_priv(
 
         if !add_file_to_zip(
             &mut zip,
-            library_folder.as_ref().join(&track.path),
-            &path_to_zip(&track.path)?,
+            track.path.resolve(library_folder.as_ref()),
+            track.path.to_zip_name(),
         )? {
             n_missing += 1;
         }
@@ -514,7 +514,7 @@ fn update_metadata_from_file(
     path: impl AsRef<Path>,
     this_connection: Arc<Mutex<SqliteConnection>>,
 ) -> Result<()> {
-    let mut other_connection = db::connect(path.as_ref().to_str().unwrap())?;
+    let mut other_connection = db::connect(path.as_ref())?;
 
     // Load all metadata from the archive.
     let persons = persons::table.load::<tables::Person>(&mut other_connection)?;
@@ -814,7 +814,7 @@ fn import_metadata_from_file(
 ) -> Result<Vec<tables::Track>> {
     let now = db::now();
 
-    let mut other_connection = db::connect(path.as_ref().to_str().unwrap())?;
+    let mut other_connection = db::connect(path.as_ref())?;
 
     // Load all metadata from the archive.
     let persons = persons::table.load::<tables::Person>(&mut other_connection)?;
@@ -1122,26 +1122,6 @@ async fn download_to_tmp_file(
     writer.flush().await?;
 
     Ok(file)
-}
-
-/// Convert a path to a ZIP path. ZIP files use "/" as the path separator
-/// regardless of the current platform.
-fn path_to_zip(path: impl AsRef<Path>) -> Result<String> {
-    Ok(path
-        .as_ref()
-        .iter()
-        .map(|p| {
-            p.to_str()
-                .ok_or_else(|| {
-                    anyhow!(
-                        "Path \"{}\"contains invalid UTF-8",
-                        path.as_ref().to_string_lossy()
-                    )
-                })
-                .map(|s| s.to_owned())
-        })
-        .collect::<Result<Vec<String>>>()?
-        .join("/"))
 }
 
 pub fn metadata_file_path(cache_dir: &Path) -> PathBuf {

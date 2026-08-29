@@ -4,6 +4,7 @@
 use std::path::{Path, PathBuf};
 
 use super::{schema::*, TranslatedString};
+use crate::error::LibraryError;
 use anyhow::{anyhow, Result};
 use chrono::NaiveDateTime;
 use diesel::{
@@ -182,7 +183,7 @@ pub struct Track {
     pub track_id: String,
     pub recording_id: String,
     pub recording_index: i32,
-    pub path: PathBufWrapper,
+    pub path: LibraryTrackPath,
     pub created_at: NaiveDateTime,
     pub edited_at: NaiveDateTime,
     pub last_used_at: NaiveDateTime,
@@ -225,59 +226,133 @@ pub struct AlbumRecording {
     pub sequence_number: i32,
 }
 
-#[derive(AsExpression, FromSqlRow, Clone, Debug)]
-#[diesel(sql_type = Text)]
-pub struct PathBufWrapper(pub PathBuf);
+/// The relative subtree under the library root that managed track files live in.
+pub const TRACKS_SUBDIR: &str = "tracks";
 
-impl ToSql<Text, Sqlite> for PathBufWrapper
+/// A validated, library-relative path to a track's audio file.
+///
+/// Stored as a portable, slash-separated relative path. Values are validated
+/// on read and never escape the library root: absolute paths, root
+/// components, drive prefixes, `.`/`..` and empty components are rejected.
+/// Newly imported files live under [`TRACKS_SUBDIR`]; legacy values outside it
+/// stay readable until the schema migration rewrites them.
+#[derive(AsExpression, FromSqlRow, Clone, Debug, PartialEq, Eq, Hash)]
+#[diesel(sql_type = Text)]
+pub struct LibraryTrackPath(String);
+
+impl LibraryTrackPath {
+    /// Parse and validate a stored relative path, using '/' as the separator.
+    pub fn try_from_str(path: &str) -> Result<Self, LibraryError> {
+        Self::try_from_components(path.split('/').collect(), false)
+    }
+
+    /// Build a validated path inside the managed [`TRACKS_SUBDIR`] subtree.
+    pub fn managed(components: &[&str]) -> Result<Self, LibraryError> {
+        Self::try_from_components(components.to_vec(), true)
+    }
+
+    fn try_from_components(
+        components: Vec<&str>,
+        require_managed: bool,
+    ) -> Result<Self, LibraryError> {
+        if components.is_empty() {
+            return Err(LibraryError::InvalidInput(
+                "Track paths must not be empty".to_owned(),
+            ));
+        }
+
+        for component in &components {
+            if component.is_empty() {
+                return Err(LibraryError::InvalidInput(format!(
+                    "Track path {components:?} contains an empty component"
+                )));
+            }
+
+            if *component == "." || *component == ".." {
+                return Err(LibraryError::InvalidInput(format!(
+                    "Track path {components:?} contains a \".\" or \"..\" component"
+                )));
+            }
+
+            if component.contains('\\') {
+                return Err(LibraryError::InvalidInput(format!(
+                    "Track path {components:?} contains a backslash"
+                )));
+            }
+        }
+
+        if require_managed && components[0] != TRACKS_SUBDIR {
+            return Err(LibraryError::InvalidInput(format!(
+                "Track path must be inside the {} directory",
+                TRACKS_SUBDIR
+            )));
+        }
+
+        Ok(Self(components.join("/")))
+    }
+
+    /// The stored path, in portable slash-separated form.
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+
+    /// The file name of this track, if any.
+    pub fn file_name(&self) -> Option<&str> {
+        self.0.rsplit('/').next().filter(|name| !name.is_empty())
+    }
+
+    /// The path relative to the library root that a ZIP entry uses.
+    pub fn to_zip_name(&self) -> &str {
+        &self.0
+    }
+
+    /// Resolve this track path against the library root.
+    pub fn resolve(&self, root: &Path) -> PathBuf {
+        root.join(&self.0)
+    }
+}
+
+impl AsRef<Path> for LibraryTrackPath {
+    fn as_ref(&self) -> &Path {
+        Path::new(&self.0)
+    }
+}
+
+impl std::fmt::Display for LibraryTrackPath {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl ToSql<Text, Sqlite> for LibraryTrackPath
 where
     String: ToSql<Text, Sqlite>,
 {
     fn to_sql(&self, out: &mut Output<Sqlite>) -> diesel::serialize::Result {
-        out.set_value(serde_json::to_string(
-            &self
-                .0
-                .iter()
-                .map(|p| {
-                    p.to_str()
-                        .ok_or_else(|| anyhow!("Path contains invalid UTF-8"))
-                })
-                .collect::<Result<Vec<&str>>>()?,
-        )?);
-
+        out.set_value(self.0.clone());
         Ok(IsNull::No)
     }
 }
 
-impl<DB> FromSql<Text, DB> for PathBufWrapper
+impl<DB> FromSql<Text, DB> for LibraryTrackPath
 where
     DB: Backend,
     String: FromSql<Text, DB>,
 {
     fn from_sql(bytes: DB::RawValue<'_>) -> diesel::deserialize::Result<Self> {
-        Ok(PathBufWrapper(
-            serde_json::from_str::<Vec<String>>(&String::from_sql(bytes)?)?
-                .into_iter()
-                .collect(),
-        ))
-    }
-}
+        let text = String::from_sql(bytes)?;
 
-impl From<PathBuf> for PathBufWrapper {
-    fn from(value: PathBuf) -> Self {
-        PathBufWrapper(value)
-    }
-}
+        // Legacy rows store a serialized JSON array of host path components
+        // (e.g. `["recording_00.mp3"]`) instead of the portable form. Convert
+        // them in memory; the schema migration rewrites the stored values.
+        if text.trim_start().starts_with('[') {
+            let components = serde_json::from_str::<Vec<String>>(&text)?;
+            let joined = components.join("/");
 
-impl From<PathBufWrapper> for PathBuf {
-    fn from(value: PathBufWrapper) -> Self {
-        value.0
-    }
-}
+            return LibraryTrackPath::try_from_str(&joined).map_err(|err| anyhow!(err).into());
+        }
 
-impl AsRef<Path> for PathBufWrapper {
-    fn as_ref(&self) -> &Path {
-        self.0.as_ref()
+        LibraryTrackPath::try_from_str(&text).map_err(|err| anyhow!(err).into())
     }
 }
 

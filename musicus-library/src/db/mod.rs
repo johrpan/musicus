@@ -6,6 +6,7 @@ pub mod views;
 use std::{
     collections::BTreeMap,
     fmt::Display,
+    path::Path,
     sync::{Mutex, MutexGuard, OnceLock},
 };
 
@@ -95,8 +96,16 @@ fn schema_version(connection: &mut SqliteConnection) -> Result<Option<i32>> {
 
 /// Connect to a Musicus database and apply any pending migrations.
 ///
-/// Fails if the database was written by a newer version of Musicus.
-pub fn connect(file_name: &str) -> Result<SqliteConnection, LibraryError> {
+/// Fails if the database was written by a newer version of Musicus, or if the
+/// path is not representable as UTF-8 (which SQLite requires).
+pub fn connect(path: impl AsRef<Path>) -> Result<SqliteConnection, LibraryError> {
+    let file_name = path.as_ref().to_str().ok_or_else(|| {
+        LibraryError::InvalidInput(format!(
+            "Database path {} is not valid UTF-8",
+            path.as_ref().display()
+        ))
+    })?;
+
     log::info!("Opening database file '{}'", file_name);
     let mut connection = SqliteConnection::establish(file_name).map_err(anyhow::Error::from)?;
 

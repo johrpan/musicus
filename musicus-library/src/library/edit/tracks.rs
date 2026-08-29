@@ -1,14 +1,14 @@
 //! Adding and removing tracks, including its files on disk.
 
 use std::{
-    ffi::{OsStr, OsString},
-    fs::{self},
+    fs,
     path::{Path, PathBuf},
 };
 
 use anyhow::{bail, Error, Result};
 use diesel::prelude::*;
 
+use crate::db::tables::{LibraryTrackPath, TRACKS_SUBDIR};
 use crate::db::{self, models::*, schema::*, tables};
 use crate::library::Library;
 
@@ -46,9 +46,9 @@ impl Library {
         // The database no longer references these files. A failure to remove one
         // of them leaves an unreferenced file behind, which must not fail the
         // operation or prevent the remaining files from being removed.
-        let library_path = PathBuf::from(self.folder());
+        let folder = self.folder();
         for track in tracks {
-            let path = library_path.join(&track.path);
+            let path = track.path.resolve(folder);
             if let Err(err) = fs::remove_file(&path) {
                 log::warn!("Failed to remove track file {}: {err}", path.display());
             }
@@ -132,7 +132,7 @@ impl Library {
         tracks: Vec<(i32, TrackUpdate)>,
         deleted_tracks: &[Track],
     ) -> Result<()> {
-        let folder = PathBuf::from(self.folder());
+        let folder = self.folder();
 
         // Copy the file of every new track next to its destination before
         // touching the database. Nothing is moved into place until the
@@ -155,16 +155,20 @@ impl Library {
 
                     // TODO: Human interpretable filenames?
                     let library_path = unused_track_path(
-                        &folder,
+                        folder,
                         recording_id,
                         recording_index,
-                        path.extension(),
+                        path.extension().and_then(std::ffi::OsStr::to_str),
                         &staged,
-                    );
+                    )?;
 
-                    let to_path = folder.join(&library_path);
+                    let to_path = library_path.resolve(folder);
                     let mut tmp_path = to_path.clone();
                     tmp_path.as_mut_os_string().push(".part");
+
+                    if let Some(parent) = to_path.parent() {
+                        fs::create_dir_all(parent)?;
+                    }
 
                     if let Err(err) = fs::copy(&path, &tmp_path) {
                         clean_up_staged(&staged, 0);
@@ -229,7 +233,7 @@ impl Library {
                             // recording they belong to.
                             recording_id: recording_id.unwrap_or_default().to_owned(),
                             recording_index,
-                            path: library_path.into(),
+                            path: library_path,
                             created_at: now,
                             edited_at: now,
                             last_used_at: now,
@@ -277,7 +281,7 @@ impl Library {
         // not fail the operation or prevent the remaining files from being
         // removed.
         for track in deleted_tracks {
-            let path = folder.join(&track.path);
+            let path = track.path.resolve(folder);
             if let Err(err) = fs::remove_file(&path) {
                 log::warn!("Failed to remove track file {}: {err}", path.display());
             }
@@ -310,7 +314,7 @@ enum PreparedTrack {
     },
     New {
         track_id: String,
-        library_path: PathBuf,
+        library_path: LibraryTrackPath,
         works: Vec<Work>,
     },
 }
@@ -343,8 +347,9 @@ fn clean_up_staged(staged: &[StagedFile], renamed: usize) {
     }
 }
 
-/// Build a library relative file name based on `stem` that no file in `folder`
-/// and no file staged by the same batch is using yet.
+/// Build a library relative file name inside the managed [`TRACKS_SUBDIR`]
+/// subtree that no file in `folder` and no file staged by the same batch is
+/// using yet.
 ///
 /// The name only serves human orientation. Tracks keep the file they were
 /// imported with even when they are renamed or renumbered later, so the obvious
@@ -354,27 +359,25 @@ fn unused_track_path(
     folder: &Path,
     recording_id: &str,
     recording_index: i32,
-    extension: Option<&OsStr>,
+    extension: Option<&str>,
     staged: &[StagedFile],
-) -> PathBuf {
+) -> Result<LibraryTrackPath> {
     let mut suffix = 0;
 
     loop {
-        let mut filename = OsString::from(recording_id);
-        filename.push("_");
-        filename.push(format!("{recording_index:02}"));
+        let mut filename = format!("{recording_id}_{recording_index:02}");
 
         if suffix > 0 {
-            filename.push(format!("_{suffix}"));
+            filename.push_str(&format!("_{suffix}"));
         }
 
         if let Some(extension) = extension {
-            filename.push(".");
-            filename.push(extension);
+            filename.push('.');
+            filename.push_str(extension);
         }
 
-        let library_path = PathBuf::from(filename);
-        let to_path = folder.join(&library_path);
+        let library_path = LibraryTrackPath::managed(&[TRACKS_SUBDIR, &filename])?;
+        let to_path = library_path.resolve(folder);
         let mut tmp_path = to_path.clone();
         tmp_path.as_mut_os_string().push(".part");
 
@@ -382,7 +385,7 @@ fn unused_track_path(
             && !tmp_path.exists()
             && !staged.iter().any(|file| file.to_path == to_path)
         {
-            return library_path;
+            return Ok(library_path);
         }
 
         suffix += 1;
