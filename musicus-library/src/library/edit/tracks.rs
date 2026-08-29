@@ -77,8 +77,10 @@ impl Library {
         let tracks = tracks
             .into_iter()
             .enumerate()
-            .map(|(index, track)| (index as i32, track))
-            .collect();
+            .map(|(index, track)| -> Result<(i32, TrackUpdate)> {
+                Ok((db::sequence_number(index)?, track))
+            })
+            .collect::<Result<Vec<(i32, TrackUpdate)>>>()?;
 
         self.apply_track_changes(Some(recording_id), tracks, deleted_tracks)
     }
@@ -132,6 +134,12 @@ impl Library {
         tracks: Vec<(i32, TrackUpdate)>,
         deleted_tracks: &[Track],
     ) -> Result<()> {
+        for (recording_index, _) in &tracks {
+            if *recording_index < 0 {
+                bail!("Track index must not be negative");
+            }
+        }
+
         let folder = self.folder();
 
         // Copy the file of every new track next to its destination before
@@ -251,7 +259,7 @@ impl Library {
                     let track_work_data = tables::TrackWork {
                         track_id: track_id.clone(),
                         work_id: work.work_id,
-                        sequence_number: index as i32,
+                        sequence_number: db::sequence_number(index)?,
                     };
 
                     diesel::insert_into(track_works::table)

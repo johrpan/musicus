@@ -279,7 +279,7 @@ impl Library {
                 part.instruments,
                 part.tags,
                 Some(&work_id),
-                Some(index as i32),
+                Some(db::sequence_number(index)?),
                 part_related_works,
                 enable_updates,
             )?;
@@ -294,7 +294,7 @@ impl Library {
                 work_id: work_id.clone(),
                 person_id: work_person.person.person_id,
                 role_id: work_person.role.map(|r| r.role_id),
-                sequence_number: index as i32,
+                sequence_number: db::sequence_number(index)?,
             };
 
             diesel::insert_into(work_persons::table)
@@ -306,7 +306,7 @@ impl Library {
             let instrument_data = tables::WorkInstrument {
                 work_id: work_id.clone(),
                 instrument_id: instrument.instrument_id,
-                sequence_number: index as i32,
+                sequence_number: db::sequence_number(index)?,
             };
 
             diesel::insert_into(work_instruments::table)
@@ -407,7 +407,7 @@ impl Library {
                     part.instruments,
                     part.tags,
                     Some(work_id),
-                    Some(index as i32),
+                    Some(db::sequence_number(index)?),
                     part_related_works,
                     enable_updates,
                 )?;
@@ -422,7 +422,7 @@ impl Library {
                     part.instruments,
                     part.tags,
                     Some(work_id),
-                    Some(index as i32),
+                    Some(db::sequence_number(index)?),
                     part_related_works,
                     enable_updates,
                 )?;
@@ -440,7 +440,7 @@ impl Library {
                 work_id: work_id.to_string(),
                 person_id: composer.person.person_id,
                 role_id: composer.role.map(|r| r.role_id),
-                sequence_number: index as i32,
+                sequence_number: db::sequence_number(index)?,
             };
 
             diesel::insert_into(work_persons::table)
@@ -456,7 +456,7 @@ impl Library {
             let instrument_data = tables::WorkInstrument {
                 work_id: work_id.to_string(),
                 instrument_id: instrument.instrument_id,
-                sequence_number: index as i32,
+                sequence_number: db::sequence_number(index)?,
             };
 
             diesel::insert_into(work_instruments::table)
@@ -549,7 +549,7 @@ impl Library {
                     person_id: member.person.person_id,
                     role_id: member.role.map(|r| r.role_id),
                     instrument_id: member.instrument.map(|i| i.instrument_id),
-                    sequence_number: index as i32,
+                    sequence_number: db::sequence_number(index)?,
                 };
 
                 diesel::insert_into(ensemble_persons::table)
@@ -597,7 +597,7 @@ impl Library {
                     person_id: member.person.person_id,
                     role_id: member.role.map(|r| r.role_id),
                     instrument_id: member.instrument.map(|i| i.instrument_id),
-                    sequence_number: index as i32,
+                    sequence_number: db::sequence_number(index)?,
                 };
 
                 diesel::insert_into(ensemble_persons::table)
@@ -662,7 +662,7 @@ impl Library {
                     person_id: performer.person.person_id,
                     role_id: performer.role.map(|r| r.role_id),
                     instrument_id: performer.instrument.map(|i| i.instrument_id),
-                    sequence_number: index as i32,
+                    sequence_number: db::sequence_number(index)?,
                 };
 
                 diesel::insert_into(recording_persons::table)
@@ -675,7 +675,7 @@ impl Library {
                     recording_id: recording_id.clone(),
                     ensemble_id: ensemble.ensemble.ensemble_id,
                     role_id: ensemble.role.map(|r| r.role_id),
-                    sequence_number: index as i32,
+                    sequence_number: db::sequence_number(index)?,
                 };
 
                 diesel::insert_into(recording_ensembles::table)
@@ -729,7 +729,7 @@ impl Library {
                     person_id: performer.person.person_id,
                     role_id: performer.role.map(|r| r.role_id),
                     instrument_id: performer.instrument.map(|i| i.instrument_id),
-                    sequence_number: index as i32,
+                    sequence_number: db::sequence_number(index)?,
                 };
 
                 diesel::insert_into(recording_persons::table)
@@ -746,7 +746,7 @@ impl Library {
                     recording_id: recording_id.to_string(),
                     ensemble_id: ensemble.ensemble.ensemble_id,
                     role_id: ensemble.role.map(|r| r.role_id),
-                    sequence_number: index as i32,
+                    sequence_number: db::sequence_number(index)?,
                 };
 
                 diesel::insert_into(recording_ensembles::table)
@@ -807,7 +807,7 @@ impl Library {
                 let album_recording_data = tables::AlbumRecording {
                     album_id: album_id.clone(),
                     recording_id: recording.recording_id,
-                    sequence_number: index as i32,
+                    sequence_number: db::sequence_number(index)?,
                 };
 
                 diesel::insert_into(album_recordings::table)
@@ -853,7 +853,7 @@ impl Library {
                 let album_recording_data = tables::AlbumRecording {
                     album_id: album_id.to_owned(),
                     recording_id: recording.recording_id,
-                    sequence_number: index as i32,
+                    sequence_number: db::sequence_number(index)?,
                 };
 
                 diesel::insert_into(album_recordings::table)

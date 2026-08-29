@@ -136,7 +136,7 @@ impl Library {
                 work_id: work_id.to_string(),
                 tag_id: tag_value.tag.tag_id,
                 value: tag_value.value.filter(|_| tag_value.tag.takes_value),
-                sequence_number: index as i32,
+                sequence_number: db::sequence_number(index)?,
             };
 
             diesel::insert_into(work_tags::table)
@@ -162,7 +162,7 @@ impl Library {
                 recording_id: recording_id.to_string(),
                 tag_id: tag_value.tag.tag_id,
                 value: tag_value.value.filter(|_| tag_value.tag.takes_value),
-                sequence_number: index as i32,
+                sequence_number: db::sequence_number(index)?,
             };
 
             diesel::insert_into(recording_tags::table)

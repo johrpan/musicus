@@ -321,9 +321,7 @@ mod tests {
         let summary = generate(folder.path(), 2, counts(), |_, _| {}).unwrap();
 
         // Every track file lives in the managed `tracks` subtree.
-        let files = fs::read_dir(folder.path().join("tracks"))
-            .unwrap()
-            .count();
+        let files = fs::read_dir(folder.path().join("tracks")).unwrap().count();
 
         assert_eq!(files, summary.tracks);
     }
