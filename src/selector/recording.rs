@@ -324,7 +324,7 @@ impl RecordingSelectorPopover {
         imp.recording_list.remove_all();
 
         for result in &recordings {
-            let mut text = result.item.performers_string();
+            let mut text = result.item.recording_persons_string();
 
             if let Some(comment) = &result.item.comment {
                 text.push_str(&format!(" ({comment})"));

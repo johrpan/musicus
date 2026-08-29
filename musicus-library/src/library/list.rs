@@ -23,7 +23,7 @@ struct WorkPersonRow {
 #[derive(Clone, Debug)]
 pub struct WorkListItem {
     pub work: tables::Work,
-    pub composers: Vec<TranslatedString>,
+    pub work_persons: Vec<TranslatedString>,
     pub tags: Vec<(TranslatedString, Option<TranslatedString>)>,
 }
 
@@ -38,8 +38,8 @@ pub struct EnsembleListItem {
 pub struct RecordingListItem {
     pub recording: tables::Recording,
     pub work_name: TranslatedString,
-    pub composers: Vec<TranslatedString>,
-    pub performers: Vec<TranslatedString>,
+    pub work_persons: Vec<TranslatedString>,
+    pub recording_persons: Vec<TranslatedString>,
     pub n_tracks: i64,
     pub tags: Vec<(TranslatedString, Option<TranslatedString>)>,
 }
@@ -51,10 +51,10 @@ pub struct RecordingListItem {
 /// parent work, or a parent work only credited through a single movement) — the
 /// same "ancestor or descendant" rule `query.rs`'s search uses, walking
 /// `parent_work_id` rather than anchoring on the exact work row.
-fn composers_by_work(
+fn work_persons_by_work(
     connection: &mut SqliteConnection,
 ) -> Result<HashMap<String, Vec<TranslatedString>>> {
-    let mut composers: HashMap<String, Vec<TranslatedString>> = HashMap::new();
+    let mut work_persons: HashMap<String, Vec<TranslatedString>> = HashMap::new();
 
     for row in sql_query(
         "WITH RECURSIVE \
@@ -87,10 +87,10 @@ fn composers_by_work(
     )
     .load::<WorkPersonRow>(connection)?
     {
-        composers.entry(row.work_id).or_default().push(row.name);
+        work_persons.entry(row.work_id).or_default().push(row.name);
     }
 
-    Ok(composers)
+    Ok(work_persons)
 }
 
 /// The tags applied to each work, keyed by work ID, in their stored order.
@@ -214,13 +214,13 @@ impl Library {
             .select(tables::Work::as_select())
             .load(connection)?;
 
-        let mut composers = composers_by_work(connection)?;
+        let mut work_persons = work_persons_by_work(connection)?;
         let mut tags = tags_by_work(connection)?;
 
         Ok(works
             .into_iter()
             .map(|work| WorkListItem {
-                composers: composers.remove(&work.work_id).unwrap_or_default(),
+                work_persons: work_persons.remove(&work.work_id).unwrap_or_default(),
                 tags: tags.remove(&work.work_id).unwrap_or_default(),
                 work,
             })
@@ -230,8 +230,8 @@ impl Library {
     /// List recordings, together with the name of the work each is a
     /// recording of.
     ///
-    /// The composers include the recording's own work's credits plus any credited
-    /// on an ancestor or descendant of it (see [`composers_by_work`]), so a
+    /// The work persons include the recording's own work's credits plus any credited
+    /// on an ancestor or descendant of it (see [`work_persons_by_work`]), so a
     /// recording of a single movement still shows the parent work's composer, and
     /// vice versa.
     pub fn list_recordings(&self) -> Result<Vec<RecordingListItem>> {
@@ -250,12 +250,12 @@ impl Library {
             .into_iter()
             .collect::<HashMap<String, i64>>();
 
-        let composers = composers_by_work(connection)?;
+        let work_persons = work_persons_by_work(connection)?;
         let mut tags = tags_by_recording(connection)?;
 
         // Performing persons and ensembles are two tables but one column, so
         // they are gathered together, each keeping its own stored order.
-        let mut performers: HashMap<String, Vec<TranslatedString>> = HashMap::new();
+        let mut recording_persons_map: HashMap<String, Vec<TranslatedString>> = HashMap::new();
 
         for (recording_id, name) in recording_persons::table
             .inner_join(persons::table)
@@ -266,7 +266,10 @@ impl Library {
             .select((recording_persons::recording_id, persons::name))
             .load::<(String, TranslatedString)>(connection)?
         {
-            performers.entry(recording_id).or_default().push(name);
+            recording_persons_map
+                .entry(recording_id)
+                .or_default()
+                .push(name);
         }
 
         for (recording_id, name) in recording_ensembles::table
@@ -278,18 +281,21 @@ impl Library {
             .select((recording_ensembles::recording_id, ensembles::name))
             .load::<(String, TranslatedString)>(connection)?
         {
-            performers.entry(recording_id).or_default().push(name);
+            recording_persons_map
+                .entry(recording_id)
+                .or_default()
+                .push(name);
         }
 
         Ok(recordings
             .into_iter()
             .map(|(recording, work_name)| RecordingListItem {
                 n_tracks: n_tracks.remove(&recording.recording_id).unwrap_or(0),
-                composers: composers
+                work_persons: work_persons
                     .get(&recording.work_id)
                     .cloned()
                     .unwrap_or_default(),
-                performers: performers
+                recording_persons: recording_persons_map
                     .remove(&recording.recording_id)
                     .unwrap_or_default(),
                 tags: tags.remove(&recording.recording_id).unwrap_or_default(),

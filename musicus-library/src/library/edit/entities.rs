@@ -208,7 +208,7 @@ impl Library {
         &self,
         name: TranslatedString,
         parts: Vec<Work>,
-        persons: Vec<Composer>,
+        persons: Vec<WorkPerson>,
         instruments: Vec<Instrument>,
         tags: Vec<TagValue>,
         relates_to: Option<Work>,
@@ -241,7 +241,7 @@ impl Library {
         connection: &mut SqliteConnection,
         name: TranslatedString,
         parts: Vec<Work>,
-        persons: Vec<Composer>,
+        persons: Vec<WorkPerson>,
         instruments: Vec<Instrument>,
         tags: Vec<TagValue>,
         parent_work_id: Option<&str>,
@@ -288,16 +288,16 @@ impl Library {
 
         Self::set_work_tags(connection, &work_id, tags)?;
 
-        for (index, composer) in persons.into_iter().enumerate() {
-            let composer_data = tables::WorkPerson {
+        for (index, work_person) in persons.into_iter().enumerate() {
+            let work_person_data = tables::WorkPerson {
                 work_id: work_id.clone(),
-                person_id: composer.person.person_id,
-                role_id: composer.role.map(|r| r.role_id),
+                person_id: work_person.person.person_id,
+                role_id: work_person.role.map(|r| r.role_id),
                 sequence_number: index as i32,
             };
 
             diesel::insert_into(work_persons::table)
-                .values(composer_data)
+                .values(work_person_data)
                 .execute(connection)?;
         }
 
@@ -323,7 +323,7 @@ impl Library {
         work_id: &str,
         name: TranslatedString,
         parts: Vec<Work>,
-        persons: Vec<Composer>,
+        persons: Vec<WorkPerson>,
         instruments: Vec<Instrument>,
         tags: Vec<TagValue>,
         relates_to: Option<Work>,
@@ -358,7 +358,7 @@ impl Library {
         work_id: &str,
         name: TranslatedString,
         parts: Vec<Work>,
-        persons: Vec<Composer>,
+        persons: Vec<WorkPerson>,
         instruments: Vec<Instrument>,
         tags: Vec<TagValue>,
         parent_work_id: Option<&str>,
@@ -483,7 +483,7 @@ impl Library {
     pub fn create_ensemble(
         &self,
         name: TranslatedString,
-        persons: Vec<Performer>,
+        persons: Vec<RecordingPerson>,
         enable_updates: bool,
     ) -> Result<Ensemble> {
         let connection = &mut *self.conn();
@@ -531,7 +531,7 @@ impl Library {
         &self,
         id: &str,
         name: TranslatedString,
-        persons: Vec<Performer>,
+        persons: Vec<RecordingPerson>,
         enable_updates: bool,
     ) -> Result<()> {
         let connection = &mut *self.conn();
@@ -591,8 +591,8 @@ impl Library {
     pub fn create_recording(
         &self,
         work: Work,
-        performers: Vec<Performer>,
-        ensembles: Vec<EnsemblePerformer>,
+        performers: Vec<RecordingPerson>,
+        ensembles: Vec<RecordingEnsemble>,
         tags: Vec<TagValue>,
         comment: Option<String>,
         enable_updates: bool,
@@ -659,8 +659,8 @@ impl Library {
         &self,
         recording_id: &str,
         work: Work,
-        performers: Vec<Performer>,
-        ensembles: Vec<EnsemblePerformer>,
+        performers: Vec<RecordingPerson>,
+        ensembles: Vec<RecordingEnsemble>,
         tags: Vec<TagValue>,
         comment: Option<String>,
         enable_updates: bool,

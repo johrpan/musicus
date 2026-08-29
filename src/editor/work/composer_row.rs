@@ -8,7 +8,7 @@ use gtk::{
 };
 use once_cell::sync::Lazy;
 
-use musicus_library::db::models::{Composer, Role};
+use musicus_library::db::models::{Role, WorkPerson};
 
 use crate::{
     editor::simple_entity::SimpleEntityEditor, library::Library, selector::SelectorPopover,
@@ -28,7 +28,7 @@ mod imp {
         #[property(get, construct_only)]
         pub library: OnceCell<Library>,
 
-        pub composer: RefCell<Option<Composer>>,
+        pub composer: RefCell<Option<WorkPerson>>,
         pub role_popover: OnceCell<SelectorPopover>,
 
         #[template_child]
@@ -165,12 +165,16 @@ glib::wrapper! {
 
 #[gtk::template_callbacks]
 impl WorkEditorComposerRow {
-    pub fn new(navigation: &adw::NavigationView, library: &Library, composer: Composer) -> Self {
+    pub fn new(
+        navigation: &adw::NavigationView,
+        library: &Library,
+        work_person: WorkPerson,
+    ) -> Self {
         let obj: Self = glib::Object::builder()
             .property("navigation", navigation)
             .property("library", library)
             .build();
-        obj.set_composer(composer);
+        obj.set_composer(work_person);
         obj
     }
 
@@ -191,11 +195,11 @@ impl WorkEditorComposerRow {
         })
     }
 
-    pub fn composer(&self) -> Composer {
+    pub fn composer(&self) -> WorkPerson {
         self.imp().composer.borrow().to_owned().unwrap()
     }
 
-    fn set_composer(&self, composer: Composer) {
+    fn set_composer(&self, composer: WorkPerson) {
         self.set_title(&composer.person.to_string());
         self.imp().role_label.set_label(
             &composer

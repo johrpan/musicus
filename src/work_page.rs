@@ -150,7 +150,7 @@ impl WorkPage {
 
         obj.imp().title_label.set_label(work.name.get());
 
-        if let Some(label) = work.composers_string() {
+        if let Some(label) = work.work_persons_string() {
             obj.imp().subtitle_label.set_label(&label);
             obj.imp().subtitle_label.set_visible(true);
         }
@@ -164,7 +164,7 @@ impl WorkPage {
         };
 
         if let Some(parent) = &results.parent_work {
-            let label = match parent.composers_string() {
+            let label = match parent.work_persons_string() {
                 Some(composers) => {
                     format_translated!(gettext("Part of {} ({})"), parent.name.get(), composers,)
                 }

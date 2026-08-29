@@ -5,7 +5,7 @@ use gettextrs::gettext;
 use gtk::glib::{self, clone, subclass::Signal};
 use once_cell::sync::Lazy;
 
-use musicus_library::db::models::{Ensemble, Performer, Person};
+use musicus_library::db::models::{Ensemble, Person, RecordingPerson};
 
 use crate::{
     editor::{
@@ -165,14 +165,14 @@ impl EnsembleEditor {
     }
 
     fn new_member(&self, person: Person) {
-        self.add_member_row(Performer {
+        self.add_member_row(RecordingPerson {
             person,
             role: None,
             instrument: None,
         });
     }
 
-    fn add_member_row(&self, member: Performer) {
+    fn add_member_row(&self, member: RecordingPerson) {
         let row = PerformerRow::new(
             self.imp().navigation.get().unwrap(),
             self.imp().library.get().unwrap(),
@@ -222,7 +222,7 @@ impl EnsembleEditor {
             .borrow()
             .iter()
             .map(PerformerRow::performer)
-            .collect::<Vec<Performer>>();
+            .collect::<Vec<RecordingPerson>>();
 
         if !crate::editor::require_name(self, &name) {
             return;

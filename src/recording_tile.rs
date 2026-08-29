@@ -153,7 +153,7 @@ impl RecordingTile {
         let obj: Self = glib::Object::new();
         let imp = obj.imp();
 
-        let performers = recording.performers_string();
+        let performers = recording.recording_persons_string();
 
         let pieces: Vec<String> = if work.is_some() {
             Some(performers)
@@ -163,7 +163,7 @@ impl RecordingTile {
         } else {
             [
                 Some(recording.work.name.get().to_string()),
-                recording.work.composers_string(),
+                recording.work.work_persons_string(),
                 Some(performers).filter(|s| !s.is_empty()),
             ]
             .into_iter()

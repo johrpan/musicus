@@ -50,7 +50,7 @@ impl FacetTile {
         let imp = obj.imp();
 
         match &facet {
-            Facet::Composer(person) | Facet::Performer(person) => {
+            Facet::WorkPerson(person) | Facet::RecordingPerson(person) => {
                 imp.title_label.set_label(person.name.get());
             }
             Facet::Ensemble(ensemble) => {
@@ -78,8 +78,8 @@ impl FacetTile {
             },
             Facet::Work(work) => {
                 imp.title_label.set_label(work.name.get());
-                if let Some(composers) = work.composers_string() {
-                    imp.subtitle_label.set_label(&composers);
+                if let Some(work_persons) = work.work_persons_string() {
+                    imp.subtitle_label.set_label(&work_persons);
                     imp.subtitle_label.set_visible(true);
                 } else {
                     imp.subtitle_label.set_visible(false);

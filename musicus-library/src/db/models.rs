@@ -16,7 +16,7 @@ pub struct Work {
     pub work_id: String,
     pub name: TranslatedString,
     pub parts: Vec<Work>,
-    pub persons: Vec<Composer>,
+    pub persons: Vec<WorkPerson>,
     pub instruments: Vec<Instrument>,
     pub tags: Vec<TagValue>,
     pub relates_to: Option<Box<Work>>,
@@ -34,7 +34,7 @@ pub struct TagValue {
 }
 
 #[derive(Clone, Debug)]
-pub struct Composer {
+pub struct WorkPerson {
     pub person: Person,
     pub role: Option<Role>,
 }
@@ -43,7 +43,7 @@ pub struct Composer {
 pub struct Ensemble {
     pub ensemble_id: String,
     pub name: TranslatedString,
-    pub persons: Vec<Performer>,
+    pub persons: Vec<RecordingPerson>,
     pub enable_updates: bool,
 }
 
@@ -51,22 +51,22 @@ pub struct Ensemble {
 pub struct Recording {
     pub recording_id: String,
     pub work: Work,
-    pub persons: Vec<Performer>,
-    pub ensembles: Vec<EnsemblePerformer>,
+    pub persons: Vec<RecordingPerson>,
+    pub ensembles: Vec<RecordingEnsemble>,
     pub tags: Vec<TagValue>,
     pub comment: Option<String>,
     pub enable_updates: bool,
 }
 
 #[derive(Clone, Debug)]
-pub struct Performer {
+pub struct RecordingPerson {
     pub person: Person,
     pub role: Option<Role>,
     pub instrument: Option<Instrument>,
 }
 
 #[derive(Clone, Debug)]
-pub struct EnsemblePerformer {
+pub struct RecordingEnsemble {
     pub ensemble: Ensemble,
     pub role: Option<Role>,
 }
@@ -125,8 +125,8 @@ impl PartialEq for Role {
     }
 }
 
-impl Eq for Composer {}
-impl PartialEq for Composer {
+impl Eq for WorkPerson {}
+impl PartialEq for WorkPerson {
     fn eq(&self, other: &Self) -> bool {
         self.person == other.person && self.role == other.role
     }
@@ -207,8 +207,8 @@ impl Work {
             .filter(work_persons::work_id.eq(&data.work_id))
             .load::<tables::WorkPerson>(connection)?
             .into_iter()
-            .map(|r| Composer::from_table(r, connection))
-            .collect::<Result<Vec<Composer>>>()?;
+            .map(|r| WorkPerson::from_table(r, connection))
+            .collect::<Result<Vec<WorkPerson>>>()?;
 
         let instruments: Vec<Instrument> = instruments::table
             .inner_join(work_instruments::table)
@@ -248,18 +248,18 @@ impl Work {
         self.work_id == work_id || self.parts.iter().any(|part| part.contains(work_id))
     }
 
-    pub fn composers_string(&self) -> Option<String> {
-        let composers_string = self
+    pub fn work_persons_string(&self) -> Option<String> {
+        let work_persons_string = self
             .persons
             .iter()
             .map(ToString::to_string)
             .collect::<Vec<String>>()
             .join(", ");
 
-        if composers_string.is_empty() {
+        if work_persons_string.is_empty() {
             None
         } else {
-            Some(composers_string)
+            Some(work_persons_string)
         }
     }
 }
@@ -273,15 +273,15 @@ impl PartialEq for Work {
 
 impl Display for Work {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if let Some(composers) = self.composers_string() {
-            write!(f, "{}: {}", composers, self.name)
+        if let Some(work_persons) = self.work_persons_string() {
+            write!(f, "{}: {}", work_persons, self.name)
         } else {
             write!(f, "{}", self.name)
         }
     }
 }
 
-impl Composer {
+impl WorkPerson {
     pub fn from_table(data: tables::WorkPerson, connection: &mut SqliteConnection) -> Result<Self> {
         let person: Person = persons::table
             .filter(persons::person_id.eq(&data.person_id))
@@ -300,7 +300,7 @@ impl Composer {
     }
 }
 
-impl Display for Composer {
+impl Display for WorkPerson {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self.role {
             Some(role) => format!("{} ({})", self.person.name.get(), role.name.get()).fmt(f),
@@ -316,8 +316,8 @@ impl Ensemble {
             .filter(ensemble_persons::ensemble_id.eq(&data.ensemble_id))
             .load::<tables::EnsemblePerson>(connection)?
             .into_iter()
-            .map(|r| Performer::from_ensemble_person(r, connection))
-            .collect::<Result<Vec<Performer>>>()?;
+            .map(|r| RecordingPerson::from_ensemble_person(r, connection))
+            .collect::<Result<Vec<RecordingPerson>>>()?;
 
         Ok(Self {
             ensemble_id: data.ensemble_id,
@@ -370,8 +370,8 @@ impl Recording {
             .filter(recording_persons::recording_id.eq(&data.recording_id))
             .load::<tables::RecordingPerson>(connection)?
             .into_iter()
-            .map(|r| Performer::from_table(r, connection))
-            .collect::<Result<Vec<Performer>>>()?;
+            .map(|r| RecordingPerson::from_table(r, connection))
+            .collect::<Result<Vec<RecordingPerson>>>()?;
 
         let ensembles = ensembles::table
             .inner_join(recording_ensembles::table)
@@ -380,8 +380,8 @@ impl Recording {
             .select(tables::RecordingEnsemble::as_select())
             .load::<tables::RecordingEnsemble>(connection)?
             .into_iter()
-            .map(|e| EnsemblePerformer::from_table(e, connection))
-            .collect::<Result<Vec<EnsemblePerformer>>>()?;
+            .map(|e| RecordingEnsemble::from_table(e, connection))
+            .collect::<Result<Vec<RecordingEnsemble>>>()?;
 
         let tags = TagValue::load_for_recording(&data.recording_id, connection)?;
 
@@ -396,14 +396,14 @@ impl Recording {
         })
     }
 
-    pub fn performers_string(&self) -> String {
-        let mut performers = self
+    pub fn recording_persons_string(&self) -> String {
+        let mut recording_persons = self
             .persons
             .iter()
             .map(ToString::to_string)
             .collect::<Vec<String>>();
 
-        performers.append(
+        recording_persons.append(
             &mut self
                 .ensembles
                 .iter()
@@ -411,7 +411,7 @@ impl Recording {
                 .collect::<Vec<String>>(),
         );
 
-        performers.join(", ")
+        recording_persons.join(", ")
     }
 }
 
@@ -424,11 +424,11 @@ impl PartialEq for Recording {
 
 impl Display for Recording {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}; {}", self.work, self.performers_string())
+        write!(f, "{}; {}", self.work, self.recording_persons_string())
     }
 }
 
-impl Performer {
+impl RecordingPerson {
     pub fn from_table(
         data: tables::RecordingPerson,
         connection: &mut SqliteConnection,
@@ -442,7 +442,7 @@ impl Performer {
     }
 
     /// The same (person, role, instrument) shape, read off an ensemble member row
-    /// instead of a recording's own performer row.
+    /// instead of a recording's own recording-person row.
     pub fn from_ensemble_person(
         data: tables::EnsemblePerson,
         connection: &mut SqliteConnection,
@@ -491,7 +491,7 @@ impl Performer {
     }
 }
 
-impl Display for Performer {
+impl Display for RecordingPerson {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match (&self.role, &self.instrument) {
             (_, Some(instrument)) => {
@@ -503,7 +503,7 @@ impl Display for Performer {
     }
 }
 
-impl EnsemblePerformer {
+impl RecordingEnsemble {
     pub fn from_table(
         data: tables::RecordingEnsemble,
         connection: &mut SqliteConnection,
@@ -527,7 +527,7 @@ impl EnsemblePerformer {
     }
 }
 
-impl Display for EnsemblePerformer {
+impl Display for RecordingEnsemble {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.ensemble.name.get().fmt(f)
     }
@@ -573,23 +573,23 @@ impl Album {
         })
     }
 
-    pub fn performers_string(&self) -> String {
-        let mut performers = HashSet::new();
-        let mut ensembles = HashSet::new();
+    pub fn recording_persons_string(&self) -> String {
+        let mut recording_persons = HashSet::new();
+        let mut recording_ensembles = HashSet::new();
 
         for recording in &self.recordings {
-            for performer in &recording.persons {
-                performers.insert(performer.to_string());
+            for recording_person in &recording.persons {
+                recording_persons.insert(recording_person.to_string());
             }
 
-            for ensemble in &recording.ensembles {
-                ensembles.insert(ensemble.to_string());
+            for recording_ensemble in &recording.ensembles {
+                recording_ensembles.insert(recording_ensemble.to_string());
             }
         }
 
-        performers
+        recording_persons
             .into_iter()
-            .chain(ensembles)
+            .chain(recording_ensembles)
             .collect::<Vec<String>>()
             .join(", ")
     }

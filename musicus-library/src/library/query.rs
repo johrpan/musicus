@@ -15,8 +15,8 @@ use crate::{
 /// highlighted with.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Facet {
-    Composer(Person),
-    Performer(Person),
+    WorkPerson(Person),
+    RecordingPerson(Person),
     Ensemble(Ensemble),
     Instrument(Instrument),
     Work(Work),
@@ -25,8 +25,8 @@ pub enum Facet {
 
 #[derive(Clone, Default, Debug)]
 pub struct LibraryQuery {
-    pub composer: Option<Person>,
-    pub performer: Option<Person>,
+    pub work_person: Option<Person>,
+    pub recording_person: Option<Person>,
     pub ensemble: Option<Ensemble>,
     pub instrument: Option<Instrument>,
     pub work: Option<Work>,
@@ -35,8 +35,8 @@ pub struct LibraryQuery {
 
 impl LibraryQuery {
     pub fn is_empty(&self) -> bool {
-        self.composer.is_none()
-            && self.performer.is_none()
+        self.work_person.is_none()
+            && self.recording_person.is_none()
             && self.ensemble.is_none()
             && self.instrument.is_none()
             && self.work.is_none()
@@ -47,10 +47,10 @@ impl LibraryQuery {
     pub fn highlight(&self) -> Option<Facet> {
         if let Some(work) = &self.work {
             Some(Facet::Work(work.to_owned()))
-        } else if let Some(person) = &self.composer {
-            Some(Facet::Composer(person.to_owned()))
-        } else if let Some(person) = &self.performer {
-            Some(Facet::Performer(person.to_owned()))
+        } else if let Some(person) = &self.work_person {
+            Some(Facet::WorkPerson(person.to_owned()))
+        } else if let Some(person) = &self.recording_person {
+            Some(Facet::RecordingPerson(person.to_owned()))
         } else if let Some(ensemble) = &self.ensemble {
             Some(Facet::Ensemble(ensemble.to_owned()))
         } else if let Some(instrument) = &self.instrument {
@@ -66,7 +66,9 @@ impl LibraryQuery {
     pub fn title(&self) -> Option<String> {
         Some(match self.highlight()? {
             Facet::Work(work) => work.name.get().to_owned(),
-            Facet::Composer(person) | Facet::Performer(person) => person.name.get().to_owned(),
+            Facet::WorkPerson(person) | Facet::RecordingPerson(person) => {
+                person.name.get().to_owned()
+            }
             Facet::Ensemble(ensemble) => ensemble.name.get().to_owned(),
             Facet::Instrument(instrument) => {
                 format_translated!(gettext("Music for {}"), instrument.name.get())
@@ -81,28 +83,28 @@ impl LibraryQuery {
 
         match self.highlight()? {
             Facet::Work(work) => {
-                if let Some(composers) = work.composers_string() {
-                    details.push(composers);
+                if let Some(work_persons) = work.work_persons_string() {
+                    details.push(work_persons);
                 }
             }
-            Facet::Composer(_) => {
+            Facet::WorkPerson(_) => {
                 if let Some(instrument) = &self.instrument {
                     details.push(format_translated!(gettext("Works with {}"), instrument));
                 }
 
-                if let (Some(person), Some(ensemble)) = (&self.performer, &self.ensemble) {
+                if let (Some(person), Some(ensemble)) = (&self.recording_person, &self.ensemble) {
                     details.push(format_translated!(
                         gettext("Performed by {} and {}"),
                         person,
                         ensemble
                     ));
-                } else if let Some(person) = &self.performer {
+                } else if let Some(person) = &self.recording_person {
                     details.push(format_translated!(gettext("Performed by {}"), person));
                 } else if let Some(ensemble) = &self.ensemble {
                     details.push(format_translated!(gettext("Performed by {}"), ensemble));
                 }
             }
-            Facet::Performer(_) => {
+            Facet::RecordingPerson(_) => {
                 if let Some(instrument) = &self.instrument {
                     details.push(format_translated!(gettext("Works with {}"), instrument));
                 }
@@ -126,7 +128,7 @@ impl LibraryQuery {
                     details.push(format_translated!(gettext("Works with {}"), instrument));
                 }
 
-                if let Some(person) = &self.performer {
+                if let Some(person) = &self.recording_person {
                     details.push(format_translated!(gettext("Performed by {}"), person));
                 } else if let Some(ensemble) = &self.ensemble {
                     details.push(format_translated!(gettext("Performed by {}"), ensemble));
@@ -150,8 +152,8 @@ impl LibraryQuery {
 
 #[derive(Default, Debug)]
 pub struct LibraryResults {
-    pub composers: Vec<Person>,
-    pub performers: Vec<Person>,
+    pub work_persons: Vec<Person>,
+    pub recording_persons: Vec<Person>,
     pub ensembles: Vec<Ensemble>,
     pub instruments: Vec<Instrument>,
     pub works: Vec<Work>,
@@ -163,8 +165,8 @@ pub struct LibraryResults {
 
 impl LibraryResults {
     pub fn is_empty(&self) -> bool {
-        self.composers.is_empty()
-            && self.performers.is_empty()
+        self.work_persons.is_empty()
+            && self.recording_persons.is_empty()
             && self.ensembles.is_empty()
             && self.instruments.is_empty()
             && self.works.is_empty()
@@ -238,7 +240,7 @@ fn tag_condition<QS>(
 /// True if `person` is credited as a composer on the work referenced by
 /// `works.work_id` in the enclosing query, or an ancestor/descendant of it (see
 /// [`in_work_subtree`]).
-pub(crate) fn composer_condition<QS>(
+pub(crate) fn work_person_condition<QS>(
     person: &Person,
 ) -> impl Expression<SqlType = sql_types::Bool>
        + AppearsOnTable<QS>
@@ -329,7 +331,7 @@ impl Library {
 
         Ok(match query {
             LibraryQuery { work: None, .. } => {
-                let composers = if query.composer.is_none() {
+                let work_persons = if query.work_person.is_none() {
                     let mut statement = persons::table
                         .inner_join(
                             work_persons::table.inner_join(
@@ -350,7 +352,7 @@ impl Library {
                         .filter(persons::name.like(&search))
                         .into_boxed();
 
-                    if let Some(person) = &query.performer {
+                    if let Some(person) = &query.recording_person {
                         statement = statement.filter(
                             recording_persons::person_id
                                 .eq(&person.person_id)
@@ -390,7 +392,7 @@ impl Library {
                     Vec::new()
                 };
 
-                let performers = if query.performer.is_none() {
+                let recording_persons = if query.recording_person.is_none() {
                     let mut statement = persons::table
                         .inner_join(
                             recording_persons::table.inner_join(
@@ -406,8 +408,8 @@ impl Library {
                         .filter(persons::name.like(&search))
                         .into_boxed();
 
-                    if let Some(person) = &query.composer {
-                        statement = statement.filter(composer_condition(person));
+                    if let Some(person) = &query.work_person {
+                        statement = statement.filter(work_person_condition(person));
                     }
 
                     if let Some(ensemble) = &query.ensemble {
@@ -463,11 +465,11 @@ impl Library {
                         )
                         .into_boxed();
 
-                    if let Some(person) = &query.composer {
-                        statement = statement.filter(composer_condition(person));
+                    if let Some(person) = &query.work_person {
+                        statement = statement.filter(work_person_condition(person));
                     }
 
-                    if let Some(person) = &query.performer {
+                    if let Some(person) = &query.recording_person {
                         statement = statement.filter(
                             recording_persons::person_id
                                 .eq(&person.person_id)
@@ -523,11 +525,11 @@ impl Library {
                         .filter(instruments::name.like(&search))
                         .into_boxed();
 
-                    if let Some(person) = &query.composer {
-                        statement = statement.filter(composer_condition(person));
+                    if let Some(person) = &query.work_person {
+                        statement = statement.filter(work_person_condition(person));
                     }
 
-                    if let Some(person) = &query.performer {
+                    if let Some(person) = &query.recording_person {
                         statement = statement.filter(
                             recording_persons::person_id
                                 .eq(&person.person_id)
@@ -577,11 +579,11 @@ impl Library {
                         .filter(works::name.like(&search))
                         .into_boxed();
 
-                    if let Some(person) = &query.composer {
-                        statement = statement.filter(composer_condition(person));
+                    if let Some(person) = &query.work_person {
+                        statement = statement.filter(work_person_condition(person));
                     }
 
-                    if let Some(person) = &query.performer {
+                    if let Some(person) = &query.recording_person {
                         statement = statement.filter(
                             recording_persons::person_id
                                 .eq(&person.person_id)
@@ -628,7 +630,7 @@ impl Library {
                 // Only search recordings in special cases. Works will always be searched and
                 // directly lead to recordings. The special case of a work in the query is already
                 // handled in another branch of the top-level match expression.
-                let recordings = if query.performer.is_some() || query.ensemble.is_some() {
+                let recordings = if query.recording_person.is_some() || query.ensemble.is_some() {
                     let mut statement = recordings::table
                         .inner_join(
                             works::table
@@ -643,11 +645,11 @@ impl Library {
                         .filter(works::name.like(&search))
                         .into_boxed();
 
-                    if let Some(person) = &query.composer {
-                        statement = statement.filter(composer_condition(person));
+                    if let Some(person) = &query.work_person {
+                        statement = statement.filter(work_person_condition(person));
                     }
 
-                    if let Some(person) = &query.performer {
+                    if let Some(person) = &query.recording_person {
                         statement = statement.filter(
                             recording_persons::person_id
                                 .eq(&person.person_id)
@@ -737,11 +739,11 @@ impl Library {
                     .filter(albums::name.like(&search))
                     .into_boxed();
 
-                if let Some(person) = &query.composer {
-                    statement = statement.filter(composer_condition(person));
+                if let Some(person) = &query.work_person {
+                    statement = statement.filter(work_person_condition(person));
                 }
 
-                if let Some(person) = &query.performer {
+                if let Some(person) = &query.recording_person {
                     statement = statement.filter(
                         recording_persons::person_id
                             .eq(&person.person_id)
@@ -814,11 +816,11 @@ impl Library {
                         )
                         .into_boxed();
 
-                    if let Some(person) = &query.composer {
-                        statement = statement.filter(composer_condition(person));
+                    if let Some(person) = &query.work_person {
+                        statement = statement.filter(work_person_condition(person));
                     }
 
-                    if let Some(person) = &query.performer {
+                    if let Some(person) = &query.recording_person {
                         statement = statement.filter(
                             recording_persons::person_id
                                 .eq(&person.person_id)
@@ -868,11 +870,11 @@ impl Library {
                         )
                         .into_boxed();
 
-                    if let Some(person) = &query.composer {
-                        statement = statement.filter(composer_condition(person));
+                    if let Some(person) = &query.work_person {
+                        statement = statement.filter(work_person_condition(person));
                     }
 
-                    if let Some(person) = &query.performer {
+                    if let Some(person) = &query.recording_person {
                         statement = statement.filter(
                             recording_persons::person_id
                                 .eq(&person.person_id)
@@ -919,8 +921,8 @@ impl Library {
                 };
 
                 LibraryResults {
-                    composers,
-                    performers,
+                    work_persons,
+                    recording_persons,
                     ensembles,
                     instruments,
                     works,

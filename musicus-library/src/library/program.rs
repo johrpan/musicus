@@ -39,8 +39,8 @@ const PREFERENCE_STRENGTH: f64 = 10.0;
 /// filtering, no preference, no repetition penalty.
 #[derive(Clone, Default, Debug)]
 pub struct GenerateRecordingParams {
-    pub composer_id: Option<String>,
-    pub performer_id: Option<String>,
+    pub work_person_id: Option<String>,
+    pub recording_person_id: Option<String>,
     pub ensemble_id: Option<String>,
     pub instrument_id: Option<String>,
     pub work_id: Option<String>,
@@ -51,8 +51,8 @@ pub struct GenerateRecordingParams {
     /// How much to prefer recordings that have not been played in a long time,
     /// from 0.0 to 1.0.
     pub prefer_least_recently_played: f64,
-    /// For how many **minutes** after hearing a composer to avoid them. 0 disables it.
-    pub avoid_repeated_composers: i32,
+    /// For how many **minutes** after hearing a work person to avoid them. 0 disables it.
+    pub avoid_repeated_work_persons: i32,
     /// For how many **minutes** after hearing an instrument to avoid it. 0 disables it.
     pub avoid_repeated_instruments: i32,
 }
@@ -65,14 +65,14 @@ struct Candidate {
     last_played_at: Option<NaiveDateTime>,
 }
 
-/// When a candidate's composers and instruments were last heard.
+/// When a candidate's work persons and instruments were last heard.
 ///
 /// Only entries within the program's avoidance window are collected, because
 /// anything older carries no penalty and would only make the maps bigger.
 /// A recording missing from a map has nothing to answer for.
 #[derive(Default, Debug)]
 struct Repetition {
-    composers: HashMap<String, NaiveDateTime>,
+    work_persons: HashMap<String, NaiveDateTime>,
     instruments: HashMap<String, NaiveDateTime>,
 }
 
@@ -169,9 +169,12 @@ fn weight(
         least_recently_played_score,
     ) * weight_preference(params.prefer_recently_added, recently_created_score)
         * weight_avoidance(
-            repetition.composers.get(&candidate.recording_id).copied(),
+            repetition
+                .work_persons
+                .get(&candidate.recording_id)
+                .copied(),
             now,
-            params.avoid_repeated_composers,
+            params.avoid_repeated_work_persons,
         )
         * weight_avoidance(
             repetition.instruments.get(&candidate.recording_id).copied(),
@@ -263,24 +266,24 @@ impl Library {
             .left_join(recording_last_played::table)
             .into_boxed();
 
-        if let Some(composer_id) = &params.composer_id {
+        if let Some(work_person_id) = &params.work_person_id {
             query = query.filter(exists(
                 work_persons::table.filter(
                     work_persons::work_id
                         .eq(recordings::work_id)
-                        .and(work_persons::person_id.eq(composer_id)),
+                        .and(work_persons::person_id.eq(work_person_id)),
                 ),
             ));
         }
 
-        if let Some(performer_id) = &params.performer_id {
+        if let Some(recording_person_id) = &params.recording_person_id {
             query =
                 query.filter(
                     exists(
                         recording_persons::table.filter(
                             recording_persons::recording_id
                                 .eq(recordings::recording_id)
-                                .and(recording_persons::person_id.eq(performer_id)),
+                                .and(recording_persons::person_id.eq(recording_person_id)),
                         ),
                     )
                     .or(exists(
@@ -291,7 +294,7 @@ impl Library {
                             .filter(
                                 recording_ensembles::recording_id
                                     .eq(recordings::recording_id)
-                                    .and(ensemble_persons::person_id.eq(performer_id)),
+                                    .and(ensemble_persons::person_id.eq(recording_person_id)),
                             ),
                     )),
                 );
@@ -407,7 +410,7 @@ impl Library {
             .collect())
     }
 
-    /// When each recording's composers and instruments were last heard, for
+    /// When each recording's work persons and instruments were last heard, for
     /// those heard recently enough to still count against it.
     fn repetition(
         &self,
@@ -417,8 +420,8 @@ impl Library {
         let connection = &mut *self.conn();
         let mut repetition = Repetition::default();
 
-        if params.avoid_repeated_composers > 0 {
-            let cutoff = now - TimeDelta::minutes(params.avoid_repeated_composers as i64);
+        if params.avoid_repeated_work_persons > 0 {
+            let cutoff = now - TimeDelta::minutes(params.avoid_repeated_work_persons as i64);
 
             let rows = recordings::table
                 .inner_join(work_persons::table.on(work_persons::work_id.eq(recordings::work_id)))
@@ -430,7 +433,7 @@ impl Library {
                 .select((recordings::recording_id, person_last_played::last_played_at))
                 .load::<(String, NaiveDateTime)>(connection)?;
 
-            repetition.composers = most_recent(rows);
+            repetition.work_persons = most_recent(rows);
         }
 
         if params.avoid_repeated_instruments > 0 {

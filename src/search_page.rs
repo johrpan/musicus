@@ -198,7 +198,7 @@ impl SearchPage {
     fn edit(&self) {
         if let Some(highlight) = &*self.imp().highlight.borrow() {
             match highlight {
-                Facet::Composer(person) | Facet::Performer(person) => {
+                Facet::WorkPerson(person) | Facet::RecordingPerson(person) => {
                     self.navigation().push(&SimpleEntityEditor::person(
                         &self.navigation(),
                         &self.library(),
@@ -237,7 +237,7 @@ impl SearchPage {
     fn delete(&self) {
         if let Some(highlight) = &*self.imp().highlight.borrow() {
             match highlight {
-                Facet::Composer(person) | Facet::Performer(person) => {
+                Facet::WorkPerson(person) | Facet::RecordingPerson(person) => {
                     if let Err(err) = self.library().delete_person(&person.person_id) {
                         util::error_toast("Failed to delete person", err, &self.toast_overlay());
                     }
@@ -293,10 +293,10 @@ impl SearchPage {
             let mut work_selected = None;
 
             let query_changed = if let Some(person) = imp.composers.borrow().first().cloned() {
-                new_query.composer = Some(person);
+                new_query.work_person = Some(person);
                 true
             } else if let Some(person) = imp.performers.borrow().first().cloned() {
-                new_query.performer = Some(person);
+                new_query.recording_person = Some(person);
                 true
             } else if let Some(ensemble) = imp.ensembles.borrow().first().cloned() {
                 new_query.ensemble = Some(ensemble);
@@ -353,8 +353,8 @@ impl SearchPage {
     fn tile_selected(&self, tile: &gtk::FlowBoxChild) {
         let mut new_query = self.imp().query.get().unwrap().clone();
         match tile.downcast_ref::<FacetTile>().unwrap().facet().clone() {
-            Facet::Composer(person) => new_query.composer = Some(person),
-            Facet::Performer(person) => new_query.performer = Some(person),
+            Facet::WorkPerson(person) => new_query.work_person = Some(person),
+            Facet::RecordingPerson(person) => new_query.recording_person = Some(person),
             Facet::Ensemble(ensemble) => new_query.ensemble = Some(ensemble),
             Facet::Instrument(instrument) => new_query.instrument = Some(instrument),
             Facet::Work(work) => {
@@ -458,9 +458,9 @@ impl SearchPage {
             imp.stack.set_visible_child_name("results");
 
             imp.composers_flow_box
-                .set_visible(!results.composers.is_empty());
+                .set_visible(!results.work_persons.is_empty());
             imp.performers_flow_box
-                .set_visible(!results.performers.is_empty());
+                .set_visible(!results.recording_persons.is_empty());
             imp.ensembles_flow_box
                 .set_visible(!results.ensembles.is_empty());
             imp.instruments_flow_box
@@ -471,14 +471,16 @@ impl SearchPage {
                 .set_visible(!results.recordings.is_empty());
             imp.albums_flow_box.set_visible(!results.albums.is_empty());
 
-            for composer in &results.composers {
+            for work_person in &results.work_persons {
                 imp.composers_flow_box
-                    .append(&FacetTile::new(Facet::Composer(composer.clone())));
+                    .append(&FacetTile::new(Facet::WorkPerson(work_person.clone())));
             }
 
-            for performer in &results.performers {
+            for recording_person in &results.recording_persons {
                 imp.performers_flow_box
-                    .append(&FacetTile::new(Facet::Performer(performer.clone())));
+                    .append(&FacetTile::new(Facet::RecordingPerson(
+                        recording_person.clone(),
+                    )));
             }
 
             for ensemble in &results.ensembles {
@@ -516,8 +518,8 @@ impl SearchPage {
                 imp.albums_flow_box.append(&AlbumTile::new(album));
             }
 
-            imp.composers.replace(results.composers);
-            imp.performers.replace(results.performers);
+            imp.composers.replace(results.work_persons);
+            imp.performers.replace(results.recording_persons);
             imp.ensembles.replace(results.ensembles);
             imp.instruments.replace(results.instruments);
             imp.tags.replace(results.tags);

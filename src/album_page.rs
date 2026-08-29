@@ -141,7 +141,7 @@ impl AlbumPage {
         obj.imp().title_label.set_label(&album.to_string());
         obj.imp()
             .subtitle_label
-            .set_label(&album.performers_string());
+            .set_label(&album.recording_persons_string());
 
         for recording in &album.recordings {
             obj.imp().recordings_flow_box.append(&RecordingTile::new(

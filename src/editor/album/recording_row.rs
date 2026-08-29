@@ -110,7 +110,7 @@ impl RecordingRow {
     pub fn new(recording: Recording) -> Self {
         let obj: Self = glib::Object::new();
         obj.set_title(&recording.work.to_string());
-        obj.set_subtitle(&recording.performers_string());
+        obj.set_subtitle(&recording.recording_persons_string());
         obj.imp().recording.set(recording).unwrap();
         obj
     }

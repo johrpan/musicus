@@ -123,7 +123,7 @@ impl BrowserKind {
                         item.work.source,
                         item.work.last_used_at,
                     );
-                    object.set_details(join_names(&item.composers));
+                    object.set_details(join_names(&item.work_persons));
                     object.set_tags(join_tags(&item.tags));
                     object
                 })
@@ -134,7 +134,7 @@ impl BrowserKind {
                 .map(|item| {
                     let object = EntityObject::new(
                         &item.recording.recording_id,
-                        &match join_names(&item.composers) {
+                        &match join_names(&item.work_persons) {
                             composers if composers.is_empty() => item.work_name.get().to_owned(),
                             composers => {
                                 format!("{composers}: {}", item.work_name.get())
@@ -143,7 +143,7 @@ impl BrowserKind {
                         item.recording.source,
                         item.recording.last_used_at,
                     );
-                    object.set_details(join_names(&item.performers));
+                    object.set_details(join_names(&item.recording_persons));
                     object.set_n_tracks(item.n_tracks.max(0) as u32);
                     object.set_tags(join_tags(&item.tags));
                     object

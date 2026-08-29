@@ -389,7 +389,7 @@ impl Player {
         recording: &Recording,
         tracks: &[(&Track, usize)],
     ) -> Vec<PlaylistItem> {
-        let performances = recording.performers_string();
+        let performances = recording.recording_persons_string();
 
         let track_title = |track: &Track, number: usize| -> Option<String> {
             let title = track
@@ -414,7 +414,7 @@ impl Player {
             .map(|(index, (track, number))| {
                 PlaylistItem::new(
                     index == 0,
-                    recording.work.composers_string(),
+                    recording.work.work_persons_string(),
                     recording.work.name.get(),
                     Some(&performances),
                     track_title(track, *number).as_deref(),
@@ -699,8 +699,8 @@ impl Player {
     /// added item if successful.
     fn generate_items(&self, program: &Program) -> Result<u32> {
         let params = GenerateRecordingParams {
-            composer_id: program.composer_id(),
-            performer_id: program.performer_id(),
+            work_person_id: program.composer_id(),
+            recording_person_id: program.performer_id(),
             ensemble_id: program.ensemble_id(),
             instrument_id: program.instrument_id(),
             work_id: program.work_id(),
@@ -708,7 +708,7 @@ impl Player {
             tag_value: program.tag_value_translated(),
             prefer_recently_added: program.prefer_recently_added(),
             prefer_least_recently_played: program.prefer_least_recently_played(),
-            avoid_repeated_composers: program.avoid_repeated_composers(),
+            avoid_repeated_work_persons: program.avoid_repeated_composers(),
             avoid_repeated_instruments: program.avoid_repeated_instruments(),
         };
 

@@ -13,7 +13,7 @@ use part_row::WorkEditorPartRow;
 
 use musicus_library::db::{
     self,
-    models::{Composer, Instrument, Person, Tag, TagValue, Work},
+    models::{Instrument, Person, Tag, TagValue, Work, WorkPerson},
 };
 
 use crate::{
@@ -353,7 +353,7 @@ impl WorkEditor {
                 self.imp().related_work_row.set_title(work.name.get());
                 self.imp().related_work_row.set_subtitle(
                     &work
-                        .composers_string()
+                        .work_persons_string()
                         .unwrap_or_else(|| gettext("No composers")),
                 );
                 self.imp().clear_related_work_button.set_visible(true);
@@ -371,8 +371,8 @@ impl WorkEditor {
     }
 
     fn add_composer(&self, person: Person) {
-        let composer = Composer { person, role: None };
-        self.add_composer_row(composer);
+        let work_person = WorkPerson { person, role: None };
+        self.add_composer_row(work_person);
     }
 
     fn add_part_row(&self, part: Work) {
@@ -408,8 +408,8 @@ impl WorkEditor {
         self.imp().part_rows.borrow_mut().push(row);
     }
 
-    fn add_composer_row(&self, composer: Composer) {
-        let row = WorkEditorComposerRow::new(&self.navigation(), &self.library(), composer);
+    fn add_composer_row(&self, work_person: WorkPerson) {
+        let row = WorkEditorComposerRow::new(&self.navigation(), &self.library(), work_person);
 
         row.connect_move(clone!(
             #[weak(rename_to = this)]
@@ -527,7 +527,7 @@ impl WorkEditor {
             .borrow()
             .iter()
             .map(|c| c.composer())
-            .collect::<Vec<Composer>>();
+            .collect::<Vec<WorkPerson>>();
 
         let instruments = self
             .imp()

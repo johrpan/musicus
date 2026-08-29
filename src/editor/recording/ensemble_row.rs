@@ -8,7 +8,7 @@ use gtk::{
 };
 use once_cell::sync::Lazy;
 
-use musicus_library::db::models::{EnsemblePerformer, Role};
+use musicus_library::db::models::{RecordingEnsemble, Role};
 
 use crate::{
     editor::simple_entity::SimpleEntityEditor, library::Library, selector::SelectorPopover,
@@ -28,7 +28,7 @@ mod imp {
         #[property(get, construct_only)]
         pub library: OnceCell<Library>,
 
-        pub ensemble: RefCell<Option<EnsemblePerformer>>,
+        pub ensemble: RefCell<Option<RecordingEnsemble>>,
         pub role_popover: OnceCell<SelectorPopover>,
 
         #[template_child]
@@ -160,7 +160,7 @@ impl RecordingEditorEnsembleRow {
     pub fn new(
         navigation: &adw::NavigationView,
         library: &Library,
-        ensemble: EnsemblePerformer,
+        ensemble: RecordingEnsemble,
     ) -> Self {
         let obj: Self = glib::Object::builder()
             .property("navigation", navigation)
@@ -187,11 +187,11 @@ impl RecordingEditorEnsembleRow {
         })
     }
 
-    pub fn ensemble(&self) -> EnsemblePerformer {
+    pub fn ensemble(&self) -> RecordingEnsemble {
         self.imp().ensemble.borrow().to_owned().unwrap()
     }
 
-    fn set_ensemble(&self, ensemble: EnsemblePerformer) {
+    fn set_ensemble(&self, ensemble: RecordingEnsemble) {
         self.set_title(&ensemble.ensemble.to_string());
 
         if let Some(members) = ensemble.ensemble.members_string() {

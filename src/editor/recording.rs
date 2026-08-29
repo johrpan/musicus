@@ -11,7 +11,7 @@ use once_cell::sync::Lazy;
 use crate::editor::performer_row::PerformerRow;
 
 use musicus_library::db::models::{
-    Ensemble, EnsemblePerformer, Performer, Person, Recording, Tag, TagValue, Work,
+    Ensemble, Person, Recording, RecordingEnsemble, RecordingPerson, Tag, TagValue, Work,
 };
 
 use crate::{
@@ -303,7 +303,7 @@ impl RecordingEditor {
         self.imp().work_row.set_title(work.name.get());
         self.imp().work_row.set_subtitle(
             &work
-                .composers_string()
+                .work_persons_string()
                 .unwrap_or_else(|| gettext("No composers")),
         );
 
@@ -316,20 +316,20 @@ impl RecordingEditor {
     }
 
     fn new_performer(&self, person: Person) {
-        let performer = Performer {
+        let recording_person = RecordingPerson {
             person,
             role: None,
             instrument: None,
         };
 
-        self.add_performer_row(performer);
+        self.add_performer_row(recording_person);
     }
 
-    fn add_performer_row(&self, performer: Performer) {
+    fn add_performer_row(&self, recording_person: RecordingPerson) {
         let row = PerformerRow::new(
             &self.navigation(),
             &self.library(),
-            performer,
+            recording_person,
             &gettext("Performer"),
         );
 
@@ -364,19 +364,19 @@ impl RecordingEditor {
     }
 
     fn new_ensemble_performer(&self, ensemble: Ensemble) {
-        let performer = EnsemblePerformer {
+        let recording_ensemble = RecordingEnsemble {
             ensemble,
             role: None,
         };
 
-        self.add_ensemble_row(performer);
+        self.add_ensemble_row(recording_ensemble);
     }
 
-    fn add_ensemble_row(&self, ensemble_performer: EnsemblePerformer) {
+    fn add_ensemble_row(&self, recording_ensemble: RecordingEnsemble) {
         let row = RecordingEditorEnsembleRow::new(
             &self.navigation(),
             &self.library(),
-            ensemble_performer,
+            recording_ensemble,
         );
 
         row.connect_move(clone!(
@@ -460,7 +460,7 @@ impl RecordingEditor {
                 .borrow()
                 .iter()
                 .map(|p| p.performer())
-                .collect::<Vec<Performer>>();
+                .collect::<Vec<RecordingPerson>>();
 
             let ensembles = self
                 .imp()
@@ -468,7 +468,7 @@ impl RecordingEditor {
                 .borrow()
                 .iter()
                 .map(|e| e.ensemble())
-                .collect::<Vec<EnsemblePerformer>>();
+                .collect::<Vec<RecordingEnsemble>>();
 
             let tags = self
                 .imp()

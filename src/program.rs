@@ -102,9 +102,9 @@ impl Program {
             )
             .property(
                 "composer-id",
-                query.composer.as_ref().map(|p| p.person_id.clone()),
+                query.work_person.as_ref().map(|p| p.person_id.clone()),
             )
-            .property("performer-id", query.performer.map(|p| p.person_id))
+            .property("performer-id", query.recording_person.map(|p| p.person_id))
             .property("ensemble-id", query.ensemble.map(|e| e.ensemble_id))
             .property(
                 "instrument-id",
@@ -129,7 +129,7 @@ impl Program {
             )
             .property(
                 "avoid-repeated-composers",
-                if query.composer.is_none() && query.work.is_none() {
+                if query.work_person.is_none() && query.work.is_none() {
                     settings.int("avoid-repeated-composers")
                 } else {
                     0

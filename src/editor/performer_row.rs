@@ -7,7 +7,7 @@ use gtk::{
 };
 use once_cell::sync::Lazy;
 
-use musicus_library::db::models::{Instrument, Performer, Role};
+use musicus_library::db::models::{Instrument, RecordingPerson, Role};
 
 use crate::{
     library::Library, selector::performer_role::PerformerRoleSelectorPopover,
@@ -33,7 +33,7 @@ mod imp {
         #[property(get, construct_only)]
         pub placeholder: OnceCell<String>,
 
-        pub performer: RefCell<Option<Performer>>,
+        pub performer: RefCell<Option<RecordingPerson>>,
         pub role_popover: OnceCell<PerformerRoleSelectorPopover>,
 
         #[template_child]
@@ -206,7 +206,7 @@ impl PerformerRow {
     pub fn new(
         navigation: &adw::NavigationView,
         library: &Library,
-        performer: Performer,
+        performer: RecordingPerson,
         placeholder: &str,
     ) -> Self {
         let obj: Self = glib::Object::builder()
@@ -235,11 +235,11 @@ impl PerformerRow {
         })
     }
 
-    pub fn performer(&self) -> Performer {
+    pub fn performer(&self) -> RecordingPerson {
         self.imp().performer.borrow().to_owned().unwrap()
     }
 
-    fn set_performer(&self, performer: Performer) {
+    fn set_performer(&self, performer: RecordingPerson) {
         self.set_title(&performer.person.to_string());
 
         let label = match &performer.instrument {

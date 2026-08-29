@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use anyhow::Result;
 use diesel::prelude::*;
 
-use super::{query::composer_condition, Library};
+use super::{query::work_person_condition, Library};
 use crate::db::{self, models::*, schema::*, tables};
 
 /// A search result item that is either already part of the library or only
@@ -234,12 +234,20 @@ impl Library {
         Ok(results)
     }
 
-    pub fn search_works(&self, composer: &Person, search: &str) -> Result<Vec<SearchItem<Work>>> {
+    pub fn search_works(
+        &self,
+        work_person: &Person,
+        search: &str,
+    ) -> Result<Vec<SearchItem<Work>>> {
         let search = format!("%{}%", search);
         let connection = &mut *self.conn();
 
         let works: Vec<tables::Work> = works::table
-            .filter(works::name.like(&search).and(composer_condition(composer)))
+            .filter(
+                works::name
+                    .like(&search)
+                    .and(work_person_condition(work_person)),
+            )
             .into_boxed()
             .limit(9)
             .select(works::all_columns)
@@ -260,7 +268,11 @@ impl Library {
             let metadata_connection = &mut *db::lock_connection(&metadata_connection);
 
             let metadata_works: Vec<tables::Work> = works::table
-                .filter(works::name.like(&search).and(composer_condition(composer)))
+                .filter(
+                    works::name
+                        .like(&search)
+                        .and(work_person_condition(work_person)),
+                )
                 .into_boxed()
                 .limit(9)
                 .select(works::all_columns)

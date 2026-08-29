@@ -201,7 +201,7 @@ impl TracksEditor {
             .set_title(&recording.work.to_string());
         self.imp()
             .recording_row
-            .set_subtitle(&recording.performers_string());
+            .set_subtitle(&recording.recording_persons_string());
 
         // Remove previously added track rows. This is not ideal because the user might be under
         // the impression that changing the recording will allow to transfer tracks to it. But:

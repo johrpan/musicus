@@ -9,7 +9,8 @@ use anyhow::{Context, Result};
 use musicus_library::{
     db::{
         models::{
-            Composer, Ensemble, EnsemblePerformer, Instrument, Performer, Person, Role, Work,
+            Ensemble, Instrument, Person, RecordingEnsemble, RecordingPerson, Role, Work,
+            WorkPerson,
         },
         TranslatedString,
     },
@@ -113,7 +114,7 @@ pub fn generate(
     for _ in 0..counts.works {
         let name = names.work();
         let composer = match persons.choose(names.rng()) {
-            Some(person) => vec![Composer {
+            Some(person) => vec![WorkPerson {
                 person: person.clone(),
                 role: None,
             }],
@@ -146,20 +147,20 @@ pub fn generate(
 
         let performers = sample(names.rng(), &persons, 0, 3)
             .into_iter()
-            .map(|person| Performer {
+            .map(|person| RecordingPerson {
                 person,
                 role: maybe(names.rng(), &roles, 0.3),
                 instrument: maybe(names.rng(), &instruments, 0.7),
             })
-            .collect::<Vec<Performer>>();
+            .collect::<Vec<RecordingPerson>>();
 
         let ensemble_performers = sample(names.rng(), &ensembles, 0, 2)
             .into_iter()
-            .map(|ensemble| EnsemblePerformer {
+            .map(|ensemble| RecordingEnsemble {
                 ensemble,
                 role: maybe(names.rng(), &roles, 0.2),
             })
-            .collect::<Vec<EnsemblePerformer>>();
+            .collect::<Vec<RecordingEnsemble>>();
 
         recordings.push(
             library
@@ -249,10 +250,10 @@ fn pick_members(
     rng: &mut StdRng,
     persons: &[Person],
     instruments: &[Instrument],
-) -> Vec<Performer> {
+) -> Vec<RecordingPerson> {
     sample(rng, persons, 2, 8)
         .into_iter()
-        .map(|person| Performer {
+        .map(|person| RecordingPerson {
             person,
             role: None,
             instrument: maybe(rng, instruments, 0.8),
@@ -295,7 +296,7 @@ mod tests {
         // Only persons that compose or perform something show up here, so this
         // asserts that the entities were actually wired together.
         let results = library.search(&LibraryQuery::default(), "").unwrap();
-        assert!(!results.composers.is_empty());
+        assert!(!results.work_persons.is_empty());
         assert!(!results.works.is_empty());
         assert!(!results.ensembles.is_empty());
 
