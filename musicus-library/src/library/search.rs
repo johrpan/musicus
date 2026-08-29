@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use anyhow::Result;
 use diesel::prelude::*;
 
-use super::{query::work_person_condition, Library};
+use super::{query::translated_like, query::work_person_condition, Library};
 use crate::db::{self, models::*, schema::*, tables};
 
 /// A search result item that is either already part of the library or only
@@ -52,7 +52,7 @@ impl Library {
 
         let persons: Vec<Person> = persons::table
             .order(persons::last_used_at.desc())
-            .filter(persons::name.like(&search))
+            .filter(translated_like("persons.name", &search))
             .limit(20)
             .load(connection)?;
 
@@ -62,7 +62,7 @@ impl Library {
             let metadata_connection = &mut *db::lock_connection(&metadata_connection);
 
             let metadata_persons: Vec<Person> = persons::table
-                .filter(persons::name.like(&search))
+                .filter(translated_like("persons.name", &search))
                 .limit(20)
                 .load(metadata_connection)?;
 
@@ -95,7 +95,7 @@ impl Library {
 
         let roles: Vec<Role> = roles::table
             .order(roles::last_used_at.desc())
-            .filter(roles::name.like(&search))
+            .filter(translated_like("roles.name", &search))
             .limit(20)
             .load(connection)?;
 
@@ -105,7 +105,7 @@ impl Library {
             let metadata_connection = &mut *db::lock_connection(&metadata_connection);
 
             let metadata_roles: Vec<Role> = roles::table
-                .filter(roles::name.like(&search))
+                .filter(translated_like("roles.name", &search))
                 .limit(20)
                 .load(metadata_connection)?;
 
@@ -130,7 +130,7 @@ impl Library {
 
         let tags: Vec<Tag> = tags::table
             .order(tags::last_used_at.desc())
-            .filter(tags::name.like(&search))
+            .filter(translated_like("tags.name", &search))
             .limit(20)
             .load(connection)?;
 
@@ -140,7 +140,7 @@ impl Library {
             let metadata_connection = &mut *db::lock_connection(&metadata_connection);
 
             let metadata_tags: Vec<Tag> = tags::table
-                .filter(tags::name.like(&search))
+                .filter(translated_like("tags.name", &search))
                 .limit(20)
                 .load(metadata_connection)?;
 
@@ -197,7 +197,7 @@ impl Library {
 
         let instruments: Vec<Instrument> = instruments::table
             .order(instruments::last_used_at.desc())
-            .filter(instruments::name.like(&search))
+            .filter(translated_like("instruments.name", &search))
             .limit(20)
             .load(connection)?;
 
@@ -207,7 +207,7 @@ impl Library {
             let metadata_connection = &mut *db::lock_connection(&metadata_connection);
 
             let metadata_instruments: Vec<Instrument> = instruments::table
-                .filter(instruments::name.like(&search))
+                .filter(translated_like("instruments.name", &search))
                 .limit(20)
                 .load(metadata_connection)?;
 
@@ -243,11 +243,7 @@ impl Library {
         let connection = &mut *self.conn();
 
         let works: Vec<tables::Work> = works::table
-            .filter(
-                works::name
-                    .like(&search)
-                    .and(work_person_condition(work_person)),
-            )
+            .filter(translated_like("works.name", &search).and(work_person_condition(work_person)))
             .into_boxed()
             .limit(9)
             .select(works::all_columns)
@@ -269,9 +265,7 @@ impl Library {
 
             let metadata_works: Vec<tables::Work> = works::table
                 .filter(
-                    works::name
-                        .like(&search)
-                        .and(work_person_condition(work_person)),
+                    translated_like("works.name", &search).and(work_person_condition(work_person)),
                 )
                 .into_boxed()
                 .limit(9)
@@ -313,9 +307,8 @@ impl Library {
             .left_join(recording_ensembles::table.inner_join(ensembles::table))
             .filter(
                 recordings::work_id.eq(&work.work_id).and(
-                    persons::name
-                        .like(&search)
-                        .or(ensembles::name.like(&search)),
+                    translated_like("persons.name", &search)
+                        .or(translated_like("ensembles.name", &search)),
                 ),
             )
             .limit(9)
@@ -341,9 +334,8 @@ impl Library {
                 .left_join(recording_ensembles::table.inner_join(ensembles::table))
                 .filter(
                     recordings::work_id.eq(&work.work_id).and(
-                        persons::name
-                            .like(&search)
-                            .or(ensembles::name.like(&search)),
+                        translated_like("persons.name", &search)
+                            .or(translated_like("ensembles.name", &search)),
                     ),
                 )
                 .limit(9)
@@ -382,9 +374,8 @@ impl Library {
             .order(ensembles::last_used_at.desc())
             .left_join(ensemble_persons::table.inner_join(persons::table))
             .filter(
-                ensembles::name
-                    .like(&search)
-                    .or(persons::name.like(&search)),
+                translated_like("ensembles.name", &search)
+                    .or(translated_like("persons.name", &search)),
             )
             .limit(20)
             .select(ensembles::all_columns)
@@ -406,9 +397,8 @@ impl Library {
             let metadata_ensembles: Vec<tables::Ensemble> = ensembles::table
                 .left_join(ensemble_persons::table.inner_join(persons::table))
                 .filter(
-                    ensembles::name
-                        .like(&search)
-                        .or(persons::name.like(&search)),
+                    translated_like("ensembles.name", &search)
+                        .or(translated_like("persons.name", &search)),
                 )
                 .limit(20)
                 .select(ensembles::all_columns)

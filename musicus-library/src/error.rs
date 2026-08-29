@@ -48,6 +48,9 @@ pub enum LibraryError {
     /// The item cannot be deleted because something else still refers to it.
     StillReferenced(EntityKind),
 
+    /// The input or the data violates an invariant.
+    InvalidInput(String),
+
     /// The database was written by a newer version of Musicus.
     SchemaTooNew {
         found: i32,
@@ -74,6 +77,7 @@ impl Display for LibraryError {
             LibraryError::StillReferenced(kind) => {
                 write!(f, "This {kind} is still used elsewhere in the library.")
             }
+            LibraryError::InvalidInput(message) => write!(f, "{message}"),
             LibraryError::SchemaTooNew { found, supported } => write!(
                 f,
                 "This library was created by a newer version of Musicus \

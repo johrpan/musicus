@@ -206,9 +206,10 @@ impl AlbumEditor {
 
         let enable_updates = self.imp().enable_updates_row.is_active();
 
-        if !crate::editor::require_name(self, &name) {
-            return;
-        }
+        let name = match crate::editor::require_name(self, name) {
+            Some(name) => name,
+            None => return,
+        };
 
         if let Some(album_id) = self.imp().album_id.get() {
             if crate::editor::handle_save(

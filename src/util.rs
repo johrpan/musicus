@@ -70,6 +70,7 @@ fn expected_error_message(err: &LibraryError) -> Option<String> {
             "This library was created by a newer version of Musicus. \
              Please update Musicus to open it.",
         ),
+        LibraryError::InvalidInput(message) => message.clone(),
         LibraryError::Other(_) => return None,
     };
 

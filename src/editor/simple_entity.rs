@@ -15,7 +15,11 @@ use musicus_library::db::{
 };
 use once_cell::sync::Lazy;
 
-use crate::{editor::translation::TranslationEditor, library::Library, util};
+use crate::{
+    editor::{require_name, translation::TranslationEditor},
+    library::Library,
+    util,
+};
 
 /// A type of entity that consists of a translated name and nothing else.
 pub trait SimpleEntityKind: 'static {
@@ -239,13 +243,11 @@ impl SimpleEntityEditor {
         let library = imp.library.get().expect("editor should have a library");
         let source = imp.source.get().expect("editor should have a source");
 
-        let name = imp.name_editor.translation();
+        let name = match require_name(self, imp.name_editor.translation()) {
+            Some(name) => name,
+            None => return,
+        };
         let enable_updates = imp.enable_updates_row.is_active();
-
-        if name.0.values().all(|value| value.trim().is_empty()) {
-            self.report(gettext("Please enter a name."));
-            return;
-        }
 
         let result = match imp.entity_id.get() {
             Some(id) => source.update(library, id, name, enable_updates),
@@ -265,13 +267,6 @@ impl SimpleEntityEditor {
                     .expect("editor should have a navigation view")
                     .pop();
             }
-        }
-    }
-
-    fn report(&self, message: String) {
-        match util::find_toast_overlay(self) {
-            Some(toast_overlay) => toast_overlay.add_toast(adw::Toast::new(&message)),
-            None => log::warn!("{message}"),
         }
     }
 }

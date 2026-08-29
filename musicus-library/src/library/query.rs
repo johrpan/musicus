@@ -237,6 +237,28 @@ fn tag_condition<QS>(
     .sql(")))")
 }
 
+/// Match a column of serialized [`TranslatedString`] JSON against a LIKE
+/// pattern in any of its translated **values** — never against the JSON keys
+/// or punctuation. Legacy plain-text values and NULL are checked directly, so
+/// old rows keep matching and rows without a value never match.
+pub(crate) fn translated_like<QS>(
+    column: &str,
+    pattern: &str,
+) -> impl Expression<SqlType = sql_types::Bool>
+       + AppearsOnTable<QS>
+       + diesel::expression::ValidGrouping<(), IsAggregate = diesel::expression::is_aggregate::Never>
+       + diesel::query_builder::QueryFragment<diesel::sqlite::Sqlite>
+       + diesel::query_builder::QueryId {
+    sql::<sql_types::Bool>(&format!(
+        "(json_valid({column}) AND EXISTS (SELECT 1 FROM json_each({column}) AS je \
+         WHERE je.value LIKE "
+    ))
+    .bind::<sql_types::Text, _>(pattern.to_owned())
+    .sql(&format!(") OR NOT json_valid({column}) AND {column} LIKE "))
+    .bind::<sql_types::Text, _>(pattern.to_owned())
+    .sql(")")
+}
+
 /// True if `person` is credited as a composer on the work referenced by
 /// `works.work_id` in the enclosing query, or an ancestor/descendant of it (see
 /// [`in_work_subtree`]).
@@ -349,7 +371,7 @@ impl Library {
                                     .left_join(work_instruments::table),
                             ),
                         )
-                        .filter(persons::name.like(&search))
+                        .filter(translated_like("persons.name", &search))
                         .into_boxed();
 
                     if let Some(person) = &query.recording_person {
@@ -405,7 +427,7 @@ impl Library {
                                     .left_join(recording_ensembles::table),
                             ),
                         )
-                        .filter(persons::name.like(&search))
+                        .filter(translated_like("persons.name", &search))
                         .into_boxed();
 
                     if let Some(person) = &query.work_person {
@@ -459,9 +481,8 @@ impl Library {
                         )
                         .left_join(ensemble_persons::table.inner_join(persons::table))
                         .filter(
-                            ensembles::name
-                                .like(&search)
-                                .or(persons::name.like(&search)),
+                            translated_like("ensembles.name", &search)
+                                .or(translated_like("persons.name", &search)),
                         )
                         .into_boxed();
 
@@ -522,7 +543,7 @@ impl Library {
                         )
                         .left_join(recording_persons::table)
                         .left_join(ensemble_persons::table)
-                        .filter(instruments::name.like(&search))
+                        .filter(translated_like("instruments.name", &search))
                         .into_boxed();
 
                     if let Some(person) = &query.work_person {
@@ -576,7 +597,7 @@ impl Library {
                                 )),
                         )
                         .left_join(work_instruments::table)
-                        .filter(works::name.like(&search))
+                        .filter(translated_like("works.name", &search))
                         .into_boxed();
 
                     if let Some(person) = &query.work_person {
@@ -642,7 +663,7 @@ impl Library {
                             recording_ensembles::table
                                 .inner_join(ensembles::table.left_join(ensemble_persons::table)),
                         )
-                        .filter(works::name.like(&search))
+                        .filter(translated_like("works.name", &search))
                         .into_boxed();
 
                     if let Some(person) = &query.work_person {
@@ -736,7 +757,7 @@ impl Library {
                                 )),
                         ),
                     )
-                    .filter(albums::name.like(&search))
+                    .filter(translated_like("albums.name", &search))
                     .into_boxed();
 
                 if let Some(person) = &query.work_person {
@@ -809,10 +830,10 @@ impl Library {
                         .filter(
                             tags::takes_value
                                 .eq(false)
-                                .and(tags::name.like(&search))
+                                .and(translated_like("tags.name", &search))
                                 .or(tags::takes_value
                                     .eq(true)
-                                    .and(work_tags::value.like(&search))),
+                                    .and(translated_like("work_tags.value", &search))),
                         )
                         .into_boxed();
 
@@ -863,10 +884,10 @@ impl Library {
                         .filter(
                             tags::takes_value
                                 .eq(false)
-                                .and(tags::name.like(&search))
+                                .and(translated_like("tags.name", &search))
                                 .or(tags::takes_value
                                     .eq(true)
-                                    .and(recording_tags::value.like(&search))),
+                                    .and(translated_like("recording_tags.value", &search))),
                         )
                         .into_boxed();
 

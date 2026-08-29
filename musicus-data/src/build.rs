@@ -205,8 +205,7 @@ fn require_generic_name<'a, T>(
 ) -> Result<()> {
     for entry in list {
         if name(entry)
-            .0
-            .get("generic")
+            .generic_value()
             .is_none_or(|name| name.trim().is_empty())
         {
             bail!("{kind} \"{}\" has no generic name", key(entry));
@@ -284,8 +283,7 @@ fn check_relates_cycle<'a>(
 fn check_work(work: &WorkEntity, context: &mut CheckContext<'_>) -> Result<()> {
     if work
         .name
-        .0
-        .get("generic")
+        .generic_value()
         .is_none_or(|name| name.trim().is_empty())
     {
         bail!("Work \"{}\" has no generic name", work.key);
@@ -679,7 +677,7 @@ mod tests {
     #[test]
     fn missing_generic_name_is_rejected() {
         let mut metadata = metadata();
-        metadata.persons[0].name = TranslatedString::default();
+        metadata.persons[0].name = serde_json::from_str(r#"{"de": "Nur Deutsch"}"#).unwrap();
 
         let err = validate(&metadata, &works()).unwrap_err();
         assert!(err.to_string().contains("no generic name"));

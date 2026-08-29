@@ -843,8 +843,7 @@ impl EntityBrowser {
             return None;
         }
 
-        let value = editor.translation();
-        (!value.is_blank()).then_some(value)
+        editor.translation().ok()
     }
 
     fn apply_tag(&self, tag: &Tag, value: Option<&TranslatedString>) {

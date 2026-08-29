@@ -6,7 +6,7 @@ use gtk::glib::{self, subclass::Signal};
 use musicus_library::db::models::Tag;
 use once_cell::sync::Lazy;
 
-use crate::{editor::translation::TranslationEditor, library::Library, util};
+use crate::{editor::require_name, editor::translation::TranslationEditor, library::Library, util};
 
 mod imp {
     use super::*;
@@ -130,15 +130,13 @@ impl TagEditor {
         let imp = self.imp();
         let library = imp.library.get().expect("editor should have a library");
 
-        let name = imp.name_editor.translation();
+        let name = match require_name(self, imp.name_editor.translation()) {
+            Some(name) => name,
+            None => return,
+        };
         let takes_value = imp.takes_value_row.is_active();
         let private = imp.private_row.is_active();
         let enable_updates = imp.enable_updates_row.is_active();
-
-        if name.is_blank() {
-            self.report(gettext("Please enter a name."));
-            return;
-        }
 
         let result = match imp.tag_id.get() {
             Some(id) => library
@@ -160,13 +158,6 @@ impl TagEditor {
                     .expect("editor should have a navigation view")
                     .pop();
             }
-        }
-    }
-
-    fn report(&self, message: String) {
-        match util::find_toast_overlay(self) {
-            Some(toast_overlay) => toast_overlay.add_toast(adw::Toast::new(&message)),
-            None => log::warn!("{message}"),
         }
     }
 }

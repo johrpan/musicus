@@ -522,7 +522,6 @@ impl WorkEditor {
         let library = self.imp().library.get().unwrap();
 
         let name = self.imp().name_editor.translation();
-
         let parts = self
             .imp()
             .part_rows
@@ -559,9 +558,10 @@ impl WorkEditor {
 
         let enable_updates = self.imp().enable_updates_row.is_active();
 
-        if !crate::editor::require_name(self, &name) {
-            return;
-        }
+        let name = match crate::editor::require_name(self, name) {
+            Some(name) => name,
+            None => return,
+        };
 
         if self.imp().is_part_editor.get() {
             let work_id = self

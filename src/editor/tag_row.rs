@@ -164,8 +164,7 @@ impl TagRow {
         let tag_value = imp.tag_value.get().unwrap();
 
         let value = if tag_value.tag.takes_value {
-            let translation = imp.value_editor.translation();
-            (!translation.is_blank()).then_some(translation)
+            imp.value_editor.translation().ok()
         } else {
             None
         };
@@ -183,11 +182,9 @@ impl TagRow {
 
     #[template_callback]
     fn value_popover_closed(&self) {
-        let translation = self.imp().value_editor.translation();
-        let label = if translation.is_blank() {
-            gettext("Value")
-        } else {
-            translation.get().to_string()
+        let label = match self.imp().value_editor.translation() {
+            Ok(translation) => translation.get().to_string(),
+            Err(_) => gettext("Value"),
         };
 
         self.imp().value_button.set_label(&label);

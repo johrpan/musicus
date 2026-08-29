@@ -69,14 +69,12 @@ impl TranslationEditor {
     }
 
     pub fn set_translation(&self, translation: &TranslatedString) {
-        let mut translation = translation.0.clone();
-
         self.imp()
             .entry_row
-            .set_text(&translation.remove("generic").unwrap_or_default());
+            .set_text(translation.generic_value().unwrap_or_default());
 
-        for (lang, translation) in translation {
-            self.add_entry(&lang, &translation);
+        for (lang, translation) in translation.iter().filter(|(lang, _)| *lang != "generic") {
+            self.add_entry(lang, translation);
         }
     }
 
@@ -85,7 +83,7 @@ impl TranslationEditor {
         self.add_entry(&util::LANG, &self.imp().entry_row.text());
     }
 
-    pub fn translation(&self) -> TranslatedString {
+    pub fn translation(&self) -> Result<TranslatedString, musicus_library::LibraryError> {
         let imp = self.imp();
         let mut translation = BTreeMap::<String, String>::new();
 
@@ -94,7 +92,7 @@ impl TranslationEditor {
             translation.insert(entry.lang(), entry.translation());
         }
 
-        TranslatedString(translation)
+        TranslatedString::try_from_map(translation)
     }
 
     fn add_entry(&self, lang: &str, translation: &str) {

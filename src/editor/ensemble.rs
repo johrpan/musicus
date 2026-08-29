@@ -213,7 +213,6 @@ impl EnsembleEditor {
     #[template_callback]
     fn save(&self) {
         let library = self.imp().library.get().unwrap();
-        let name = self.imp().name_editor.translation();
         let enable_updates = self.imp().enable_updates_row.is_active();
 
         let persons = self
@@ -224,9 +223,10 @@ impl EnsembleEditor {
             .map(PerformerRow::performer)
             .collect::<Vec<RecordingPerson>>();
 
-        if !crate::editor::require_name(self, &name) {
-            return;
-        }
+        let name = match crate::editor::require_name(self, self.imp().name_editor.translation()) {
+            Some(name) => name,
+            None => return,
+        };
 
         if let Some(ensemble_id) = self.imp().ensemble_id.get() {
             if crate::editor::handle_save(
