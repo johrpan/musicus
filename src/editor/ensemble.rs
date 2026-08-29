@@ -225,20 +225,30 @@ impl EnsembleEditor {
             None => return,
         };
 
+        let members = persons
+            .into_iter()
+            .map(|member| musicus_library::input::RecordingPersonInput {
+                person_id: member.person.id,
+                role_id: member.role.map(|role| role.id),
+                instrument_id: member.instrument.map(|instrument| instrument.id),
+            })
+            .collect();
+
+        let input = musicus_library::input::EnsembleInput {
+            name,
+            members,
+            enable_updates,
+        };
+
         if let Some(ensemble_id) = self.imp().ensemble_id.get() {
-            if crate::editor::handle_save(
-                self,
-                library.update_ensemble(ensemble_id, name, persons, enable_updates),
-            )
-            .is_none()
+            if crate::editor::handle_save(self, library.update_ensemble(ensemble_id, input))
+                .is_none()
             {
                 return;
             }
         } else {
-            let Some(ensemble) = crate::editor::handle_save(
-                self,
-                library.create_ensemble(name, persons, enable_updates),
-            ) else {
+            let Some(ensemble) = crate::editor::handle_save(self, library.create_ensemble(input))
+            else {
                 return;
             };
 

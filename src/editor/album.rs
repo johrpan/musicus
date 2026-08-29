@@ -211,20 +211,23 @@ impl AlbumEditor {
             None => return,
         };
 
+        let recording_ids = recordings
+            .into_iter()
+            .map(|recording| recording.id)
+            .collect();
+
+        let input = musicus_library::input::AlbumInput {
+            name,
+            recording_ids,
+            enable_updates,
+        };
+
         if let Some(album_id) = self.imp().album_id.get() {
-            if crate::editor::handle_save(
-                self,
-                library.update_album(album_id, name, recordings, enable_updates),
-            )
-            .is_none()
-            {
+            if crate::editor::handle_save(self, library.update_album(album_id, input)).is_none() {
                 return;
             }
         } else {
-            let Some(album) = crate::editor::handle_save(
-                self,
-                library.create_album(name, recordings, enable_updates),
-            ) else {
+            let Some(album) = crate::editor::handle_save(self, library.create_album(input)) else {
                 return;
             };
 

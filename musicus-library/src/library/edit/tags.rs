@@ -7,6 +7,7 @@ use diesel::{dsl::exists, prelude::*, QueryDsl, SqliteConnection};
 use crate::{
     db::{self, schema::*, tables, tables::Source, TranslatedString},
     error::{EntityKind, LibraryError},
+    input::TagInput,
     library::Library,
     models::*,
 };
@@ -122,17 +123,17 @@ impl Library {
     pub(super) fn set_work_tags(
         connection: &mut SqliteConnection,
         work_id: &str,
-        tags: Vec<TagValue>,
+        tags: &[TagInput],
     ) -> Result<()> {
         diesel::delete(work_tags::table)
             .filter(work_tags::work_id.eq(work_id))
             .execute(connection)?;
 
-        for (index, tag_value) in tags.into_iter().enumerate() {
+        for (index, tag) in tags.iter().enumerate() {
             let work_tag_data = tables::WorkTag {
                 work_id: work_id.to_string(),
-                tag_id: tag_value.tag.id,
-                value: tag_value.value.filter(|_| tag_value.tag.takes_value),
+                tag_id: tag.tag_id.clone(),
+                value: tag.value.clone(),
                 sequence_number: db::sequence_number(index)?,
             };
 
@@ -148,17 +149,17 @@ impl Library {
     pub(super) fn set_recording_tags(
         connection: &mut SqliteConnection,
         recording_id: &str,
-        tags: Vec<TagValue>,
+        tags: &[TagInput],
     ) -> Result<()> {
         diesel::delete(recording_tags::table)
             .filter(recording_tags::recording_id.eq(recording_id))
             .execute(connection)?;
 
-        for (index, tag_value) in tags.into_iter().enumerate() {
+        for (index, tag) in tags.iter().enumerate() {
             let recording_tag_data = tables::RecordingTag {
                 recording_id: recording_id.to_string(),
-                tag_id: tag_value.tag.id,
-                value: tag_value.value.filter(|_| tag_value.tag.takes_value),
+                tag_id: tag.tag_id.clone(),
+                value: tag.value.clone(),
                 sequence_number: db::sequence_number(index)?,
             };
 

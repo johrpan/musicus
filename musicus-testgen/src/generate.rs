@@ -8,9 +8,7 @@ use std::{fs, path::Path};
 use anyhow::{Context, Result};
 use musicus_library::{
     db::TranslatedString,
-    models::{
-        Ensemble, Instrument, Person, RecordingEnsemble, RecordingPerson, Role, Work, WorkPerson,
-    },
+    models::{Ensemble, Instrument, Person, RecordingPerson, Role, Work},
     Library,
 };
 use rand::prelude::*;
@@ -97,11 +95,22 @@ pub fn generate(
     let mut ensembles: Vec<Ensemble> = Vec::with_capacity(counts.ensembles);
     for _ in 0..counts.ensembles {
         let name = names.ensemble();
-        let members = pick_members(names.rng(), &persons, &instruments);
+        let members = pick_members(names.rng(), &persons, &instruments)
+            .into_iter()
+            .map(|member| musicus_library::input::RecordingPersonInput {
+                person_id: member.person.id,
+                role_id: member.role.map(|role| role.id),
+                instrument_id: member.instrument.map(|instrument| instrument.id),
+            })
+            .collect();
 
         ensembles.push(
             library
-                .create_ensemble(translated(&name), members, false)
+                .create_ensemble(musicus_library::input::EnsembleInput {
+                    name: translated(&name),
+                    members,
+                    enable_updates: false,
+                })
                 .context("Failed to create an ensemble")?,
         );
     }
@@ -110,27 +119,31 @@ pub fn generate(
     let mut works: Vec<Work> = Vec::with_capacity(counts.works);
     for _ in 0..counts.works {
         let name = names.work();
-        let composer = match persons.choose(names.rng()) {
-            Some(person) => vec![WorkPerson {
-                person: person.clone(),
-                role: None,
+        let work_persons = match persons.choose(names.rng()) {
+            Some(person) => vec![musicus_library::input::WorkPersonInput {
+                person_id: person.clone().id,
+                role_id: None,
             }],
             None => Vec::new(),
         };
 
-        let work_instruments = sample(names.rng(), &instruments, 1, 3);
+        let instrument_ids = sample(names.rng(), &instruments, 1, 3)
+            .into_iter()
+            .map(|instrument| instrument.id)
+            .collect();
 
         works.push(
             library
-                .create_work(
-                    translated(&name),
-                    Vec::new(),
-                    composer,
-                    work_instruments,
-                    Vec::new(),
-                    Vec::new(),
-                    false,
-                )
+                .create_work(musicus_library::input::WorkInput {
+                    id: None,
+                    name: translated(&name),
+                    parts: Vec::new(),
+                    work_persons,
+                    instrument_ids,
+                    tags: Vec::new(),
+                    related_work_ids: Vec::new(),
+                    enable_updates: false,
+                })
                 .context("Failed to create a work")?,
         );
     }
@@ -144,31 +157,31 @@ pub fn generate(
 
         let performers = sample(names.rng(), &persons, 0, 3)
             .into_iter()
-            .map(|person| RecordingPerson {
-                person,
-                role: maybe(names.rng(), &roles, 0.3),
-                instrument: maybe(names.rng(), &instruments, 0.7),
+            .map(|person| musicus_library::input::RecordingPersonInput {
+                person_id: person.id,
+                role_id: maybe(names.rng(), &roles, 0.3).map(|role| role.id),
+                instrument_id: maybe(names.rng(), &instruments, 0.7).map(|i| i.id),
             })
-            .collect::<Vec<RecordingPerson>>();
+            .collect::<Vec<_>>();
 
         let ensemble_performers = sample(names.rng(), &ensembles, 0, 2)
             .into_iter()
-            .map(|ensemble| RecordingEnsemble {
-                ensemble,
-                role: maybe(names.rng(), &roles, 0.2),
+            .map(|ensemble| musicus_library::input::RecordingEnsembleInput {
+                ensemble_id: ensemble.id,
+                role_id: maybe(names.rng(), &roles, 0.2).map(|role| role.id),
             })
-            .collect::<Vec<RecordingEnsemble>>();
+            .collect::<Vec<_>>();
 
         recordings.push(
             library
-                .create_recording(
-                    work,
-                    performers,
-                    ensemble_performers,
-                    Vec::new(),
-                    None,
-                    false,
-                )
+                .create_recording(musicus_library::input::RecordingInput {
+                    work_id: work.id,
+                    recording_persons: performers,
+                    recording_ensembles: ensemble_performers,
+                    tags: Vec::new(),
+                    comment: None,
+                    enable_updates: false,
+                })
                 .context("Failed to create a recording")?,
         );
     }

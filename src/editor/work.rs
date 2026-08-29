@@ -522,6 +522,11 @@ impl WorkEditor {
         let library = self.imp().library.get().unwrap();
 
         let name = self.imp().name_editor.translation();
+        let name = match crate::editor::require_name(self, name) {
+            Some(name) => name,
+            None => return,
+        };
+
         let parts = self
             .imp()
             .part_rows
@@ -558,11 +563,6 @@ impl WorkEditor {
 
         let enable_updates = self.imp().enable_updates_row.is_active();
 
-        let name = match crate::editor::require_name(self, name) {
-            Some(name) => name,
-            None => return,
-        };
-
         if self.imp().is_part_editor.get() {
             let work_id = self
                 .imp()
@@ -580,28 +580,25 @@ impl WorkEditor {
                 work_persons: composers,
                 instruments,
                 tags,
-                related_works: related_work.into_iter().collect(),
+                related_works: related_work.clone().into_iter().collect(),
                 enable_updates,
             };
 
             self.emit_by_name::<()>("created", &[&glib::BoxedAnyObject::new(part.clone())]);
         } else if let Some(work_id) = self.imp().work_id.get() {
-            let related_works = related_work
-                .iter()
-                .map(|work| work.id.clone())
-                .collect::<Vec<String>>();
-
             if crate::editor::handle_save(
                 self,
                 library.update_work(
                     work_id,
-                    name,
-                    parts,
-                    composers,
-                    instruments,
-                    tags,
-                    related_works,
-                    enable_updates,
+                    self.work_input(
+                        name,
+                        parts,
+                        composers,
+                        instruments,
+                        tags,
+                        related_work,
+                        enable_updates,
+                    ),
                 ),
             )
             .is_none()
@@ -609,22 +606,17 @@ impl WorkEditor {
                 return;
             }
         } else {
-            let related_works = related_work
-                .iter()
-                .map(|work| work.id.clone())
-                .collect::<Vec<String>>();
-
             let Some(work) = crate::editor::handle_save(
                 self,
-                library.create_work(
+                library.create_work(self.work_input(
                     name,
                     parts,
                     composers,
                     instruments,
                     tags,
-                    related_works,
+                    related_work,
                     enable_updates,
-                ),
+                )),
             ) else {
                 return;
             };
@@ -633,5 +625,86 @@ impl WorkEditor {
         }
 
         self.imp().navigation.get().unwrap().pop();
+    }
+
+    /// The mutation input describing the current editor state.
+    fn work_input(
+        &self,
+        name: musicus_library::db::TranslatedString,
+        parts: Vec<Work>,
+        composers: Vec<WorkPerson>,
+        instruments: Vec<Instrument>,
+        tags: Vec<TagValue>,
+        related_work: Option<RelatedWork>,
+        enable_updates: bool,
+    ) -> musicus_library::input::WorkInput {
+        use musicus_library::input::{TagInput, WorkInput, WorkPersonInput};
+
+        let parts_input = parts.into_iter().map(|part| work_to_input(&part)).collect();
+
+        let work_persons = composers
+            .into_iter()
+            .map(|work_person| WorkPersonInput {
+                person_id: work_person.person.id,
+                role_id: work_person.role.map(|role| role.id),
+            })
+            .collect();
+
+        let instrument_ids = instruments
+            .into_iter()
+            .map(|instrument| instrument.id)
+            .collect();
+
+        let tags = tags
+            .into_iter()
+            .map(|tag_value| TagInput {
+                tag_id: tag_value.tag.id,
+                value: tag_value.value,
+            })
+            .collect();
+
+        let related_work_ids = related_work.into_iter().map(|work| work.id).collect();
+
+        WorkInput {
+            id: None,
+            name,
+            parts: parts_input,
+            work_persons,
+            instrument_ids,
+            tags,
+            related_work_ids,
+            enable_updates,
+        }
+    }
+}
+
+/// Convert a work into its mutation input, carrying its ID (the library
+/// decides from the ID whether the node is an existing child or a new one).
+fn work_to_input(work: &Work) -> musicus_library::input::WorkInput {
+    use musicus_library::input::{TagInput, WorkInput, WorkPersonInput};
+
+    WorkInput {
+        id: Some(work.id.clone()),
+        name: work.name.clone(),
+        parts: work.parts.iter().map(work_to_input).collect(),
+        work_persons: work
+            .work_persons
+            .iter()
+            .map(|work_person| WorkPersonInput {
+                person_id: work_person.person.id.clone(),
+                role_id: work_person.role.as_ref().map(|role| role.id.clone()),
+            })
+            .collect(),
+        instrument_ids: work.instruments.iter().map(|i| i.id.clone()).collect(),
+        tags: work
+            .tags
+            .iter()
+            .map(|tag_value| TagInput {
+                tag_id: tag_value.tag.id.clone(),
+                value: tag_value.value.clone(),
+            })
+            .collect(),
+        related_work_ids: work.related_works.iter().map(|r| r.id.clone()).collect(),
+        enable_updates: work.enable_updates,
     }
 }

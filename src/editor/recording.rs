@@ -482,35 +482,44 @@ impl RecordingEditor {
 
             let enable_updates = self.imp().enable_updates_row.is_active();
 
+            let input = musicus_library::input::RecordingInput {
+                work_id: work.id,
+                recording_persons: performers
+                    .into_iter()
+                    .map(|performer| musicus_library::input::RecordingPersonInput {
+                        person_id: performer.person.id,
+                        role_id: performer.role.map(|role| role.id),
+                        instrument_id: performer.instrument.map(|instrument| instrument.id),
+                    })
+                    .collect(),
+                recording_ensembles: ensembles
+                    .into_iter()
+                    .map(|ensemble| musicus_library::input::RecordingEnsembleInput {
+                        ensemble_id: ensemble.ensemble.id,
+                        role_id: ensemble.role.map(|role| role.id),
+                    })
+                    .collect(),
+                tags: tags
+                    .into_iter()
+                    .map(|tag_value| musicus_library::input::TagInput {
+                        tag_id: tag_value.tag.id,
+                        value: tag_value.value,
+                    })
+                    .collect(),
+                comment,
+                enable_updates,
+            };
+
             if let Some(recording_id) = self.imp().recording_id.get() {
-                if crate::editor::handle_save(
-                    self,
-                    library.update_recording(
-                        recording_id,
-                        work,
-                        performers,
-                        ensembles,
-                        tags,
-                        comment,
-                        enable_updates,
-                    ),
-                )
-                .is_none()
+                if crate::editor::handle_save(self, library.update_recording(recording_id, input))
+                    .is_none()
                 {
                     return;
                 }
             } else {
-                let Some(recording) = crate::editor::handle_save(
-                    self,
-                    library.create_recording(
-                        work,
-                        performers,
-                        ensembles,
-                        tags,
-                        comment,
-                        enable_updates,
-                    ),
-                ) else {
+                let Some(recording) =
+                    crate::editor::handle_save(self, library.create_recording(input))
+                else {
                     return;
                 };
 

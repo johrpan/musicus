@@ -1,5 +1,6 @@
 pub mod db;
 pub mod error;
+pub mod input;
 pub mod library;
 pub mod models;
 
