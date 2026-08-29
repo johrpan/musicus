@@ -8,6 +8,7 @@
         "org.freedesktop.Sdk.Extension.llvm22"
     ],
     "command": "musicus",
+    "separate-locales": false,
     "finish-args": [
         "--share=ipc",
         "--share=network",
