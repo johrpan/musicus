@@ -128,6 +128,7 @@ impl TagRow {
 
         if tag_value.tag.takes_value {
             imp.value_button.set_visible(true);
+            imp.value_editor.set_title(&gettext("Value"));
 
             if let Some(value) = &tag_value.value {
                 imp.value_editor.set_translation(value);

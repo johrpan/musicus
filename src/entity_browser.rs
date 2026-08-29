@@ -22,7 +22,8 @@ use musicus_library::{
 use crate::{
     editor::{
         album::AlbumEditor, ensemble::EnsembleEditor, recording::RecordingEditor,
-        simple_entity::SimpleEntityEditor, tag::TagEditor, work::WorkEditor,
+        simple_entity::SimpleEntityEditor, tag::TagEditor, translation::TranslationEditor,
+        work::WorkEditor,
     },
     library::Library,
     selector::{item_row_child, SelectorPopover},
@@ -514,6 +515,7 @@ mod imp {
         type ParentType = adw::NavigationPage;
 
         fn class_init(klass: &mut Self::Class) {
+            TranslationEditor::static_type();
             klass.bind_template();
             klass.bind_template_instance_callbacks();
         }
@@ -810,7 +812,7 @@ impl EntityBrowser {
     async fn tag_picked(&self, tag: Tag) {
         let value = if tag.takes_value {
             match self.prompt_for_value(&tag).await {
-                Some(value) => Some(TranslatedString::generic(value)),
+                Some(value) => Some(value),
                 None => return,
             }
         } else {
@@ -820,18 +822,16 @@ impl EntityBrowser {
         self.apply_tag(&tag, value.as_ref());
     }
 
-    async fn prompt_for_value(&self, tag: &Tag) -> Option<String> {
-        let entry = gtk::Entry::builder()
-            .placeholder_text(gettext("Value"))
-            .activates_default(true)
-            .build();
+    async fn prompt_for_value(&self, tag: &Tag) -> Option<TranslatedString> {
+        let editor = TranslationEditor::new();
+        editor.set_title(&gettext("Value"));
 
         let dialog = adw::AlertDialog::builder()
             .heading(format_translated!(
                 gettext("Value for \"{}\""),
                 tag.name.get()
             ))
-            .extra_child(&entry)
+            .extra_child(&editor)
             .build();
 
         dialog.add_responses(&[("cancel", &gettext("Cancel")), ("add", &gettext("Add"))]);
@@ -843,13 +843,8 @@ impl EntityBrowser {
             return None;
         }
 
-        let value = entry.text().trim().to_string();
-
-        if value.is_empty() {
-            None
-        } else {
-            Some(value)
-        }
+        let value = editor.translation();
+        (!value.is_blank()).then_some(value)
     }
 
     fn apply_tag(&self, tag: &Tag, value: Option<&TranslatedString>) {

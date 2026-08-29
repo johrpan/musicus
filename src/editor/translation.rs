@@ -59,6 +59,11 @@ impl TranslationEditor {
         glib::Object::new()
     }
 
+    /// The caption of the generic (default-locale) entry row.
+    pub fn set_title(&self, title: &str) {
+        self.imp().entry_row.set_title(title);
+    }
+
     pub fn set_generic(&self, name: &str) {
         self.imp().entry_row.set_text(name);
     }
