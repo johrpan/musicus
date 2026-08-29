@@ -8,7 +8,7 @@ use gtk::{
     prelude::*,
 };
 
-use musicus_library::{db::models::*, format_translated};
+use musicus_library::{format_translated, models::*};
 
 use crate::{
     editor::work::WorkEditor,
@@ -102,10 +102,7 @@ mod imp {
             let obj = self.obj().to_owned();
             let delete_action = gio::ActionEntry::builder("delete")
                 .activate(move |_, _, _| {
-                    if let Err(err) = obj
-                        .library()
-                        .delete_work(&obj.imp().work.get().unwrap().work_id)
-                    {
+                    if let Err(err) = obj.library().delete_work(&obj.imp().work.get().unwrap().id) {
                         util::error_toast("Failed to delete work", err, &obj.toast_overlay());
                     }
                 })

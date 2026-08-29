@@ -4,7 +4,11 @@ use anyhow::Result;
 use diesel::prelude::*;
 
 use super::{query::translated_like, query::work_person_condition, Library};
-use crate::db::{self, models::*, schema::*, tables};
+use crate::{
+    db::{self, schema::*, tables},
+    library::load::Loader,
+    models::*,
+};
 
 /// A search result item that is either already part of the library or only
 /// available from the separate metadata database.
@@ -54,24 +58,23 @@ impl Library {
             .order(persons::last_used_at.desc())
             .filter(translated_like("persons.name", &search))
             .limit(20)
-            .load(connection)?;
+            .load::<tables::Person>(connection)?
+            .into_iter()
+            .map(Person::from)
+            .collect();
 
         let mut results = in_library_items(persons);
 
         if let Some(metadata_connection) = self.metadata_connection() {
             let metadata_connection = &mut *db::lock_connection(&metadata_connection);
 
-            let metadata_persons: Vec<Person> = persons::table
+            let metadata_persons: Vec<tables::Person> = persons::table
                 .filter(translated_like("persons.name", &search))
                 .limit(20)
                 .load(metadata_connection)?;
 
-            let candidate_ids: Vec<String> = metadata_persons
-                .iter()
-                .map(|p| p.person_id.clone())
-                .collect();
-            let existing: HashSet<String> = persons::table
-                .filter(persons::person_id.eq_any(&candidate_ids))
+            let existing_ids: HashSet<String> = persons::table
+                .filter(persons::person_id.eq_any(metadata_persons.iter().map(|p| &p.person_id)))
                 .select(persons::person_id)
                 .load(connection)?
                 .into_iter()
@@ -80,9 +83,9 @@ impl Library {
             merge_metadata_only(
                 &mut results,
                 metadata_persons,
-                &existing,
+                &existing_ids,
                 |p| &p.person_id,
-                Ok,
+                |p| Ok(Person::from(p)),
             )?;
         }
 
@@ -97,28 +100,35 @@ impl Library {
             .order(roles::last_used_at.desc())
             .filter(translated_like("roles.name", &search))
             .limit(20)
-            .load(connection)?;
+            .load::<tables::Role>(connection)?
+            .into_iter()
+            .map(Role::from)
+            .collect();
 
         let mut results = in_library_items(roles);
 
         if let Some(metadata_connection) = self.metadata_connection() {
             let metadata_connection = &mut *db::lock_connection(&metadata_connection);
 
-            let metadata_roles: Vec<Role> = roles::table
+            let metadata_roles: Vec<tables::Role> = roles::table
                 .filter(translated_like("roles.name", &search))
                 .limit(20)
                 .load(metadata_connection)?;
 
-            let candidate_ids: Vec<String> =
-                metadata_roles.iter().map(|r| r.role_id.clone()).collect();
-            let existing: HashSet<String> = roles::table
-                .filter(roles::role_id.eq_any(&candidate_ids))
+            let existing_ids: HashSet<String> = roles::table
+                .filter(roles::role_id.eq_any(metadata_roles.iter().map(|r| &r.role_id)))
                 .select(roles::role_id)
                 .load(connection)?
                 .into_iter()
                 .collect();
 
-            merge_metadata_only(&mut results, metadata_roles, &existing, |r| &r.role_id, Ok)?;
+            merge_metadata_only(
+                &mut results,
+                metadata_roles,
+                &existing_ids,
+                |r| &r.role_id,
+                |r| Ok(Role::from(r)),
+            )?;
         }
 
         Ok(results)
@@ -132,28 +142,35 @@ impl Library {
             .order(tags::last_used_at.desc())
             .filter(translated_like("tags.name", &search))
             .limit(20)
-            .load(connection)?;
+            .load::<tables::Tag>(connection)?
+            .into_iter()
+            .map(Tag::from)
+            .collect();
 
         let mut results = in_library_items(tags);
 
         if let Some(metadata_connection) = self.metadata_connection() {
             let metadata_connection = &mut *db::lock_connection(&metadata_connection);
 
-            let metadata_tags: Vec<Tag> = tags::table
+            let metadata_tags: Vec<tables::Tag> = tags::table
                 .filter(translated_like("tags.name", &search))
                 .limit(20)
                 .load(metadata_connection)?;
 
-            let candidate_ids: Vec<String> =
-                metadata_tags.iter().map(|t| t.tag_id.clone()).collect();
-            let existing: HashSet<String> = tags::table
-                .filter(tags::tag_id.eq_any(&candidate_ids))
+            let existing_ids: HashSet<String> = tags::table
+                .filter(tags::tag_id.eq_any(metadata_tags.iter().map(|t| &t.tag_id)))
                 .select(tags::tag_id)
                 .load(connection)?
                 .into_iter()
                 .collect();
 
-            merge_metadata_only(&mut results, metadata_tags, &existing, |t| &t.tag_id, Ok)?;
+            merge_metadata_only(
+                &mut results,
+                metadata_tags,
+                &existing_ids,
+                |t| &t.tag_id,
+                |t| Ok(Tag::from(t)),
+            )?;
         }
 
         Ok(results)
@@ -172,7 +189,10 @@ impl Library {
         Ok(tags::table
             .filter(tags::tag_id.eq_any(&tag_ids))
             .order(tags::last_used_at.desc())
-            .load(connection)?)
+            .load::<tables::Tag>(connection)?
+            .into_iter()
+            .map(Tag::from)
+            .collect())
     }
 
     /// The tags currently applied to any of the given recordings.
@@ -188,7 +208,10 @@ impl Library {
         Ok(tags::table
             .filter(tags::tag_id.eq_any(&tag_ids))
             .order(tags::last_used_at.desc())
-            .load(connection)?)
+            .load::<tables::Tag>(connection)?
+            .into_iter()
+            .map(Tag::from)
+            .collect())
     }
 
     pub fn search_instruments(&self, search: &str) -> Result<Vec<SearchItem<Instrument>>> {
@@ -199,24 +222,26 @@ impl Library {
             .order(instruments::last_used_at.desc())
             .filter(translated_like("instruments.name", &search))
             .limit(20)
-            .load(connection)?;
+            .load::<tables::Instrument>(connection)?
+            .into_iter()
+            .map(Instrument::from)
+            .collect();
 
         let mut results = in_library_items(instruments);
 
         if let Some(metadata_connection) = self.metadata_connection() {
             let metadata_connection = &mut *db::lock_connection(&metadata_connection);
 
-            let metadata_instruments: Vec<Instrument> = instruments::table
+            let metadata_instruments: Vec<tables::Instrument> = instruments::table
                 .filter(translated_like("instruments.name", &search))
                 .limit(20)
                 .load(metadata_connection)?;
 
-            let candidate_ids: Vec<String> = metadata_instruments
-                .iter()
-                .map(|i| i.instrument_id.clone())
-                .collect();
-            let existing: HashSet<String> = instruments::table
-                .filter(instruments::instrument_id.eq_any(&candidate_ids))
+            let existing_ids: HashSet<String> = instruments::table
+                .filter(
+                    instruments::instrument_id
+                        .eq_any(metadata_instruments.iter().map(|i| &i.instrument_id)),
+                )
                 .select(instruments::instrument_id)
                 .load(connection)?
                 .into_iter()
@@ -225,9 +250,9 @@ impl Library {
             merge_metadata_only(
                 &mut results,
                 metadata_instruments,
-                &existing,
+                &existing_ids,
                 |i| &i.instrument_id,
-                Ok,
+                |i| Ok(Instrument::from(i)),
             )?;
         }
 
@@ -242,6 +267,8 @@ impl Library {
         let search = format!("%{}%", search);
         let connection = &mut *self.conn();
 
+        let loader = Loader::load(connection)?;
+
         let works: Vec<tables::Work> = works::table
             .filter(translated_like("works.name", &search).and(work_person_condition(work_person)))
             .into_boxed()
@@ -253,7 +280,7 @@ impl Library {
         let mut results: Vec<SearchItem<Work>> = works
             .into_iter()
             .map(|w| {
-                Work::from_table(w, connection).map(|item| SearchItem {
+                loader.work(&w.work_id).map(|item| SearchItem {
                     item,
                     in_library: true,
                 })
@@ -273,21 +300,21 @@ impl Library {
                 .distinct()
                 .load::<tables::Work>(metadata_connection)?;
 
-            let candidate_ids: Vec<String> =
-                metadata_works.iter().map(|w| w.work_id.clone()).collect();
-            let existing: HashSet<String> = works::table
-                .filter(works::work_id.eq_any(&candidate_ids))
+            let existing_ids: HashSet<String> = works::table
+                .filter(works::work_id.eq_any(metadata_works.iter().map(|w| &w.work_id)))
                 .select(works::work_id)
                 .load(connection)?
                 .into_iter()
                 .collect();
 
+            let metadata_loader = Loader::load(metadata_connection)?;
+
             merge_metadata_only(
                 &mut results,
                 metadata_works,
-                &existing,
+                &existing_ids,
                 |w| &w.work_id,
-                |w| Work::from_table(w, metadata_connection),
+                |w| metadata_loader.work(&w.work_id),
             )?;
         }
 
@@ -302,11 +329,13 @@ impl Library {
         let search = format!("%{}%", search);
         let connection = &mut *self.conn();
 
+        let loader = Loader::load(connection)?;
+
         let recordings: Vec<tables::Recording> = recordings::table
             .left_join(recording_persons::table.inner_join(persons::table))
             .left_join(recording_ensembles::table.inner_join(ensembles::table))
             .filter(
-                recordings::work_id.eq(&work.work_id).and(
+                recordings::work_id.eq(&work.id).and(
                     translated_like("persons.name", &search)
                         .or(translated_like("ensembles.name", &search)),
                 ),
@@ -319,7 +348,7 @@ impl Library {
         let mut results: Vec<SearchItem<Recording>> = recordings
             .into_iter()
             .map(|r| {
-                Recording::from_table(r, connection).map(|item| SearchItem {
+                loader.recording(&r.recording_id).map(|item| SearchItem {
                     item,
                     in_library: true,
                 })
@@ -333,7 +362,7 @@ impl Library {
                 .left_join(recording_persons::table.inner_join(persons::table))
                 .left_join(recording_ensembles::table.inner_join(ensembles::table))
                 .filter(
-                    recordings::work_id.eq(&work.work_id).and(
+                    recordings::work_id.eq(&work.id).and(
                         translated_like("persons.name", &search)
                             .or(translated_like("ensembles.name", &search)),
                     ),
@@ -343,23 +372,24 @@ impl Library {
                 .distinct()
                 .load::<tables::Recording>(metadata_connection)?;
 
-            let candidate_ids: Vec<String> = metadata_recordings
-                .iter()
-                .map(|r| r.recording_id.clone())
-                .collect();
-            let existing: HashSet<String> = recordings::table
-                .filter(recordings::recording_id.eq_any(&candidate_ids))
+            let existing_ids: HashSet<String> = recordings::table
+                .filter(
+                    recordings::recording_id
+                        .eq_any(metadata_recordings.iter().map(|r| &r.recording_id)),
+                )
                 .select(recordings::recording_id)
                 .load(connection)?
                 .into_iter()
                 .collect();
 
+            let metadata_loader = Loader::load(metadata_connection)?;
+
             merge_metadata_only(
                 &mut results,
                 metadata_recordings,
-                &existing,
+                &existing_ids,
                 |r| &r.recording_id,
-                |r| Recording::from_table(r, metadata_connection),
+                |r| metadata_loader.recording(&r.recording_id),
             )?;
         }
 
@@ -369,6 +399,8 @@ impl Library {
     pub fn search_ensembles(&self, search: &str) -> Result<Vec<SearchItem<Ensemble>>> {
         let search = format!("%{}%", search);
         let connection = &mut *self.conn();
+
+        let loader = Loader::load(connection)?;
 
         let ensembles: Vec<tables::Ensemble> = ensembles::table
             .order(ensembles::last_used_at.desc())
@@ -384,7 +416,7 @@ impl Library {
         let mut results: Vec<SearchItem<Ensemble>> = ensembles
             .into_iter()
             .map(|e| {
-                Ensemble::from_table(e, connection).map(|item| SearchItem {
+                loader.ensemble(&e.ensemble_id).map(|item| SearchItem {
                     item,
                     in_library: true,
                 })
@@ -404,23 +436,24 @@ impl Library {
                 .select(ensembles::all_columns)
                 .load::<tables::Ensemble>(metadata_connection)?;
 
-            let candidate_ids: Vec<String> = metadata_ensembles
-                .iter()
-                .map(|e| e.ensemble_id.clone())
-                .collect();
-            let existing: HashSet<String> = ensembles::table
-                .filter(ensembles::ensemble_id.eq_any(&candidate_ids))
+            let existing_ids: HashSet<String> = ensembles::table
+                .filter(
+                    ensembles::ensemble_id
+                        .eq_any(metadata_ensembles.iter().map(|e| &e.ensemble_id)),
+                )
                 .select(ensembles::ensemble_id)
                 .load(connection)?
                 .into_iter()
                 .collect();
 
+            let metadata_loader = Loader::load(metadata_connection)?;
+
             merge_metadata_only(
                 &mut results,
                 metadata_ensembles,
-                &existing,
+                &existing_ids,
                 |e| &e.ensemble_id,
-                |e| Ensemble::from_table(e, metadata_connection),
+                |e| metadata_loader.ensemble(&e.ensemble_id),
             )?;
         }
 

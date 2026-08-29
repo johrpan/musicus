@@ -8,11 +8,10 @@ use anyhow::{anyhow, bail, Error, Result};
 use diesel::{prelude::*, SqliteConnection};
 
 use super::{exchange, Library};
-use crate::db::{
-    self,
+use crate::{
+    db::{self, schema::*, tables, tables::Source},
+    library::load::Loader,
     models::*,
-    schema::*,
-    tables::{self, Source},
 };
 
 impl Library {
@@ -59,13 +58,12 @@ impl Library {
         let metadata_connection = &mut *db::lock_connection(&metadata_connection);
         let connection = &mut *self.conn();
 
-        let person = connection.transaction::<Person, Error, _>(|connection| {
-            copy_person(metadata_connection, connection, person_id)?;
-
-            Ok(persons::table
-                .filter(persons::person_id.eq(person_id))
-                .first(connection)?)
+        connection.transaction::<(), Error, _>(|connection| {
+            copy_person(metadata_connection, connection, person_id)
         })?;
+
+        let loader = Loader::load(connection)?;
+        let person = loader.person(person_id)?;
 
         self.changed();
 
@@ -79,13 +77,12 @@ impl Library {
         let metadata_connection = &mut *db::lock_connection(&metadata_connection);
         let connection = &mut *self.conn();
 
-        let role = connection.transaction::<Role, Error, _>(|connection| {
-            copy_role(metadata_connection, connection, role_id)?;
-
-            Ok(roles::table
-                .filter(roles::role_id.eq(role_id))
-                .first(connection)?)
+        connection.transaction::<(), Error, _>(|connection| {
+            copy_role(metadata_connection, connection, role_id)
         })?;
+
+        let loader = Loader::load(connection)?;
+        let role = loader.role(role_id)?;
 
         self.changed();
 
@@ -99,13 +96,12 @@ impl Library {
         let metadata_connection = &mut *db::lock_connection(&metadata_connection);
         let connection = &mut *self.conn();
 
-        let tag = connection.transaction::<Tag, Error, _>(|connection| {
-            copy_tag(metadata_connection, connection, tag_id)?;
-
-            Ok(tags::table
-                .filter(tags::tag_id.eq(tag_id))
-                .first(connection)?)
+        connection.transaction::<(), Error, _>(|connection| {
+            copy_tag(metadata_connection, connection, tag_id)
         })?;
+
+        let loader = Loader::load(connection)?;
+        let tag = loader.tag(tag_id)?;
 
         self.changed();
 
@@ -119,13 +115,12 @@ impl Library {
         let metadata_connection = &mut *db::lock_connection(&metadata_connection);
         let connection = &mut *self.conn();
 
-        let instrument = connection.transaction::<Instrument, Error, _>(|connection| {
-            copy_instrument(metadata_connection, connection, instrument_id)?;
-
-            Ok(instruments::table
-                .filter(instruments::instrument_id.eq(instrument_id))
-                .first(connection)?)
+        connection.transaction::<(), Error, _>(|connection| {
+            copy_instrument(metadata_connection, connection, instrument_id)
         })?;
+
+        let loader = Loader::load(connection)?;
+        let instrument = loader.instrument(instrument_id)?;
 
         self.changed();
 
@@ -139,15 +134,12 @@ impl Library {
         let metadata_connection = &mut *db::lock_connection(&metadata_connection);
         let connection = &mut *self.conn();
 
-        let ensemble = connection.transaction::<Ensemble, Error, _>(|connection| {
-            copy_ensemble(metadata_connection, connection, ensemble_id)?;
-
-            let row = ensembles::table
-                .filter(ensembles::ensemble_id.eq(ensemble_id))
-                .first::<tables::Ensemble>(connection)?;
-
-            Ensemble::from_table(row, connection)
+        connection.transaction::<(), Error, _>(|connection| {
+            copy_ensemble(metadata_connection, connection, ensemble_id)
         })?;
+
+        let loader = Loader::load(connection)?;
+        let ensemble = loader.ensemble(ensemble_id)?;
 
         self.changed();
 
@@ -161,15 +153,12 @@ impl Library {
         let metadata_connection = &mut *db::lock_connection(&metadata_connection);
         let connection = &mut *self.conn();
 
-        let work = connection.transaction::<Work, Error, _>(|connection| {
-            copy_work(metadata_connection, connection, work_id)?;
-
-            let row = works::table
-                .filter(works::work_id.eq(work_id))
-                .first::<tables::Work>(connection)?;
-
-            Work::from_table(row, connection)
+        connection.transaction::<(), Error, _>(|connection| {
+            copy_work(metadata_connection, connection, work_id)
         })?;
+
+        let loader = Loader::load(connection)?;
+        let work = loader.work(work_id)?;
 
         self.changed();
 
@@ -183,15 +172,12 @@ impl Library {
         let metadata_connection = &mut *db::lock_connection(&metadata_connection);
         let connection = &mut *self.conn();
 
-        let recording = connection.transaction::<Recording, Error, _>(|connection| {
-            copy_recording(metadata_connection, connection, recording_id)?;
-
-            let row = recordings::table
-                .filter(recordings::recording_id.eq(recording_id))
-                .first::<tables::Recording>(connection)?;
-
-            Recording::from_table(row, connection)
+        connection.transaction::<(), Error, _>(|connection| {
+            copy_recording(metadata_connection, connection, recording_id)
         })?;
+
+        let loader = Loader::load(connection)?;
+        let recording = loader.recording(recording_id)?;
 
         self.changed();
 

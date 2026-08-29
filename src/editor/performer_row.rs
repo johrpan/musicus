@@ -7,7 +7,7 @@ use gtk::{
 };
 use once_cell::sync::Lazy;
 
-use musicus_library::db::models::{Instrument, RecordingPerson, Role};
+use musicus_library::models::{Instrument, RecordingPerson, Role};
 
 use crate::{
     library::Library, selector::performer_role::PerformerRoleSelectorPopover,

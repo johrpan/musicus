@@ -7,7 +7,7 @@ use gtk::{
     prelude::*,
 };
 
-use musicus_library::db::models::*;
+use musicus_library::models::*;
 
 use crate::{
     editor::album::AlbumEditor, library::Library, player::Player, playlist_item::PlaylistItem,
@@ -99,7 +99,7 @@ mod imp {
                 .activate(move |_, _, _| {
                     if let Err(err) = obj
                         .library()
-                        .delete_album(&obj.imp().album.get().unwrap().album_id)
+                        .delete_album(&obj.imp().album.get().unwrap().id)
                     {
                         util::error_toast("Failed to delete album", err, &obj.toast_overlay());
                     }

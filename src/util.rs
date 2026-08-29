@@ -71,6 +71,20 @@ fn expected_error_message(err: &LibraryError) -> Option<String> {
              Please update Musicus to open it.",
         ),
         LibraryError::InvalidInput(message) => message.clone(),
+        LibraryError::NotFound(kind, _) => match kind {
+            EntityKind::Person => gettext("This person no longer exists in the library."),
+            EntityKind::Role => gettext("This role no longer exists in the library."),
+            EntityKind::Instrument => gettext("This instrument no longer exists in the library."),
+            EntityKind::Tag => gettext("This tag no longer exists in the library."),
+            EntityKind::Work => gettext("This work no longer exists in the library."),
+            EntityKind::Ensemble => gettext("This ensemble no longer exists in the library."),
+            EntityKind::Recording => gettext("This recording no longer exists in the library."),
+            EntityKind::Album => gettext("This album no longer exists in the library."),
+            EntityKind::Track => gettext("This track no longer exists in the library."),
+        },
+        LibraryError::Corrupt(_) => {
+            gettext("The library data is inconsistent. Please check the library for problems …")
+        }
         LibraryError::Other(_) => return None,
     };
 

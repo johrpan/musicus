@@ -27,7 +27,11 @@ use diesel::{
 use rand::RngExt;
 
 use super::Library;
-use crate::db::{self, models::*, schema::*, tables, views::*, TranslatedString};
+use crate::{
+    db::{self, schema::*, tables, views::*, TranslatedString},
+    library::load::Loader,
+    models::*,
+};
 
 /// How strong the preference setting affects the selection.
 const PREFERENCE_STRENGTH: f64 = 10.0;
@@ -255,7 +259,8 @@ impl Library {
             .select(tables::Recording::as_select())
             .first::<tables::Recording>(connection)?;
 
-        Recording::from_table(row, connection)
+        let loader = Loader::load(connection)?;
+        loader.recording(&row.recording_id)
     }
 
     /// Every recording the program allows.

@@ -3,7 +3,7 @@ use std::cell::RefCell;
 use anyhow::Result;
 use gettextrs::gettext;
 use gtk::glib;
-use musicus_library::db::models::{Ensemble, Instrument, Person, Role, Tag};
+use musicus_library::models::{Ensemble, Instrument, Person, Role, Tag};
 
 use crate::library::{Library, SearchItem};
 
@@ -123,7 +123,7 @@ impl SelectorKind for PersonKind {
     }
 
     fn import(library: &Library, item: &Person) -> Result<Person> {
-        library.import_metadata_person(&item.person_id)
+        library.import_metadata_person(&item.id)
     }
 
     fn search_placeholder() -> String {
@@ -145,7 +145,7 @@ impl SelectorKind for EnsembleKind {
     }
 
     fn import(library: &Library, item: &Ensemble) -> Result<Ensemble> {
-        library.import_metadata_ensemble(&item.ensemble_id)
+        library.import_metadata_ensemble(&item.id)
     }
 
     fn search_placeholder() -> String {
@@ -167,7 +167,7 @@ impl SelectorKind for InstrumentKind {
     }
 
     fn import(library: &Library, item: &Instrument) -> Result<Instrument> {
-        library.import_metadata_instrument(&item.instrument_id)
+        library.import_metadata_instrument(&item.id)
     }
 
     fn search_placeholder() -> String {
@@ -189,7 +189,7 @@ impl SelectorKind for RoleKind {
     }
 
     fn import(library: &Library, item: &Role) -> Result<Role> {
-        library.import_metadata_role(&item.role_id)
+        library.import_metadata_role(&item.id)
     }
 
     fn search_placeholder() -> String {
@@ -215,7 +215,7 @@ impl SelectorKind for TagKind {
     }
 
     fn import(library: &Library, item: &Tag) -> Result<Tag> {
-        library.import_metadata_tag(&item.tag_id)
+        library.import_metadata_tag(&item.id)
     }
 
     fn search_placeholder() -> String {

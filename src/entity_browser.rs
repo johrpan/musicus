@@ -10,12 +10,10 @@ use gtk::{
     glib::{self, clone, Properties},
 };
 use musicus_library::{
-    db::{
-        tables::{Source, Tag},
-        TranslatedString,
-    },
+    db::{tables::Source, TranslatedString},
     format_translated,
     library::EntityUsage,
+    models::Tag,
     LibraryError,
 };
 
@@ -92,7 +90,7 @@ impl BrowserKind {
                 .iter()
                 .map(|person| {
                     EntityObject::new(
-                        &person.person_id,
+                        &person.id,
                         person.name.get(),
                         person.source,
                         person.last_used_at,
@@ -102,14 +100,19 @@ impl BrowserKind {
             BrowserKind::Ensembles => library
                 .list_ensembles()?
                 .iter()
-                .map(|item| {
+                .map(|ensemble| {
                     let object = EntityObject::new(
-                        &item.ensemble.ensemble_id,
-                        item.ensemble.name.get(),
-                        item.ensemble.source,
-                        item.ensemble.last_used_at,
+                        &ensemble.id,
+                        ensemble.name.get(),
+                        ensemble.source,
+                        ensemble.last_used_at,
                     );
-                    object.set_details(join_names(&item.members));
+                    let members = ensemble
+                        .members
+                        .iter()
+                        .map(ToString::to_string)
+                        .collect::<Vec<String>>();
+                    object.set_details(members.join(", "));
                     object
                 })
                 .collect(),
@@ -118,7 +121,7 @@ impl BrowserKind {
                 .iter()
                 .map(|item| {
                     let object = EntityObject::new(
-                        &item.work.work_id,
+                        &item.work.id,
                         item.work.name.get(),
                         item.work.source,
                         item.work.last_used_at,
@@ -133,7 +136,7 @@ impl BrowserKind {
                 .iter()
                 .map(|item| {
                     let object = EntityObject::new(
-                        &item.recording.recording_id,
+                        &item.recording.id,
                         &match join_names(&item.work_persons) {
                             composers if composers.is_empty() => item.work_name.get().to_owned(),
                             composers => {
@@ -154,7 +157,7 @@ impl BrowserKind {
                 .iter()
                 .map(|album| {
                     EntityObject::new(
-                        &album.album_id,
+                        &album.id,
                         album.name.get(),
                         album.source,
                         album.last_used_at,
@@ -166,7 +169,7 @@ impl BrowserKind {
                 .iter()
                 .map(|instrument| {
                     EntityObject::new(
-                        &instrument.instrument_id,
+                        &instrument.id,
                         instrument.name.get(),
                         instrument.source,
                         instrument.last_used_at,
@@ -177,24 +180,15 @@ impl BrowserKind {
                 .list_roles()?
                 .iter()
                 .map(|role| {
-                    EntityObject::new(
-                        &role.role_id,
-                        role.name.get(),
-                        role.source,
-                        role.last_used_at,
-                    )
+                    EntityObject::new(&role.id, role.name.get(), role.source, role.last_used_at)
                 })
                 .collect(),
             BrowserKind::Tags => library
                 .list_tags()?
                 .iter()
                 .map(|tag| {
-                    let object = EntityObject::new(
-                        &tag.tag_id,
-                        tag.name.get(),
-                        tag.source,
-                        tag.last_used_at,
-                    );
+                    let object =
+                        EntityObject::new(&tag.id, tag.name.get(), tag.source, tag.last_used_at);
 
                     let mut details = if tag.takes_value {
                         gettext("Takes a value")
@@ -967,10 +961,7 @@ impl EntityBrowser {
 
         let id_refs = ids.iter().map(String::as_str).collect::<Vec<_>>();
 
-        match self
-            .kind()
-            .remove_tag(&self.library(), &id_refs, &tag.tag_id)
-        {
+        match self.kind().remove_tag(&self.library(), &id_refs, &tag.id) {
             Ok(changed) => {
                 self.reload();
 

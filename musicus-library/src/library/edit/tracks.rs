@@ -9,8 +9,11 @@ use anyhow::{bail, Error, Result};
 use diesel::prelude::*;
 
 use crate::db::tables::{LibraryTrackPath, TRACKS_SUBDIR};
-use crate::db::{self, models::*, schema::*, tables};
-use crate::library::Library;
+use crate::{
+    db::{self, schema::*, tables},
+    library::Library,
+    models::*,
+};
 
 impl Library {
     /// Delete a recording along with its tracks' files.
@@ -204,11 +207,11 @@ impl Library {
         let result = connection.transaction::<(), Error, _>(|connection| {
             for track in deleted_tracks {
                 diesel::delete(track_works::table)
-                    .filter(track_works::track_id.eq(&track.track_id))
+                    .filter(track_works::track_id.eq(&track.id))
                     .execute(connection)?;
 
                 diesel::delete(tracks::table)
-                    .filter(tracks::track_id.eq(&track.track_id))
+                    .filter(tracks::track_id.eq(&track.id))
                     .execute(connection)?;
             }
 
@@ -258,7 +261,7 @@ impl Library {
                 for (index, work) in works.into_iter().enumerate() {
                     let track_work_data = tables::TrackWork {
                         track_id: track_id.clone(),
-                        work_id: work.work_id,
+                        work_id: work.id,
                         sequence_number: db::sequence_number(index)?,
                     };
 

@@ -8,7 +8,7 @@ use gtk::{
 };
 use once_cell::sync::Lazy;
 
-use musicus_library::db::models::{Instrument, Role};
+use musicus_library::models::{Instrument, Role};
 
 use super::connect_keynav;
 use crate::{
@@ -327,7 +327,7 @@ impl PerformerRoleSelectorPopover {
                 .library
                 .get()
                 .unwrap()
-                .import_metadata_role(&item.item.role_id)
+                .import_metadata_role(&item.item.id)
             {
                 Ok(role) => role,
                 Err(err) => {
@@ -350,7 +350,7 @@ impl PerformerRoleSelectorPopover {
                 .library
                 .get()
                 .unwrap()
-                .import_metadata_instrument(&item.item.instrument_id)
+                .import_metadata_instrument(&item.item.id)
             {
                 Ok(instrument) => instrument,
                 Err(err) => {

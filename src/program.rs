@@ -102,16 +102,16 @@ impl Program {
             )
             .property(
                 "composer-id",
-                query.work_person.as_ref().map(|p| p.person_id.clone()),
+                query.work_person.as_ref().map(|p| p.id.clone()),
             )
-            .property("performer-id", query.recording_person.map(|p| p.person_id))
-            .property("ensemble-id", query.ensemble.map(|e| e.ensemble_id))
+            .property("performer-id", query.recording_person.map(|p| p.id))
+            .property("ensemble-id", query.ensemble.map(|e| e.id))
             .property(
                 "instrument-id",
-                query.instrument.as_ref().map(|i| i.instrument_id.clone()),
+                query.instrument.as_ref().map(|i| i.id.clone()),
             )
-            .property("work-id", query.work.as_ref().map(|w| w.work_id.clone()))
-            .property("tag-id", query.tag.as_ref().map(|t| t.tag.tag_id.clone()))
+            .property("work-id", query.work.as_ref().map(|w| w.id.clone()))
+            .property("tag-id", query.tag.as_ref().map(|t| t.tag.id.clone()))
             .property(
                 "tag-value",
                 query

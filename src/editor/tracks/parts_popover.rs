@@ -7,7 +7,7 @@ use gtk::{
 };
 use once_cell::sync::Lazy;
 
-use musicus_library::db::models::Work;
+use musicus_library::models::Work;
 
 use crate::{selector::connect_keynav, util::activatable_row::ActivatableRow};
 

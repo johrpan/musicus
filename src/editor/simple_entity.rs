@@ -9,9 +9,9 @@ use adw::{prelude::*, subclass::prelude::*};
 use anyhow::Result;
 use gettextrs::gettext;
 use gtk::glib::{self, subclass::Signal};
-use musicus_library::db::{
+use musicus_library::{
+    db::TranslatedString,
     models::{Instrument, Person, Role},
-    TranslatedString,
 };
 use once_cell::sync::Lazy;
 
@@ -277,7 +277,7 @@ impl SimpleEntityKind for PersonKind {
     type Item = Person;
 
     fn id(item: &Person) -> &str {
-        &item.person_id
+        &item.id
     }
 
     fn name(item: &Person) -> &TranslatedString {
@@ -316,7 +316,7 @@ impl SimpleEntityKind for InstrumentKind {
     type Item = Instrument;
 
     fn id(item: &Instrument) -> &str {
-        &item.instrument_id
+        &item.id
     }
 
     fn name(item: &Instrument) -> &TranslatedString {
@@ -359,7 +359,7 @@ impl SimpleEntityKind for RoleKind {
     type Item = Role;
 
     fn id(item: &Role) -> &str {
-        &item.role_id
+        &item.id
     }
 
     fn name(item: &Role) -> &TranslatedString {

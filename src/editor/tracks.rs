@@ -17,8 +17,8 @@ use once_cell::sync::Lazy;
 use track_row::{TrackLocation, TracksEditorTrackData, TracksEditorTrackRow};
 
 use musicus_library::{
-    db::models::{Recording, Track, Work},
     library::TrackUpdate,
+    models::{Recording, Track, Work},
 };
 
 use crate::{
@@ -214,7 +214,7 @@ impl TracksEditor {
         // Forget previously removed tracks (see above).
         self.imp().removed_tracks.borrow_mut().clear();
 
-        let tracks = match self.library().tracks_for_recording(&recording.recording_id) {
+        let tracks = match self.library().tracks_for_recording(&recording.id) {
             Ok(tracks) => tracks,
             Err(err) => {
                 util::error_toast(
@@ -347,7 +347,7 @@ impl TracksEditor {
                         return Err(anyhow!("A track has no file assigned to it."));
                     }
                     TrackLocation::Library(track) => TrackUpdate::Existing {
-                        track_id: track.track_id,
+                        track_id: track.id,
                         works: track_data.parts,
                     },
                     TrackLocation::System(path) => TrackUpdate::New {
@@ -365,7 +365,7 @@ impl TracksEditor {
         let removed_tracks = self.imp().removed_tracks.borrow().clone();
 
         self.library()
-            .set_recording_tracks(&recording.recording_id, tracks, &removed_tracks)?;
+            .set_recording_tracks(&recording.id, tracks, &removed_tracks)?;
 
         // Only once everything has been saved may the pending changes be
         // forgotten, so that a failed save stays retryable.

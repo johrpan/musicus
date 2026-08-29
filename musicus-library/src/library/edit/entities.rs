@@ -3,29 +3,24 @@
 use anyhow::{bail, Error, Result};
 use diesel::{prelude::*, QueryDsl, SqliteConnection};
 
-use crate::db::{
-    self,
+use crate::{
+    db::{self, schema::*, tables, tables::Source, TranslatedString},
+    error::{EntityKind, LibraryError},
+    library::{load::Loader, Library},
     models::*,
-    schema::*,
-    tables::{self, Source},
-    TranslatedString,
 };
-use crate::error::{EntityKind, LibraryError};
-use crate::library::Library;
 
 impl Library {
     pub fn create_person(&self, name: TranslatedString, enable_updates: bool) -> Result<Person> {
         let connection = &mut *self.conn();
 
-        let now = db::now();
-
-        let person = Person {
+        let person = tables::Person {
             person_id: db::generate_id(),
             name,
             source: Source::User,
-            created_at: now,
-            edited_at: now,
-            last_used_at: now,
+            created_at: db::now(),
+            edited_at: db::now(),
+            last_used_at: db::now(),
             enable_updates,
         };
 
@@ -35,7 +30,7 @@ impl Library {
 
         self.changed();
 
-        Ok(person)
+        Ok(Person::from(person))
     }
 
     pub fn update_person(
@@ -46,17 +41,19 @@ impl Library {
     ) -> Result<()> {
         let connection = &mut *self.conn();
 
-        let now = db::now();
-
-        diesel::update(persons::table)
+        let updated = diesel::update(persons::table)
             .filter(persons::person_id.eq(id))
             .set((
                 persons::name.eq(name),
-                persons::edited_at.eq(now),
-                persons::last_used_at.eq(now),
+                persons::edited_at.eq(db::now()),
+                persons::last_used_at.eq(db::now()),
                 persons::enable_updates.eq(enable_updates),
             ))
             .execute(connection)?;
+
+        if updated == 0 {
+            return Err(LibraryError::NotFound(EntityKind::Person, id.to_owned()).into());
+        }
 
         self.changed();
 
@@ -83,15 +80,13 @@ impl Library {
     ) -> Result<Instrument> {
         let connection = &mut *self.conn();
 
-        let now = db::now();
-
-        let instrument = Instrument {
+        let instrument = tables::Instrument {
             instrument_id: db::generate_id(),
             name,
             source: Source::User,
-            created_at: now,
-            edited_at: now,
-            last_used_at: now,
+            created_at: db::now(),
+            edited_at: db::now(),
+            last_used_at: db::now(),
             enable_updates,
         };
 
@@ -101,7 +96,7 @@ impl Library {
 
         self.changed();
 
-        Ok(instrument)
+        Ok(Instrument::from(instrument))
     }
 
     pub fn update_instrument(
@@ -112,17 +107,19 @@ impl Library {
     ) -> Result<()> {
         let connection = &mut *self.conn();
 
-        let now = db::now();
-
-        diesel::update(instruments::table)
+        let updated = diesel::update(instruments::table)
             .filter(instruments::instrument_id.eq(id))
             .set((
                 instruments::name.eq(name),
-                instruments::edited_at.eq(now),
-                instruments::last_used_at.eq(now),
+                instruments::edited_at.eq(db::now()),
+                instruments::last_used_at.eq(db::now()),
                 instruments::enable_updates.eq(enable_updates),
             ))
             .execute(connection)?;
+
+        if updated == 0 {
+            return Err(LibraryError::NotFound(EntityKind::Instrument, id.to_owned()).into());
+        }
 
         self.changed();
 
@@ -145,15 +142,13 @@ impl Library {
     pub fn create_role(&self, name: TranslatedString, enable_updates: bool) -> Result<Role> {
         let connection = &mut *self.conn();
 
-        let now = db::now();
-
-        let role = Role {
+        let role = tables::Role {
             role_id: db::generate_id(),
             name,
             source: Source::User,
-            created_at: now,
-            edited_at: now,
-            last_used_at: now,
+            created_at: db::now(),
+            edited_at: db::now(),
+            last_used_at: db::now(),
             enable_updates,
         };
 
@@ -163,7 +158,7 @@ impl Library {
 
         self.changed();
 
-        Ok(role)
+        Ok(Role::from(role))
     }
 
     pub fn update_role(
@@ -174,17 +169,19 @@ impl Library {
     ) -> Result<()> {
         let connection = &mut *self.conn();
 
-        let now = db::now();
-
-        diesel::update(roles::table)
+        let updated = diesel::update(roles::table)
             .filter(roles::role_id.eq(id))
             .set((
                 roles::name.eq(name),
-                roles::edited_at.eq(now),
-                roles::last_used_at.eq(now),
+                roles::edited_at.eq(db::now()),
+                roles::last_used_at.eq(db::now()),
                 roles::enable_updates.eq(enable_updates),
             ))
             .execute(connection)?;
+
+        if updated == 0 {
+            return Err(LibraryError::NotFound(EntityKind::Role, id.to_owned()).into());
+        }
 
         self.changed();
 
@@ -216,9 +213,12 @@ impl Library {
     ) -> Result<Work> {
         let connection = &mut *self.conn();
 
-        let work = connection.transaction::<Work, Error, _>(|connection| {
+        let work_id = connection.transaction::<String, Error, _>(|connection| {
+            let work_id = db::generate_id();
+
             Self::create_work_priv(
                 connection,
+                work_id.clone(),
                 name,
                 parts,
                 persons,
@@ -228,8 +228,13 @@ impl Library {
                 None,
                 related_works,
                 enable_updates,
-            )
+            )?;
+
+            Ok(work_id)
         })?;
+
+        let loader = Loader::load(connection)?;
+        let work = loader.work(&work_id)?;
 
         self.changed();
 
@@ -239,6 +244,7 @@ impl Library {
     #[allow(clippy::too_many_arguments)]
     fn create_work_priv(
         connection: &mut SqliteConnection,
+        work_id: String,
         name: TranslatedString,
         parts: Vec<Work>,
         persons: Vec<WorkPerson>,
@@ -248,8 +254,7 @@ impl Library {
         sequence_number: Option<i32>,
         related_works: Vec<String>,
         enable_updates: bool,
-    ) -> Result<Work> {
-        let work_id = db::generate_id();
+    ) -> Result<()> {
         let now = db::now();
 
         let work_data = tables::Work {
@@ -269,13 +274,19 @@ impl Library {
             .execute(connection)?;
 
         for (index, part) in parts.into_iter().enumerate() {
-            let part_related_works = part.related_works.into_iter().map(|w| w.work_id).collect();
+            let part_related_works = part.related_works.into_iter().map(|w| w.id).collect();
+
+            // A part from an existing library keeps its ID when it is being
+            // moved into a new work by the update path; a fresh part gets a new
+            // one.
+            let part_id = db::generate_id();
 
             Self::create_work_priv(
                 connection,
+                part_id,
                 part.name,
                 part.parts,
-                part.persons,
+                part.work_persons,
                 part.instruments,
                 part.tags,
                 Some(&work_id),
@@ -292,8 +303,8 @@ impl Library {
         for (index, work_person) in persons.into_iter().enumerate() {
             let work_person_data = tables::WorkPerson {
                 work_id: work_id.clone(),
-                person_id: work_person.person.person_id,
-                role_id: work_person.role.map(|r| r.role_id),
+                person_id: work_person.person.id,
+                role_id: work_person.role.map(|r| r.id),
                 sequence_number: db::sequence_number(index)?,
             };
 
@@ -305,7 +316,7 @@ impl Library {
         for (index, instrument) in instruments.into_iter().enumerate() {
             let instrument_data = tables::WorkInstrument {
                 work_id: work_id.clone(),
-                instrument_id: instrument.instrument_id,
+                instrument_id: instrument.id,
                 sequence_number: db::sequence_number(index)?,
             };
 
@@ -314,9 +325,7 @@ impl Library {
                 .execute(connection)?;
         }
 
-        let work = Work::from_table(work_data, connection)?;
-
-        Ok(work)
+        Ok(())
     }
 
     pub fn update_work(
@@ -369,7 +378,7 @@ impl Library {
     ) -> Result<()> {
         let now = db::now();
 
-        diesel::update(works::table)
+        let updated = diesel::update(works::table)
             .filter(works::work_id.eq(work_id))
             .set((
                 works::parent_work_id.eq(parent_work_id),
@@ -381,29 +390,33 @@ impl Library {
             ))
             .execute(connection)?;
 
+        if updated == 0 {
+            return Err(LibraryError::NotFound(EntityKind::Work, work_id.to_owned()).into());
+        }
+
         diesel::delete(works::table)
             .filter(
                 works::parent_work_id
                     .eq(work_id)
-                    .and(works::work_id.ne_all(parts.iter().map(|p| p.work_id.clone()))),
+                    .and(works::work_id.ne_all(parts.iter().map(|p| p.id.clone()))),
             )
             .execute(connection)?;
 
         for (index, part) in parts.into_iter().enumerate() {
-            let part_related_works = part.related_works.into_iter().map(|w| w.work_id).collect();
+            let part_related_works = part.related_works.into_iter().map(|w| w.id).collect();
 
             if works::table
-                .filter(works::work_id.eq(&part.work_id))
+                .filter(works::work_id.eq(&part.id))
                 .first::<tables::Work>(connection)
                 .optional()?
                 .is_some()
             {
                 Self::update_work_priv(
                     connection,
-                    &part.work_id,
+                    &part.id,
                     part.name,
                     part.parts,
-                    part.persons,
+                    part.work_persons,
                     part.instruments,
                     part.tags,
                     Some(work_id),
@@ -412,13 +425,12 @@ impl Library {
                     enable_updates,
                 )?;
             } else {
-                // Note: The previously used ID is discarded. This should be OK, because
-                // at this point, the part ID should not have been used anywhere.
                 Self::create_work_priv(
                     connection,
+                    part.id,
                     part.name,
                     part.parts,
-                    part.persons,
+                    part.work_persons,
                     part.instruments,
                     part.tags,
                     Some(work_id),
@@ -435,16 +447,16 @@ impl Library {
             .filter(work_persons::work_id.eq(work_id))
             .execute(connection)?;
 
-        for (index, composer) in persons.into_iter().enumerate() {
-            let composer_data = tables::WorkPerson {
+        for (index, work_person) in persons.into_iter().enumerate() {
+            let work_person_data = tables::WorkPerson {
                 work_id: work_id.to_string(),
-                person_id: composer.person.person_id,
-                role_id: composer.role.map(|r| r.role_id),
+                person_id: work_person.person.id,
+                role_id: work_person.role.map(|r| r.id),
                 sequence_number: db::sequence_number(index)?,
             };
 
             diesel::insert_into(work_persons::table)
-                .values(composer_data)
+                .values(work_person_data)
                 .execute(connection)?;
         }
 
@@ -455,7 +467,7 @@ impl Library {
         for (index, instrument) in instruments.into_iter().enumerate() {
             let instrument_data = tables::WorkInstrument {
                 work_id: work_id.to_string(),
-                instrument_id: instrument.instrument_id,
+                instrument_id: instrument.id,
                 sequence_number: db::sequence_number(index)?,
             };
 
@@ -484,6 +496,19 @@ impl Library {
 
             if !seen.insert(related_work_id.clone()) {
                 bail!("Work {work_id} relates to {related_work_id} more than once");
+            }
+
+            let target_exists = works::table
+                .filter(works::work_id.eq(related_work_id))
+                .select(works::work_id)
+                .first::<String>(connection)
+                .optional()?
+                .is_some();
+
+            if !target_exists {
+                return Err(
+                    LibraryError::NotFound(EntityKind::Work, related_work_id.clone()).into(),
+                );
             }
         }
 
@@ -526,11 +551,12 @@ impl Library {
     ) -> Result<Ensemble> {
         let connection = &mut *self.conn();
 
-        let ensemble = connection.transaction::<Ensemble, Error, _>(|connection| {
+        let ensemble_id = connection.transaction::<String, Error, _>(|connection| {
+            let ensemble_id = db::generate_id();
             let now = db::now();
 
             let ensemble_data = tables::Ensemble {
-                ensemble_id: db::generate_id(),
+                ensemble_id: ensemble_id.clone(),
                 name,
                 source: Source::User,
                 created_at: now,
@@ -543,22 +569,13 @@ impl Library {
                 .values(&ensemble_data)
                 .execute(connection)?;
 
-            for (index, member) in persons.into_iter().enumerate() {
-                let ensemble_person_data = tables::EnsemblePerson {
-                    ensemble_id: ensemble_data.ensemble_id.clone(),
-                    person_id: member.person.person_id,
-                    role_id: member.role.map(|r| r.role_id),
-                    instrument_id: member.instrument.map(|i| i.instrument_id),
-                    sequence_number: db::sequence_number(index)?,
-                };
+            insert_ensemble_persons(connection, &ensemble_id, persons)?;
 
-                diesel::insert_into(ensemble_persons::table)
-                    .values(&ensemble_person_data)
-                    .execute(connection)?;
-            }
-
-            Ensemble::from_table(ensemble_data, connection)
+            Ok(ensemble_id)
         })?;
+
+        let loader = Loader::load(connection)?;
+        let ensemble = loader.ensemble(&ensemble_id)?;
 
         self.changed();
 
@@ -575,35 +592,25 @@ impl Library {
         let connection = &mut *self.conn();
 
         connection.transaction::<(), Error, _>(|connection| {
-            let now = db::now();
-
-            diesel::update(ensembles::table)
+            let updated = diesel::update(ensembles::table)
                 .filter(ensembles::ensemble_id.eq(id))
                 .set((
                     ensembles::name.eq(name),
-                    ensembles::edited_at.eq(now),
-                    ensembles::last_used_at.eq(now),
+                    ensembles::edited_at.eq(db::now()),
+                    ensembles::last_used_at.eq(db::now()),
                     ensembles::enable_updates.eq(enable_updates),
                 ))
                 .execute(connection)?;
+
+            if updated == 0 {
+                return Err(LibraryError::NotFound(EntityKind::Ensemble, id.to_owned()).into());
+            }
 
             diesel::delete(ensemble_persons::table)
                 .filter(ensemble_persons::ensemble_id.eq(id))
                 .execute(connection)?;
 
-            for (index, member) in persons.into_iter().enumerate() {
-                let ensemble_person_data = tables::EnsemblePerson {
-                    ensemble_id: id.to_string(),
-                    person_id: member.person.person_id,
-                    role_id: member.role.map(|r| r.role_id),
-                    instrument_id: member.instrument.map(|i| i.instrument_id),
-                    sequence_number: db::sequence_number(index)?,
-                };
-
-                diesel::insert_into(ensemble_persons::table)
-                    .values(&ensemble_person_data)
-                    .execute(connection)?;
-            }
+            insert_ensemble_persons(connection, id, persons)?;
 
             Ok(())
         })?;
@@ -637,13 +644,13 @@ impl Library {
     ) -> Result<Recording> {
         let connection = &mut *self.conn();
 
-        let recording = connection.transaction::<Recording, Error, _>(|connection| {
+        let recording_id = connection.transaction::<String, Error, _>(|connection| {
             let recording_id = db::generate_id();
             let now = db::now();
 
             let recording_data = tables::Recording {
                 recording_id: recording_id.clone(),
-                work_id: work.work_id.clone(),
+                work_id: work.id.clone(),
                 source: Source::User,
                 created_at: now,
                 edited_at: now,
@@ -656,37 +663,16 @@ impl Library {
                 .values(&recording_data)
                 .execute(connection)?;
 
-            for (index, performer) in performers.into_iter().enumerate() {
-                let recording_person_data = tables::RecordingPerson {
-                    recording_id: recording_id.clone(),
-                    person_id: performer.person.person_id,
-                    role_id: performer.role.map(|r| r.role_id),
-                    instrument_id: performer.instrument.map(|i| i.instrument_id),
-                    sequence_number: db::sequence_number(index)?,
-                };
-
-                diesel::insert_into(recording_persons::table)
-                    .values(&recording_person_data)
-                    .execute(connection)?;
-            }
-
-            for (index, ensemble) in ensembles.into_iter().enumerate() {
-                let recording_ensemble_data = tables::RecordingEnsemble {
-                    recording_id: recording_id.clone(),
-                    ensemble_id: ensemble.ensemble.ensemble_id,
-                    role_id: ensemble.role.map(|r| r.role_id),
-                    sequence_number: db::sequence_number(index)?,
-                };
-
-                diesel::insert_into(recording_ensembles::table)
-                    .values(&recording_ensemble_data)
-                    .execute(connection)?;
-            }
+            insert_recording_persons(connection, &recording_id, performers)?;
+            insert_recording_ensembles(connection, &recording_id, ensembles)?;
 
             Self::set_recording_tags(connection, &recording_id, tags)?;
 
-            Recording::from_table(recording_data, connection)
+            Ok(recording_id)
         })?;
+
+        let loader = Loader::load(connection)?;
+        let recording = loader.recording(&recording_id)?;
 
         self.changed();
 
@@ -706,53 +692,34 @@ impl Library {
         let connection = &mut *self.conn();
 
         connection.transaction::<(), Error, _>(|connection| {
-            let now = db::now();
-
-            diesel::update(recordings::table)
+            let updated = diesel::update(recordings::table)
                 .filter(recordings::recording_id.eq(recording_id))
                 .set((
-                    recordings::work_id.eq(work.work_id),
-                    recordings::edited_at.eq(now),
-                    recordings::last_used_at.eq(now),
+                    recordings::work_id.eq(work.id),
+                    recordings::edited_at.eq(db::now()),
+                    recordings::last_used_at.eq(db::now()),
                     recordings::comment.eq(comment),
                     recordings::enable_updates.eq(enable_updates),
                 ))
                 .execute(connection)?;
 
+            if updated == 0 {
+                return Err(
+                    LibraryError::NotFound(EntityKind::Recording, recording_id.to_owned()).into(),
+                );
+            }
+
             diesel::delete(recording_persons::table)
                 .filter(recording_persons::recording_id.eq(recording_id))
                 .execute(connection)?;
 
-            for (index, performer) in performers.into_iter().enumerate() {
-                let recording_person_data = tables::RecordingPerson {
-                    recording_id: recording_id.to_string(),
-                    person_id: performer.person.person_id,
-                    role_id: performer.role.map(|r| r.role_id),
-                    instrument_id: performer.instrument.map(|i| i.instrument_id),
-                    sequence_number: db::sequence_number(index)?,
-                };
-
-                diesel::insert_into(recording_persons::table)
-                    .values(&recording_person_data)
-                    .execute(connection)?;
-            }
+            insert_recording_persons(connection, recording_id, performers)?;
 
             diesel::delete(recording_ensembles::table)
                 .filter(recording_ensembles::recording_id.eq(recording_id))
                 .execute(connection)?;
 
-            for (index, ensemble) in ensembles.into_iter().enumerate() {
-                let recording_ensemble_data = tables::RecordingEnsemble {
-                    recording_id: recording_id.to_string(),
-                    ensemble_id: ensemble.ensemble.ensemble_id,
-                    role_id: ensemble.role.map(|r| r.role_id),
-                    sequence_number: db::sequence_number(index)?,
-                };
-
-                diesel::insert_into(recording_ensembles::table)
-                    .values(&recording_ensemble_data)
-                    .execute(connection)?;
-            }
+            insert_recording_ensembles(connection, recording_id, ensembles)?;
 
             Self::set_recording_tags(connection, recording_id, tags)?;
 
@@ -785,7 +752,7 @@ impl Library {
     ) -> Result<Album> {
         let connection = &mut *self.conn();
 
-        let album = connection.transaction::<Album, Error, _>(|connection| {
+        let album_id = connection.transaction::<String, Error, _>(|connection| {
             let album_id = db::generate_id();
             let now = db::now();
 
@@ -806,7 +773,7 @@ impl Library {
             for (index, recording) in recordings.into_iter().enumerate() {
                 let album_recording_data = tables::AlbumRecording {
                     album_id: album_id.clone(),
-                    recording_id: recording.recording_id,
+                    recording_id: recording.id,
                     sequence_number: db::sequence_number(index)?,
                 };
 
@@ -815,8 +782,11 @@ impl Library {
                     .execute(connection)?;
             }
 
-            Album::from_table(album_data, connection)
+            Ok(album_id)
         })?;
+
+        let loader = Loader::load(connection)?;
+        let album = loader.album(&album_id)?;
 
         self.changed();
 
@@ -833,17 +803,19 @@ impl Library {
         let connection = &mut *self.conn();
 
         connection.transaction::<(), Error, _>(|connection| {
-            let now = db::now();
-
-            diesel::update(albums::table)
+            let updated = diesel::update(albums::table)
                 .filter(albums::album_id.eq(album_id))
                 .set((
                     albums::name.eq(name),
                     albums::enable_updates.eq(enable_updates),
-                    albums::edited_at.eq(now),
-                    albums::last_used_at.eq(now),
+                    albums::edited_at.eq(db::now()),
+                    albums::last_used_at.eq(db::now()),
                 ))
                 .execute(connection)?;
+
+            if updated == 0 {
+                return Err(LibraryError::NotFound(EntityKind::Album, album_id.to_owned()).into());
+            }
 
             diesel::delete(album_recordings::table)
                 .filter(album_recordings::album_id.eq(album_id))
@@ -852,7 +824,7 @@ impl Library {
             for (index, recording) in recordings.into_iter().enumerate() {
                 let album_recording_data = tables::AlbumRecording {
                     album_id: album_id.to_owned(),
-                    recording_id: recording.recording_id,
+                    recording_id: recording.id,
                     sequence_number: db::sequence_number(index)?,
                 };
 
@@ -881,4 +853,73 @@ impl Library {
 
         Ok(())
     }
+}
+
+/// Insert an ensemble's member rows, replacing or creating them in their
+/// given order.
+fn insert_ensemble_persons(
+    connection: &mut SqliteConnection,
+    ensemble_id: &str,
+    persons: Vec<RecordingPerson>,
+) -> Result<()> {
+    for (index, member) in persons.into_iter().enumerate() {
+        let ensemble_person_data = tables::EnsemblePerson {
+            ensemble_id: ensemble_id.to_string(),
+            person_id: member.person.id,
+            role_id: member.role.map(|r| r.id),
+            instrument_id: member.instrument.map(|i| i.id),
+            sequence_number: db::sequence_number(index)?,
+        };
+
+        diesel::insert_into(ensemble_persons::table)
+            .values(&ensemble_person_data)
+            .execute(connection)?;
+    }
+
+    Ok(())
+}
+
+/// Insert a recording's performing-person rows in their given order.
+fn insert_recording_persons(
+    connection: &mut SqliteConnection,
+    recording_id: &str,
+    performers: Vec<RecordingPerson>,
+) -> Result<()> {
+    for (index, performer) in performers.into_iter().enumerate() {
+        let recording_person_data = tables::RecordingPerson {
+            recording_id: recording_id.to_string(),
+            person_id: performer.person.id,
+            role_id: performer.role.map(|r| r.id),
+            instrument_id: performer.instrument.map(|i| i.id),
+            sequence_number: db::sequence_number(index)?,
+        };
+
+        diesel::insert_into(recording_persons::table)
+            .values(&recording_person_data)
+            .execute(connection)?;
+    }
+
+    Ok(())
+}
+
+/// Insert a recording's performing-ensemble rows in their given order.
+fn insert_recording_ensembles(
+    connection: &mut SqliteConnection,
+    recording_id: &str,
+    ensembles: Vec<RecordingEnsemble>,
+) -> Result<()> {
+    for (index, ensemble) in ensembles.into_iter().enumerate() {
+        let recording_ensemble_data = tables::RecordingEnsemble {
+            recording_id: recording_id.to_string(),
+            ensemble_id: ensemble.ensemble.id,
+            role_id: ensemble.role.map(|r| r.id),
+            sequence_number: db::sequence_number(index)?,
+        };
+
+        diesel::insert_into(recording_ensembles::table)
+            .values(&recording_ensemble_data)
+            .execute(connection)?;
+    }
+
+    Ok(())
 }

@@ -14,7 +14,7 @@ use gtk::{
 };
 use once_cell::sync::Lazy;
 
-use musicus_library::db::models::TagValue;
+use musicus_library::models::TagValue;
 
 use crate::{editor::translation::TranslationEditor, util::drag_widget::DragWidget};
 

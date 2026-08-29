@@ -7,7 +7,7 @@ use gtk::{
     prelude::*,
 };
 
-use musicus_library::db::models::*;
+use musicus_library::models::*;
 
 use crate::{
     album_page::AlbumPage,
@@ -238,17 +238,17 @@ impl SearchPage {
         if let Some(highlight) = &*self.imp().highlight.borrow() {
             match highlight {
                 Facet::WorkPerson(person) | Facet::RecordingPerson(person) => {
-                    if let Err(err) = self.library().delete_person(&person.person_id) {
+                    if let Err(err) = self.library().delete_person(&person.id) {
                         util::error_toast("Failed to delete person", err, &self.toast_overlay());
                     }
                 }
                 Facet::Ensemble(ensemble) => {
-                    if let Err(err) = self.library().delete_ensemble(&ensemble.ensemble_id) {
+                    if let Err(err) = self.library().delete_ensemble(&ensemble.id) {
                         util::error_toast("Failed to delete ensemble", err, &self.toast_overlay());
                     }
                 }
                 Facet::Instrument(instrument) => {
-                    if let Err(err) = self.library().delete_instrument(&instrument.instrument_id) {
+                    if let Err(err) = self.library().delete_instrument(&instrument.id) {
                         util::error_toast(
                             "Failed to delete instrument",
                             err,
@@ -257,12 +257,12 @@ impl SearchPage {
                     }
                 }
                 Facet::Work(work) => {
-                    if let Err(err) = self.library().delete_work(&work.work_id) {
+                    if let Err(err) = self.library().delete_work(&work.id) {
                         util::error_toast("Failed to delete work", err, &self.toast_overlay());
                     }
                 }
                 Facet::Tag(tag_value) => {
-                    if let Err(err) = self.library().delete_tag(&tag_value.tag.tag_id) {
+                    if let Err(err) = self.library().delete_tag(&tag_value.tag.id) {
                         util::error_toast("Failed to delete tag", err, &self.toast_overlay());
                     }
                 }

@@ -4,15 +4,12 @@
 use anyhow::{Error, Result};
 use diesel::{dsl::exists, prelude::*, QueryDsl, SqliteConnection};
 
-use crate::db::{
-    self,
+use crate::{
+    db::{self, schema::*, tables, tables::Source, TranslatedString},
+    error::{EntityKind, LibraryError},
+    library::Library,
     models::*,
-    schema::*,
-    tables::{self, Source},
-    TranslatedString,
 };
-use crate::error::{EntityKind, LibraryError};
-use crate::library::Library;
 
 impl Library {
     pub fn create_tag(
@@ -26,7 +23,7 @@ impl Library {
 
         let now = db::now();
 
-        let tag = Tag {
+        let tag = tables::Tag {
             tag_id: db::generate_id(),
             name,
             takes_value,
@@ -44,7 +41,7 @@ impl Library {
 
         self.changed();
 
-        Ok(tag)
+        Ok(Tag::from(tag))
     }
 
     /// Whether any work or recording is tagged with this tag.
@@ -134,7 +131,7 @@ impl Library {
         for (index, tag_value) in tags.into_iter().enumerate() {
             let work_tag_data = tables::WorkTag {
                 work_id: work_id.to_string(),
-                tag_id: tag_value.tag.tag_id,
+                tag_id: tag_value.tag.id,
                 value: tag_value.value.filter(|_| tag_value.tag.takes_value),
                 sequence_number: db::sequence_number(index)?,
             };
@@ -160,7 +157,7 @@ impl Library {
         for (index, tag_value) in tags.into_iter().enumerate() {
             let recording_tag_data = tables::RecordingTag {
                 recording_id: recording_id.to_string(),
-                tag_id: tag_value.tag.tag_id,
+                tag_id: tag_value.tag.id,
                 value: tag_value.value.filter(|_| tag_value.tag.takes_value),
                 sequence_number: db::sequence_number(index)?,
             };
@@ -201,7 +198,7 @@ impl Library {
                     .load::<(String, Option<TranslatedString>, i32)>(connection)?;
 
                 let already_tagged = existing.iter().any(|(tag_id, existing_value, _)| {
-                    tag_id == &tag.tag_id && existing_value == &value
+                    tag_id == &tag.id && existing_value == &value
                 });
 
                 if already_tagged {
@@ -217,7 +214,7 @@ impl Library {
                 diesel::insert_into(work_tags::table)
                     .values(tables::WorkTag {
                         work_id: work_id.to_string(),
-                        tag_id: tag.tag_id.clone(),
+                        tag_id: tag.id.clone(),
                         value: value.clone(),
                         sequence_number: next_sequence,
                     })
@@ -267,7 +264,7 @@ impl Library {
                     .load::<(String, Option<TranslatedString>, i32)>(connection)?;
 
                 let already_tagged = existing.iter().any(|(tag_id, existing_value, _)| {
-                    tag_id == &tag.tag_id && existing_value == &value
+                    tag_id == &tag.id && existing_value == &value
                 });
 
                 if already_tagged {
@@ -283,7 +280,7 @@ impl Library {
                 diesel::insert_into(recording_tags::table)
                     .values(tables::RecordingTag {
                         recording_id: recording_id.to_string(),
-                        tag_id: tag.tag_id.clone(),
+                        tag_id: tag.id.clone(),
                         value: value.clone(),
                         sequence_number: next_sequence,
                     })

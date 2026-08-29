@@ -10,7 +10,7 @@ use once_cell::sync::Lazy;
 
 use crate::editor::performer_row::PerformerRow;
 
-use musicus_library::db::models::{
+use musicus_library::models::{
     Ensemble, Person, Recording, RecordingEnsemble, RecordingPerson, Tag, TagValue, Work,
 };
 
@@ -235,18 +235,15 @@ impl RecordingEditor {
 
         if let Some(recording) = recording {
             obj.imp().save_row.set_title(&gettext("_Save changes"));
-            obj.imp()
-                .recording_id
-                .set(recording.recording_id.clone())
-                .unwrap();
+            obj.imp().recording_id.set(recording.id.clone()).unwrap();
 
             obj.set_work(recording.work.clone());
 
-            for performer in recording.persons.clone() {
+            for performer in recording.recording_persons.clone() {
                 obj.add_performer_row(performer);
             }
 
-            for ensemble_performer in recording.ensembles.clone() {
+            for ensemble_performer in recording.recording_ensembles.clone() {
                 obj.add_ensemble_row(ensemble_performer);
             }
 

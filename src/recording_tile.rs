@@ -4,7 +4,7 @@ use adw::prelude::*;
 use gettextrs::gettext;
 use gtk::{gio, glib, subclass::prelude::*};
 
-use musicus_library::db::models::{Recording, Work};
+use musicus_library::models::{Recording, Work};
 
 use crate::{editor::recording::RecordingEditor, library::Library, player::Player};
 
@@ -112,7 +112,7 @@ mod imp {
                     let obj = obj.clone();
                     glib::spawn_future_local(async move {
                         if dialog.choose_future(Some(&obj)).await == "delete" {
-                            if let Err(err) = obj.imp().library.get().unwrap().delete_recording_and_tracks(&obj.recording().recording_id) {
+                            if let Err(err) = obj.imp().library.get().unwrap().delete_recording_and_tracks(&obj.recording().id) {
                                 util::error_toast("Failed to delete recording", err, obj.imp().toast_overlay.get().unwrap());
                             }
                         }

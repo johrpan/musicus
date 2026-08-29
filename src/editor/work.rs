@@ -11,8 +11,8 @@ use gtk::glib::{self, clone, subclass::Signal, Properties};
 use once_cell::sync::Lazy;
 use part_row::WorkEditorPartRow;
 
-use musicus_library::db::{
-    self,
+use musicus_library::{
+    db::{self},
     models::{Instrument, Person, RelatedWork, Tag, TagValue, Work, WorkPerson},
 };
 
@@ -256,7 +256,7 @@ impl WorkEditor {
 
         if let Some(work) = work {
             obj.imp().save_row.set_title(&gettext("_Save changes"));
-            obj.imp().work_id.set(work.work_id.clone()).unwrap();
+            obj.imp().work_id.set(work.id.clone()).unwrap();
 
             obj.imp().name_editor.set_translation(&work.name);
 
@@ -264,7 +264,7 @@ impl WorkEditor {
                 obj.add_part_row(part.clone());
             }
 
-            for composer in &work.persons {
+            for composer in &work.work_persons {
                 obj.add_composer_row(composer.clone());
             }
 
@@ -349,9 +349,9 @@ impl WorkEditor {
 
     fn set_relates_to(&self, relates_to: Option<Work>) {
         let related = relates_to.map(|work| RelatedWork {
-            work_id: work.work_id,
+            id: work.id,
             name: work.name,
-            work_persons: work.persons,
+            work_persons: work.work_persons,
         });
 
         self.set_related(related);
@@ -572,10 +572,12 @@ impl WorkEditor {
                 .unwrap_or_else(db::generate_id);
 
             let part = Work {
-                work_id,
+                id: work_id,
                 name,
+                source: musicus_library::db::tables::Source::User,
+                last_used_at: chrono::Utc::now().naive_utc(),
                 parts,
-                persons: composers,
+                work_persons: composers,
                 instruments,
                 tags,
                 related_works: related_work.into_iter().collect(),
@@ -586,7 +588,7 @@ impl WorkEditor {
         } else if let Some(work_id) = self.imp().work_id.get() {
             let related_works = related_work
                 .iter()
-                .map(|work| work.work_id.clone())
+                .map(|work| work.id.clone())
                 .collect::<Vec<String>>();
 
             if crate::editor::handle_save(
@@ -609,7 +611,7 @@ impl WorkEditor {
         } else {
             let related_works = related_work
                 .iter()
-                .map(|work| work.work_id.clone())
+                .map(|work| work.id.clone())
                 .collect::<Vec<String>>();
 
             let Some(work) = crate::editor::handle_save(

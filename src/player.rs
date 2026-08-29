@@ -14,8 +14,8 @@ use gtk::{
     subclass::prelude::*,
 };
 use musicus_library::{
-    db::models::{Recording, Track, Work},
     format_translated,
+    models::{Recording, Track, Work},
 };
 use once_cell::sync::Lazy;
 
@@ -276,7 +276,7 @@ impl Player {
         let tracks = self.matching_tracks(recording, None);
 
         if tracks.is_empty() {
-            log::warn!("Recording without tracks: {}.", &recording.recording_id);
+            log::warn!("Recording without tracks: {}.", &recording.id);
             return Vec::new();
         }
 
@@ -304,8 +304,8 @@ impl Player {
         if tracks.is_empty() {
             log::warn!(
                 "No tracks of recording {} carry work {}.",
-                &recording.recording_id,
-                &work.work_id
+                &recording.id,
+                &work.id
             );
             return Vec::new();
         }
@@ -343,7 +343,7 @@ impl Player {
         let tracks = self.matching_tracks(recording, work);
 
         if tracks.is_empty() {
-            log::warn!("Recording without tracks: {}.", &recording.recording_id);
+            log::warn!("Recording without tracks: {}.", &recording.id);
             return Vec::new();
         }
 
@@ -358,7 +358,7 @@ impl Player {
         let tracks = self
             .library()
             .unwrap()
-            .tracks_for_recording(&recording.recording_id)
+            .tracks_for_recording(&recording.id)
             .unwrap();
 
         match work {
@@ -367,9 +367,9 @@ impl Player {
                 .into_iter()
                 .filter(|track| {
                     if track.works.is_empty() {
-                        work.work_id == recording.work.work_id
+                        work.id == recording.work.id
                     } else {
-                        track.works.iter().any(|w| work.contains(&w.work_id))
+                        track.works.iter().any(|w| work.contains(&w.id))
                     }
                 })
                 .collect(),
@@ -419,7 +419,7 @@ impl Player {
                     Some(&performances),
                     track_title(track, *number).as_deref(),
                     self.library_path_to_file_path(&track.path),
-                    &track.track_id,
+                    &track.id,
                 )
             })
             .collect()
@@ -725,9 +725,7 @@ impl Player {
         let target_work = program
             .work_id()
             .and_then(|work_id| self.library().unwrap().work(&work_id).ok())
-            .filter(|work| {
-                work.contains(&recording.work.work_id) || recording.work.contains(&work.work_id)
-            });
+            .filter(|work| work.contains(&recording.work.id) || recording.work.contains(&work.id));
 
         let playlist = match (target_work, program.play_full_recordings()) {
             (Some(work), true) => self.recording_to_playlist_for_work(&recording, &work),

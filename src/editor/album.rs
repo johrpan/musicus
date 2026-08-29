@@ -8,7 +8,7 @@ use gtk::glib::{self, clone, subclass::Signal, Properties};
 use once_cell::sync::Lazy;
 use recording_row::RecordingRow;
 
-use musicus_library::db::models::{Album, Recording};
+use musicus_library::models::{Album, Recording};
 
 use crate::{
     editor::{create, translation::TranslationEditor},
@@ -125,7 +125,7 @@ impl AlbumEditor {
 
         if let Some(album) = album {
             obj.imp().save_row.set_title(&gettext("_Save changes"));
-            obj.imp().album_id.set(album.album_id.clone()).unwrap();
+            obj.imp().album_id.set(album.id.clone()).unwrap();
             obj.imp().name_editor.set_translation(&album.name);
 
             for recording in &album.recordings {

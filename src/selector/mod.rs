@@ -13,7 +13,7 @@ use gtk::{
     prelude::*,
 };
 
-use musicus_library::db::models::{Person, Work};
+use musicus_library::models::{Person, Work};
 
 use crate::util::activatable_row::ActivatableRow;
 

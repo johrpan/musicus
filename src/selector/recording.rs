@@ -8,7 +8,7 @@ use gtk::{
 };
 use once_cell::sync::Lazy;
 
-use musicus_library::db::models::{Person, Recording, Work};
+use musicus_library::models::{Person, Recording, Work};
 
 use super::{
     connect_keynav, create_row, ComposerPrefill, RecordingPrefill, RecordingWork, WorkPrefill,
@@ -359,7 +359,7 @@ impl RecordingSelectorPopover {
                 .library
                 .get()
                 .unwrap()
-                .import_metadata_person(&item.item.person_id)
+                .import_metadata_person(&item.item.id)
             {
                 Ok(person) => person,
                 Err(err) => {
@@ -388,7 +388,7 @@ impl RecordingSelectorPopover {
                 .library
                 .get()
                 .unwrap()
-                .import_metadata_work(&item.item.work_id)
+                .import_metadata_work(&item.item.id)
             {
                 Ok(work) => work,
                 Err(err) => {
@@ -422,7 +422,7 @@ impl RecordingSelectorPopover {
                 .library
                 .get()
                 .unwrap()
-                .import_metadata_recording(&item.item.recording_id)
+                .import_metadata_recording(&item.item.id)
             {
                 Ok(recording) => recording,
                 Err(err) => {

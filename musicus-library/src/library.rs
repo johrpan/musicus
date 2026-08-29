@@ -10,7 +10,7 @@ use diesel::{prelude::*, SqliteConnection};
 
 use crate::db::{self, schema::*, tables};
 pub use edit::TrackUpdate;
-pub use list::{EnsembleListItem, RecordingListItem, WorkListItem};
+pub use list::{RecordingListItem, WorkListItem};
 pub use merge::EntityUsage;
 pub use program::GenerateRecordingParams;
 pub use query::{Facet, LibraryQuery};
@@ -19,6 +19,7 @@ pub use search::SearchItem;
 pub mod edit;
 pub mod exchange;
 pub mod list;
+mod load;
 pub mod merge;
 pub mod metadata;
 pub mod process;

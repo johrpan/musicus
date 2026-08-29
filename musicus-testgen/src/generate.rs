@@ -7,12 +7,9 @@ use std::{fs, path::Path};
 
 use anyhow::{Context, Result};
 use musicus_library::{
-    db::{
-        models::{
-            Ensemble, Instrument, Person, RecordingEnsemble, RecordingPerson, Role, Work,
-            WorkPerson,
-        },
-        TranslatedString,
+    db::TranslatedString,
+    models::{
+        Ensemble, Instrument, Person, RecordingEnsemble, RecordingPerson, Role, Work, WorkPerson,
     },
     Library,
 };
@@ -182,12 +179,7 @@ pub fn generate(
             let source = stub_track(staging.path(), summary.tracks)?;
 
             library
-                .import_track(
-                    &source,
-                    &recording.recording_id,
-                    track_index as i32,
-                    Vec::new(),
-                )
+                .import_track(&source, &recording.id, track_index as i32, Vec::new())
                 .context("Failed to import a track")?;
 
             // The library copies the file, so the staged one is not needed

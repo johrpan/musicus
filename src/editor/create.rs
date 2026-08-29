@@ -9,7 +9,7 @@ use std::rc::Rc;
 
 use gtk::glib;
 
-use musicus_library::db::models::{Person, Recording, Work};
+use musicus_library::models::{Person, Recording, Work};
 
 use crate::{
     editor::{recording::RecordingEditor, simple_entity::SimpleEntityEditor, work::WorkEditor},

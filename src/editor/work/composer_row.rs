@@ -8,7 +8,7 @@ use gtk::{
 };
 use once_cell::sync::Lazy;
 
-use musicus_library::db::models::{Role, WorkPerson};
+use musicus_library::models::{Role, WorkPerson};
 
 use crate::{
     editor::simple_entity::SimpleEntityEditor, library::Library, selector::SelectorPopover,

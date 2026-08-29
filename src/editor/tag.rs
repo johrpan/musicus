@@ -3,7 +3,7 @@ use std::cell::OnceCell;
 use adw::{prelude::*, subclass::prelude::*};
 use gettextrs::gettext;
 use gtk::glib::{self, subclass::Signal};
-use musicus_library::db::models::Tag;
+use musicus_library::models::Tag;
 use once_cell::sync::Lazy;
 
 use crate::{editor::require_name, editor::translation::TranslationEditor, library::Library, util};
@@ -82,7 +82,7 @@ impl TagEditor {
 
         if let Some(tag) = tag {
             imp.save_row.set_title(&gettext("_Save changes"));
-            let _ = imp.tag_id.set(tag.tag_id.to_owned());
+            let _ = imp.tag_id.set(tag.id.to_owned());
             imp.name_editor.set_translation(&tag.name);
             imp.takes_value_row.set_active(tag.takes_value);
             imp.private_row.set_active(tag.private);
@@ -90,7 +90,7 @@ impl TagEditor {
 
             // Changing this would discard the values already recorded, or leave
             // existing assignments without the value a valued tag is found by.
-            let in_use = match library.tag_is_in_use(&tag.tag_id) {
+            let in_use = match library.tag_is_in_use(&tag.id) {
                 Ok(in_use) => in_use,
                 Err(err) => {
                     log::warn!("Failed to check whether the tag is in use: {err:?}");

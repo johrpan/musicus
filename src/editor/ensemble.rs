@@ -5,7 +5,7 @@ use gettextrs::gettext;
 use gtk::glib::{self, clone, subclass::Signal};
 use once_cell::sync::Lazy;
 
-use musicus_library::db::models::{Ensemble, Person, RecordingPerson};
+use musicus_library::models::{Ensemble, Person, RecordingPerson};
 
 use crate::{
     editor::{
@@ -125,16 +125,13 @@ impl EnsembleEditor {
 
         if let Some(ensemble) = ensemble {
             obj.imp().save_row.set_title(&gettext("_Save changes"));
-            obj.imp()
-                .ensemble_id
-                .set(ensemble.ensemble_id.clone())
-                .unwrap();
+            obj.imp().ensemble_id.set(ensemble.id.clone()).unwrap();
             obj.imp().name_editor.set_translation(&ensemble.name);
             obj.imp()
                 .enable_updates_row
                 .set_active(ensemble.enable_updates);
 
-            for member in ensemble.persons.clone() {
+            for member in ensemble.members.clone() {
                 obj.add_member_row(member);
             }
         }
