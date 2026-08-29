@@ -3,7 +3,7 @@
 //! Everything goes through the same mutators the app uses, so the result is
 //! indistinguishable from a library the user built by hand.
 
-use std::{collections::HashMap, fs, path::Path};
+use std::{fs, path::Path};
 
 use anyhow::{Context, Result};
 use musicus_library::{
@@ -206,9 +206,7 @@ pub fn generate(
 /// Every translated string needs that key: without it `TranslatedString::get`
 /// logs a warning and returns an empty string.
 fn translated(name: &str) -> TranslatedString {
-    let mut translations = HashMap::new();
-    translations.insert("generic".to_string(), name.to_string());
-    TranslatedString(translations)
+    TranslatedString::generic(name)
 }
 
 /// Write a placeholder file that can be imported as a track.

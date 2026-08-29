@@ -30,7 +30,7 @@ pub struct Work {
 #[derive(Clone, Debug)]
 pub struct TagValue {
     pub tag: Tag,
-    pub value: Option<String>,
+    pub value: Option<TranslatedString>,
 }
 
 #[derive(Clone, Debug)]
@@ -139,7 +139,7 @@ impl TagValue {
             .order(work_tags::sequence_number)
             .filter(work_tags::work_id.eq(work_id))
             .select((tables::Tag::as_select(), work_tags::value))
-            .load::<(Tag, Option<String>)>(connection)?
+            .load::<(Tag, Option<TranslatedString>)>(connection)?
             .into_iter()
             .map(|(tag, value)| Self { tag, value })
             .collect())
@@ -154,7 +154,7 @@ impl TagValue {
             .order(recording_tags::sequence_number)
             .filter(recording_tags::recording_id.eq(recording_id))
             .select((tables::Tag::as_select(), recording_tags::value))
-            .load::<(Tag, Option<String>)>(connection)?
+            .load::<(Tag, Option<TranslatedString>)>(connection)?
             .into_iter()
             .map(|(tag, value)| Self { tag, value })
             .collect())
@@ -171,7 +171,7 @@ impl PartialEq for TagValue {
 impl Display for TagValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self.value {
-            Some(value) => write!(f, "{}: {}", self.tag.name.get(), value),
+            Some(value) => write!(f, "{}: {}", self.tag.name.get(), value.get()),
             None => write!(f, "{}", self.tag.name.get()),
         }
     }

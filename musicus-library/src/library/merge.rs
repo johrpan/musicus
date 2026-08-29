@@ -10,7 +10,7 @@ use anyhow::{bail, Result};
 use diesel::prelude::*;
 
 use super::Library;
-use crate::db::schema::*;
+use crate::db::{schema::*, TranslatedString};
 
 /// Reference counts within the library for one entity.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -163,11 +163,11 @@ impl Library {
 
             if !takes_value {
                 diesel::update(work_tags::table.filter(work_tags::tag_id.eq(into)))
-                    .set(work_tags::value.eq(None::<String>))
+                    .set(work_tags::value.eq(None::<TranslatedString>))
                     .execute(connection)?;
 
                 diesel::update(recording_tags::table.filter(recording_tags::tag_id.eq(into)))
-                    .set(recording_tags::value.eq(None::<String>))
+                    .set(recording_tags::value.eq(None::<TranslatedString>))
                     .execute(connection)?;
             }
 

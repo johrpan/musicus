@@ -24,7 +24,7 @@ struct WorkPersonRow {
 pub struct WorkListItem {
     pub work: tables::Work,
     pub composers: Vec<TranslatedString>,
-    pub tags: Vec<(TranslatedString, Option<String>)>,
+    pub tags: Vec<(TranslatedString, Option<TranslatedString>)>,
 }
 
 #[derive(Clone, Debug)]
@@ -41,7 +41,7 @@ pub struct RecordingListItem {
     pub composers: Vec<TranslatedString>,
     pub performers: Vec<TranslatedString>,
     pub n_tracks: i64,
-    pub tags: Vec<(TranslatedString, Option<String>)>,
+    pub tags: Vec<(TranslatedString, Option<TranslatedString>)>,
 }
 
 /// The names credited on each work, keyed by work ID, in their stored order.
@@ -96,14 +96,15 @@ fn composers_by_work(
 /// The tags applied to each work, keyed by work ID, in their stored order.
 fn tags_by_work(
     connection: &mut SqliteConnection,
-) -> Result<HashMap<String, Vec<(TranslatedString, Option<String>)>>> {
-    let mut tags: HashMap<String, Vec<(TranslatedString, Option<String>)>> = HashMap::new();
+) -> Result<HashMap<String, Vec<(TranslatedString, Option<TranslatedString>)>>> {
+    let mut tags: HashMap<String, Vec<(TranslatedString, Option<TranslatedString>)>> =
+        HashMap::new();
 
     for (work_id, name, value) in work_tags::table
         .inner_join(tags::table)
         .order((work_tags::work_id, work_tags::sequence_number))
         .select((work_tags::work_id, tags::name, work_tags::value))
-        .load::<(String, TranslatedString, Option<String>)>(connection)?
+        .load::<(String, TranslatedString, Option<TranslatedString>)>(connection)?
     {
         tags.entry(work_id).or_default().push((name, value));
     }
@@ -114,8 +115,9 @@ fn tags_by_work(
 /// The tags applied to each recording, keyed by recording ID, in their stored order.
 fn tags_by_recording(
     connection: &mut SqliteConnection,
-) -> Result<HashMap<String, Vec<(TranslatedString, Option<String>)>>> {
-    let mut tags: HashMap<String, Vec<(TranslatedString, Option<String>)>> = HashMap::new();
+) -> Result<HashMap<String, Vec<(TranslatedString, Option<TranslatedString>)>>> {
+    let mut tags: HashMap<String, Vec<(TranslatedString, Option<TranslatedString>)>> =
+        HashMap::new();
 
     for (recording_id, name, value) in recording_tags::table
         .inner_join(tags::table)
@@ -128,7 +130,7 @@ fn tags_by_recording(
             tags::name,
             recording_tags::value,
         ))
-        .load::<(String, TranslatedString, Option<String>)>(connection)?
+        .load::<(String, TranslatedString, Option<TranslatedString>)>(connection)?
     {
         tags.entry(recording_id).or_default().push((name, value));
     }

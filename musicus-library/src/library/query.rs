@@ -7,7 +7,7 @@ use gettextrs::gettext;
 
 use super::Library;
 use crate::{
-    db::{models::*, schema::*, tables, views::*},
+    db::{models::*, schema::*, tables, views::*, TranslatedString},
     format_translated,
 };
 
@@ -844,7 +844,7 @@ impl Library {
                         .limit(9)
                         .select((tables::Tag::as_select(), work_tags::value))
                         .distinct()
-                        .load::<(Tag, Option<String>)>(connection)?;
+                        .load::<(Tag, Option<TranslatedString>)>(connection)?;
 
                     let mut statement = recordings::table
                         .inner_join(
@@ -899,7 +899,7 @@ impl Library {
                             .limit(9)
                             .select((tables::Tag::as_select(), recording_tags::value))
                             .distinct()
-                            .load::<(Tag, Option<String>)>(connection)?,
+                            .load::<(Tag, Option<TranslatedString>)>(connection)?,
                     );
 
                     // The same tag can sit on a work and on its recordings, and the

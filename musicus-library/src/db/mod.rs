@@ -4,7 +4,7 @@ pub mod tables;
 pub mod views;
 
 use std::{
-    collections::HashMap,
+    collections::BTreeMap,
     fmt::Display,
     sync::{Mutex, MutexGuard, OnceLock},
 };
@@ -124,11 +124,25 @@ pub fn lock_connection(connection: &Mutex<SqliteConnection>) -> MutexGuard<'_, S
 }
 
 /// A single translated string value.
-#[derive(Serialize, Deserialize, AsExpression, FromSqlRow, Clone, Default, Debug)]
+///
+/// Backed by a `BTreeMap` rather than a `HashMap` so that serialization is
+/// deterministic — this lets `work_tags.value`/`recording_tags.value` be
+/// compared for exact equality directly in SQL.
+#[derive(Serialize, Deserialize, AsExpression, FromSqlRow, Clone, Default, Debug, PartialEq, Eq, Hash)]
 #[diesel(sql_type = Text)]
-pub struct TranslatedString(pub HashMap<String, String>);
+pub struct TranslatedString(pub BTreeMap<String, String>);
 
 impl TranslatedString {
+    /// Build a `TranslatedString` carrying only the generic variant.
+    pub fn generic(text: impl Into<String>) -> Self {
+        Self(BTreeMap::from([("generic".to_string(), text.into())]))
+    }
+
+    /// Whether every variant (including generic) is blank.
+    pub fn is_blank(&self) -> bool {
+        self.0.values().all(|value| value.trim().is_empty())
+    }
+
     /// Get the best translation for the user's current locale.
     ///
     /// This will fall back to the generic variant if no translation exists. If no

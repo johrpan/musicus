@@ -181,10 +181,10 @@ impl Library {
         &self,
         work_ids: &[&str],
         tag: &Tag,
-        value: Option<&str>,
+        value: Option<&TranslatedString>,
     ) -> Result<usize> {
         let connection = &mut *self.conn();
-        let value = value.filter(|_| tag.takes_value).map(str::to_owned);
+        let value = value.filter(|_| tag.takes_value).cloned();
         let now = db::now();
 
         let changed = connection.transaction::<usize, Error, _>(|connection| {
@@ -198,7 +198,7 @@ impl Library {
                         work_tags::value,
                         work_tags::sequence_number,
                     ))
-                    .load::<(String, Option<String>, i32)>(connection)?;
+                    .load::<(String, Option<TranslatedString>, i32)>(connection)?;
 
                 let already_tagged = existing.iter().any(|(tag_id, existing_value, _)| {
                     tag_id == &tag.tag_id && existing_value == &value
@@ -247,10 +247,10 @@ impl Library {
         &self,
         recording_ids: &[&str],
         tag: &Tag,
-        value: Option<&str>,
+        value: Option<&TranslatedString>,
     ) -> Result<usize> {
         let connection = &mut *self.conn();
-        let value = value.filter(|_| tag.takes_value).map(str::to_owned);
+        let value = value.filter(|_| tag.takes_value).cloned();
         let now = db::now();
 
         let changed = connection.transaction::<usize, Error, _>(|connection| {
@@ -264,7 +264,7 @@ impl Library {
                         recording_tags::value,
                         recording_tags::sequence_number,
                     ))
-                    .load::<(String, Option<String>, i32)>(connection)?;
+                    .load::<(String, Option<TranslatedString>, i32)>(connection)?;
 
                 let already_tagged = existing.iter().any(|(tag_id, existing_value, _)| {
                     tag_id == &tag.tag_id && existing_value == &value

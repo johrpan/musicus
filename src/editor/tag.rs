@@ -135,7 +135,7 @@ impl TagEditor {
         let private = imp.private_row.is_active();
         let enable_updates = imp.enable_updates_row.is_active();
 
-        if name.0.values().all(|value| value.trim().is_empty()) {
+        if name.is_blank() {
             self.report(gettext("Please enter a name."));
             return;
         }

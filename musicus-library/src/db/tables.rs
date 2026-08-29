@@ -71,7 +71,7 @@ pub struct Tag {
 pub struct WorkTag {
     pub work_id: String,
     pub tag_id: String,
-    pub value: Option<String>,
+    pub value: Option<TranslatedString>,
     pub sequence_number: i32,
 }
 
@@ -80,7 +80,7 @@ pub struct WorkTag {
 pub struct RecordingTag {
     pub recording_id: String,
     pub tag_id: String,
-    pub value: Option<String>,
+    pub value: Option<TranslatedString>,
     pub sequence_number: i32,
 }
 

@@ -1,4 +1,4 @@
-use std::{cell::RefCell, collections::HashMap};
+use std::{cell::RefCell, collections::BTreeMap};
 
 use adw::{prelude::*, subclass::prelude::*};
 use gtk::glib;
@@ -82,7 +82,7 @@ impl TranslationEditor {
 
     pub fn translation(&self) -> TranslatedString {
         let imp = self.imp();
-        let mut translation = HashMap::<String, String>::new();
+        let mut translation = BTreeMap::<String, String>::new();
 
         translation.insert(String::from("generic"), imp.entry_row.text().into());
         for entry in &*imp.translation_entries.borrow() {

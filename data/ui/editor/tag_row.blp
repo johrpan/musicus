@@ -11,10 +11,16 @@ template $MusicusEditorTagRow: Adw.ActionRow {
     ]
   }
 
-  Gtk.Entry value_entry {
+  Gtk.MenuButton value_button {
     visible: false;
     valign: center;
-    placeholder-text: _("Value");
+    label: _("Value");
+
+    popover: Gtk.Popover value_popover {
+      closed => $value_popover_closed() swapped;
+
+      $MusicusTranslationEditor value_editor {}
+    };
   }
 
   Gtk.Button {

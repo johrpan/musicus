@@ -7,6 +7,7 @@
 use std::cell::OnceCell;
 
 use adw::{prelude::*, subclass::prelude::*};
+use gettextrs::gettext;
 use gtk::{
     gdk,
     glib::{self, clone, subclass::Signal},
@@ -15,7 +16,7 @@ use once_cell::sync::Lazy;
 
 use musicus_library::db::models::TagValue;
 
-use crate::util::drag_widget::DragWidget;
+use crate::{editor::translation::TranslationEditor, util::drag_widget::DragWidget};
 
 mod imp {
     use super::*;
@@ -26,7 +27,9 @@ mod imp {
         pub tag_value: OnceCell<TagValue>,
 
         #[template_child]
-        pub value_entry: TemplateChild<gtk::Entry>,
+        pub value_button: TemplateChild<gtk::MenuButton>,
+        #[template_child]
+        pub value_editor: TemplateChild<TranslationEditor>,
     }
 
     #[glib::object_subclass]
@@ -36,6 +39,7 @@ mod imp {
         type ParentType = adw::ActionRow;
 
         fn class_init(klass: &mut Self::Class) {
+            TranslationEditor::static_type();
             klass.bind_template();
             klass.bind_template_instance_callbacks();
         }
@@ -123,10 +127,11 @@ impl TagRow {
         obj.set_title(tag_value.tag.name.get());
 
         if tag_value.tag.takes_value {
-            imp.value_entry.set_visible(true);
+            imp.value_button.set_visible(true);
 
             if let Some(value) = &tag_value.value {
-                imp.value_entry.set_text(value);
+                imp.value_editor.set_translation(value);
+                imp.value_button.set_label(value.get());
             }
         }
 
@@ -152,14 +157,14 @@ impl TagRow {
         })
     }
 
-    /// The assignment as edited, with an empty value read as no value.
+    /// The assignment as edited, with a blank value read as no value.
     pub fn tag_value(&self) -> TagValue {
         let imp = self.imp();
         let tag_value = imp.tag_value.get().unwrap();
 
         let value = if tag_value.tag.takes_value {
-            let text = imp.value_entry.text().trim().to_string();
-            (!text.is_empty()).then_some(text)
+            let translation = imp.value_editor.translation();
+            (!translation.is_blank()).then_some(translation)
         } else {
             None
         };
@@ -173,5 +178,17 @@ impl TagRow {
     #[template_callback]
     fn remove(&self) {
         self.emit_by_name::<()>("remove", &[]);
+    }
+
+    #[template_callback]
+    fn value_popover_closed(&self) {
+        let translation = self.imp().value_editor.translation();
+        let label = if translation.is_blank() {
+            gettext("Value")
+        } else {
+            translation.get().to_string()
+        };
+
+        self.imp().value_button.set_label(&label);
     }
 }

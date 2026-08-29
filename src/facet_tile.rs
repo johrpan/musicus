@@ -67,7 +67,7 @@ impl FacetTile {
             }
             Facet::Tag(tag_value) => match &tag_value.value {
                 Some(value) => {
-                    imp.title_label.set_label(value);
+                    imp.title_label.set_label(value.get());
                     imp.subtitle_label.set_label(tag_value.tag.name.get());
                     imp.subtitle_label.set_visible(true);
                 }

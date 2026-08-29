@@ -112,7 +112,13 @@ impl Program {
             )
             .property("work-id", query.work.as_ref().map(|w| w.work_id.clone()))
             .property("tag-id", query.tag.as_ref().map(|t| t.tag.tag_id.clone()))
-            .property("tag-value", query.tag.and_then(|t| t.value))
+            .property(
+                "tag-value",
+                query
+                    .tag
+                    .and_then(|t| t.value)
+                    .map(|value| serde_json::to_string(&value).unwrap()),
+            )
             .property(
                 "prefer-recently-added",
                 settings.int("prefer-recently-added") as f64 / 100.0,
@@ -195,6 +201,12 @@ impl Program {
 
     pub fn serialize(&self) -> String {
         serde_json::to_string(self.imp()).unwrap()
+    }
+
+    /// The tag value, deserialized from the JSON stored in the `tag-value` property.
+    pub fn tag_value_translated(&self) -> Option<musicus_library::db::TranslatedString> {
+        self.tag_value()
+            .map(|value| serde_json::from_str(&value).unwrap())
     }
 }
 

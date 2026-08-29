@@ -263,7 +263,7 @@ impl BrowserKind {
         library: &Library,
         ids: &[&str],
         tag: &Tag,
-        value: Option<&str>,
+        value: Option<&TranslatedString>,
     ) -> Result<usize> {
         match self {
             BrowserKind::Works => Ok(library.add_tag_to_works(ids, tag, value)?),
@@ -454,10 +454,10 @@ fn join_names(names: &[TranslatedString]) -> String {
         .join(", ")
 }
 
-fn join_tags(tags: &[(TranslatedString, Option<String>)]) -> String {
+fn join_tags(tags: &[(TranslatedString, Option<TranslatedString>)]) -> String {
     tags.iter()
         .map(|(name, value)| match value {
-            Some(value) => format!("{}: {value}", name.get()),
+            Some(value) => format!("{}: {}", name.get(), value.get()),
             None => name.get().to_owned(),
         })
         .collect::<Vec<_>>()
@@ -810,14 +810,14 @@ impl EntityBrowser {
     async fn tag_picked(&self, tag: Tag) {
         let value = if tag.takes_value {
             match self.prompt_for_value(&tag).await {
-                Some(value) => Some(value),
+                Some(value) => Some(TranslatedString::generic(value)),
                 None => return,
             }
         } else {
             None
         };
 
-        self.apply_tag(&tag, value.as_deref());
+        self.apply_tag(&tag, value.as_ref());
     }
 
     async fn prompt_for_value(&self, tag: &Tag) -> Option<String> {
@@ -852,7 +852,7 @@ impl EntityBrowser {
         }
     }
 
-    fn apply_tag(&self, tag: &Tag, value: Option<&str>) {
+    fn apply_tag(&self, tag: &Tag, value: Option<&TranslatedString>) {
         let ids = self.selected_ids();
 
         if ids.is_empty() {

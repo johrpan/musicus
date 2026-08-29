@@ -27,7 +27,7 @@ use diesel::{
 use rand::RngExt;
 
 use super::Library;
-use crate::db::{self, models::*, schema::*, tables, views::*};
+use crate::db::{self, models::*, schema::*, tables, views::*, TranslatedString};
 
 /// How strong the preference setting affects the selection.
 const PREFERENCE_STRENGTH: f64 = 10.0;
@@ -45,7 +45,7 @@ pub struct GenerateRecordingParams {
     pub instrument_id: Option<String>,
     pub work_id: Option<String>,
     pub tag_id: Option<String>,
-    pub tag_value: Option<String>,
+    pub tag_value: Option<TranslatedString>,
     /// How much to prefer recordings added to the library recently, from 0.0 to 1.0.
     pub prefer_recently_added: f64,
     /// How much to prefer recordings that have not been played in a long time,
