@@ -151,8 +151,9 @@ pub fn sequence_number(index: usize) -> Result<i32, LibraryError> {
     })
 }
 
-pub fn lock_connection(connection: &Mutex<SqliteConnection>) -> MutexGuard<'_, SqliteConnection> {
-    connection
+/// Lock a mutex, recovering the guard even if a previous holder panicked.
+pub fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
+    mutex
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
 }

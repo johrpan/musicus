@@ -16,14 +16,11 @@ use crate::{
 /// a subscriber with a pending message is not sent another one, and a
 /// subscriber whose receiver was dropped is removed.
 fn notify_changed(senders: &Mutex<Vec<async_channel::Sender<()>>>) {
-    senders
-        .lock()
-        .unwrap()
-        .retain(|sender| match sender.try_send(()) {
-            Ok(()) => true,
-            Err(async_channel::TrySendError::Full(())) => true,
-            Err(async_channel::TrySendError::Closed(())) => false,
-        });
+    db::lock(senders).retain(|sender| match sender.try_send(()) {
+        Ok(()) => true,
+        Err(async_channel::TrySendError::Full(())) => true,
+        Err(async_channel::TrySendError::Closed(())) => false,
+    });
 }
 
 pub mod edit;
@@ -90,7 +87,7 @@ impl Library {
     }
 
     fn conn(&self) -> MutexGuard<'_, SqliteConnection> {
-        db::lock_connection(&self.connection)
+        db::lock(&self.connection)
     }
 
     /// Subscribe to change notifications. A message is sent on the returned
@@ -101,7 +98,7 @@ impl Library {
     /// unbounded memory growth.
     pub fn subscribe_changed(&self) -> async_channel::Receiver<()> {
         let (sender, receiver) = async_channel::bounded(1);
-        self.changed_senders.lock().unwrap().push(sender);
+        db::lock(&self.changed_senders).push(sender);
         receiver
     }
 

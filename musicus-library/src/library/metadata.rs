@@ -114,7 +114,7 @@ impl Library {
         let metadata_connection = self
             .metadata_connection()
             .ok_or_else(|| anyhow!("No metadata database available"))?;
-        let metadata_connection = &mut *db::lock_connection(&metadata_connection);
+        let metadata_connection = &mut *db::lock(&metadata_connection);
 
         let graph = ImportGraph::load(metadata_connection)?;
         let closure = graph.closure_for(kind, id)?;

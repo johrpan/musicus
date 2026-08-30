@@ -66,7 +66,7 @@ impl Library {
         let mut results = in_library_items(persons);
 
         if let Some(metadata_connection) = self.metadata_connection() {
-            let metadata_connection = &mut *db::lock_connection(&metadata_connection);
+            let metadata_connection = &mut *db::lock(&metadata_connection);
 
             let metadata_persons: Vec<tables::Person> = persons::table
                 .filter(translated_like("persons.name", &search))
@@ -108,7 +108,7 @@ impl Library {
         let mut results = in_library_items(roles);
 
         if let Some(metadata_connection) = self.metadata_connection() {
-            let metadata_connection = &mut *db::lock_connection(&metadata_connection);
+            let metadata_connection = &mut *db::lock(&metadata_connection);
 
             let metadata_roles: Vec<tables::Role> = roles::table
                 .filter(translated_like("roles.name", &search))
@@ -150,7 +150,7 @@ impl Library {
         let mut results = in_library_items(tags);
 
         if let Some(metadata_connection) = self.metadata_connection() {
-            let metadata_connection = &mut *db::lock_connection(&metadata_connection);
+            let metadata_connection = &mut *db::lock(&metadata_connection);
 
             let metadata_tags: Vec<tables::Tag> = tags::table
                 .filter(translated_like("tags.name", &search))
@@ -230,7 +230,7 @@ impl Library {
         let mut results = in_library_items(instruments);
 
         if let Some(metadata_connection) = self.metadata_connection() {
-            let metadata_connection = &mut *db::lock_connection(&metadata_connection);
+            let metadata_connection = &mut *db::lock(&metadata_connection);
 
             let metadata_instruments: Vec<tables::Instrument> = instruments::table
                 .filter(translated_like("instruments.name", &search))
@@ -290,7 +290,7 @@ impl Library {
             .collect::<Result<Vec<SearchItem<Work>>>>()?;
 
         if let Some(metadata_connection) = self.metadata_connection() {
-            let metadata_connection = &mut *db::lock_connection(&metadata_connection);
+            let metadata_connection = &mut *db::lock(&metadata_connection);
 
             let metadata_works: Vec<tables::Work> = works::table
                 .filter(
@@ -347,7 +347,7 @@ impl Library {
             .collect::<Result<Vec<SearchItem<Recording>>>>()?;
 
         if let Some(metadata_connection) = self.metadata_connection() {
-            let metadata_connection = &mut *db::lock_connection(&metadata_connection);
+            let metadata_connection = &mut *db::lock(&metadata_connection);
 
             let metadata_recordings =
                 recording_search_statement(metadata_connection, &work.id, &search)?;
@@ -405,7 +405,7 @@ impl Library {
             .collect::<Result<Vec<SearchItem<Ensemble>>>>()?;
 
         if let Some(metadata_connection) = self.metadata_connection() {
-            let metadata_connection = &mut *db::lock_connection(&metadata_connection);
+            let metadata_connection = &mut *db::lock(&metadata_connection);
 
             let metadata_ensembles: Vec<tables::Ensemble> = ensembles::table
                 .left_join(ensemble_persons::table.inner_join(persons::table))

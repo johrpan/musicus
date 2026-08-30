@@ -223,7 +223,7 @@ pub fn import_library_zip(
     observe(observer, ExchangeEvent::Progress(0.1))?;
 
     // Import metadata, applying local-wins to whatever already exists.
-    let mut this_connection = db::lock_connection(&context.connection);
+    let mut this_connection = db::lock(&context.connection);
 
     let (report, tracks) = import_metadata_from_file(graph, source, &mut this_connection, false)?;
 
@@ -447,7 +447,7 @@ pub fn export_library_zip(
     // shipping the original would be correct, and skipping the copy on a library
     // that happens to have no private tags would silently reintroduce the leak.
     let database = {
-        let connection = &mut *db::lock_connection(&context.connection);
+        let connection = &mut *db::lock(&context.connection);
         database_for_export(connection)?
     };
 
@@ -628,7 +628,7 @@ pub fn install_metadata(
     observe(observer, ExchangeEvent::Progress(0.5))?;
 
     {
-        let mut this_connection = db::lock_connection(&context.connection);
+        let mut this_connection = db::lock(&context.connection);
         refresh_metadata(&graph, &mut this_connection)?;
     }
 
