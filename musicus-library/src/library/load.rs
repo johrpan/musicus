@@ -6,12 +6,11 @@
 
 use std::collections::{HashMap, HashSet};
 
-use anyhow::Result;
 use diesel::prelude::*;
 
 use crate::{
     db::{schema::*, tables},
-    error::{EntityKind, LibraryError},
+    error::{EntityKind, LibraryError, Result},
     models::*,
 };
 
@@ -131,9 +130,9 @@ impl Loader {
 
     fn work_with_cycle_guard(&self, id: &str, active: &mut HashSet<String>) -> Result<Work> {
         if !active.insert(id.to_owned()) {
-            return Err(
-                LibraryError::Corrupt(format!("Work {id} is part of a parent cycle")).into(),
-            );
+            return Err(LibraryError::Corrupt(format!(
+                "Work {id} is part of a parent cycle"
+            )));
         }
 
         let row = self
@@ -425,28 +424,28 @@ impl Loader {
     pub(crate) fn person(&self, id: &str) -> Result<Person> {
         match self.persons.get(id) {
             Some(row) => Ok(Person::from(row.clone())),
-            None => Err(not_found(EntityKind::Person, id).into()),
+            None => Err(not_found(EntityKind::Person, id)),
         }
     }
 
     pub(crate) fn role(&self, id: &str) -> Result<Role> {
         match self.roles.get(id) {
             Some(row) => Ok(Role::from(row.clone())),
-            None => Err(not_found(EntityKind::Role, id).into()),
+            None => Err(not_found(EntityKind::Role, id)),
         }
     }
 
     pub(crate) fn instrument(&self, id: &str) -> Result<Instrument> {
         match self.instruments.get(id) {
             Some(row) => Ok(Instrument::from(row.clone())),
-            None => Err(not_found(EntityKind::Instrument, id).into()),
+            None => Err(not_found(EntityKind::Instrument, id)),
         }
     }
 
     pub(crate) fn tag(&self, id: &str) -> Result<Tag> {
         match self.tags.get(id) {
             Some(row) => Ok(Tag::from(row.clone())),
-            None => Err(not_found(EntityKind::Tag, id).into()),
+            None => Err(not_found(EntityKind::Tag, id)),
         }
     }
 }

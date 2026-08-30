@@ -108,7 +108,7 @@ impl Library {
         &self,
         kind: EntityKind,
         id: &str,
-        load: impl FnOnce(&Loader, &str) -> anyhow::Result<T>,
+        load: impl FnOnce(&Loader, &str) -> Result<T>,
     ) -> Result<T> {
         let metadata_connection = self
             .metadata_connection()

@@ -35,8 +35,8 @@ fn merge_metadata_only<Raw, T>(
     metadata_rows: Vec<Raw>,
     existing_ids: &HashSet<String>,
     id: impl Fn(&Raw) -> &str,
-    mut convert: impl FnMut(Raw) -> anyhow::Result<T>,
-) -> anyhow::Result<()> {
+    mut convert: impl FnMut(Raw) -> Result<T>,
+) -> Result<()> {
     for row in metadata_rows {
         if !existing_ids.contains(id(&row)) {
             results.push(SearchItem {
@@ -287,7 +287,7 @@ impl Library {
                     in_library: true,
                 })
             })
-            .collect::<anyhow::Result<Vec<SearchItem<Work>>>>()?;
+            .collect::<Result<Vec<SearchItem<Work>>>>()?;
 
         if let Some(metadata_connection) = self.metadata_connection() {
             let metadata_connection = &mut *db::lock_connection(&metadata_connection);
@@ -344,7 +344,7 @@ impl Library {
                     in_library: true,
                 })
             })
-            .collect::<anyhow::Result<Vec<SearchItem<Recording>>>>()?;
+            .collect::<Result<Vec<SearchItem<Recording>>>>()?;
 
         if let Some(metadata_connection) = self.metadata_connection() {
             let metadata_connection = &mut *db::lock_connection(&metadata_connection);
@@ -402,7 +402,7 @@ impl Library {
                     in_library: true,
                 })
             })
-            .collect::<anyhow::Result<Vec<SearchItem<Ensemble>>>>()?;
+            .collect::<Result<Vec<SearchItem<Ensemble>>>>()?;
 
         if let Some(metadata_connection) = self.metadata_connection() {
             let metadata_connection = &mut *db::lock_connection(&metadata_connection);

@@ -6,7 +6,7 @@
 
 use std::collections::HashMap;
 
-use anyhow::Result;
+use crate::error::Result;
 use diesel::{prelude::*, sql_query, sql_types, SqliteConnection};
 
 use super::Library;

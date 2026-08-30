@@ -682,7 +682,7 @@ impl Library {
                         .load::<tables::Ensemble>(connection)?
                         .into_iter()
                         .map(|e| loader.ensemble(&e.ensemble_id))
-                        .collect::<anyhow::Result<Vec<Ensemble>>>()?
+                        .collect::<Result<Vec<Ensemble>>>()?
                 } else {
                     Vec::new()
                 };
@@ -797,7 +797,7 @@ impl Library {
                         .load::<tables::Work>(connection)?
                         .into_iter()
                         .map(|w| loader.work(&w.work_id))
-                        .collect::<anyhow::Result<Vec<Work>>>()?
+                        .collect::<Result<Vec<Work>>>()?
                 } else {
                     Vec::new()
                 };
@@ -863,7 +863,7 @@ impl Library {
                         .load::<tables::Recording>(connection)?
                         .into_iter()
                         .map(|r| loader.recording(&r.recording_id))
-                        .collect::<anyhow::Result<Vec<Recording>>>()?
+                        .collect::<Result<Vec<Recording>>>()?
                 } else {
                     Vec::new()
                 };
@@ -925,7 +925,7 @@ impl Library {
                     .load::<tables::Album>(connection)?
                     .into_iter()
                     .map(|r| loader.album(&r.album_id))
-                    .collect::<anyhow::Result<Vec<Album>>>()?;
+                    .collect::<Result<Vec<Album>>>()?;
 
                 // Tags are facets like any other, so they have to come from items
                 // the rest of the query actually selects. A label tag is a category
@@ -1094,7 +1094,7 @@ impl Library {
                     .load::<tables::Recording>(connection)?
                     .into_iter()
                     .map(|r| loader.recording(&r.recording_id))
-                    .collect::<anyhow::Result<Vec<Recording>>>()?;
+                    .collect::<Result<Vec<Recording>>>()?;
 
                 // Related works in both directions: what this work was derived from, and
                 // whatever else was derived from it. The relation graph may cycle, so
