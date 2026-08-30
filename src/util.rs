@@ -85,6 +85,10 @@ fn expected_error_message(err: &LibraryError) -> Option<String> {
         LibraryError::Corrupt(_) => {
             gettext("The library data is inconsistent. Please check the library for problems …")
         }
+        LibraryError::ImportConflict(_) => gettext(
+            "The imported data conflicts with what is already in this library. \
+             Nothing was changed.",
+        ),
         LibraryError::Other(_) => return None,
     };
 
