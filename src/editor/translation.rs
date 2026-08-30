@@ -69,9 +69,7 @@ impl TranslationEditor {
     }
 
     pub fn set_translation(&self, translation: &TranslatedString) {
-        self.imp()
-            .entry_row
-            .set_text(translation.generic_value().unwrap_or_default());
+        self.imp().entry_row.set_text(translation.generic_value());
 
         for (lang, translation) in translation.iter().filter(|(lang, _)| *lang != "generic") {
             self.add_entry(lang, translation);

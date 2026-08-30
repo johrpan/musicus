@@ -200,10 +200,7 @@ fn require_generic_name<'a, T>(
     name: impl Fn(&'a T) -> &'a TranslatedString,
 ) -> Result<()> {
     for entry in list {
-        if name(entry)
-            .generic_value()
-            .is_none_or(|name| name.trim().is_empty())
-        {
+        if name(entry).generic_value().trim().is_empty() {
             bail!("{kind} \"{}\" has no generic name", key(entry));
         }
     }
@@ -277,11 +274,7 @@ fn check_relates_cycle<'a>(
 
 /// Check one work for naming and reference problems, recursing into parts.
 fn check_work(work: &WorkEntity, context: &mut CheckContext<'_>) -> Result<()> {
-    if work
-        .name
-        .generic_value()
-        .is_none_or(|name| name.trim().is_empty())
-    {
+    if work.name.generic_value().trim().is_empty() {
         bail!("Work \"{}\" has no generic name", work.key);
     }
 
@@ -719,20 +712,22 @@ mod tests {
     }
 
     #[test]
-    fn tag_value_mismatch_is_a_warning() {
+    fn tag_value_mismatch_is_a_warning() -> Result<()> {
         let mut works = works();
         works.works[0].tags[0] = TagRef::Value {
             key: "baroque".to_string(),
-            value: TranslatedString::generic("too much"),
+            value: TranslatedString::generic("too much")?,
         };
 
-        let validation = validate(&metadata(), &works).unwrap();
+        let validation = validate(&metadata(), &works)?;
         assert_eq!(validation.warnings.len(), 1);
         assert!(validation
             .warnings
             .first()
             .unwrap()
             .contains("does not take a value"));
+
+        Ok(())
     }
 
     #[test]

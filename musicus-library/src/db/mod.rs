@@ -22,7 +22,6 @@ use diesel::{
     sqlite::Sqlite,
 };
 use diesel_migrations::{EmbeddedMigrations, MigrationHarness};
-use serde::{Deserialize, Serialize};
 
 use self::schema::tracks;
 use crate::db::tables::{LibraryTrackPath, TRACKS_SUBDIR};
@@ -337,69 +336,145 @@ pub fn lock_connection(connection: &Mutex<SqliteConnection>) -> MutexGuard<'_, S
 /// A single translated string value.
 ///
 /// A [`TranslatedString`] always carries a nonblank `generic` value; locale
-/// variants are optional. Backed by a `BTreeMap` rather than a `HashMap` so
-/// that serialization is deterministic — this lets
-/// `work_tags.value`/`recording_tags.value` be compared for exact equality
-/// directly in SQL.
-#[derive(Serialize, Deserialize, AsExpression, FromSqlRow, Clone, Debug, PartialEq, Eq, Hash)]
+/// variants are optional. The generic value is stored separately so that it
+/// can be read without a lookup: [`Self::generic_value`] cannot fail, and no
+/// construction or mutation path can leave the generic value blank or missing.
+///
+/// Serialization is a flat map from locale key to text, deterministic and
+/// key-sorted — this lets `work_tags.value`/`recording_tags.value` be
+/// compared for exact equality directly in SQL.
+#[derive(AsExpression, FromSqlRow, Clone, Debug, PartialEq, Eq, Hash)]
 #[diesel(sql_type = Text)]
-pub struct TranslatedString(BTreeMap<String, String>);
+pub struct TranslatedString {
+    /// The guaranteed nonblank language-independent text.
+    generic: String,
+    /// Locale variants, keyed by normalized language tag.
+    locales: BTreeMap<String, String>,
+}
 
 impl TranslatedString {
     /// Build a `TranslatedString` carrying only the generic variant.
     ///
-    /// The generic value must be nonblank; callers that cannot guarantee that
-    /// should use [`TranslatedString::try_from_map`] instead.
-    pub fn generic(text: impl Into<String>) -> Self {
+    /// Fails with [`LibraryError::InvalidInput`] when `text` is blank;
+    /// callers that build the value from untrusted input can use
+    /// [`TranslatedString::try_from_map`] instead.
+    pub fn generic(text: impl Into<String>) -> crate::Result<Self> {
         let text = text.into();
 
-        assert!(
-            !text.trim().is_empty(),
-            "TranslatedString needs a nonblank generic value"
-        );
+        if text.trim().is_empty() {
+            return Err(LibraryError::InvalidInput(
+                "TranslatedString needs a nonblank generic value".to_owned(),
+            ));
+        }
 
-        Self(BTreeMap::from([(GENERIC.to_string(), text)]))
+        Ok(Self {
+            generic: text,
+            locales: BTreeMap::new(),
+        })
     }
 
     /// Build a `TranslatedString` from a map of locale values, requiring a
-    /// nonblank generic value. Locale keys are normalized.
-    pub fn try_from_map(map: BTreeMap<String, String>) -> Result<Self, LibraryError> {
-        let map = map
-            .into_iter()
-            .map(|(key, value)| (normalize_tag(&key), value))
-            .collect::<BTreeMap<String, String>>();
-
-        match map.get(GENERIC) {
-            Some(generic) if !generic.trim().is_empty() => Ok(Self(map)),
-            _ => Err(LibraryError::InvalidInput(
-                "TranslatedString needs a nonblank generic value".to_owned(),
-            )),
+    /// nonblank generic value.
+    ///
+    /// Keys are normalized (lowercase, underscores as hyphens) before
+    /// validation; two entries that normalize to the same tag are rejected
+    /// instead of silently overwriting one value with another. Blank values
+    /// are rejected so that stored variants stay meaningful.
+    pub fn try_from_map(map: BTreeMap<String, String>) -> crate::Result<Self> {
+        let mut normalized = BTreeMap::new();
+        for (key, value) in map {
+            let key = normalize_tag(&key);
+            if let Some(previous) = normalized.insert(key.clone(), value.clone()) {
+                return Err(LibraryError::InvalidInput(format!(
+                    "TranslatedString has two entries that normalize to the \
+                     same tag {key:?} ({previous:?} and {value:?})"
+                )));
+            }
         }
+
+        Self::from_normalized_map(normalized)
     }
 
-    /// Read-only iteration over every stored variant, including `generic`, in
-    /// deterministic (sorted key) order.
+    /// Validate a map of already-normalized entries and build the value.
+    ///
+    /// Exactly one usable (nonblank) `generic` entry is required, and every
+    /// stored variant must be nonblank so that stored translations stay
+    /// meaningful.
+    fn from_normalized_map(map: BTreeMap<String, String>) -> crate::Result<Self> {
+        let generic = match map.get(GENERIC) {
+            Some(generic) if !generic.trim().is_empty() => generic.clone(),
+            _ => {
+                return Err(LibraryError::InvalidInput(
+                    "TranslatedString needs a nonblank generic value".to_owned(),
+                ))
+            }
+        };
+
+        for (lang, text) in &map {
+            if lang.is_empty() {
+                return Err(LibraryError::InvalidInput(
+                    "TranslatedString has an entry with an empty language tag".to_owned(),
+                ));
+            }
+            if text.trim().is_empty() {
+                return Err(LibraryError::InvalidInput(format!(
+                    "TranslatedString has a blank value for {lang:?}"
+                )));
+            }
+        }
+
+        let mut locales = map;
+        locales.remove(GENERIC);
+
+        Ok(Self { generic, locales })
+    }
+
+    /// Read-only iteration over every stored variant, starting with
+    /// `generic`, then each locale in deterministic (sorted key) order.
     pub fn iter(&self) -> impl Iterator<Item = (&str, &str)> {
-        self.0
-            .iter()
-            .map(|(key, value)| (key.as_str(), value.as_str()))
+        std::iter::once((GENERIC, self.generic.as_str())).chain(
+            self.locales
+                .iter()
+                .map(|(lang, text)| (lang.as_str(), text.as_str())),
+        )
     }
 
     /// The generic (language-independent) value.
-    pub fn generic_value(&self) -> Option<&str> {
-        self.0.get(GENERIC).map(String::as_str)
+    ///
+    /// Always present: every construction and mutation path validates the
+    /// storage invariant.
+    pub fn generic_value(&self) -> &str {
+        &self.generic
     }
 
-    /// Set a locale variant, adding or replacing it. The generic value cannot
-    /// be removed through this method; setting the generic value is a no-op.
-    pub fn set_locale(&mut self, lang: &str, text: impl Into<String>) {
+    /// Set a locale variant, adding or replacing it.
+    ///
+    /// The generic value cannot be set through this method, and blank texts
+    /// are rejected with [`LibraryError::InvalidInput`] so that a stored
+    /// variant stays meaningful.
+    pub fn set_locale(&mut self, lang: &str, text: impl Into<String>) -> crate::Result<()> {
         let key = normalize_tag(lang);
 
         if key == GENERIC {
-            return;
+            return Err(LibraryError::InvalidInput(
+                "The generic translation cannot be set as a locale".to_owned(),
+            ));
+        }
+        if key.is_empty() {
+            return Err(LibraryError::InvalidInput(
+                "The language tag must not be blank".to_owned(),
+            ));
         }
 
-        self.0.insert(key, text.into());
+        let text = text.into();
+        if text.trim().is_empty() {
+            return Err(LibraryError::InvalidInput(format!(
+                "The translation for {key:?} must not be blank"
+            )));
+        }
+
+        self.locales.insert(key, text);
+        Ok(())
     }
 
     /// Remove a locale variant. The generic value is never removed.
@@ -407,7 +482,7 @@ impl TranslatedString {
         let key = normalize_tag(lang);
 
         if key != GENERIC {
-            self.0.remove(&key);
+            self.locales.remove(&key);
         }
     }
 
@@ -418,26 +493,52 @@ impl TranslatedString {
     /// to exist, so this never falls back to an empty string.
     pub fn get(&self) -> &str {
         let Some(lang) = LANG.get() else {
-            return self.generic_value().unwrap_or_default();
+            return &self.generic;
         };
 
-        if let Some(text) = self.0.get(lang) {
+        if let Some(text) = self.locales.get(lang) {
             return text;
         }
 
         if let Some(base) = lang.split('-').next().filter(|base| *base != lang) {
-            if let Some(text) = self.0.get(base) {
+            if let Some(text) = self.locales.get(base) {
                 return text;
             }
         }
 
-        self.generic_value().unwrap_or_default()
+        &self.generic
     }
 }
 
 impl Display for TranslatedString {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.get())
+    }
+}
+
+impl serde::Serialize for TranslatedString {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        use serde::ser::SerializeMap;
+
+        let mut map = serializer.serialize_map(Some(1 + self.locales.len()))?;
+        map.serialize_entry(GENERIC, &self.generic)?;
+        for (lang, text) in &self.locales {
+            map.serialize_entry(lang, text)?;
+        }
+        map.end()
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for TranslatedString {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let map = BTreeMap::<String, String>::deserialize(deserializer)?;
+        TranslatedString::try_from_map(map).map_err(serde::de::Error::custom)
     }
 }
 
@@ -449,15 +550,37 @@ where
         let text = String::from_sql(bytes)?;
 
         // Every stored value written since translations became JSON is a JSON
-        // object from locale key to text. Anything else is a legacy plain-text
-        // value, which is migrated to a generic-only value in memory.
-        match serde_json::from_str::<BTreeMap<String, String>>(&text) {
-            Ok(map) => TranslatedString::try_from_map(map).map_err(|err| anyhow!(err).into()),
+        // object from locale key to text. Anything that is valid JSON but not
+        // that object shape is corrupt. Anything that is not valid JSON at
+        // all is a legacy plain-text value, migrated to a validated
+        // generic-only value in memory.
+        match serde_json::from_str::<serde_json::Value>(&text) {
+            Ok(serde_json::Value::Object(map)) => {
+                let map = map
+                    .into_iter()
+                    .map(|(key, value)| match value {
+                        serde_json::Value::String(text) => Ok((key, text)),
+                        _ => Err(anyhow!(
+                            "Translated string value {key:?} is not text; the \
+                             database is corrupt"
+                        )
+                        .into()),
+                    })
+                    .collect::<deserialize::Result<BTreeMap<String, String>>>()?;
+
+                TranslatedString::try_from_map(map)
+                    .map_err(|err| anyhow!("Invalid translated string value: {err}").into())
+            }
+            Ok(_) => Err(anyhow!(
+                "Translated string value is not a translation object; the \
+                 database is corrupt"
+            )
+            .into()),
             Err(_) if text.trim().is_empty() => Err(anyhow!(
                 "Translated string value is empty; the database is corrupt or too old"
             )
             .into()),
-            Err(_) => Ok(TranslatedString::generic(text)),
+            Err(_) => TranslatedString::generic(text).map_err(|err| anyhow!("{err}").into()),
         }
     }
 }

@@ -154,6 +154,10 @@ impl From<DieselError> for LibraryError {
             // input refers to an entity that does not exist; callers with a
             // matching entity kind context map it more precisely.
             LibraryError::InvalidInput(format!("A referenced entity is missing: {err}"))
+        } else if matches!(&err, DieselError::DeserializationError(_)) {
+            // Stored rows that cannot be decoded are corrupt data on disk,
+            // never the caller's input.
+            LibraryError::Corrupt(format!("Stored data could not be decoded: {err}"))
         } else {
             LibraryError::Database(err)
         }

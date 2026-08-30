@@ -68,7 +68,7 @@ pub fn generate(
     let instruments = (0..counts.instruments)
         .map(|_| {
             let name = names.instrument();
-            library.create_instrument(translated(&name), false)
+            library.create_instrument(translated(&name)?, false)
         })
         .collect::<musicus_library::Result<Vec<Instrument>>>()
         .context("Failed to create instruments")?;
@@ -77,7 +77,7 @@ pub fn generate(
     let roles = (0..counts.roles)
         .map(|_| {
             let name = names.role();
-            library.create_role(translated(&name), false)
+            library.create_role(translated(&name)?, false)
         })
         .collect::<musicus_library::Result<Vec<Role>>>()
         .context("Failed to create roles")?;
@@ -86,7 +86,7 @@ pub fn generate(
     let persons = (0..counts.persons)
         .map(|_| {
             let name = names.person();
-            library.create_person(translated(&name), false)
+            library.create_person(translated(&name)?, false)
         })
         .collect::<musicus_library::Result<Vec<Person>>>()
         .context("Failed to create persons")?;
@@ -107,7 +107,7 @@ pub fn generate(
         ensembles.push(
             library
                 .create_ensemble(musicus_library::input::EnsembleInput {
-                    name: translated(&name),
+                    name: translated(&name)?,
                     members,
                     enable_updates: false,
                 })
@@ -136,7 +136,7 @@ pub fn generate(
             library
                 .create_work(musicus_library::input::WorkInput {
                     id: None,
-                    name: translated(&name),
+                    name: translated(&name)?,
                     parts: Vec::new(),
                     work_persons,
                     instrument_ids,
@@ -225,7 +225,7 @@ pub fn generate(
 ///
 /// Every translated string needs that key: without it `TranslatedString::get`
 /// logs a warning and returns an empty string.
-fn translated(name: &str) -> TranslatedString {
+fn translated(name: &str) -> musicus_library::Result<TranslatedString> {
     TranslatedString::generic(name)
 }
 
