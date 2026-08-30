@@ -173,14 +173,8 @@ pub fn update_library(url: &str, library: &crate::library::Library) -> Result<Pr
         bridge.message(gettext("Importing downloaded library").to_owned());
 
         let mut observer = |event: ExchangeEvent| bridge.observe(event);
-        exchange::import_library_zip(
-            &context.connection,
-            &context.folder,
-            file.path(),
-            Source::Metadata,
-            &mut observer,
-        )
-        .map(|_| ())
+        exchange::import_library_zip(&context, file.path(), Source::Metadata, &mut observer)
+            .map(|_| ())
     });
 
     Ok(Process::new(&gettext("Updating music library"), handle))
@@ -202,14 +196,7 @@ pub fn import_library(
 
     let handle = spawn_process(move |bridge| {
         let mut observer = |event: ExchangeEvent| bridge.observe(event);
-        exchange::import_library_zip(
-            &context.connection,
-            &context.folder,
-            &path,
-            Source::Import,
-            &mut observer,
-        )
-        .map(|_| ())
+        exchange::import_library_zip(&context, &path, Source::Import, &mut observer).map(|_| ())
     });
 
     Ok(Process::new(&description, handle))
@@ -231,7 +218,7 @@ pub fn export_library(
 
     let handle = spawn_process(move |bridge| {
         let mut observer = |event: ExchangeEvent| bridge.observe(event);
-        exchange::export_library_zip(&context.connection, &context.folder, &path, &mut observer)
+        exchange::export_library_zip(&context, &path, &mut observer)
     });
 
     Ok(Process::new(&description, handle))
@@ -253,12 +240,7 @@ pub fn update_metadata(url: &str, library: &crate::library::Library) -> Result<P
         bridge.message(gettext("Importing downloaded library").to_owned());
 
         let mut observer = |event: ExchangeEvent| bridge.observe(event);
-        exchange::install_metadata(
-            &context.connection,
-            &context.cache_dir,
-            file.path(),
-            &mut observer,
-        )
+        exchange::install_metadata(&context, file.path(), &mut observer)
     });
 
     Ok(Process::new(&gettext("Updating metadata"), handle))

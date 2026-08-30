@@ -16,6 +16,20 @@ pub use program::GenerateRecordingParams;
 pub use query::{Facet, LibraryQuery, TagFilter};
 pub use search::SearchItem;
 
+/// Send a change notification to every subscriber, coalescing per subscriber:
+/// a subscriber with a pending message is not sent another one, and a
+/// subscriber whose receiver was dropped is removed.
+fn notify_changed(senders: &Mutex<Vec<async_channel::Sender<()>>>) {
+    senders
+        .lock()
+        .unwrap()
+        .retain(|sender| match sender.try_send(()) {
+            Ok(()) => true,
+            Err(async_channel::TrySendError::Full(())) => true,
+            Err(async_channel::TrySendError::Closed(())) => false,
+        });
+}
+
 pub mod edit;
 pub mod exchange;
 mod import_graph;
@@ -40,7 +54,12 @@ pub struct Library {
     /// Directory for cache files.
     cache_dir: PathBuf,
 
-    changed_senders: RefCell<Vec<async_channel::Sender<()>>>,
+    /// Change notification senders, one per subscriber.
+    ///
+    /// Shared through an [`Arc`] so that synchronous exchange operations on
+    /// worker threads can notify through it too; every channel is bounded with
+    /// capacity one, so a slow subscriber never accumulates messages.
+    changed_senders: Arc<Mutex<Vec<async_channel::Sender<()>>>>,
 }
 
 impl Library {
@@ -58,7 +77,7 @@ impl Library {
             connection: Arc::new(Mutex::new(connection)),
             metadata_connection: RefCell::new(None),
             cache_dir: cache_dir.into(),
-            changed_senders: RefCell::new(Vec::new()),
+            changed_senders: Arc::new(Mutex::new(Vec::new())),
         })
     }
 
@@ -76,21 +95,24 @@ impl Library {
         db::lock_connection(&self.connection)
     }
 
-    /// Subscribe to change notifications. A message is sent on the returned receiver
-    /// every time library data changes.
+    /// Subscribe to change notifications. A message is sent on the returned
+    /// receiver every time library data changes.
+    ///
+    /// The channel is bounded with capacity one: at most one pending change
+    /// message exists per subscriber, and a slow subscriber cannot cause
+    /// unbounded memory growth.
     pub fn subscribe_changed(&self) -> async_channel::Receiver<()> {
-        let (sender, receiver) = async_channel::unbounded();
-        self.changed_senders.borrow_mut().push(sender);
+        let (sender, receiver) = async_channel::bounded(1);
+        self.changed_senders.lock().unwrap().push(sender);
         receiver
     }
 
-    /// Notify all receivers that the library has been changed.
-    // Having this public is a compromise for allowing the UI to update itself
-    // after library processes finish.
-    pub fn changed(&self) {
-        self.changed_senders
-            .borrow_mut()
-            .retain(|sender| sender.try_send(()).is_ok());
+    /// Notify all receivers that the library has changed.
+    ///
+    /// Private: every notification originates from a committed library
+    /// operation, never from the application.
+    fn changed(&self) {
+        notify_changed(&self.changed_senders);
     }
 
     /// Whether this library is empty. The library is considered empty, if

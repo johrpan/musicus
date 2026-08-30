@@ -25,6 +25,7 @@ use crate::{
     error::LibraryError,
     library::{
         import_graph::{apply_import, DestinationState, ImportGraph, ImportReport},
+        notify_changed,
         refresh::refresh_metadata,
         Library,
     },
@@ -139,6 +140,19 @@ pub struct ExchangeContext {
     pub folder: PathBuf,
     /// The directory cache files (like the metadata database) live in.
     pub cache_dir: PathBuf,
+    /// Emit the library's change notification, for use after a committed
+    /// mutation on a worker thread.
+    notify: Arc<dyn Fn() + Send + Sync>,
+}
+
+impl ExchangeContext {
+    /// Notify subscribers that the library changed.
+    ///
+    /// Only calls this after a mutation has committed; a notification never
+    /// precedes the commit.
+    pub(crate) fn notify(&self) {
+        (self.notify)();
+    }
 }
 
 impl Library {
@@ -151,6 +165,10 @@ impl Library {
             connection: self.connection.clone(),
             folder: self.folder.clone(),
             cache_dir: self.cache_dir.clone(),
+            notify: {
+                let changed_senders = self.changed_senders.clone();
+                Arc::new(move || notify_changed(&changed_senders))
+            },
         }
     }
 }
@@ -170,8 +188,7 @@ impl Library {
 /// always complete — a crash or a full disk in the middle of a copy cannot
 /// leave a truncated file that later runs would skip.
 pub fn import_library_zip(
-    connection: &Arc<Mutex<SqliteConnection>>,
-    folder: &Path,
+    context: &ExchangeContext,
     path: impl AsRef<Path>,
     source: Source,
     observer: &mut dyn FnMut(ExchangeEvent) -> ControlFlow<()>,
@@ -204,9 +221,13 @@ pub fn import_library_zip(
     observe(observer, ExchangeEvent::Progress(0.1))?;
 
     // Import metadata, applying local-wins to whatever already exists.
-    let mut this_connection = db::lock_connection(connection);
+    let mut this_connection = db::lock_connection(&context.connection);
 
     let (report, tracks) = import_metadata_from_file(graph, source, &mut this_connection, false)?;
+
+    // The metadata import has committed; exactly one notification follows the
+    // successful mutation.
+    context.notify();
 
     log::info!(
         "Import wrote {} rows, kept {} existing entities and skipped {} colliding rows",
@@ -227,7 +248,7 @@ pub fn import_library_zip(
             ExchangeEvent::Progress(0.1 + 0.9 * (index as f64 / n_tracks as f64)),
         )?;
 
-        let library_track_file_path = track.path.resolve(folder);
+        let library_track_file_path = track.path.resolve(&context.folder);
         let mut part_path = library_track_file_path.clone();
         part_path.as_mut_os_string().push(".part");
 
@@ -413,8 +434,7 @@ fn database_for_export(connection: &mut SqliteConnection) -> Result<TempDir> {
 /// every assignment referring to one. The exported track list is read from the
 /// sanitized snapshot being archived, never from a live query taken earlier.
 pub fn export_library_zip(
-    connection: &Arc<Mutex<SqliteConnection>>,
-    folder: &Path,
+    context: &ExchangeContext,
     path: impl AsRef<Path>,
     observer: &mut dyn FnMut(ExchangeEvent) -> ControlFlow<()>,
 ) -> Result<()> {
@@ -425,7 +445,7 @@ pub fn export_library_zip(
     // shipping the original would be correct, and skipping the copy on a library
     // that happens to have no private tags would silently reintroduce the leak.
     let database = {
-        let connection = &mut *db::lock_connection(connection);
+        let connection = &mut *db::lock_connection(&context.connection);
         database_for_export(connection)?
     };
 
@@ -494,7 +514,7 @@ pub fn export_library_zip(
 
             if !add_file_to_zip(
                 &mut zip,
-                track.path.resolve(folder),
+                track.path.resolve(&context.folder),
                 track.path.to_zip_name(),
             )? {
                 n_missing_total += 1;
@@ -585,8 +605,7 @@ fn add_file_to_zip(
 /// atomic. A malformed or unreadable download therefore never leaves the app
 /// with a broken cache file.
 pub fn install_metadata(
-    connection: &Arc<Mutex<SqliteConnection>>,
-    cache_dir: &Path,
+    context: &ExchangeContext,
     path: impl AsRef<Path>,
     observer: &mut dyn FnMut(ExchangeEvent) -> ControlFlow<()>,
 ) -> Result<()> {
@@ -602,12 +621,17 @@ pub fn install_metadata(
     observe(observer, ExchangeEvent::Progress(0.5))?;
 
     {
-        let mut this_connection = db::lock_connection(connection);
+        let mut this_connection = db::lock_connection(&context.connection);
         refresh_metadata(&graph, &mut this_connection)?;
     }
 
+    // The refresh has committed; exactly one notification follows it. The
+    // cache file below is replaced only afterwards, so a notification never
+    // precedes a state the app would observe as current.
+    context.notify();
+
     // Atomically replace the cache file with the validated download.
-    let cache = metadata_file_path(cache_dir);
+    let cache = metadata_file_path(&context.cache_dir);
     if let Some(parent) = cache.parent() {
         fs::create_dir_all(parent)?;
     }

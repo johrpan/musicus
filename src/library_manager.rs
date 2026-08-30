@@ -140,18 +140,6 @@ impl LibraryManager {
                 if let Some(path) = path.path() {
                     match crate::process::import_library(path, &self.imp().library.get().unwrap()) {
                         Ok(process) => {
-                            process.connect_finished_notify(clone!(
-                                #[weak(rename_to = obj)]
-                                self,
-                                #[weak(rename_to = process)]
-                                process,
-                                move |_| {
-                                    if process.error().is_none() && !process.cancelled() {
-                                        obj.imp().library.get().unwrap().changed();
-                                    }
-                                }
-                            ));
-
                             self.imp()
                                 .process_manager
                                 .get()
