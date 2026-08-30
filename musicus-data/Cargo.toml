@@ -1,0 +1,13 @@
+[package]
+name = "musicus-data"
+version = "0.1.0"
+edition = "2021"
+description = "CLI for building Musicus metadata catalogues and libraries from JSON"
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+musicus-library = { path = "../musicus-library" }
+serde = "1"
+serde_json = "1"
+tempfile = "3"
