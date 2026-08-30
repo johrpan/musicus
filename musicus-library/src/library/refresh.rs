@@ -76,8 +76,7 @@ impl RefreshPlan {
                             "Tag {} is assigned in this library with a different value rule \
                              than the catalogue now defines",
                             tag.tag_id
-                        ))
-                        .into());
+                        )));
                     }
                 }
 
@@ -262,8 +261,7 @@ fn insert_dependencies(
         if !progressed {
             return Err(LibraryError::Corrupt(
                 "The new works of the catalogue form a parent cycle".to_owned(),
-            )
-            .into());
+            ));
         }
 
         work_ids = remaining;
@@ -550,7 +548,7 @@ fn rows_equal<Row>(left: &[Row], right: &[Row], key: impl Fn(&Row) -> Vec<String
     }
 
     let mut left = left.iter().map(&key).collect::<Vec<_>>();
-    let mut right = right.iter().map(|row| key(row)).collect::<Vec<_>>();
+    let mut right = right.iter().map(key).collect::<Vec<_>>();
     left.sort();
     right.sort();
 

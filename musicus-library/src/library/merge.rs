@@ -34,9 +34,9 @@ impl Library {
     /// Merge one person into another.
     pub fn merge_persons(&self, from: &str, into: &str) -> Result<()> {
         if from == into {
-            return Err(
-                LibraryError::InvalidInput("cannot merge a person into itself".to_owned()).into(),
-            );
+            return Err(LibraryError::InvalidInput(
+                "cannot merge a person into itself".to_owned(),
+            ));
         }
 
         let connection = &mut *self.conn();
@@ -68,9 +68,9 @@ impl Library {
     /// Merge one role into another.
     pub fn merge_roles(&self, from: &str, into: &str) -> Result<()> {
         if from == into {
-            return Err(
-                LibraryError::InvalidInput("cannot merge a role into itself".to_owned()).into(),
-            );
+            return Err(LibraryError::InvalidInput(
+                "cannot merge a role into itself".to_owned(),
+            ));
         }
 
         let connection = &mut *self.conn();
@@ -109,8 +109,7 @@ impl Library {
         if from == into {
             return Err(LibraryError::InvalidInput(
                 "cannot merge an instrument into itself".to_owned(),
-            )
-            .into());
+            ));
         }
 
         let connection = &mut *self.conn();
@@ -151,9 +150,9 @@ impl Library {
     /// effectively discarded.
     pub fn merge_tags(&self, from: &str, into: &str) -> Result<()> {
         if from == into {
-            return Err(
-                LibraryError::InvalidInput("cannot merge a tag into itself".to_owned()).into(),
-            );
+            return Err(LibraryError::InvalidInput(
+                "cannot merge a tag into itself".to_owned(),
+            ));
         }
 
         let connection = &mut *self.conn();
@@ -197,8 +196,7 @@ impl Library {
         if from == into {
             return Err(LibraryError::InvalidInput(
                 "cannot merge an ensemble into itself".to_owned(),
-            )
-            .into());
+            ));
         }
 
         let connection = &mut *self.conn();
@@ -231,9 +229,9 @@ impl Library {
     /// references.
     pub fn merge_works(&self, from: &str, into: &str) -> Result<()> {
         if from == into {
-            return Err(
-                LibraryError::InvalidInput("cannot merge a work into itself".to_owned()).into(),
-            );
+            return Err(LibraryError::InvalidInput(
+                "cannot merge a work into itself".to_owned(),
+            ));
         }
 
         let connection = &mut *self.conn();
@@ -249,8 +247,7 @@ impl Library {
                 if id == from {
                     return Err(LibraryError::InvalidInput(
                         "cannot merge a work into one of its own descendants".to_owned(),
-                    )
-                    .into());
+                    ));
                 }
 
                 if !seen.insert(id.clone()) {

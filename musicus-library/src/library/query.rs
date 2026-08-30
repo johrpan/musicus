@@ -119,8 +119,7 @@ fn in_work_subtree(col: &str) -> String {
 /// variant is [`recording_tag_condition`].
 fn tag_condition<QS>(
     tag: &TagFilter,
-) -> impl Expression<SqlType = sql_types::Bool>
-       + AppearsOnTable<QS>
+) -> impl AppearsOnTable<QS, SqlType = sql_types::Bool>
        + diesel::expression::ValidGrouping<(), IsAggregate = diesel::expression::is_aggregate::Never>
        + diesel::query_builder::QueryFragment<diesel::sqlite::Sqlite> {
     sql::<sql_types::Bool>(&format!(
@@ -157,8 +156,7 @@ fn tag_condition<QS>(
 /// generation; the work-oriented variant is [`tag_condition`].
 fn recording_tag_condition<QS>(
     tag: &TagFilter,
-) -> impl Expression<SqlType = sql_types::Bool>
-       + AppearsOnTable<QS>
+) -> impl AppearsOnTable<QS, SqlType = sql_types::Bool>
        + diesel::expression::ValidGrouping<(), IsAggregate = diesel::expression::is_aggregate::Never>
        + diesel::query_builder::QueryFragment<diesel::sqlite::Sqlite> {
     sql::<sql_types::Bool>(
@@ -191,8 +189,7 @@ fn recording_tag_condition<QS>(
 pub(crate) fn translated_like<QS>(
     column: &str,
     pattern: &str,
-) -> impl Expression<SqlType = sql_types::Bool>
-       + AppearsOnTable<QS>
+) -> impl AppearsOnTable<QS, SqlType = sql_types::Bool>
        + diesel::expression::ValidGrouping<(), IsAggregate = diesel::expression::is_aggregate::Never>
        + diesel::query_builder::QueryFragment<diesel::sqlite::Sqlite>
        + diesel::query_builder::QueryId {
@@ -211,8 +208,7 @@ pub(crate) fn translated_like<QS>(
 /// [`in_work_subtree`]).
 pub(crate) fn work_person_condition<QS>(
     person_id: &str,
-) -> impl Expression<SqlType = sql_types::Bool>
-       + AppearsOnTable<QS>
+) -> impl AppearsOnTable<QS, SqlType = sql_types::Bool>
        + diesel::expression::ValidGrouping<(), IsAggregate = diesel::expression::is_aggregate::Never>
        + diesel::query_builder::QueryFragment<diesel::sqlite::Sqlite> {
     sql::<sql_types::Bool>("EXISTS (SELECT 1 FROM work_persons WHERE work_persons.person_id = ")
@@ -228,8 +224,7 @@ pub(crate) fn work_person_condition<QS>(
 /// of one of its performing ensembles.
 pub(crate) fn recording_person_condition<QS>(
     person_id: &str,
-) -> impl Expression<SqlType = sql_types::Bool>
-       + AppearsOnTable<QS>
+) -> impl AppearsOnTable<QS, SqlType = sql_types::Bool>
        + diesel::expression::ValidGrouping<(), IsAggregate = diesel::expression::is_aggregate::Never>
        + diesel::query_builder::QueryFragment<diesel::sqlite::Sqlite> {
     sql::<sql_types::Bool>("recording_persons.person_id = ")
@@ -243,8 +238,7 @@ pub(crate) fn recording_person_condition<QS>(
 /// of one of its performing ensembles.
 pub(crate) fn recording_person_instrument_condition<QS>(
     instrument_id: &str,
-) -> impl Expression<SqlType = sql_types::Bool>
-       + AppearsOnTable<QS>
+) -> impl AppearsOnTable<QS, SqlType = sql_types::Bool>
        + diesel::expression::ValidGrouping<(), IsAggregate = diesel::expression::is_aggregate::Never>
        + diesel::query_builder::QueryFragment<diesel::sqlite::Sqlite> {
     sql::<sql_types::Bool>("recording_persons.instrument_id = ")
@@ -258,8 +252,7 @@ pub(crate) fn recording_person_instrument_condition<QS>(
 /// [`in_work_subtree`]).
 pub(crate) fn work_instrument_condition<QS>(
     instrument_id: &str,
-) -> impl Expression<SqlType = sql_types::Bool>
-       + AppearsOnTable<QS>
+) -> impl AppearsOnTable<QS, SqlType = sql_types::Bool>
        + diesel::expression::ValidGrouping<(), IsAggregate = diesel::expression::is_aggregate::Never>
        + diesel::query_builder::QueryFragment<diesel::sqlite::Sqlite> {
     sql::<sql_types::Bool>(
@@ -282,8 +275,7 @@ pub(crate) fn work_instrument_condition<QS>(
 /// track explicitly assigned to the part (or something within it) counts.
 pub(crate) fn recording_covers_work_condition<QS>(
     work_id: &str,
-) -> impl Expression<SqlType = sql_types::Bool>
-       + AppearsOnTable<QS>
+) -> impl AppearsOnTable<QS, SqlType = sql_types::Bool>
        + diesel::expression::ValidGrouping<(), IsAggregate = diesel::expression::is_aggregate::Never>
        + diesel::query_builder::QueryFragment<diesel::sqlite::Sqlite> {
     const DESCENDANTS_OF_START: &str = "( \
@@ -316,8 +308,7 @@ pub(crate) fn recording_covers_work_condition<QS>(
 /// work also matches its arrangements.
 pub(crate) fn recorded_work_related_condition<QS>(
     work_id: &str,
-) -> impl Expression<SqlType = sql_types::Bool>
-       + AppearsOnTable<QS>
+) -> impl AppearsOnTable<QS, SqlType = sql_types::Bool>
        + diesel::expression::ValidGrouping<(), IsAggregate = diesel::expression::is_aggregate::Never>
        + diesel::query_builder::QueryFragment<diesel::sqlite::Sqlite> {
     sql::<sql_types::Bool>(
@@ -340,8 +331,7 @@ pub(crate) fn recorded_work_related_condition<QS>(
 /// work-person membership, used by program generation.
 pub(crate) fn work_person_exists<QS>(
     person_id: &str,
-) -> impl Expression<SqlType = sql_types::Bool>
-       + AppearsOnTable<QS>
+) -> impl AppearsOnTable<QS, SqlType = sql_types::Bool>
        + diesel::expression::ValidGrouping<(), IsAggregate = diesel::expression::is_aggregate::Never>
        + diesel::query_builder::QueryFragment<diesel::sqlite::Sqlite> {
     sql::<sql_types::Bool>(
@@ -359,8 +349,7 @@ pub(crate) fn work_person_exists<QS>(
 /// membership, used by program generation.
 pub(crate) fn recording_person_membership<QS>(
     person_id: &str,
-) -> impl Expression<SqlType = sql_types::Bool>
-       + AppearsOnTable<QS>
+) -> impl AppearsOnTable<QS, SqlType = sql_types::Bool>
        + diesel::expression::ValidGrouping<(), IsAggregate = diesel::expression::is_aggregate::Never>
        + diesel::query_builder::QueryFragment<diesel::sqlite::Sqlite> {
     sql::<sql_types::Bool>(
@@ -386,8 +375,7 @@ pub(crate) fn recording_person_membership<QS>(
 /// program generation.
 pub(crate) fn recording_instrument_membership<QS>(
     instrument_id: &str,
-) -> impl Expression<SqlType = sql_types::Bool>
-       + AppearsOnTable<QS>
+) -> impl AppearsOnTable<QS, SqlType = sql_types::Bool>
        + diesel::expression::ValidGrouping<(), IsAggregate = diesel::expression::is_aggregate::Never>
        + diesel::query_builder::QueryFragment<diesel::sqlite::Sqlite> {
     sql::<sql_types::Bool>(
@@ -418,8 +406,7 @@ pub(crate) fn recording_instrument_membership<QS>(
 /// generation.
 pub(crate) fn recording_tag_membership<QS>(
     tag: &TagFilter,
-) -> impl Expression<SqlType = sql_types::Bool>
-       + AppearsOnTable<QS>
+) -> impl AppearsOnTable<QS, SqlType = sql_types::Bool>
        + diesel::expression::ValidGrouping<(), IsAggregate = diesel::expression::is_aggregate::Never>
        + diesel::query_builder::QueryFragment<diesel::sqlite::Sqlite> {
     sql::<sql_types::Bool>(
@@ -451,37 +438,37 @@ impl Library {
         let connection = &mut *self.conn();
 
         let loader = Loader::load(connection)?;
-        Ok(loader.work(work_id)?)
+        loader.work(work_id)
     }
 
     /// The person identified by `id`.
     pub fn person(&self, id: &str) -> Result<Person> {
         let connection = &mut *self.conn();
-        Ok(Loader::load(connection)?.person(id)?)
+        Loader::load(connection)?.person(id)
     }
 
     /// The role identified by `id`.
     pub fn role(&self, id: &str) -> Result<Role> {
         let connection = &mut *self.conn();
-        Ok(Loader::load(connection)?.role(id)?)
+        Loader::load(connection)?.role(id)
     }
 
     /// The instrument identified by `id`.
     pub fn instrument(&self, id: &str) -> Result<Instrument> {
         let connection = &mut *self.conn();
-        Ok(Loader::load(connection)?.instrument(id)?)
+        Loader::load(connection)?.instrument(id)
     }
 
     /// The tag identified by `id`.
     pub fn tag(&self, id: &str) -> Result<Tag> {
         let connection = &mut *self.conn();
-        Ok(Loader::load(connection)?.tag(id)?)
+        Loader::load(connection)?.tag(id)
     }
 
     /// The ensemble identified by `id`, with its members.
     pub fn ensemble(&self, id: &str) -> Result<Ensemble> {
         let connection = &mut *self.conn();
-        Ok(Loader::load(connection)?.ensemble(id)?)
+        Loader::load(connection)?.ensemble(id)
     }
 
     /// Search the library for the `limit` most recently used items matching
@@ -1167,6 +1154,6 @@ impl Library {
         let connection = &mut *self.conn();
 
         let loader = Loader::load(connection)?;
-        Ok(loader.tracks_of_recording(recording_id)?)
+        loader.tracks_of_recording(recording_id)
     }
 }

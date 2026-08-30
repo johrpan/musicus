@@ -80,8 +80,7 @@ impl GenerateRecordingParams {
             if !value.is_finite() || !(0.0..=1.0).contains(&value) {
                 return Err(LibraryError::InvalidInput(format!(
                     "{name} must be between 0.0 and 1.0, got {value}"
-                ))
-                .into());
+                )));
             }
         }
 
@@ -98,13 +97,14 @@ impl GenerateRecordingParams {
             if value < 0 {
                 return Err(LibraryError::InvalidInput(format!(
                     "{name} must not be negative, got {value}"
-                ))
-                .into());
+                )));
             }
         }
 
         if self.tag_value.is_some() && self.tag_id.is_none() {
-            return Err(LibraryError::InvalidInput("A tag value needs a tag ID".to_owned()).into());
+            return Err(LibraryError::InvalidInput(
+                "A tag value needs a tag ID".to_owned(),
+            ));
         }
 
         Ok(())
@@ -312,7 +312,7 @@ impl Library {
             .first::<tables::Recording>(connection)?;
 
         let loader = Loader::load(connection)?;
-        Ok(loader.recording(&row.recording_id)?)
+        loader.recording(&row.recording_id)
     }
 
     /// Every recording the program allows.

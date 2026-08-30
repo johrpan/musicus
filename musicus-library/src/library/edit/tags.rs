@@ -80,7 +80,7 @@ impl Library {
                 .map_err(anyhow::Error::from)?;
 
             if previous != takes_value && Self::tag_is_in_use_priv(connection, id)? {
-                return Err(LibraryError::StillReferenced(EntityKind::Tag).into());
+                return Err(LibraryError::StillReferenced(EntityKind::Tag));
             }
 
             update_entity(connection, EntityKind::Tag, id, |connection, edited_at| {

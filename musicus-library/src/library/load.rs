@@ -186,7 +186,7 @@ impl Loader {
 
     fn work_persons_of(&self, work_id: &str) -> Result<Vec<WorkPerson>> {
         let mut rows = self.work_persons.get(work_id).cloned().unwrap_or_default();
-        rows.sort_by(|a, b| a.sequence_number.cmp(&b.sequence_number));
+        rows.sort_by_key(|a| a.sequence_number);
 
         rows.into_iter()
             .map(|row| {
@@ -208,7 +208,7 @@ impl Loader {
             .get(work_id)
             .cloned()
             .unwrap_or_default();
-        rows.sort_by(|a, b| a.sequence_number.cmp(&b.sequence_number));
+        rows.sort_by_key(|a| a.sequence_number);
 
         rows.into_iter()
             .map(|row| self.instrument(&row.instrument_id))
@@ -217,7 +217,7 @@ impl Loader {
 
     fn tags_of(&self, work_id: &str) -> Result<Vec<TagValue>> {
         let mut rows = self.work_tags.get(work_id).cloned().unwrap_or_default();
-        rows.sort_by(|a, b| a.sequence_number.cmp(&b.sequence_number));
+        rows.sort_by_key(|a| a.sequence_number);
 
         rows.into_iter()
             .map(|row| {
@@ -240,7 +240,7 @@ impl Loader {
         let mut members = Vec::new();
         if let Some(member_rows) = self.ensemble_persons.get(id) {
             let mut member_rows = member_rows.clone();
-            member_rows.sort_by(|a, b| a.sequence_number.cmp(&b.sequence_number));
+            member_rows.sort_by_key(|a| a.sequence_number);
 
             for member in member_rows {
                 members.push(RecordingPerson {
@@ -296,7 +296,7 @@ impl Loader {
             .get(recording_id)
             .cloned()
             .unwrap_or_default();
-        rows.sort_by(|a, b| a.sequence_number.cmp(&b.sequence_number));
+        rows.sort_by_key(|a| a.sequence_number);
 
         rows.into_iter()
             .map(|row| {
@@ -323,7 +323,7 @@ impl Loader {
             .get(recording_id)
             .cloned()
             .unwrap_or_default();
-        rows.sort_by(|a, b| a.sequence_number.cmp(&b.sequence_number));
+        rows.sort_by_key(|a| a.sequence_number);
 
         rows.into_iter()
             .map(|row| {
@@ -345,7 +345,7 @@ impl Loader {
             .get(recording_id)
             .cloned()
             .unwrap_or_default();
-        rows.sort_by(|a, b| a.sequence_number.cmp(&b.sequence_number));
+        rows.sort_by_key(|a| a.sequence_number);
 
         rows.into_iter()
             .map(|row| {
@@ -362,7 +362,7 @@ impl Loader {
         let mut works = Vec::new();
         if let Some(work_rows) = self.track_works.get(&row.track_id) {
             let mut work_rows = work_rows.clone();
-            work_rows.sort_by(|a, b| a.sequence_number.cmp(&b.sequence_number));
+            work_rows.sort_by_key(|a| a.sequence_number);
 
             for work_row in work_rows {
                 works.push(self.work(&work_row.work_id)?);
@@ -386,7 +386,7 @@ impl Loader {
             .filter(|track| track.recording_id == recording_id)
             .cloned()
             .collect::<Vec<_>>();
-        rows.sort_by(|a, b| a.recording_index.cmp(&b.recording_index));
+        rows.sort_by_key(|a| a.recording_index);
 
         rows.into_iter()
             .map(|row| self.track_from_row(row))
@@ -404,7 +404,7 @@ impl Loader {
         let mut recordings = Vec::new();
         if let Some(recording_rows) = self.album_recordings.get(id) {
             let mut recording_rows = recording_rows.clone();
-            recording_rows.sort_by(|a, b| a.sequence_number.cmp(&b.sequence_number));
+            recording_rows.sort_by_key(|a| a.sequence_number);
 
             for recording_row in recording_rows {
                 recordings.push(self.recording(&recording_row.recording_id)?);

@@ -740,7 +740,7 @@ impl ImportGraph {
         let mut works_in_order = Vec::with_capacity(self.works.len());
 
         for work in self.works.values() {
-            if !closure.map_or(true, |closure| closure.works.contains(&work.work_id)) {
+            if !closure.is_none_or(|closure| closure.works.contains(&work.work_id)) {
                 continue;
             }
 
@@ -752,9 +752,9 @@ impl ImportGraph {
                     .work_positions
                     .get(&work.work_id)
                     .ok_or_else(|| {
-                        LibraryError::Corrupt(format!(
-                            "Destination is inconsistent while planning the import"
-                        ))
+                        LibraryError::Corrupt(
+                            "Destination is inconsistent while planning the import".to_string(),
+                        )
                     })?;
 
                 if local.0.as_deref() != work.parent_work_id.as_deref()
@@ -862,8 +862,7 @@ impl ImportGraph {
             EntityKind::Album | EntityKind::Track => {
                 return Err(LibraryError::InvalidInput(format!(
                     "Cannot import a {kind} from the metadata catalogue"
-                ))
-                .into())
+                )))
             }
         }
 
@@ -1007,7 +1006,7 @@ impl ImportGraph {
         if present {
             Ok(())
         } else {
-            Err(LibraryError::NotFound(kind, id.to_owned()).into())
+            Err(LibraryError::NotFound(kind, id.to_owned()))
         }
     }
 }
@@ -1032,7 +1031,7 @@ pub(crate) fn apply_import(
     let mut report = plan.report.borrow_mut();
 
     for row in graph.persons.values() {
-        if !closure.map_or(true, |closure| closure.persons.contains(&row.person_id)) {
+        if !closure.is_none_or(|closure| closure.persons.contains(&row.person_id)) {
             continue;
         }
         if destination.persons.contains(&row.person_id) {
@@ -1054,7 +1053,7 @@ pub(crate) fn apply_import(
     }
 
     for row in graph.roles.values() {
-        if !closure.map_or(true, |closure| closure.roles.contains(&row.role_id)) {
+        if !closure.is_none_or(|closure| closure.roles.contains(&row.role_id)) {
             continue;
         }
         if destination.roles.contains(&row.role_id) {
@@ -1076,7 +1075,7 @@ pub(crate) fn apply_import(
     }
 
     for row in graph.tags.values() {
-        if !closure.map_or(true, |closure| closure.tags.contains(&row.tag_id)) {
+        if !closure.is_none_or(|closure| closure.tags.contains(&row.tag_id)) {
             continue;
         }
         if destination.tags.contains(&row.tag_id) {
@@ -1098,9 +1097,7 @@ pub(crate) fn apply_import(
     }
 
     for row in graph.instruments.values() {
-        if !closure.map_or(true, |closure| {
-            closure.instruments.contains(&row.instrument_id)
-        }) {
+        if !closure.is_none_or(|closure| closure.instruments.contains(&row.instrument_id)) {
             continue;
         }
         if destination.instruments.contains(&row.instrument_id) {
@@ -1182,7 +1179,7 @@ pub(crate) fn apply_import(
     }
 
     for row in graph.ensembles.values() {
-        if !closure.map_or(true, |closure| closure.ensembles.contains(&row.ensemble_id)) {
+        if !closure.is_none_or(|closure| closure.ensembles.contains(&row.ensemble_id)) {
             continue;
         }
         if destination.ensembles.contains(&row.ensemble_id) {
@@ -1212,9 +1209,7 @@ pub(crate) fn apply_import(
     }
 
     for row in graph.recordings.values() {
-        if !closure.map_or(true, |closure| {
-            closure.recordings.contains(&row.recording_id)
-        }) {
+        if !closure.is_none_or(|closure| closure.recordings.contains(&row.recording_id)) {
             continue;
         }
         if destination.recordings.contains(&row.recording_id) {

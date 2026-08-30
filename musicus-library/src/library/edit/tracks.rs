@@ -83,8 +83,7 @@ impl Library {
                 if !seen.insert(track_id.clone()) {
                     return Err(LibraryError::InvalidInput(format!(
                         "Track {track_id} appears twice in the track list"
-                    ))
-                    .into());
+                    )));
                 }
             }
         }
@@ -156,9 +155,10 @@ impl Library {
                 .is_some();
 
             if !recording_exists {
-                return Err(
-                    LibraryError::NotFound(EntityKind::Recording, recording_id.to_owned()).into(),
-                );
+                return Err(LibraryError::NotFound(
+                    EntityKind::Recording,
+                    recording_id.to_owned(),
+                ));
             }
 
             // The desired final list derives from the rows stored right here;
@@ -172,8 +172,7 @@ impl Library {
                     if !stored.iter().any(|row| row.track_id == *track_id) {
                         return Err(LibraryError::InvalidInput(format!(
                             "Track {track_id} does not exist or belongs to another recording"
-                        ))
-                        .into());
+                        )));
                     }
                 }
             }
@@ -256,8 +255,7 @@ impl Library {
                     return Err(LibraryError::InvalidInput(format!(
                         "Track file {} appeared while the batch was being prepared",
                         file.to_path.display()
-                    ))
-                    .into());
+                    )));
                 }
 
                 fs::rename(&file.tmp_path, &file.to_path)?;

@@ -43,7 +43,7 @@ where
     let updated = build_update(connection, edited_at)?;
 
     if updated == 0 {
-        return Err(LibraryError::NotFound(kind, id.to_owned()).into());
+        return Err(LibraryError::NotFound(kind, id.to_owned()));
     }
 
     Ok(())
@@ -63,7 +63,7 @@ where
     let deleted = delete(connection).map_err(|error| LibraryError::from_delete(kind, error))?;
 
     if deleted == 0 {
-        return Err(LibraryError::NotFound(kind, id.to_owned()).into());
+        return Err(LibraryError::NotFound(kind, id.to_owned()));
     }
 
     Ok(())
@@ -80,7 +80,7 @@ impl Library {
         &self,
         operation: impl FnOnce(&mut SqliteConnection) -> Result<T>,
     ) -> Result<T> {
-        let result = operation(&mut *self.conn());
+        let result = operation(&mut self.conn());
 
         if result.is_ok() {
             self.changed();

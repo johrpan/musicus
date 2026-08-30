@@ -205,8 +205,7 @@ impl Library {
         if let Some(id) = &input.id {
             return Err(LibraryError::InvalidInput(format!(
                 "A new work cannot carry the existing ID {id}"
-            ))
-            .into());
+            )));
         }
 
         self.commit(|connection| {
@@ -223,7 +222,7 @@ impl Library {
 
             let loader = Loader::load(connection)?;
 
-            Ok(loader.work(&work_id)?)
+            loader.work(&work_id)
         })
     }
 
@@ -282,8 +281,7 @@ impl Library {
             if input_id != id {
                 return Err(LibraryError::InvalidInput(format!(
                     "The input for work {id} carries a different ID {input_id}"
-                ))
-                .into());
+                )));
             }
         }
 
@@ -406,7 +404,7 @@ impl Library {
 
             let loader = Loader::load(connection)?;
 
-            Ok(loader.ensemble(&ensemble_id)?)
+            loader.ensemble(&ensemble_id)
         })
     }
 
@@ -496,7 +494,7 @@ impl Library {
 
             let loader = Loader::load(connection)?;
 
-            Ok(loader.recording(&recording_id)?)
+            loader.recording(&recording_id)
         })
     }
 
@@ -586,7 +584,7 @@ impl Library {
 
             let loader = Loader::load(connection)?;
 
-            Ok(loader.album(&album_id)?)
+            loader.album(&album_id)
         })
     }
 
@@ -680,13 +678,12 @@ fn touch_entity(connection: &mut SqliteConnection, kind: EntityKind, id: &str) -
         EntityKind::Track => {
             return Err(LibraryError::InvalidInput(
                 "Tracks have no recency ordering; listening history is `plays`".to_owned(),
-            )
-            .into())
+            ))
         }
     };
 
     if updated == 0 {
-        return Err(LibraryError::NotFound(kind, id.to_owned()).into());
+        return Err(LibraryError::NotFound(kind, id.to_owned()));
     }
 
     Ok(())
@@ -726,8 +723,7 @@ impl<'a> Validator<'a> {
                 Some(parent) if parent.as_deref() != parent_id => {
                     return Err(LibraryError::InvalidInput(format!(
                         "Work {id} belongs to another parent and cannot be moved here"
-                    ))
-                    .into())
+                    )))
                 }
                 Some(_) => {}
             }
@@ -739,8 +735,7 @@ impl<'a> Validator<'a> {
                 if !seen_ids.insert(id.clone()) {
                     return Err(LibraryError::InvalidInput(format!(
                         "The input contains the child {id} twice"
-                    ))
-                    .into());
+                    )));
                 }
             }
         }
@@ -769,7 +764,7 @@ impl<'a> Validator<'a> {
 
     fn validate_person(&mut self, id: &str) -> Result<()> {
         if !person_exists(self.connection, id)? {
-            return Err(LibraryError::NotFound(EntityKind::Person, id.to_owned()).into());
+            return Err(LibraryError::NotFound(EntityKind::Person, id.to_owned()));
         }
         Ok(())
     }
@@ -777,7 +772,7 @@ impl<'a> Validator<'a> {
     fn validate_role(&mut self, id: Option<&str>) -> Result<()> {
         if let Some(id) = id {
             if !role_exists(self.connection, id)? {
-                return Err(LibraryError::NotFound(EntityKind::Role, id.to_owned()).into());
+                return Err(LibraryError::NotFound(EntityKind::Role, id.to_owned()));
             }
         }
         Ok(())
@@ -785,7 +780,10 @@ impl<'a> Validator<'a> {
 
     fn validate_instrument(&mut self, id: &str) -> Result<()> {
         if !instrument_exists(self.connection, id)? {
-            return Err(LibraryError::NotFound(EntityKind::Instrument, id.to_owned()).into());
+            return Err(LibraryError::NotFound(
+                EntityKind::Instrument,
+                id.to_owned(),
+            ));
         }
         Ok(())
     }
@@ -804,7 +802,10 @@ impl<'a> Validator<'a> {
 
     fn validate_recording_input(&mut self, input: &RecordingInput) -> Result<()> {
         if !work_exists(self.connection, &input.work_id)? {
-            return Err(LibraryError::NotFound(EntityKind::Work, input.work_id.clone()).into());
+            return Err(LibraryError::NotFound(
+                EntityKind::Work,
+                input.work_id.clone(),
+            ));
         }
 
         for person in &input.recording_persons {
@@ -821,8 +822,7 @@ impl<'a> Validator<'a> {
                 return Err(LibraryError::NotFound(
                     EntityKind::Ensemble,
                     ensemble.ensemble_id.clone(),
-                )
-                .into());
+                ));
             }
             self.validate_role(ensemble.role_id.as_deref())?;
         }
@@ -838,14 +838,14 @@ impl<'a> Validator<'a> {
             if !seen.insert(recording_id.clone()) {
                 return Err(LibraryError::InvalidInput(format!(
                     "Recording {recording_id} appears twice in the album"
-                ))
-                .into());
+                )));
             }
 
             if !recording_exists(self.connection, recording_id)? {
-                return Err(
-                    LibraryError::NotFound(EntityKind::Recording, recording_id.clone()).into(),
-                );
+                return Err(LibraryError::NotFound(
+                    EntityKind::Recording,
+                    recording_id.clone(),
+                ));
             }
         }
         Ok(())
@@ -865,9 +865,7 @@ impl<'a> Validator<'a> {
         for tag in tags {
             let stored = match takes_value.iter().find(|(id, _)| id == &tag.tag_id) {
                 Some(stored) => stored,
-                None => {
-                    return Err(LibraryError::NotFound(EntityKind::Tag, tag.tag_id.clone()).into())
-                }
+                None => return Err(LibraryError::NotFound(EntityKind::Tag, tag.tag_id.clone())),
             };
 
             match (stored.1, tag.value.is_some()) {
@@ -875,15 +873,13 @@ impl<'a> Validator<'a> {
                     return Err(LibraryError::InvalidInput(format!(
                         "Tag {} does not take a value",
                         tag.tag_id
-                    ))
-                    .into())
+                    )))
                 }
                 (true, false) => {
                     return Err(LibraryError::InvalidInput(format!(
                         "Tag {} requires a value",
                         tag.tag_id
-                    ))
-                    .into())
+                    )))
                 }
                 _ => {}
             }

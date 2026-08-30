@@ -138,7 +138,7 @@ impl Library {
             })?;
 
             let loader = Loader::load(connection)?;
-            Ok(load(&loader, id)?)
+            load(&loader, id)
         })
     }
 }
