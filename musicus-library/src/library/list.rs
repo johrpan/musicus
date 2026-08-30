@@ -92,12 +92,12 @@ fn work_persons_by_work(
     Ok(work_persons)
 }
 
+/// A map of tags keyed by work/recording.
+type TagsMap = HashMap<String, Vec<(TranslatedString, Option<TranslatedString>)>>;
+
 /// The tags applied to each work, keyed by work ID, in their stored order.
-fn tags_by_work(
-    connection: &mut SqliteConnection,
-) -> Result<HashMap<String, Vec<(TranslatedString, Option<TranslatedString>)>>> {
-    let mut tags: HashMap<String, Vec<(TranslatedString, Option<TranslatedString>)>> =
-        HashMap::new();
+fn tags_by_work(connection: &mut SqliteConnection) -> Result<TagsMap> {
+    let mut tags: TagsMap = HashMap::new();
 
     for (work_id, name, value) in work_tags::table
         .inner_join(tags::table)
@@ -112,11 +112,8 @@ fn tags_by_work(
 }
 
 /// The tags applied to each recording, keyed by recording ID, in their stored order.
-fn tags_by_recording(
-    connection: &mut SqliteConnection,
-) -> Result<HashMap<String, Vec<(TranslatedString, Option<TranslatedString>)>>> {
-    let mut tags: HashMap<String, Vec<(TranslatedString, Option<TranslatedString>)>> =
-        HashMap::new();
+fn tags_by_recording(connection: &mut SqliteConnection) -> Result<TagsMap> {
+    let mut tags: TagsMap = HashMap::new();
 
     for (recording_id, name, value) in recording_tags::table
         .inner_join(tags::table)

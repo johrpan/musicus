@@ -38,6 +38,9 @@ pub mod query;
 mod refresh;
 pub mod search;
 
+/// The metadata database connection and its modification time.
+type CachedMetadataConnection = (Option<SystemTime>, Arc<Mutex<SqliteConnection>>);
+
 /// A music library backed by a SQLite database in a given folder.
 pub struct Library {
     folder: PathBuf,
@@ -45,7 +48,7 @@ pub struct Library {
 
     /// The current metadata database connection including its database files'
     /// modification time as the cache key.
-    metadata_connection: RefCell<Option<(Option<SystemTime>, Arc<Mutex<SqliteConnection>>)>>,
+    metadata_connection: RefCell<Option<CachedMetadataConnection>>,
 
     /// Directory for cache files.
     cache_dir: PathBuf,
