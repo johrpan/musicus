@@ -17,10 +17,9 @@ use zip::{write::SimpleFileOptions, ZipWriter};
 use super::Library;
 use crate::{
     db::{self, schema::*, tables, tables::Source},
-    error::LibraryError,
     format_translated,
     library::{
-        import_graph::{DestinationState, ImportGraph, ImportReport},
+        import_graph::{apply_import, DestinationState, ImportGraph, ImportReport},
         process::{spawn_process, Cancellation, ProcessHandle, ProcessMsg},
     },
 };
@@ -844,14 +843,12 @@ fn import_metadata_from_file(
     this_connection: Arc<Mutex<SqliteConnection>>,
     ignore_tracks: bool,
 ) -> Result<(ImportReport, Vec<tables::Track>)> {
-    let now = db::now();
-
     let mut this_connection = db::lock_connection(&this_connection);
 
     // Plan local-wins against the destination before any row changes: a
     // structural conflict fails here, with the destination untouched.
     let destination = DestinationState::load(&mut this_connection)?;
-    let plan = graph.plan_merge(&destination)?;
+    let plan = graph.plan_merge(&destination, None)?;
 
     let tracks_to_import = if ignore_tracks {
         Vec::new()
@@ -865,270 +862,15 @@ fn import_metadata_from_file(
     };
 
     this_connection.transaction::<(), Error, _>(|connection| {
-        let mut report = plan.report.borrow_mut();
-
-        for row in graph.persons.values() {
-            if destination.persons.contains(&row.person_id) {
-                report.reused_local += 1;
-                continue;
-            }
-
-            let mut row = row.clone();
-            row.source = source;
-            row.created_at = now;
-            row.edited_at = now;
-            row.last_used_at = now;
-
-            diesel::insert_into(persons::table)
-                .values(&row)
-                .execute(connection)?;
-
-            report.inserted += 1;
-        }
-
-        for row in graph.roles.values() {
-            if destination.roles.contains(&row.role_id) {
-                report.reused_local += 1;
-                continue;
-            }
-
-            let mut row = row.clone();
-            row.source = source;
-            row.created_at = now;
-            row.edited_at = now;
-            row.last_used_at = now;
-
-            diesel::insert_into(roles::table)
-                .values(&row)
-                .execute(connection)?;
-
-            report.inserted += 1;
-        }
-
-        for row in graph.tags.values() {
-            if destination.tags.contains(&row.tag_id) {
-                report.reused_local += 1;
-                continue;
-            }
-
-            let mut row = row.clone();
-            row.source = source;
-            row.created_at = now;
-            row.edited_at = now;
-            row.last_used_at = now;
-
-            diesel::insert_into(tags::table)
-                .values(&row)
-                .execute(connection)?;
-
-            report.inserted += 1;
-        }
-
-        for row in graph.instruments.values() {
-            if destination.instruments.contains(&row.instrument_id) {
-                report.reused_local += 1;
-                continue;
-            }
-
-            let mut row = row.clone();
-            row.source = source;
-            row.created_at = now;
-            row.edited_at = now;
-            row.last_used_at = now;
-
-            diesel::insert_into(instruments::table)
-                .values(&row)
-                .execute(connection)?;
-
-            report.inserted += 1;
-        }
-
-        // Works are inserted parents first, so that a child never precedes
-        // the work it belongs to.
-        for work_id in &plan.works_in_order {
-            let work = graph.works.get(work_id).ok_or_else(|| {
-                LibraryError::Corrupt(format!(
-                    "The import plan references the missing work {work_id}"
-                ))
-            })?;
-
-            if destination.works.contains(work_id) {
-                // The local entity wins: its owned associations stay exactly
-                // as they are and not a single imported row for it is written.
-                report.reused_local += 1;
-                report.skipped += graph.work_persons_of(work_id).len()
-                    + graph.work_instruments_of(work_id).len()
-                    + graph.work_tags_of(work_id).len()
-                    + graph.work_relations_of(work_id).len();
-                continue;
-            }
-
-            let mut row = work.clone();
-            row.source = source;
-            row.created_at = now;
-            row.edited_at = now;
-            row.last_used_at = now;
-
-            diesel::insert_into(works::table)
-                .values(&row)
-                .execute(connection)?;
-
-            report.inserted += 1;
-
-            for work_person in graph.work_persons_of(work_id) {
-                diesel::insert_into(work_persons::table)
-                    .values(work_person.clone())
-                    .execute(connection)?;
-                report.inserted += 1;
-            }
-
-            for work_instrument in graph.work_instruments_of(work_id) {
-                diesel::insert_into(work_instruments::table)
-                    .values(work_instrument.clone())
-                    .execute(connection)?;
-                report.inserted += 1;
-            }
-
-            for work_tag in graph.work_tags_of(work_id) {
-                diesel::insert_into(work_tags::table)
-                    .values(work_tag.clone())
-                    .execute(connection)?;
-                report.inserted += 1;
-            }
-
-            for relation in graph.work_relations_of(work_id) {
-                diesel::insert_into(work_relations::table)
-                    .values(relation.clone())
-                    .execute(connection)?;
-                report.inserted += 1;
-            }
-        }
-
-        for row in graph.ensembles.values() {
-            if destination.ensembles.contains(&row.ensemble_id) {
-                report.reused_local += 1;
-                report.skipped += graph.ensemble_persons_of(&row.ensemble_id).len();
-                continue;
-            }
-
-            let mut row = row.clone();
-            row.source = source;
-            row.created_at = now;
-            row.edited_at = now;
-            row.last_used_at = now;
-
-            diesel::insert_into(ensembles::table)
-                .values(&row)
-                .execute(connection)?;
-
-            report.inserted += 1;
-
-            for ensemble_person in graph.ensemble_persons_of(&row.ensemble_id) {
-                diesel::insert_into(ensemble_persons::table)
-                    .values(ensemble_person.clone())
-                    .execute(connection)?;
-                report.inserted += 1;
-            }
-        }
-
-        for row in graph.recordings.values() {
-            if destination.recordings.contains(&row.recording_id) {
-                report.reused_local += 1;
-                report.skipped += graph.recording_persons_of(&row.recording_id).len()
-                    + graph.recording_ensembles_of(&row.recording_id).len()
-                    + graph.recording_tags_of(&row.recording_id).len();
-                continue;
-            }
-
-            let mut row = row.clone();
-            row.source = source;
-            row.created_at = now;
-            row.edited_at = now;
-            row.last_used_at = now;
-
-            diesel::insert_into(recordings::table)
-                .values(&row)
-                .execute(connection)?;
-
-            report.inserted += 1;
-
-            for recording_person in graph.recording_persons_of(&row.recording_id) {
-                diesel::insert_into(recording_persons::table)
-                    .values(recording_person.clone())
-                    .execute(connection)?;
-                report.inserted += 1;
-            }
-
-            for recording_ensemble in graph.recording_ensembles_of(&row.recording_id) {
-                diesel::insert_into(recording_ensembles::table)
-                    .values(recording_ensemble.clone())
-                    .execute(connection)?;
-                report.inserted += 1;
-            }
-
-            for recording_tag in graph.recording_tags_of(&row.recording_id) {
-                diesel::insert_into(recording_tags::table)
-                    .values(recording_tag.clone())
-                    .execute(connection)?;
-                report.inserted += 1;
-            }
-        }
-
-        if !ignore_tracks {
-            for track in graph.tracks.values() {
-                if plan.skipped_tracks.contains(&track.track_id) {
-                    report.skipped += 1 + graph.track_works_of(&track.track_id).len();
-                    continue;
-                }
-
-                let mut row = track.clone();
-                row.created_at = now;
-                row.edited_at = now;
-                row.last_used_at = now;
-
-                diesel::insert_into(tracks::table)
-                    .values(&row)
-                    .execute(connection)?;
-
-                report.inserted += 1;
-
-                for track_work in graph.track_works_of(&track.track_id) {
-                    diesel::insert_into(track_works::table)
-                        .values(track_work.clone())
-                        .execute(connection)?;
-                    report.inserted += 1;
-                }
-            }
-        }
-
-        for row in graph.albums.values() {
-            if destination.albums.contains(&row.album_id) {
-                report.reused_local += 1;
-                report.skipped += graph.album_recordings_of(&row.album_id).len();
-                continue;
-            }
-
-            let mut row = row.clone();
-            row.source = source;
-            row.created_at = now;
-            row.edited_at = now;
-            row.last_used_at = now;
-
-            diesel::insert_into(albums::table)
-                .values(&row)
-                .execute(connection)?;
-
-            report.inserted += 1;
-
-            for album_recording in graph.album_recordings_of(&row.album_id) {
-                diesel::insert_into(album_recordings::table)
-                    .values(album_recording.clone())
-                    .execute(connection)?;
-                report.inserted += 1;
-            }
-        }
-
-        Ok(())
+        apply_import(
+            connection,
+            &graph,
+            &plan,
+            &destination,
+            None,
+            source,
+            !ignore_tracks,
+        )
     })?;
 
     Ok((plan.report.into_inner(), tracks_to_import))

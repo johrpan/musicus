@@ -13,7 +13,7 @@ use anyhow::Result;
 use diesel::prelude::*;
 
 use crate::{
-    db::{schema::*, tables},
+    db::{self, schema::*, tables, tables::Source},
     error::{EntityKind, LibraryError},
 };
 
@@ -29,6 +29,8 @@ pub(crate) struct ImportGraph {
     pub(crate) works: HashMap<String, tables::Work>,
     /// Outgoing relation rows per source work.
     pub(crate) work_relations: HashMap<String, Vec<tables::WorkRelation>>,
+    /// Child work IDs per parent, in their stored order.
+    pub(crate) children: HashMap<String, Vec<String>>,
     pub(crate) work_persons: HashMap<String, Vec<tables::WorkPerson>>,
     pub(crate) work_instruments: HashMap<String, Vec<tables::WorkInstrument>>,
     pub(crate) work_tags: HashMap<String, Vec<tables::WorkTag>>,
@@ -50,6 +52,16 @@ impl ImportGraph {
     pub(crate) fn load(connection: &mut SqliteConnection) -> Result<Self> {
         let works = works::table.load::<tables::Work>(connection)?;
 
+        let mut children = HashMap::<String, Vec<String>>::new();
+        for work in &works {
+            if let Some(parent) = &work.parent_work_id {
+                children
+                    .entry(parent.clone())
+                    .or_default()
+                    .push(work.work_id.clone());
+            }
+        }
+
         let graph = Self {
             persons: keyed_by(persons::table.load::<tables::Person>(connection)?, |row| {
                 row.person_id.clone()
@@ -65,6 +77,7 @@ impl ImportGraph {
                 row.tag_id.clone()
             }),
             works: keyed_by(works, |row| row.work_id.clone()),
+            children,
             work_relations: grouped_by(
                 work_relations::table.load::<tables::WorkRelation>(connection)?,
                 |row| row.work_id.clone(),
@@ -630,20 +643,28 @@ pub(crate) struct MergePlan {
 impl ImportGraph {
     /// Decide the outcome of importing this graph into `destination`.
     ///
-    /// Local-wins keeps every colliding local entity entirely unchanged, so an
-    /// imported parent/child structure that would require a colliding local
-    /// work to be reparented, renumbered or otherwise disturbed is rejected
-    /// here, before any destination row changes.
-    pub(crate) fn plan_merge(&self, destination: &DestinationState) -> Result<MergePlan> {
+    /// With a `closure`, only the entities it selects are considered; without
+    /// one, the whole graph. Local-wins keeps every colliding local entity
+    /// entirely unchanged, so an imported parent/child structure that would
+    /// require a colliding local work to be reparented, renumbered or
+    /// otherwise disturbed is rejected here, before any destination row
+    /// changes.
+    pub(crate) fn plan_merge(
+        &self,
+        destination: &DestinationState,
+        closure: Option<&ImportClosure>,
+    ) -> Result<MergePlan> {
         let mut skipped_tracks = HashSet::new();
 
-        for track in self.tracks.values() {
-            if destination.tracks.contains(&track.track_id)
-                || destination.track_paths.contains(track.path.as_str())
-            {
-                // Skipping the imported track (and its owned rows) leaves
-                // every reference consistent: nothing else points at its ID.
-                skipped_tracks.insert(track.track_id.clone());
+        if closure.is_none() {
+            for track in self.tracks.values() {
+                if destination.tracks.contains(&track.track_id)
+                    || destination.track_paths.contains(track.path.as_str())
+                {
+                    // Skipping the imported track (and its owned rows) leaves
+                    // every reference consistent: nothing else points at its ID.
+                    skipped_tracks.insert(track.track_id.clone());
+                }
             }
         }
 
@@ -651,6 +672,10 @@ impl ImportGraph {
         let mut works_in_order = Vec::with_capacity(self.works.len());
 
         for work in self.works.values() {
+            if !closure.map_or(true, |closure| closure.works.contains(&work.work_id)) {
+                continue;
+            }
+
             if destination.works.contains(&work.work_id) {
                 // A colliding local work wins, so its position must already be
                 // exactly what the imported structure assumes; otherwise the
@@ -718,6 +743,512 @@ impl ImportGraph {
             report: std::cell::RefCell::new(ImportReport::default()),
         })
     }
+}
+
+/// The set of entities one import needs, selected from a source graph.
+///
+/// A work's closure contains the work itself, its ancestors, its descendants
+/// and its directly related works, plus every person, role, instrument and
+/// tag those records need. Relation rows are only included when both their
+/// source and target are part of the closure.
+#[derive(Clone, Debug, Default)]
+pub(crate) struct ImportClosure {
+    pub(crate) persons: HashSet<String>,
+    pub(crate) roles: HashSet<String>,
+    pub(crate) instruments: HashSet<String>,
+    pub(crate) tags: HashSet<String>,
+    pub(crate) works: HashSet<String>,
+    pub(crate) ensembles: HashSet<String>,
+    pub(crate) recordings: HashSet<String>,
+}
+
+impl ImportGraph {
+    /// Select the entities an import of `kind` `id` needs from this graph.
+    pub(crate) fn closure_for(&self, kind: EntityKind, id: &str) -> Result<ImportClosure> {
+        let mut closure = ImportClosure::default();
+
+        match kind {
+            EntityKind::Person => {
+                self.require_present_for_closure(EntityKind::Person, id)?;
+                closure.persons.insert(id.to_owned());
+            }
+            EntityKind::Role => {
+                self.require_present_for_closure(EntityKind::Role, id)?;
+                closure.roles.insert(id.to_owned());
+            }
+            EntityKind::Instrument => {
+                self.require_present_for_closure(EntityKind::Instrument, id)?;
+                closure.instruments.insert(id.to_owned());
+            }
+            EntityKind::Tag => {
+                self.require_present_for_closure(EntityKind::Tag, id)?;
+                closure.tags.insert(id.to_owned());
+            }
+            EntityKind::Ensemble => self.closure_ensemble(&mut closure, id)?,
+            EntityKind::Work => self.closure_work(&mut closure, id)?,
+            EntityKind::Recording => self.closure_recording(&mut closure, id)?,
+            // Albums and tracks cannot be selected from the metadata
+            // catalogue; they only exist in user libraries.
+            EntityKind::Album | EntityKind::Track => {
+                return Err(LibraryError::InvalidInput(format!(
+                    "Cannot import a {kind} from the metadata catalogue"
+                ))
+                .into())
+            }
+        }
+
+        Ok(closure)
+    }
+
+    /// Include an ensemble and everything its record needs: its members with
+    /// their people, roles and instruments.
+    fn closure_ensemble(&self, closure: &mut ImportClosure, id: &str) -> Result<()> {
+        self.require_present_for_closure(EntityKind::Ensemble, id)?;
+        closure.ensembles.insert(id.to_owned());
+
+        for member in self.ensemble_persons_of(id) {
+            closure.persons.insert(member.person_id.clone());
+            if let Some(role_id) = &member.role_id {
+                closure.roles.insert(role_id.clone());
+            }
+            if let Some(instrument_id) = &member.instrument_id {
+                closure.instruments.insert(instrument_id.clone());
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Include a recording and everything its record needs: its work tree,
+    /// performing persons and ensembles (with the ensembles' members) and its
+    /// tags.
+    fn closure_recording(&self, closure: &mut ImportClosure, id: &str) -> Result<()> {
+        self.require_present_for_closure(EntityKind::Recording, id)?;
+        closure.recordings.insert(id.to_owned());
+
+        let recording = self
+            .recordings
+            .get(id)
+            .ok_or_else(|| LibraryError::NotFound(EntityKind::Recording, id.to_owned()))?;
+
+        self.closure_work(closure, &recording.work_id)?;
+
+        for person in self.recording_persons_of(id) {
+            closure.persons.insert(person.person_id.clone());
+            if let Some(role_id) = &person.role_id {
+                closure.roles.insert(role_id.clone());
+            }
+            if let Some(instrument_id) = &person.instrument_id {
+                closure.instruments.insert(instrument_id.clone());
+            }
+        }
+
+        for ensemble in self.recording_ensembles_of(id) {
+            self.closure_ensemble(closure, &ensemble.ensemble_id)?;
+            if let Some(role_id) = &ensemble.role_id {
+                closure.roles.insert(role_id.clone());
+            }
+        }
+
+        for tag in self.recording_tags_of(id) {
+            closure.tags.insert(tag.tag_id.clone());
+        }
+
+        Ok(())
+    }
+
+    /// Include a work with its complete tree: the work itself, its ancestors,
+    /// its descendants and its directly related works, plus every credit,
+    /// instrument and tag those records need.
+    ///
+    /// Traversal is cycle-safe: relation graphs may contain cycles, and the
+    /// `visited` set terminates them. The parent hierarchy itself is acyclic
+    /// (validated when the graph was loaded), so ancestors terminate.
+    fn closure_work(&self, closure: &mut ImportClosure, id: &str) -> Result<()> {
+        self.require_present_for_closure(EntityKind::Work, id)?;
+
+        let mut queue = std::collections::VecDeque::new();
+        queue.push_back(id.to_owned());
+        let mut visited = HashSet::new();
+
+        // Works to include: the root, its ancestors, its descendants and its
+        // directly related works.
+        while let Some(work_id) = queue.pop_front() {
+            if !visited.insert(work_id.clone()) {
+                continue;
+            }
+
+            closure.works.insert(work_id.clone());
+
+            let work = self
+                .works
+                .get(&work_id)
+                .ok_or_else(|| LibraryError::NotFound(EntityKind::Work, work_id.clone()))?;
+
+            if let Some(parent) = &work.parent_work_id {
+                queue.push_back(parent.clone());
+            }
+
+            if let Some(children) = self.children.get(&work_id) {
+                queue.extend(children.iter().cloned());
+            }
+
+            for relation in self.work_relations_of(&work_id) {
+                queue.push_back(relation.related_work_id.clone());
+            }
+        }
+
+        // Every included work brings the rows that make its record complete:
+        // credits, instruments and tags, with the referenced people, roles and
+        // instruments themselves.
+        for work_id in &closure.works {
+            for work_person in self.work_persons_of(work_id) {
+                closure.persons.insert(work_person.person_id.clone());
+                if let Some(role_id) = &work_person.role_id {
+                    closure.roles.insert(role_id.clone());
+                }
+            }
+
+            for instrument in self.work_instruments_of(work_id) {
+                closure.instruments.insert(instrument.instrument_id.clone());
+            }
+
+            for tag in self.work_tags_of(work_id) {
+                closure.tags.insert(tag.tag_id.clone());
+            }
+        }
+
+        Ok(())
+    }
+
+    fn require_present_for_closure(&self, kind: EntityKind, id: &str) -> Result<()> {
+        let present = match kind {
+            EntityKind::Person => self.persons.contains_key(id),
+            EntityKind::Role => self.roles.contains_key(id),
+            EntityKind::Instrument => self.instruments.contains_key(id),
+            EntityKind::Tag => self.tags.contains_key(id),
+            EntityKind::Work => self.works.contains_key(id),
+            EntityKind::Ensemble => self.ensembles.contains_key(id),
+            EntityKind::Recording => self.recordings.contains_key(id),
+            EntityKind::Album => self.albums.contains_key(id),
+            EntityKind::Track => self.tracks.contains_key(id),
+        };
+
+        if present {
+            Ok(())
+        } else {
+            Err(LibraryError::NotFound(kind, id.to_owned()).into())
+        }
+    }
+}
+
+/// Apply a planned local-wins import of `graph` to `connection`.
+///
+/// The caller must be inside a transaction. `plan` and `destination` describe
+/// the decisions made beforehand; `closure` restricts the import to a selected
+/// set of entities, `None` imports the whole graph. Rows are written in
+/// foreign-key-safe order (works parents first) and every colliding local
+/// entity is left entirely unchanged.
+pub(crate) fn apply_import(
+    connection: &mut SqliteConnection,
+    graph: &ImportGraph,
+    plan: &MergePlan,
+    destination: &DestinationState,
+    closure: Option<&ImportClosure>,
+    source: Source,
+    import_tracks: bool,
+) -> Result<()> {
+    let now = db::now();
+    let mut report = plan.report.borrow_mut();
+
+    for row in graph.persons.values() {
+        if !closure.map_or(true, |closure| closure.persons.contains(&row.person_id)) {
+            continue;
+        }
+        if destination.persons.contains(&row.person_id) {
+            report.reused_local += 1;
+            continue;
+        }
+
+        let mut row = row.clone();
+        row.source = source;
+        row.created_at = now;
+        row.edited_at = now;
+        row.last_used_at = now;
+
+        diesel::insert_into(persons::table)
+            .values(&row)
+            .execute(connection)?;
+
+        report.inserted += 1;
+    }
+
+    for row in graph.roles.values() {
+        if !closure.map_or(true, |closure| closure.roles.contains(&row.role_id)) {
+            continue;
+        }
+        if destination.roles.contains(&row.role_id) {
+            report.reused_local += 1;
+            continue;
+        }
+
+        let mut row = row.clone();
+        row.source = source;
+        row.created_at = now;
+        row.edited_at = now;
+        row.last_used_at = now;
+
+        diesel::insert_into(roles::table)
+            .values(&row)
+            .execute(connection)?;
+
+        report.inserted += 1;
+    }
+
+    for row in graph.tags.values() {
+        if !closure.map_or(true, |closure| closure.tags.contains(&row.tag_id)) {
+            continue;
+        }
+        if destination.tags.contains(&row.tag_id) {
+            report.reused_local += 1;
+            continue;
+        }
+
+        let mut row = row.clone();
+        row.source = source;
+        row.created_at = now;
+        row.edited_at = now;
+        row.last_used_at = now;
+
+        diesel::insert_into(tags::table)
+            .values(&row)
+            .execute(connection)?;
+
+        report.inserted += 1;
+    }
+
+    for row in graph.instruments.values() {
+        if !closure.map_or(true, |closure| {
+            closure.instruments.contains(&row.instrument_id)
+        }) {
+            continue;
+        }
+        if destination.instruments.contains(&row.instrument_id) {
+            report.reused_local += 1;
+            continue;
+        }
+
+        let mut row = row.clone();
+        row.source = source;
+        row.created_at = now;
+        row.edited_at = now;
+        row.last_used_at = now;
+
+        diesel::insert_into(instruments::table)
+            .values(&row)
+            .execute(connection)?;
+
+        report.inserted += 1;
+    }
+
+    // Works are inserted parents first, so that a child never precedes the
+    // work it belongs to. Reused local works and their owned rows are left
+    // alone.
+    for work_id in &plan.works_in_order {
+        let work = graph.works.get(work_id).ok_or_else(|| {
+            LibraryError::Corrupt(format!(
+                "The import plan references the missing work {work_id}"
+            ))
+        })?;
+
+        if destination.works.contains(work_id) {
+            report.reused_local += 1;
+            report.skipped += graph.work_persons_of(work_id).len()
+                + graph.work_instruments_of(work_id).len()
+                + graph.work_tags_of(work_id).len()
+                + graph.work_relations_of(work_id).len();
+            continue;
+        }
+
+        let mut row = work.clone();
+        row.source = source;
+        row.created_at = now;
+        row.edited_at = now;
+        row.last_used_at = now;
+
+        diesel::insert_into(works::table)
+            .values(&row)
+            .execute(connection)?;
+
+        report.inserted += 1;
+
+        for work_person in graph.work_persons_of(work_id) {
+            diesel::insert_into(work_persons::table)
+                .values(work_person.clone())
+                .execute(connection)?;
+            report.inserted += 1;
+        }
+
+        for work_instrument in graph.work_instruments_of(work_id) {
+            diesel::insert_into(work_instruments::table)
+                .values(work_instrument.clone())
+                .execute(connection)?;
+            report.inserted += 1;
+        }
+
+        for work_tag in graph.work_tags_of(work_id) {
+            diesel::insert_into(work_tags::table)
+                .values(work_tag.clone())
+                .execute(connection)?;
+            report.inserted += 1;
+        }
+
+        for relation in graph.work_relations_of(work_id) {
+            diesel::insert_into(work_relations::table)
+                .values(relation.clone())
+                .execute(connection)?;
+            report.inserted += 1;
+        }
+    }
+
+    for row in graph.ensembles.values() {
+        if !closure.map_or(true, |closure| closure.ensembles.contains(&row.ensemble_id)) {
+            continue;
+        }
+        if destination.ensembles.contains(&row.ensemble_id) {
+            report.reused_local += 1;
+            report.skipped += graph.ensemble_persons_of(&row.ensemble_id).len();
+            continue;
+        }
+
+        let mut row = row.clone();
+        row.source = source;
+        row.created_at = now;
+        row.edited_at = now;
+        row.last_used_at = now;
+
+        diesel::insert_into(ensembles::table)
+            .values(&row)
+            .execute(connection)?;
+
+        report.inserted += 1;
+
+        for ensemble_person in graph.ensemble_persons_of(&row.ensemble_id) {
+            diesel::insert_into(ensemble_persons::table)
+                .values(ensemble_person.clone())
+                .execute(connection)?;
+            report.inserted += 1;
+        }
+    }
+
+    for row in graph.recordings.values() {
+        if !closure.map_or(true, |closure| {
+            closure.recordings.contains(&row.recording_id)
+        }) {
+            continue;
+        }
+        if destination.recordings.contains(&row.recording_id) {
+            report.reused_local += 1;
+            report.skipped += graph.recording_persons_of(&row.recording_id).len()
+                + graph.recording_ensembles_of(&row.recording_id).len()
+                + graph.recording_tags_of(&row.recording_id).len();
+            continue;
+        }
+
+        let mut row = row.clone();
+        row.source = source;
+        row.created_at = now;
+        row.edited_at = now;
+        row.last_used_at = now;
+
+        diesel::insert_into(recordings::table)
+            .values(&row)
+            .execute(connection)?;
+
+        report.inserted += 1;
+
+        for recording_person in graph.recording_persons_of(&row.recording_id) {
+            diesel::insert_into(recording_persons::table)
+                .values(recording_person.clone())
+                .execute(connection)?;
+            report.inserted += 1;
+        }
+
+        for recording_ensemble in graph.recording_ensembles_of(&row.recording_id) {
+            diesel::insert_into(recording_ensembles::table)
+                .values(recording_ensemble.clone())
+                .execute(connection)?;
+            report.inserted += 1;
+        }
+
+        for recording_tag in graph.recording_tags_of(&row.recording_id) {
+            diesel::insert_into(recording_tags::table)
+                .values(recording_tag.clone())
+                .execute(connection)?;
+            report.inserted += 1;
+        }
+    }
+
+    if import_tracks && closure.is_none() {
+        for track in graph.tracks.values() {
+            if plan.skipped_tracks.contains(&track.track_id) {
+                report.skipped += 1 + graph.track_works_of(&track.track_id).len();
+                continue;
+            }
+
+            let mut row = track.clone();
+            row.created_at = now;
+            row.edited_at = now;
+            row.last_used_at = now;
+
+            diesel::insert_into(tracks::table)
+                .values(&row)
+                .execute(connection)?;
+
+            report.inserted += 1;
+
+            for track_work in graph.track_works_of(&track.track_id) {
+                diesel::insert_into(track_works::table)
+                    .values(track_work.clone())
+                    .execute(connection)?;
+                report.inserted += 1;
+            }
+        }
+    }
+
+    for row in graph.albums.values() {
+        // Albums are never part of a metadata selection; only whole-graph
+        // imports (archives) can bring them.
+        if closure.is_some() {
+            break;
+        }
+        if destination.albums.contains(&row.album_id) {
+            report.reused_local += 1;
+            report.skipped += graph.album_recordings_of(&row.album_id).len();
+            continue;
+        }
+
+        let mut row = row.clone();
+        row.source = source;
+        row.created_at = now;
+        row.edited_at = now;
+        row.last_used_at = now;
+
+        diesel::insert_into(albums::table)
+            .values(&row)
+            .execute(connection)?;
+
+        report.inserted += 1;
+
+        for album_recording in graph.album_recordings_of(&row.album_id) {
+            diesel::insert_into(album_recordings::table)
+                .values(album_recording.clone())
+                .execute(connection)?;
+            report.inserted += 1;
+        }
+    }
+
+    Ok(())
 }
 
 /// How far each work is from the root of its hierarchy, for parent-before-
