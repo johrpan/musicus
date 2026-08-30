@@ -11,12 +11,6 @@ use crate::{
     db::{self, schema::*, tables},
     error::Result,
 };
-pub use edit::TrackUpdate;
-pub use list::{RecordingListItem, WorkListItem};
-pub use merge::EntityUsage;
-pub use program::GenerateRecordingParams;
-pub use query::{Facet, LibraryQuery, TagFilter};
-pub use search::SearchItem;
 
 /// Send a change notification to every subscriber, coalescing per subscriber:
 /// a subscriber with a pending message is not sent another one, and a

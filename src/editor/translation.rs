@@ -3,7 +3,7 @@ use std::{cell::RefCell, collections::BTreeMap};
 use adw::{prelude::*, subclass::prelude::*};
 use gtk::glib;
 
-use musicus_library::db::TranslatedString;
+use musicus_library::TranslatedString;
 
 use crate::{editor::translation_entry::TranslationEntry, util};
 

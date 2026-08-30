@@ -8,8 +8,8 @@
 use gettextrs::gettext;
 use musicus_library::{
     format_translated,
-    library::{Facet, LibraryQuery, TagFilter},
     models::TagValue,
+    query::{Facet, LibraryQuery, TagFilter},
     Library,
 };
 

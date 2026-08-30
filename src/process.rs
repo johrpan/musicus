@@ -16,8 +16,8 @@ use gtk::{
     subclass::prelude::*,
 };
 use musicus_library::{
-    db::tables::Source,
-    library::exchange::{self, ExchangeEvent},
+    exchange::{self, ExchangeEvent},
+    Source,
 };
 
 use musicus_library::format_translated;

@@ -39,8 +39,8 @@ where
 
 pub fn require_name(
     page: &impl IsA<gtk::Widget>,
-    name: Result<musicus_library::db::TranslatedString, musicus_library::LibraryError>,
-) -> Option<musicus_library::db::TranslatedString> {
+    name: Result<musicus_library::TranslatedString, musicus_library::LibraryError>,
+) -> Option<musicus_library::TranslatedString> {
     let name = match name {
         Ok(name) => name,
         Err(_) => {

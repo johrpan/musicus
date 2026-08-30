@@ -49,7 +49,7 @@ fn main() -> glib::ExitCode {
     gtk::init().expect("Failed to initialize GTK!");
     gst::init().expect("Failed to initialize GStreamer!");
 
-    musicus_library::db::set_language(&*util::LANG);
+    musicus_library::set_language(&*util::LANG);
 
     glib::set_application_name(config::NAME);
     gtk::Window::set_default_icon_name(config::APP_ID);

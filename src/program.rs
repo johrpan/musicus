@@ -198,7 +198,7 @@ impl Program {
     }
 
     /// The tag value, deserialized from the JSON stored in the `tag-value` property.
-    pub fn tag_value_translated(&self) -> Option<musicus_library::db::TranslatedString> {
+    pub fn tag_value_translated(&self) -> Option<musicus_library::TranslatedString> {
         self.tag_value()
             .map(|value| serde_json::from_str(&value).unwrap())
     }

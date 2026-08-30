@@ -10,11 +10,7 @@ use gtk::{
     glib::{self, clone, Properties},
 };
 use musicus_library::{
-    db::{tables::Source, TranslatedString},
-    format_translated,
-    library::EntityUsage,
-    models::Tag,
-    LibraryError,
+    format_translated, merge::EntityUsage, models::Tag, LibraryError, Source, TranslatedString,
 };
 
 use crate::{

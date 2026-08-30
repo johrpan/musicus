@@ -6,7 +6,7 @@
 //! the metadata database deliberately contains none of them.
 //!
 //! Everything is written through `musicus-library`'s public database layer
-//! (`db::connect` opens and migrates the file, the `db::schema`/`db::tables`
+//! (`unstable::connect` opens and migrates the file, the `unstable::schema`/`unstable::tables`
 //! modules describe the rows), so the output is exactly what a Musicus
 //! library expects as its downloaded `metadata.musdb`.
 
@@ -19,12 +19,8 @@ use std::{
 use anyhow::{anyhow, bail, Context, Result};
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
-use musicus_library::db::{
-    self,
-    schema::*,
-    tables::{self, Source},
-    TranslatedString,
-};
+use musicus_library::unstable::{self, schema::*, tables};
+use musicus_library::{Source, TranslatedString};
 
 use crate::sources::{ComposerRef, MetadataFile, TagRef, WorkEntity, WorksFile};
 
@@ -350,7 +346,7 @@ fn check_work(work: &WorkEntity, context: &mut CheckContext<'_>) -> Result<()> {
 
 /// Write the metadata database, returning what went into it.
 fn write_database(metadata: &MetadataFile, works: &WorksFile, output: &Path) -> Result<Summary> {
-    let now = db::now();
+    let now = chrono::Utc::now().naive_utc();
 
     if output.exists() {
         fs::remove_file(output)
@@ -371,7 +367,8 @@ fn write_database(metadata: &MetadataFile, works: &WorksFile, output: &Path) -> 
 
     // Runs the migrations and enables foreign key checks, exactly like the
     // Musicus libraries the app opens.
-    let mut connection = db::connect(path).context("Failed to create the metadata database")?;
+    let mut connection =
+        unstable::connect(path).context("Failed to create the metadata database")?;
 
     connection
         .transaction::<(), anyhow::Error, _>(|connection| {
@@ -610,7 +607,7 @@ fn count_associations(
 
 #[cfg(test)]
 mod tests {
-    use musicus_library::db::schema::*;
+    use musicus_library::unstable::schema::*;
 
     use super::*;
 
@@ -757,7 +754,7 @@ mod tests {
         assert_eq!(summary.instrumentations, 2);
         assert_eq!(summary.derived, 1);
 
-        let mut connection = db::connect(&path).unwrap();
+        let mut connection = unstable::connect(&path).unwrap();
 
         let persons = persons::table
             .load::<tables::Person>(&mut connection)

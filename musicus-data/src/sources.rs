@@ -7,7 +7,7 @@
 use std::path::Path;
 
 use anyhow::{Context, Result};
-use musicus_library::db::TranslatedString;
+use musicus_library::TranslatedString;
 use serde::Deserialize;
 
 /// One named basic entity (`roles`, `instruments`, `ensembles`, `persons`).

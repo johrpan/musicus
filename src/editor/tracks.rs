@@ -17,7 +17,7 @@ use once_cell::sync::Lazy;
 use track_row::{TrackLocation, TracksEditorTrackData, TracksEditorTrackRow};
 
 use musicus_library::{
-    library::TrackUpdate,
+    edit::TrackUpdate,
     models::{Recording, Work},
 };
 

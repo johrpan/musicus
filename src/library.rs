@@ -3,7 +3,9 @@ use std::{cell::OnceCell, ops::Deref, path::Path, sync::LazyLock};
 use adw::{glib, prelude::*, subclass::prelude::*};
 use anyhow::{anyhow, Result};
 
-pub use musicus_library::library::{Facet, GenerateRecordingParams, LibraryQuery, SearchItem};
+pub use musicus_library::program::GenerateRecordingParams;
+pub use musicus_library::query::{Facet, LibraryQuery};
+pub use musicus_library::search::SearchItem;
 
 use crate::config;
 

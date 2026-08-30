@@ -9,8 +9,8 @@ use adw::{prelude::*, subclass::prelude::*};
 use gettextrs::gettext;
 use gtk::glib::{self, subclass::Signal};
 use musicus_library::{
-    db::TranslatedString,
     models::{Instrument, Person, Role},
+    TranslatedString,
 };
 use once_cell::sync::Lazy;
 

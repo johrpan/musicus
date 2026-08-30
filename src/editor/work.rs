@@ -11,10 +11,7 @@ use gtk::glib::{self, clone, subclass::Signal, Properties};
 use once_cell::sync::Lazy;
 use part_row::WorkEditorPartRow;
 
-use musicus_library::{
-    db::{self},
-    models::{Instrument, Person, RelatedWork, Tag, TagValue, Work, WorkPerson},
-};
+use musicus_library::models::{Instrument, Person, RelatedWork, Tag, TagValue, Work, WorkPerson};
 
 use crate::{
     editor::{
@@ -569,12 +566,12 @@ impl WorkEditor {
                 .work_id
                 .get()
                 .map(|w| w.to_string())
-                .unwrap_or_else(db::generate_id);
+                .unwrap_or_else(musicus_library::generate_id);
 
             let part = Work {
                 id: work_id,
                 name,
-                source: musicus_library::db::tables::Source::User,
+                source: musicus_library::Source::User,
                 last_used_at: chrono::Utc::now().naive_utc(),
                 parts,
                 work_persons: composers,
@@ -630,7 +627,7 @@ impl WorkEditor {
     /// The mutation input describing the current editor state.
     fn work_input(
         &self,
-        name: musicus_library::db::TranslatedString,
+        name: musicus_library::TranslatedString,
         parts: Vec<Work>,
         composers: Vec<WorkPerson>,
         instruments: Vec<Instrument>,

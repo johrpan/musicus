@@ -7,10 +7,9 @@ use std::{fs, path::Path};
 
 use anyhow::{Context, Result};
 use musicus_library::{
-    db::TranslatedString,
-    library::TrackUpdate,
+    edit::TrackUpdate,
     models::{Ensemble, Instrument, Person, RecordingPerson, Role, Work},
-    Library,
+    Library, TranslatedString,
 };
 use rand::prelude::*;
 use tempfile::TempDir;
@@ -283,7 +282,7 @@ fn pick_members(
 
 #[cfg(test)]
 mod tests {
-    use musicus_library::library::LibraryQuery;
+    use musicus_library::query::LibraryQuery;
 
     use super::*;
 
