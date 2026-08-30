@@ -1,15 +1,14 @@
 //! Bulk-importing recordings and tracks described in JSON.
+//!
+//! The JSON types themselves (`RecordingEntry`, `PerformerRef`, `TagRef`) live
+//! in [`crate::catalog`] along with the rest of the source format — there is
+//! no format distinction between a "recordings file" and any other source
+//! file, so this module only re-exports them for convenience.
 
-use std::{
-    collections::HashSet,
-    ops::ControlFlow,
-    path::{Path, PathBuf},
-};
-
-use serde::Deserialize;
+use std::{collections::HashSet, ops::ControlFlow, path::Path};
 
 use crate::{
-    db::TranslatedString,
+    catalog::{PerformerRef, RecordingEntry, TagRef},
     error::Result,
     input::{RecordingEnsembleInput, RecordingInput, RecordingPersonInput, TagInput},
     library::{
@@ -19,64 +18,6 @@ use crate::{
     },
 };
 
-/// A person or ensemble performing on a recording, referenced by catalogue
-/// key.
-#[derive(Clone, Debug, Deserialize)]
-#[serde(untagged)]
-pub enum PerformerRef {
-    Person {
-        person: String,
-        role: Option<String>,
-        instrument: Option<String>,
-    },
-    Ensemble {
-        ensemble: String,
-        role: Option<String>,
-    },
-}
-
-/// A tag association on a recording: a plain tag key, or a tag key with a
-/// value for tags that take one.
-#[derive(Clone, Debug, Deserialize)]
-#[serde(untagged)]
-pub enum TagRef {
-    Key(String),
-    Value {
-        key: String,
-        value: TranslatedString,
-    },
-}
-
-/// One track: an audio file on disk, plus the works (by catalogue key) it
-/// belongs to, in order.
-#[derive(Clone, Debug, Deserialize)]
-pub struct TrackEntry {
-    pub file: PathBuf,
-    #[serde(default)]
-    pub works: Vec<String>,
-}
-
-/// One recording: a catalogue work, its performers and tags, and its tracks.
-#[derive(Clone, Debug, Deserialize)]
-pub struct RecordingEntry {
-    pub work: String,
-    #[serde(default)]
-    pub performers: Vec<PerformerRef>,
-    #[serde(default)]
-    pub tags: Vec<TagRef>,
-    #[serde(default)]
-    pub comment: Option<String>,
-    #[serde(default)]
-    pub tracks: Vec<TrackEntry>,
-}
-
-/// The contents of a recordings JSON file.
-#[derive(Clone, Debug, Default, Deserialize)]
-pub struct RecordingsFile {
-    #[serde(default)]
-    pub recordings: Vec<RecordingEntry>,
-}
-
 /// What was written, for the summary at the end of a run.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Summary {
@@ -84,17 +25,17 @@ pub struct Summary {
     pub tracks: usize,
 }
 
-/// Import every recording of `file` into `library`.
+/// Import every recording of `recordings` into `library`.
 ///
 /// `metadata_path` is installed as `library`'s metadata catalogue first, so
-/// that every catalogue key `file` references can be resolved and imported
-/// with the ID the catalogue uses. `tracks_dir` is the base every track's
-/// relative `file` is resolved against.
+/// that every catalogue key `recordings` references can be resolved and
+/// imported with the ID the catalogue uses. `tracks_dir` is the base every
+/// track's relative `file` is resolved against.
 pub fn import(
     library: &Library,
     metadata_path: &Path,
     tracks_dir: &Path,
-    file: &RecordingsFile,
+    recordings: &[RecordingEntry],
     observer: &mut dyn FnMut(ExchangeEvent) -> ControlFlow<()>,
 ) -> Result<Summary> {
     exchange::install_metadata(&library.exchange_context(), metadata_path, observer)?;
@@ -102,7 +43,7 @@ pub fn import(
     let mut resolved = ResolvedKeys::default();
     let mut summary = Summary::default();
 
-    for entry in &file.recordings {
+    for entry in recordings {
         resolved.work(library, &entry.work)?;
 
         let mut recording_persons = Vec::new();

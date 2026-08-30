@@ -1,9 +1,14 @@
 //! CLI for building Musicus metadata catalogues and libraries from JSON.
 //!
 //! All parsing, validation and database-writing logic lives in
-//! `musicus-library` (`musicus_library::catalog` for the metadata catalogue,
+//! `musicus-library` (`musicus_library::catalog` for the source format,
 //! `musicus_library::catalog_import` for a library's recordings and tracks);
 //! this crate only reads files, calls that logic and reports the result.
+//!
+//! There is no format distinction between the files given to a command: each
+//! is parsed as a `musicus_library::catalog::Definitions` and they are all
+//! folded together before use, so the same `persons`/`works`/`recordings`
+//! content can be split across any number of files however is convenient.
 
 use std::{
     fs::{self, File},
@@ -15,8 +20,8 @@ use std::{
 use anyhow::{Context, Result};
 use clap::{Args, Parser, Subcommand};
 use musicus_library::{
-    catalog::{self, MetadataFile, WorksFile},
-    catalog_import::{self, RecordingsFile},
+    catalog::{self, Definitions},
+    catalog_import,
     exchange::{self, ExchangeEvent},
     Library,
 };
@@ -33,51 +38,43 @@ struct Cli {
 
 #[derive(Subcommand, Debug)]
 enum Command {
-    /// Compile a metadata catalogue's JSON definitions into a `.musdb`.
+    /// Compile the catalogue entities of the given files into a `.musdb`,
+    /// ignoring any recordings.
     BuildMetadata(BuildMetadataArgs),
-    /// Check a metadata catalogue's JSON definitions and report problems,
+    /// Check the catalogue entities of the given files and report problems,
     /// without writing anything.
-    CheckMetadata(MetadataFileArgs),
-    /// Build a library's `.muslib` from a recordings JSON file, resolving
-    /// every catalogue reference against a metadata database.
+    CheckMetadata(SourceArgs),
+    /// Build a library's `.muslib` from the recordings of the given files,
+    /// importing every catalogue entity a recording needs and ignoring
+    /// everything else.
     BuildLibrary(BuildLibraryArgs),
 }
 
-/// The two JSON definition files of a metadata catalogue. Both default to
-/// well-known names inside `data`, but each can be pointed at explicitly.
+/// One or more source files, each parsed as a [`Definitions`] and folded
+/// together.
 #[derive(Args, Debug)]
-struct MetadataFileArgs {
-    /// Directory containing metadata.json and works.json.
-    #[arg(long, default_value = ".")]
-    data: PathBuf,
-
-    /// Path to metadata.json [default: <data>/metadata.json]
-    #[arg(long)]
-    metadata: Option<PathBuf>,
-
-    /// Path to works.json [default: <data>/works.json]
-    #[arg(long)]
-    works: Option<PathBuf>,
+struct SourceArgs {
+    /// The JSON source files.
+    #[arg(required = true)]
+    files: Vec<PathBuf>,
 }
 
-impl MetadataFileArgs {
-    fn metadata_path(&self) -> PathBuf {
-        self.metadata
-            .clone()
-            .unwrap_or_else(|| self.data.join("metadata.json"))
-    }
+impl SourceArgs {
+    fn read(&self) -> Result<Definitions> {
+        let sources = self
+            .files
+            .iter()
+            .map(read_json::<Definitions>)
+            .collect::<Result<Vec<_>>>()?;
 
-    fn works_path(&self) -> PathBuf {
-        self.works
-            .clone()
-            .unwrap_or_else(|| self.data.join("works.json"))
+        Ok(Definitions::merge(sources))
     }
 }
 
 #[derive(Args, Debug)]
 struct BuildMetadataArgs {
     #[command(flatten)]
-    files: MetadataFileArgs,
+    sources: SourceArgs,
 
     /// Where to write the metadata database. An existing file is replaced.
     #[arg(short, long, default_value = "metadata.musdb")]
@@ -86,14 +83,8 @@ struct BuildMetadataArgs {
 
 #[derive(Args, Debug)]
 struct BuildLibraryArgs {
-    /// Path to the metadata database to resolve catalogue references
-    /// against.
-    #[arg(long)]
-    metadata: PathBuf,
-
-    /// Path to the recordings JSON file.
-    #[arg(long, default_value = "recordings.json")]
-    recordings: PathBuf,
+    #[command(flatten)]
+    sources: SourceArgs,
 
     /// Directory each track's relative file path is resolved against.
     #[arg(long, default_value = ".")]
@@ -109,16 +100,15 @@ fn main() -> Result<()> {
 
     match cli.command {
         Command::BuildMetadata(args) => build_metadata(args),
-        Command::CheckMetadata(files) => check_metadata(files),
+        Command::CheckMetadata(sources) => check_metadata(sources),
         Command::BuildLibrary(args) => build_library(args),
     }
 }
 
 fn build_metadata(args: BuildMetadataArgs) -> Result<()> {
-    let metadata = read_json::<MetadataFile>(&args.files.metadata_path())?;
-    let works = read_json::<WorksFile>(&args.files.works_path())?;
+    let definitions = args.sources.read()?;
 
-    let output = catalog::build(&metadata, &works, &args.output)?;
+    let output = catalog::build(&definitions, &args.output)?;
     print_warnings(&output.warnings);
 
     println!(
@@ -130,11 +120,10 @@ fn build_metadata(args: BuildMetadataArgs) -> Result<()> {
     Ok(())
 }
 
-fn check_metadata(files: MetadataFileArgs) -> Result<()> {
-    let metadata = read_json::<MetadataFile>(&files.metadata_path())?;
-    let works = read_json::<WorksFile>(&files.works_path())?;
+fn check_metadata(sources: SourceArgs) -> Result<()> {
+    let definitions = sources.read()?;
 
-    let validation = catalog::validate(&metadata, &works)?;
+    let validation = catalog::validate(&definitions)?;
     print_warnings(&validation.warnings);
 
     println!("The metadata definitions are valid.");
@@ -161,7 +150,16 @@ fn check_metadata(files: MetadataFileArgs) -> Result<()> {
 }
 
 fn build_library(args: BuildLibraryArgs) -> Result<()> {
-    let recordings = read_json::<RecordingsFile>(&args.recordings)?;
+    let definitions = args.sources.read()?;
+
+    // Recordings resolve their catalogue references against a real metadata
+    // database, so everything the sources define is compiled into a scratch
+    // one first; only what a recording actually reaches ends up in the
+    // library.
+    let metadata_dir = TempDir::new().context("Failed to create a scratch metadata directory")?;
+    let metadata_path = metadata_dir.path().join("metadata.musdb");
+    catalog::build(&definitions, &metadata_path)
+        .context("Failed to build the metadata catalogue")?;
 
     let library_dir = TempDir::new().context("Failed to create a scratch library directory")?;
     let cache_dir = TempDir::new().context("Failed to create a metadata cache directory")?;
@@ -173,9 +171,9 @@ fn build_library(args: BuildLibraryArgs) -> Result<()> {
 
     let summary = catalog_import::import(
         &library,
-        &args.metadata,
+        &metadata_path,
         &args.tracks_dir,
-        &recordings,
+        &definitions.recordings,
         &mut observe,
     )
     .context("Failed to import the recordings")?;

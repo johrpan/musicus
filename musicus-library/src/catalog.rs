@@ -1,9 +1,18 @@
-//! Building a pre-made metadata catalogue database from its JSON sources.
+//! The JSON format that describes a Musicus metadata catalogue and, within
+//! the same format, the recordings a library imports from it.
+//!
+//! There is no dedicated "metadata file" or "works file": every source file
+//! is a [`Definitions`], and which top-level keys it uses (`persons`,
+//! `works`, `recordings`, ...) is entirely up to how the content is split up.
+//! Any number of files can be parsed and folded together with
+//! [`Definitions::merge`] before use. [`build`]/[`validate`] only look at the
+//! catalogue fields (`persons` through `works`) and ignore `recordings`;
+//! `recordings` is for `musicus_library::catalog_import` instead.
 
 use std::{
     collections::{HashMap, HashSet},
     fs,
-    path::Path,
+    path::{Path, PathBuf},
 };
 
 use anyhow::{anyhow, bail, Context};
@@ -31,21 +40,6 @@ pub struct TagEntity {
     pub name: TranslatedString,
     #[serde(default)]
     pub takes_value: bool,
-}
-
-/// The contents of `metadata.json`.
-#[derive(Clone, Debug, Default, Deserialize)]
-pub struct MetadataFile {
-    #[serde(default)]
-    pub roles: Vec<NamedEntity>,
-    #[serde(default)]
-    pub instruments: Vec<NamedEntity>,
-    #[serde(default)]
-    pub ensembles: Vec<NamedEntity>,
-    #[serde(default)]
-    pub persons: Vec<NamedEntity>,
-    #[serde(default)]
-    pub tags: Vec<TagEntity>,
 }
 
 /// A composer credit on a work: a plain person key, or a person key with a
@@ -88,11 +82,87 @@ pub struct WorkEntity {
     pub related_work: Option<String>,
 }
 
-/// The contents of `works.json`.
+/// A person or ensemble performing on a recording, referenced by catalogue
+/// key.
+#[derive(Clone, Debug, Deserialize)]
+#[serde(untagged)]
+pub enum PerformerRef {
+    Person {
+        person: String,
+        role: Option<String>,
+        instrument: Option<String>,
+    },
+    Ensemble {
+        ensemble: String,
+        role: Option<String>,
+    },
+}
+
+/// One track: an audio file on disk, plus the works (by catalogue key) it
+/// belongs to, in order.
+#[derive(Clone, Debug, Deserialize)]
+pub struct TrackEntry {
+    pub file: PathBuf,
+    #[serde(default)]
+    pub works: Vec<String>,
+}
+
+/// One recording: a catalogue work, its performers and tags, and its tracks.
+#[derive(Clone, Debug, Deserialize)]
+pub struct RecordingEntry {
+    pub work: String,
+    #[serde(default)]
+    pub performers: Vec<PerformerRef>,
+    #[serde(default)]
+    pub tags: Vec<TagRef>,
+    #[serde(default)]
+    pub comment: Option<String>,
+    #[serde(default)]
+    pub tracks: Vec<TrackEntry>,
+}
+
+/// The entity definitions of one or more source files, folded together.
+///
+/// Every field is independently optional, so a single file may define
+/// anything from just a handful of tags to a whole catalogue plus its
+/// recordings; how the content is split across files is not meaningful.
 #[derive(Clone, Debug, Default, Deserialize)]
-pub struct WorksFile {
+pub struct Definitions {
+    #[serde(default)]
+    pub persons: Vec<NamedEntity>,
+    #[serde(default)]
+    pub roles: Vec<NamedEntity>,
+    #[serde(default)]
+    pub instruments: Vec<NamedEntity>,
+    #[serde(default)]
+    pub ensembles: Vec<NamedEntity>,
+    #[serde(default)]
+    pub tags: Vec<TagEntity>,
     #[serde(default)]
     pub works: Vec<WorkEntity>,
+    #[serde(default)]
+    pub recordings: Vec<RecordingEntry>,
+}
+
+impl Definitions {
+    /// Fold several sources into one, in order, keeping every entry: a
+    /// duplicate key is a validation error, not something merging should
+    /// silently resolve.
+    pub fn merge(sources: impl IntoIterator<Item = Definitions>) -> Definitions {
+        let mut merged = Definitions::default();
+
+        for source in sources {
+            merged.persons.extend(source.persons);
+            merged.roles.extend(source.roles);
+            merged.instruments.extend(source.instruments);
+            merged.ensembles.extend(source.ensembles);
+            merged.tags.extend(source.tags);
+            merged.works.extend(source.works);
+            merged.recordings.extend(source.recordings);
+        }
+
+        merged
+    }
 }
 
 /// The identifier sets built while validating, plus the problems that are
@@ -131,23 +201,24 @@ pub struct BuildOutput {
     pub warnings: Vec<String>,
 }
 
-/// Check both definition files against each other.
+/// Check the catalogue fields of `definitions` against each other, ignoring
+/// `recordings`.
 ///
 /// Format violations are errors. Problems the database cannot represent
 /// faithfully (for example a value on a tag that does not take one) are
 /// warnings.
-pub fn validate(metadata: &MetadataFile, works: &WorksFile) -> Result<Validation> {
-    Ok(validate_inner(metadata, works)?)
+pub fn validate(definitions: &Definitions) -> Result<Validation> {
+    Ok(validate_inner(definitions)?)
 }
 
-fn validate_inner(metadata: &MetadataFile, works: &WorksFile) -> anyhow::Result<Validation> {
-    let persons = unique_keys(&metadata.persons, "person", |entry| &entry.key)?;
-    let roles = unique_keys(&metadata.roles, "role", |entry| &entry.key)?;
-    let instruments = unique_keys(&metadata.instruments, "instrument", |entry| &entry.key)?;
-    let ensembles = unique_keys(&metadata.ensembles, "ensemble", |entry| &entry.key)?;
-    unique_keys(&metadata.tags, "tag", |entry| &entry.key)?;
+fn validate_inner(definitions: &Definitions) -> anyhow::Result<Validation> {
+    let persons = unique_keys(&definitions.persons, "person", |entry| &entry.key)?;
+    let roles = unique_keys(&definitions.roles, "role", |entry| &entry.key)?;
+    let instruments = unique_keys(&definitions.instruments, "instrument", |entry| &entry.key)?;
+    let ensembles = unique_keys(&definitions.ensembles, "ensemble", |entry| &entry.key)?;
+    unique_keys(&definitions.tags, "tag", |entry| &entry.key)?;
 
-    let tag_takes_value = metadata
+    let tag_takes_value = definitions
         .tags
         .iter()
         .map(|tag| (tag.key.clone(), tag.takes_value))
@@ -155,14 +226,14 @@ fn validate_inner(metadata: &MetadataFile, works: &WorksFile) -> anyhow::Result<
 
     // Works form a single namespace of keys across every nesting level.
     let mut work_keys = HashSet::new();
-    index_works(&works.works, &mut work_keys)?;
+    index_works(&definitions.works, &mut work_keys)?;
 
     // Related works must exist; the relation is meant to point from a
     // derivative towards the main version, so a cycle is a mistake. The
     // parent chain cannot cycle (the file is a tree), but the related-work
     // graph is not.
     let mut related_to: HashMap<&str, &str> = HashMap::new();
-    collect_related(&works.works, &mut related_to);
+    collect_related(&definitions.works, &mut related_to);
 
     for (work_id, target) in &related_to {
         if !work_keys.contains(*target) {
@@ -184,7 +255,7 @@ fn validate_inner(metadata: &MetadataFile, works: &WorksFile) -> anyhow::Result<
         tag_takes_value: &tag_takes_value,
         warnings: &mut warnings,
     };
-    for work in &works.works {
+    for work in &definitions.works {
         check_work(work, &mut context)?;
     }
 
@@ -199,13 +270,14 @@ fn validate_inner(metadata: &MetadataFile, works: &WorksFile) -> anyhow::Result<
     })
 }
 
-/// Build the metadata database at `output` from the definitions.
+/// Build the metadata database at `output` from the catalogue fields of
+/// `definitions`, ignoring `recordings`.
 ///
 /// The output file is replaced if it exists; the database is fully derived
-/// from the source files.
-pub fn build(metadata: &MetadataFile, works: &WorksFile, output: &Path) -> Result<BuildOutput> {
-    let validation = validate(metadata, works)?;
-    let summary = write_database(metadata, works, output)?;
+/// from `definitions`.
+pub fn build(definitions: &Definitions, output: &Path) -> Result<BuildOutput> {
+    let validation = validate(definitions)?;
+    let summary = write_database(definitions, output)?;
 
     Ok(BuildOutput {
         summary,
@@ -363,7 +435,7 @@ fn check_work(work: &WorkEntity, context: &mut CheckContext<'_>) -> anyhow::Resu
 }
 
 /// Write the metadata database, returning what went into it.
-fn write_database(metadata: &MetadataFile, works: &WorksFile, output: &Path) -> Result<Summary> {
+fn write_database(definitions: &Definitions, output: &Path) -> Result<Summary> {
     let now = chrono::Utc::now().naive_utc();
 
     if output.exists() {
@@ -391,7 +463,7 @@ fn write_database(metadata: &MetadataFile, works: &WorksFile, output: &Path) -> 
         .transaction::<(), anyhow::Error, _>(|connection| {
             // The basic entities first: every reference from a work points at
             // one of these.
-            for person in &metadata.persons {
+            for person in &definitions.persons {
                 diesel::insert_into(persons::table)
                     .values(tables::Person {
                         person_id: person.key.clone(),
@@ -405,7 +477,7 @@ fn write_database(metadata: &MetadataFile, works: &WorksFile, output: &Path) -> 
                     .execute(connection)?;
             }
 
-            for role in &metadata.roles {
+            for role in &definitions.roles {
                 diesel::insert_into(roles::table)
                     .values(tables::Role {
                         role_id: role.key.clone(),
@@ -419,7 +491,7 @@ fn write_database(metadata: &MetadataFile, works: &WorksFile, output: &Path) -> 
                     .execute(connection)?;
             }
 
-            for instrument in &metadata.instruments {
+            for instrument in &definitions.instruments {
                 diesel::insert_into(instruments::table)
                     .values(tables::Instrument {
                         instrument_id: instrument.key.clone(),
@@ -433,7 +505,7 @@ fn write_database(metadata: &MetadataFile, works: &WorksFile, output: &Path) -> 
                     .execute(connection)?;
             }
 
-            for ensemble in &metadata.ensembles {
+            for ensemble in &definitions.ensembles {
                 diesel::insert_into(ensembles::table)
                     .values(tables::Ensemble {
                         ensemble_id: ensemble.key.clone(),
@@ -447,7 +519,7 @@ fn write_database(metadata: &MetadataFile, works: &WorksFile, output: &Path) -> 
                     .execute(connection)?;
             }
 
-            for tag in &metadata.tags {
+            for tag in &definitions.tags {
                 diesel::insert_into(tags::table)
                     .values(tables::Tag {
                         tag_id: tag.key.clone(),
@@ -466,11 +538,11 @@ fn write_database(metadata: &MetadataFile, works: &WorksFile, output: &Path) -> 
             // The works, parents before children, with each work's
             // associations. The related-work links wait until every work
             // exists, because the target may come later in the file.
-            for work in &works.works {
+            for work in &definitions.works {
                 insert_work(connection, work, None, None, now)?;
             }
 
-            for work in &works.works {
+            for work in &definitions.works {
                 insert_relations(connection, work)?;
             }
 
@@ -479,16 +551,16 @@ fn write_database(metadata: &MetadataFile, works: &WorksFile, output: &Path) -> 
         .context("Failed to write the metadata database")?;
 
     Ok(Summary {
-        persons: metadata.persons.len(),
-        roles: metadata.roles.len(),
-        instruments: metadata.instruments.len(),
-        ensembles: metadata.ensembles.len(),
-        tags: metadata.tags.len(),
-        works: count_associations(&works.works, |_| 1),
-        composer_credits: count_associations(&works.works, |work| work.composers.len()),
-        tag_associations: count_associations(&works.works, |work| work.tags.len()),
-        instrumentations: count_associations(&works.works, |work| work.instruments.len()),
-        derived: count_associations(&works.works, |work| {
+        persons: definitions.persons.len(),
+        roles: definitions.roles.len(),
+        instruments: definitions.instruments.len(),
+        ensembles: definitions.ensembles.len(),
+        tags: definitions.tags.len(),
+        works: count_associations(&definitions.works, |_| 1),
+        composer_credits: count_associations(&definitions.works, |work| work.composers.len()),
+        tag_associations: count_associations(&definitions.works, |work| work.tags.len()),
+        instrumentations: count_associations(&definitions.works, |work| work.instruments.len()),
+        derived: count_associations(&definitions.works, |work| {
             usize::from(work.related_work.is_some())
         }),
     })
@@ -552,10 +624,7 @@ fn insert_work_tags(connection: &mut SqliteConnection, work: &WorkEntity) -> any
 }
 
 /// Insert this work's composer credits.
-fn insert_work_persons(
-    connection: &mut SqliteConnection,
-    work: &WorkEntity,
-) -> anyhow::Result<()> {
+fn insert_work_persons(connection: &mut SqliteConnection, work: &WorkEntity) -> anyhow::Result<()> {
     for (index, composer) in work.composers.iter().enumerate() {
         let (person_id, role_id) = match composer {
             ComposerRef::Person(person_id) => (person_id.as_str(), None),
