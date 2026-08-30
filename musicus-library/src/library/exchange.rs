@@ -16,13 +16,12 @@ use zip::{write::SimpleFileOptions, ZipWriter};
 
 use super::Library;
 use crate::{
-    db::{
-        self,
-        schema::*,
-        tables::{self, Source},
-    },
+    db::{self, schema::*, tables, tables::Source},
     format_translated,
-    library::process::{spawn_process, Cancellation, ProcessHandle, ProcessMsg},
+    library::{
+        import_graph::ImportGraph,
+        process::{spawn_process, Cancellation, ProcessHandle, ProcessMsg},
+    },
 };
 
 /// The name of the manifest entry inside a `.muslib` archive.
@@ -516,31 +515,10 @@ fn update_metadata_from_file(
 ) -> Result<()> {
     let mut other_connection = db::connect(path.as_ref())?;
 
-    // Load all metadata from the archive.
-    let persons = persons::table.load::<tables::Person>(&mut other_connection)?;
-    let roles = roles::table.load::<tables::Role>(&mut other_connection)?;
-    let instruments = instruments::table.load::<tables::Instrument>(&mut other_connection)?;
-    let works = works::table.load::<tables::Work>(&mut other_connection)?;
-    let work_relations =
-        work_relations::table.load::<tables::WorkRelation>(&mut other_connection)?;
-    let work_persons = work_persons::table.load::<tables::WorkPerson>(&mut other_connection)?;
-    let work_instruments =
-        work_instruments::table.load::<tables::WorkInstrument>(&mut other_connection)?;
-    let ensembles = ensembles::table.load::<tables::Ensemble>(&mut other_connection)?;
-    let ensemble_persons =
-        ensemble_persons::table.load::<tables::EnsemblePerson>(&mut other_connection)?;
-    let recordings = recordings::table.load::<tables::Recording>(&mut other_connection)?;
-    let recording_persons =
-        recording_persons::table.load::<tables::RecordingPerson>(&mut other_connection)?;
-    let recording_ensembles =
-        recording_ensembles::table.load::<tables::RecordingEnsemble>(&mut other_connection)?;
-    let albums = albums::table.load::<tables::Album>(&mut other_connection)?;
-    let album_recordings =
-        album_recordings::table.load::<tables::AlbumRecording>(&mut other_connection)?;
-    let tags = tags::table.load::<tables::Tag>(&mut other_connection)?;
-    let work_tags = work_tags::table.load::<tables::WorkTag>(&mut other_connection)?;
-    let recording_tags =
-        recording_tags::table.load::<tables::RecordingTag>(&mut other_connection)?;
+    // Load the source once and validate it before anything is written. All
+    // per-owner association reads below use the grouped rows of this graph
+    // instead of rescanning whole tables.
+    let graph = ImportGraph::load(&mut other_connection)?;
 
     let mut this_connection = db::lock_connection(&this_connection);
 
@@ -551,7 +529,7 @@ fn update_metadata_from_file(
             .into_iter()
             .collect::<HashSet<_>>();
 
-        for person in persons {
+        for person in graph.persons.values() {
             let enable_updates = persons::table
                 .filter(persons::person_id.eq(&person.person_id))
                 .select(persons::enable_updates)
@@ -560,12 +538,12 @@ fn update_metadata_from_file(
 
             if enable_updates == Some(true) {
                 diesel::update(persons::table.filter(persons::person_id.eq(&person.person_id)))
-                    .set(persons::name.eq(person.name))
+                    .set(persons::name.eq(person.name.clone()))
                     .execute(connection)?;
             }
         }
 
-        for role in roles {
+        for role in graph.roles.values() {
             let enable_updates = roles::table
                 .filter(roles::role_id.eq(&role.role_id))
                 .select(roles::enable_updates)
@@ -574,12 +552,12 @@ fn update_metadata_from_file(
 
             if enable_updates == Some(true) {
                 diesel::update(roles::table.filter(roles::role_id.eq(&role.role_id)))
-                    .set(roles::name.eq(role.name))
+                    .set(roles::name.eq(role.name.clone()))
                     .execute(connection)?;
             }
         }
 
-        for tag in tags {
+        for tag in graph.tags.values() {
             let enable_updates = tags::table
                 .filter(tags::tag_id.eq(&tag.tag_id))
                 .select(tags::enable_updates)
@@ -591,12 +569,12 @@ fn update_metadata_from_file(
                 // what the assignments already in this library mean, so an
                 // update from the catalogue must not change it underneath them.
                 diesel::update(tags::table.filter(tags::tag_id.eq(&tag.tag_id)))
-                    .set(tags::name.eq(tag.name))
+                    .set(tags::name.eq(tag.name.clone()))
                     .execute(connection)?;
             }
         }
 
-        for instrument in instruments {
+        for instrument in graph.instruments.values() {
             let enable_updates = instruments::table
                 .filter(instruments::instrument_id.eq(&instrument.instrument_id))
                 .select(instruments::enable_updates)
@@ -608,12 +586,12 @@ fn update_metadata_from_file(
                     instruments::table
                         .filter(instruments::instrument_id.eq(&instrument.instrument_id)),
                 )
-                .set(instruments::name.eq(instrument.name))
+                .set(instruments::name.eq(instrument.name.clone()))
                 .execute(connection)?;
             }
         }
 
-        for work in works {
+        for work in graph.works.values() {
             let enable_updates = works::table
                 .filter(works::work_id.eq(&work.work_id))
                 .select(works::enable_updates)
@@ -628,12 +606,9 @@ fn update_metadata_from_file(
                 diesel::delete(work_persons::table.filter(work_persons::work_id.eq(&work.work_id)))
                     .execute(connection)?;
 
-                for work_person in work_persons
-                    .iter()
-                    .filter(|work_person| work_person.work_id == work.work_id)
-                {
+                for work_person in graph.work_persons_of(&work.work_id) {
                     diesel::insert_into(work_persons::table)
-                        .values(work_person)
+                        .values(work_person.clone())
                         .execute(connection)?;
                 }
 
@@ -641,12 +616,10 @@ fn update_metadata_from_file(
                     work_instruments::table.filter(work_instruments::work_id.eq(&work.work_id)),
                 )
                 .execute(connection)?;
-                for work_instrument in work_instruments
-                    .iter()
-                    .filter(|work_instrument| work_instrument.work_id == work.work_id)
-                {
+
+                for work_instrument in graph.work_instruments_of(&work.work_id) {
                     diesel::insert_into(work_instruments::table)
-                        .values(work_instrument)
+                        .values(work_instrument.clone())
                         .execute(connection)?;
                 }
 
@@ -658,13 +631,10 @@ fn update_metadata_from_file(
                 )
                 .execute(connection)?;
 
-                for relation in work_relations
-                    .iter()
-                    .filter(|relation| relation.work_id == work.work_id)
-                {
+                for relation in graph.work_relations_of(&work.work_id) {
                     if existing_work_ids.contains(&relation.related_work_id) {
                         diesel::insert_into(work_relations::table)
-                            .values(relation)
+                            .values(relation.clone())
                             .execute(connection)?;
                     }
                 }
@@ -672,18 +642,15 @@ fn update_metadata_from_file(
                 diesel::delete(work_tags::table.filter(work_tags::work_id.eq(&work.work_id)))
                     .execute(connection)?;
 
-                for work_tag in work_tags
-                    .iter()
-                    .filter(|work_tag| work_tag.work_id == work.work_id)
-                {
+                for work_tag in graph.work_tags_of(&work.work_id) {
                     diesel::insert_into(work_tags::table)
-                        .values(work_tag)
+                        .values(work_tag.clone())
                         .execute(connection)?;
                 }
             }
         }
 
-        for ensemble in ensembles {
+        for ensemble in graph.ensembles.values() {
             let enable_updates = ensembles::table
                 .filter(ensembles::ensemble_id.eq(&ensemble.ensemble_id))
                 .select(ensembles::enable_updates)
@@ -703,18 +670,15 @@ fn update_metadata_from_file(
                 )
                 .execute(connection)?;
 
-                for ensemble_person in ensemble_persons
-                    .iter()
-                    .filter(|ensemble_person| ensemble_person.ensemble_id == ensemble.ensemble_id)
-                {
+                for ensemble_person in graph.ensemble_persons_of(&ensemble.ensemble_id) {
                     diesel::insert_into(ensemble_persons::table)
-                        .values(ensemble_person)
+                        .values(ensemble_person.clone())
                         .execute(connection)?;
                 }
             }
         }
 
-        for recording in recordings {
+        for recording in graph.recordings.values() {
             let enable_updates = recordings::table
                 .filter(recordings::recording_id.eq(&recording.recording_id))
                 .select(recordings::enable_updates)
@@ -728,12 +692,9 @@ fn update_metadata_from_file(
                 )
                 .execute(connection)?;
 
-                for recording_tag in recording_tags
-                    .iter()
-                    .filter(|recording_tag| recording_tag.recording_id == recording.recording_id)
-                {
+                for recording_tag in graph.recording_tags_of(&recording.recording_id) {
                     diesel::insert_into(recording_tags::table)
-                        .values(recording_tag)
+                        .values(recording_tag.clone())
                         .execute(connection)?;
                 }
 
@@ -743,11 +704,9 @@ fn update_metadata_from_file(
                 )
                 .execute(connection)?;
 
-                for recording_person in recording_persons.iter().filter(|recording_person| {
-                    recording_person.recording_id == recording.recording_id
-                }) {
+                for recording_person in graph.recording_persons_of(&recording.recording_id) {
                     diesel::insert_into(recording_persons::table)
-                        .values(recording_person)
+                        .values(recording_person.clone())
                         .execute(connection)?;
                 }
 
@@ -757,17 +716,15 @@ fn update_metadata_from_file(
                 )
                 .execute(connection)?;
 
-                for recording_ensemble in recording_ensembles.iter().filter(|recording_ensemble| {
-                    recording_ensemble.recording_id == recording.recording_id
-                }) {
+                for recording_ensemble in graph.recording_ensembles_of(&recording.recording_id) {
                     diesel::insert_into(recording_ensembles::table)
-                        .values(recording_ensemble)
+                        .values(recording_ensemble.clone())
                         .execute(connection)?;
                 }
             }
         }
 
-        for album in albums {
+        for album in graph.albums.values() {
             let enable_updates = albums::table
                 .filter(albums::album_id.eq(&album.album_id))
                 .select(albums::enable_updates)
@@ -784,12 +741,9 @@ fn update_metadata_from_file(
                 )
                 .execute(connection)?;
 
-                for album_recording in album_recordings
-                    .iter()
-                    .filter(|album_recording| album_recording.album_id == album.album_id)
-                {
+                for album_recording in graph.album_recordings_of(&album.album_id) {
                     diesel::insert_into(album_recordings::table)
-                        .values(album_recording)
+                        .values(album_recording.clone())
                         .execute(connection)?;
                 }
             }
@@ -816,40 +770,16 @@ fn import_metadata_from_file(
 
     let mut other_connection = db::connect(path.as_ref())?;
 
-    // Load all metadata from the archive.
-    let persons = persons::table.load::<tables::Person>(&mut other_connection)?;
-    let roles = roles::table.load::<tables::Role>(&mut other_connection)?;
-    let instruments = instruments::table.load::<tables::Instrument>(&mut other_connection)?;
-    let works = works::table.load::<tables::Work>(&mut other_connection)?;
-    let work_relations =
-        work_relations::table.load::<tables::WorkRelation>(&mut other_connection)?;
-    let work_persons = work_persons::table.load::<tables::WorkPerson>(&mut other_connection)?;
-    let work_instruments =
-        work_instruments::table.load::<tables::WorkInstrument>(&mut other_connection)?;
-    let ensembles = ensembles::table.load::<tables::Ensemble>(&mut other_connection)?;
-    let ensemble_persons =
-        ensemble_persons::table.load::<tables::EnsemblePerson>(&mut other_connection)?;
-    let recordings = recordings::table.load::<tables::Recording>(&mut other_connection)?;
-    let recording_persons =
-        recording_persons::table.load::<tables::RecordingPerson>(&mut other_connection)?;
-    let recording_ensembles =
-        recording_ensembles::table.load::<tables::RecordingEnsemble>(&mut other_connection)?;
-    let tracks = tracks::table.load::<tables::Track>(&mut other_connection)?;
-    let track_works = track_works::table.load::<tables::TrackWork>(&mut other_connection)?;
-    let albums = albums::table.load::<tables::Album>(&mut other_connection)?;
-    let album_recordings =
-        album_recordings::table.load::<tables::AlbumRecording>(&mut other_connection)?;
-    let tags = tags::table.load::<tables::Tag>(&mut other_connection)?;
-    let work_tags = work_tags::table.load::<tables::WorkTag>(&mut other_connection)?;
-    let recording_tags =
-        recording_tags::table.load::<tables::RecordingTag>(&mut other_connection)?;
+    // Load the source once and validate it before anything is written.
+    let graph = ImportGraph::load(&mut other_connection)?;
 
     // Import metadata that is not already present.
 
     let mut this_connection = db::lock_connection(&this_connection);
 
     this_connection.transaction::<(), Error, _>(|connection| {
-        for mut person in persons {
+        for person in graph.persons.values() {
+            let mut person = person.clone();
             person.source = source;
             person.created_at = now;
             person.edited_at = now;
@@ -861,7 +791,8 @@ fn import_metadata_from_file(
                 .execute(connection)?;
         }
 
-        for mut role in roles {
+        for role in graph.roles.values() {
+            let mut role = role.clone();
             role.source = source;
             role.created_at = now;
             role.edited_at = now;
@@ -873,7 +804,8 @@ fn import_metadata_from_file(
                 .execute(connection)?;
         }
 
-        for mut tag in tags {
+        for tag in graph.tags.values() {
+            let mut tag = tag.clone();
             tag.source = source;
             tag.created_at = now;
             tag.edited_at = now;
@@ -885,7 +817,8 @@ fn import_metadata_from_file(
                 .execute(connection)?;
         }
 
-        for mut instrument in instruments {
+        for instrument in graph.instruments.values() {
+            let mut instrument = instrument.clone();
             instrument.source = source;
             instrument.created_at = now;
             instrument.edited_at = now;
@@ -897,7 +830,8 @@ fn import_metadata_from_file(
                 .execute(connection)?;
         }
 
-        for mut work in works {
+        for work in graph.works.values() {
+            let mut work = work.clone();
             work.source = source;
             work.created_at = now;
             work.edited_at = now;
@@ -909,35 +843,36 @@ fn import_metadata_from_file(
                 .execute(connection)?;
         }
 
-        for work_relation in work_relations {
+        for work_relation in graph.work_relations.values().flatten() {
             diesel::insert_into(work_relations::table)
-                .values(work_relation)
+                .values(work_relation.clone())
                 .on_conflict_do_nothing()
                 .execute(connection)?;
         }
 
-        for work_person in work_persons {
+        for work_person in graph.work_persons.values().flatten() {
             diesel::insert_into(work_persons::table)
-                .values(work_person)
+                .values(work_person.clone())
                 .on_conflict_do_nothing()
                 .execute(connection)?;
         }
 
-        for work_instrument in work_instruments {
+        for work_instrument in graph.work_instruments.values().flatten() {
             diesel::insert_into(work_instruments::table)
-                .values(work_instrument)
+                .values(work_instrument.clone())
                 .on_conflict_do_nothing()
                 .execute(connection)?;
         }
 
-        for work_tag in work_tags {
+        for work_tag in graph.work_tags.values().flatten() {
             diesel::insert_into(work_tags::table)
-                .values(work_tag)
+                .values(work_tag.clone())
                 .on_conflict_do_nothing()
                 .execute(connection)?;
         }
 
-        for mut ensemble in ensembles {
+        for ensemble in graph.ensembles.values() {
+            let mut ensemble = ensemble.clone();
             ensemble.source = source;
             ensemble.created_at = now;
             ensemble.edited_at = now;
@@ -949,14 +884,15 @@ fn import_metadata_from_file(
                 .execute(connection)?;
         }
 
-        for ensemble_person in ensemble_persons {
+        for ensemble_person in graph.ensemble_persons.values().flatten() {
             diesel::insert_into(ensemble_persons::table)
-                .values(ensemble_person)
+                .values(ensemble_person.clone())
                 .on_conflict_do_nothing()
                 .execute(connection)?;
         }
 
-        for mut recording in recordings {
+        for recording in graph.recordings.values() {
+            let mut recording = recording.clone();
             recording.source = source;
             recording.created_at = now;
             recording.edited_at = now;
@@ -968,29 +904,30 @@ fn import_metadata_from_file(
                 .execute(connection)?;
         }
 
-        for recording_person in recording_persons {
+        for recording_person in graph.recording_persons.values().flatten() {
             diesel::insert_into(recording_persons::table)
-                .values(recording_person)
+                .values(recording_person.clone())
                 .on_conflict_do_nothing()
                 .execute(connection)?;
         }
 
-        for recording_ensemble in recording_ensembles {
+        for recording_ensemble in graph.recording_ensembles.values().flatten() {
             diesel::insert_into(recording_ensembles::table)
-                .values(recording_ensemble)
+                .values(recording_ensemble.clone())
                 .on_conflict_do_nothing()
                 .execute(connection)?;
         }
 
-        for recording_tag in recording_tags {
+        for recording_tag in graph.recording_tags.values().flatten() {
             diesel::insert_into(recording_tags::table)
-                .values(recording_tag)
+                .values(recording_tag.clone())
                 .on_conflict_do_nothing()
                 .execute(connection)?;
         }
 
         if !ignore_tracks {
-            for mut track in tracks.clone() {
+            for track in graph.tracks.values() {
+                let mut track = track.clone();
                 track.created_at = now;
                 track.edited_at = now;
                 track.last_used_at = now;
@@ -1001,15 +938,16 @@ fn import_metadata_from_file(
                     .execute(connection)?;
             }
 
-            for track_work in track_works {
+            for track_work in graph.track_works.values().flatten() {
                 diesel::insert_into(track_works::table)
-                    .values(track_work)
+                    .values(track_work.clone())
                     .on_conflict_do_nothing()
                     .execute(connection)?;
             }
         }
 
-        for mut album in albums {
+        for album in graph.albums.values() {
+            let mut album = album.clone();
             album.source = source;
             album.created_at = now;
             album.edited_at = now;
@@ -1021,9 +959,9 @@ fn import_metadata_from_file(
                 .execute(connection)?;
         }
 
-        for album_recording in album_recordings {
+        for album_recording in graph.album_recordings.values().flatten() {
             diesel::insert_into(album_recordings::table)
-                .values(album_recording)
+                .values(album_recording.clone())
                 .on_conflict_do_nothing()
                 .execute(connection)?;
         }
@@ -1031,7 +969,7 @@ fn import_metadata_from_file(
         Ok(())
     })?;
 
-    Ok(tracks)
+    Ok(graph.tracks.values().cloned().collect())
 }
 
 /// How long a download may stall before it is considered failed.
