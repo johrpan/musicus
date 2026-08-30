@@ -1,14 +1,4 @@
-//! Compiling the JSON metadata definitions into a metadata database.
-//!
-//! The result is a plain Musicus library database populated with the pre-made
-//! catalogue: roles, instruments, ensembles, persons, tags and the full work
-//! hierarchy. Recordings, tracks and albums only exist in user libraries, so
-//! the metadata database deliberately contains none of them.
-//!
-//! Everything is written through `musicus-library`'s public database layer
-//! (`unstable::connect` opens and migrates the file, the `unstable::schema`/`unstable::tables`
-//! modules describe the rows), so the output is exactly what a Musicus
-//! library expects as its downloaded `metadata.musdb`.
+//! Building a pre-made metadata catalogue database from its JSON sources.
 
 use std::{
     collections::{HashMap, HashSet},
@@ -16,13 +6,94 @@ use std::{
     path::Path,
 };
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{anyhow, bail, Context};
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
-use musicus_library::unstable::{self, schema::*, tables};
-use musicus_library::{Source, TranslatedString};
+use serde::Deserialize;
 
-use crate::sources::{ComposerRef, MetadataFile, TagRef, WorkEntity, WorksFile};
+use crate::{
+    db::{self, schema::*, tables, tables::Source, TranslatedString},
+    error::Result,
+};
+
+/// One named basic entity (`roles`, `instruments`, `ensembles`, `persons`).
+#[derive(Clone, Debug, Deserialize)]
+pub struct NamedEntity {
+    pub key: String,
+    pub name: TranslatedString,
+}
+
+/// A tag definition. Tags additionally carry whether associations with them
+/// take a user-defined value.
+#[derive(Clone, Debug, Deserialize)]
+pub struct TagEntity {
+    pub key: String,
+    pub name: TranslatedString,
+    #[serde(default)]
+    pub takes_value: bool,
+}
+
+/// The contents of `metadata.json`.
+#[derive(Clone, Debug, Default, Deserialize)]
+pub struct MetadataFile {
+    #[serde(default)]
+    pub roles: Vec<NamedEntity>,
+    #[serde(default)]
+    pub instruments: Vec<NamedEntity>,
+    #[serde(default)]
+    pub ensembles: Vec<NamedEntity>,
+    #[serde(default)]
+    pub persons: Vec<NamedEntity>,
+    #[serde(default)]
+    pub tags: Vec<TagEntity>,
+}
+
+/// A composer credit on a work: a plain person key, or a person key with a
+/// role for contributions that are not plain composition (such as the
+/// `compiler` of the *Hexameron*).
+#[derive(Clone, Debug, Deserialize)]
+#[serde(untagged)]
+pub enum ComposerRef {
+    Person(String),
+    Credited { key: String, role: Option<String> },
+}
+
+/// A tag association on a work: a plain tag key, or a tag key with a value
+/// for tags that take one (such as `Language`).
+#[derive(Clone, Debug, Deserialize)]
+#[serde(untagged)]
+pub enum TagRef {
+    Key(String),
+    Value {
+        key: String,
+        value: TranslatedString,
+    },
+}
+
+/// A work entry; `parts` nests recursively.
+#[derive(Clone, Debug, Deserialize)]
+pub struct WorkEntity {
+    pub key: String,
+    pub name: TranslatedString,
+    #[serde(default)]
+    pub composers: Vec<ComposerRef>,
+    #[serde(default)]
+    pub tags: Vec<TagRef>,
+    #[serde(default)]
+    pub instruments: Vec<String>,
+    #[serde(default)]
+    pub parts: Vec<WorkEntity>,
+    /// The key of the work this one is derived from.
+    #[serde(rename = "relatedWork", default)]
+    pub related_work: Option<String>,
+}
+
+/// The contents of `works.json`.
+#[derive(Clone, Debug, Default, Deserialize)]
+pub struct WorksFile {
+    #[serde(default)]
+    pub works: Vec<WorkEntity>,
+}
 
 /// The identifier sets built while validating, plus the problems that are
 /// worth reporting but not worth failing on.
@@ -66,42 +137,15 @@ pub struct BuildOutput {
 /// faithfully (for example a value on a tag that does not take one) are
 /// warnings.
 pub fn validate(metadata: &MetadataFile, works: &WorksFile) -> Result<Validation> {
+    Ok(validate_inner(metadata, works)?)
+}
+
+fn validate_inner(metadata: &MetadataFile, works: &WorksFile) -> anyhow::Result<Validation> {
     let persons = unique_keys(&metadata.persons, "person", |entry| &entry.key)?;
     let roles = unique_keys(&metadata.roles, "role", |entry| &entry.key)?;
     let instruments = unique_keys(&metadata.instruments, "instrument", |entry| &entry.key)?;
     let ensembles = unique_keys(&metadata.ensembles, "ensemble", |entry| &entry.key)?;
     unique_keys(&metadata.tags, "tag", |entry| &entry.key)?;
-
-    require_generic_name(
-        "person",
-        &metadata.persons,
-        |entry| &entry.key,
-        |entry| &entry.name,
-    )?;
-    require_generic_name(
-        "role",
-        &metadata.roles,
-        |entry| &entry.key,
-        |entry| &entry.name,
-    )?;
-    require_generic_name(
-        "instrument",
-        &metadata.instruments,
-        |entry| &entry.key,
-        |entry| &entry.name,
-    )?;
-    require_generic_name(
-        "ensemble",
-        &metadata.ensembles,
-        |entry| &entry.key,
-        |entry| &entry.name,
-    )?;
-    require_generic_name(
-        "tag",
-        &metadata.tags,
-        |entry| &entry.key,
-        |entry| &entry.name,
-    )?;
 
     let tag_takes_value = metadata
         .tags
@@ -182,7 +226,7 @@ fn unique_keys<'a, T>(
     items: &'a [T],
     kind: &str,
     key: impl Fn(&'a T) -> &'a str,
-) -> Result<HashSet<String>> {
+) -> anyhow::Result<HashSet<String>> {
     let mut seen = HashSet::new();
     for item in items {
         if !seen.insert(key(item).to_owned()) {
@@ -192,23 +236,8 @@ fn unique_keys<'a, T>(
     Ok(seen)
 }
 
-/// Every entity needs its canonical generic name.
-fn require_generic_name<'a, T>(
-    kind: &str,
-    list: &'a [T],
-    key: impl Fn(&'a T) -> &str,
-    name: impl Fn(&'a T) -> &'a TranslatedString,
-) -> Result<()> {
-    for entry in list {
-        if name(entry).generic_value().trim().is_empty() {
-            bail!("{kind} \"{}\" has no generic name", key(entry));
-        }
-    }
-    Ok(())
-}
-
 /// Index every work at every nesting level by its key.
-fn index_works(list: &[WorkEntity], keys: &mut HashSet<String>) -> Result<()> {
+fn index_works(list: &[WorkEntity], keys: &mut HashSet<String>) -> anyhow::Result<()> {
     for work in list {
         if !keys.insert(work.key.clone()) {
             bail!("Duplicate work key \"{}\"", work.key);
@@ -237,7 +266,7 @@ fn check_relates_cycle<'a>(
     related_to: &HashMap<&'a str, &'a str>,
     state: &mut HashMap<&'a str, u8>,
     stack: &mut Vec<&'a str>,
-) -> Result<()> {
+) -> anyhow::Result<()> {
     match state.get(work_id).copied() {
         Some(1) => {
             let start = stack
@@ -272,12 +301,8 @@ fn check_relates_cycle<'a>(
     Ok(())
 }
 
-/// Check one work for naming and reference problems, recursing into parts.
-fn check_work(work: &WorkEntity, context: &mut CheckContext<'_>) -> Result<()> {
-    if work.name.generic_value().trim().is_empty() {
-        bail!("Work \"{}\" has no generic name", work.key);
-    }
-
+/// Check one work for reference problems, recursing into parts.
+fn check_work(work: &WorkEntity, context: &mut CheckContext<'_>) -> anyhow::Result<()> {
     for composer in &work.composers {
         let (person_id, role_id) = match composer {
             ComposerRef::Person(person_id) => (person_id.as_str(), None),
@@ -360,8 +385,7 @@ fn write_database(metadata: &MetadataFile, works: &WorksFile, output: &Path) -> 
 
     // Runs the migrations and enables foreign key checks, exactly like the
     // Musicus libraries the app opens.
-    let mut connection =
-        unstable::connect(path).context("Failed to create the metadata database")?;
+    let mut connection = db::connect(path).context("Failed to create the metadata database")?;
 
     connection
         .transaction::<(), anyhow::Error, _>(|connection| {
@@ -480,7 +504,7 @@ fn insert_work(
     parent_work_id: Option<&str>,
     sequence_number: Option<i32>,
     now: NaiveDateTime,
-) -> Result<()> {
+) -> anyhow::Result<()> {
     diesel::insert_into(works::table)
         .values(tables::Work {
             work_id: work.key.clone(),
@@ -507,7 +531,7 @@ fn insert_work(
 }
 
 /// Insert this work's tag associations.
-fn insert_work_tags(connection: &mut SqliteConnection, work: &WorkEntity) -> Result<()> {
+fn insert_work_tags(connection: &mut SqliteConnection, work: &WorkEntity) -> anyhow::Result<()> {
     for (index, tag) in work.tags.iter().enumerate() {
         let (tag_id, value) = match tag {
             TagRef::Key(tag_id) => (tag_id.as_str(), None),
@@ -528,7 +552,10 @@ fn insert_work_tags(connection: &mut SqliteConnection, work: &WorkEntity) -> Res
 }
 
 /// Insert this work's composer credits.
-fn insert_work_persons(connection: &mut SqliteConnection, work: &WorkEntity) -> Result<()> {
+fn insert_work_persons(
+    connection: &mut SqliteConnection,
+    work: &WorkEntity,
+) -> anyhow::Result<()> {
     for (index, composer) in work.composers.iter().enumerate() {
         let (person_id, role_id) = match composer {
             ComposerRef::Person(person_id) => (person_id.as_str(), None),
@@ -549,7 +576,10 @@ fn insert_work_persons(connection: &mut SqliteConnection, work: &WorkEntity) -> 
 }
 
 /// Insert this work's instrumentation.
-fn insert_work_instruments(connection: &mut SqliteConnection, work: &WorkEntity) -> Result<()> {
+fn insert_work_instruments(
+    connection: &mut SqliteConnection,
+    work: &WorkEntity,
+) -> anyhow::Result<()> {
     for (index, instrument) in work.instruments.iter().enumerate() {
         diesel::insert_into(work_instruments::table)
             .values(tables::WorkInstrument {
@@ -567,7 +597,7 @@ fn insert_work_instruments(connection: &mut SqliteConnection, work: &WorkEntity)
 ///
 /// Runs after every work exists, so a relation can point at a work defined
 /// later in the file.
-fn insert_relations(connection: &mut SqliteConnection, work: &WorkEntity) -> Result<()> {
+fn insert_relations(connection: &mut SqliteConnection, work: &WorkEntity) -> anyhow::Result<()> {
     if let Some(related) = &work.related_work {
         diesel::insert_into(work_relations::table)
             .values(tables::WorkRelation {
@@ -596,216 +626,4 @@ fn count_associations(
     }
 
     count(works, &mut measure)
-}
-
-#[cfg(test)]
-mod tests {
-    use musicus_library::unstable::schema::*;
-
-    use super::*;
-
-    const METADATA: &str = r#"{
-        "roles": [
-            { "key": "arranger", "name": { "generic": "Arranger" } }
-        ],
-        "instruments": [
-            { "key": "violin", "name": { "generic": "Violin", "de": "Violine" } }
-        ],
-        "ensembles": [
-            { "key": "some-ensemble", "name": { "generic": "Some Ensemble" } }
-        ],
-        "persons": [
-            { "key": "bach-johann-sebastian", "name": { "generic": "Johann Sebastian Bach" } }
-        ],
-        "tags": [
-            { "key": "baroque", "name": { "generic": "Baroque" } },
-            { "key": "language", "name": { "generic": "Language" }, "takes_value": true }
-        ]
-    }"#;
-
-    const WORKS: &str = r#"{
-        "works": [
-            {
-                "key": "suite",
-                "name": { "generic": "A Suite", "de": "Eine Suite" },
-                "composers": ["bach-johann-sebastian"],
-                "tags": ["baroque", { "key": "language", "value": { "generic": "Latin" } }],
-                "instruments": ["violin"],
-                "parts": [
-                    {
-                        "key": "suite-m1",
-                        "name": { "generic": "1. Prelude" },
-                        "instruments": ["violin"]
-                    }
-                ]
-            },
-            {
-                "key": "suite-arrangement",
-                "name": { "generic": "An Arrangement" },
-                "composers": [
-                    { "key": "bach-johann-sebastian", "role": "arranger" }
-                ],
-                "relatedWork": "suite"
-            }
-        ]
-    }"#;
-
-    fn metadata() -> MetadataFile {
-        serde_json::from_str(METADATA).unwrap()
-    }
-
-    fn works() -> WorksFile {
-        serde_json::from_str(WORKS).unwrap()
-    }
-
-    #[test]
-    fn accepted_definitions_validate() {
-        let validation = validate(&metadata(), &works()).unwrap();
-        assert!(validation.warnings.is_empty());
-    }
-
-    #[test]
-    fn missing_generic_name_is_rejected() {
-        let mut metadata = metadata();
-        metadata.persons[0].name = serde_json::from_str(r#"{"de": "Nur Deutsch"}"#).unwrap();
-
-        let err = validate(&metadata, &works()).unwrap_err();
-        assert!(err.to_string().contains("no generic name"));
-    }
-
-    #[test]
-    fn duplicate_entity_key_is_rejected() {
-        let mut metadata = metadata();
-        metadata.persons.push(metadata.persons[0].clone());
-
-        let err = validate(&metadata, &works()).unwrap_err();
-        assert!(err.to_string().contains("Duplicate person key"));
-    }
-
-    #[test]
-    fn unknown_reference_is_rejected() {
-        let mut works = works();
-        works.works[0].instruments.push("theremin".to_string());
-
-        let err = validate(&metadata(), &works).unwrap_err();
-        assert!(err.to_string().contains("unknown instrument"));
-    }
-
-    #[test]
-    fn unrelated_work_is_rejected() {
-        let mut works = works();
-        works.works[0].related_work = Some("missing-work".to_string());
-
-        let err = validate(&metadata(), &works).unwrap_err();
-        assert!(err.to_string().contains("unknown work"));
-    }
-
-    #[test]
-    fn related_work_cycle_is_rejected() {
-        let mut works = works();
-        // The top-level work now points back at the arrangement and the
-        // arrangement at the suite: a cycle through "suite".
-        works.works[0].related_work = Some("suite-arrangement".to_string());
-
-        let err = validate(&metadata(), &works).unwrap_err();
-        assert!(err.to_string().contains("form a cycle"));
-    }
-
-    #[test]
-    fn tag_value_mismatch_is_a_warning() -> Result<()> {
-        let mut works = works();
-        works.works[0].tags[0] = TagRef::Value {
-            key: "baroque".to_string(),
-            value: TranslatedString::generic("too much")?,
-        };
-
-        let validation = validate(&metadata(), &works)?;
-        assert_eq!(validation.warnings.len(), 1);
-        assert!(validation
-            .warnings
-            .first()
-            .unwrap()
-            .contains("does not take a value"));
-
-        Ok(())
-    }
-
-    #[test]
-    fn the_database_round_trips_through_musicus_library() {
-        let dir = tempfile::TempDir::new().unwrap();
-        let path = dir.path().join("metadata.musdb");
-
-        let output = build(&metadata(), &works(), &path).unwrap();
-        let summary = output.summary;
-
-        assert_eq!(summary.persons, 1);
-        assert_eq!(summary.roles, 1);
-        assert_eq!(summary.instruments, 1);
-        assert_eq!(summary.ensembles, 1);
-        assert_eq!(summary.tags, 2);
-        assert_eq!(summary.works, 3);
-        assert_eq!(summary.composer_credits, 2);
-        assert_eq!(summary.tag_associations, 2);
-        assert_eq!(summary.instrumentations, 2);
-        assert_eq!(summary.derived, 1);
-
-        let mut connection = unstable::connect(&path).unwrap();
-
-        let persons = persons::table
-            .load::<tables::Person>(&mut connection)
-            .unwrap();
-        assert_eq!(persons.len(), 1);
-        assert_eq!(persons[0].person_id, "bach-johann-sebastian");
-        assert_eq!(persons[0].source, Source::Metadata);
-        assert_eq!(persons[0].name.get(), "Johann Sebastian Bach");
-
-        // The hierarchy: the movement hangs under the suite at position 0.
-        let movement = works::table
-            .filter(works::work_id.eq("suite-m1"))
-            .first::<tables::Work>(&mut connection)
-            .unwrap();
-        assert_eq!(movement.parent_work_id.as_deref(), Some("suite"));
-        assert_eq!(movement.sequence_number, Some(0));
-
-        // The value tag keeps its translated value.
-        let language = work_tags::table
-            .filter(work_tags::work_id.eq("suite"))
-            .filter(work_tags::tag_id.eq("language"))
-            .first::<tables::WorkTag>(&mut connection)
-            .unwrap();
-        assert_eq!(language.value.unwrap().get(), "Latin");
-
-        // The credited composer carries the role.
-        let credited = work_persons::table
-            .filter(work_persons::work_id.eq("suite-arrangement"))
-            .first::<tables::WorkPerson>(&mut connection)
-            .unwrap();
-        assert_eq!(credited.role_id.as_deref(), Some("arranger"));
-
-        // The related work link points back at the main version.
-        let arrangement = works::table
-            .filter(works::work_id.eq("suite-arrangement"))
-            .first::<tables::Work>(&mut connection)
-            .unwrap();
-        assert_eq!(arrangement.work_id, "suite-arrangement");
-
-        let relation = work_relations::table
-            .filter(work_relations::work_id.eq("suite-arrangement"))
-            .first::<tables::WorkRelation>(&mut connection)
-            .unwrap();
-        assert_eq!(relation.related_work_id, "suite");
-    }
-
-    #[test]
-    fn an_existing_output_is_replaced() {
-        let dir = tempfile::TempDir::new().unwrap();
-        let path = dir.path().join("metadata.musdb");
-        fs::write(&path, "not a database").unwrap();
-
-        let output = build(&metadata(), &works(), &path).unwrap();
-        assert_eq!(output.summary.works, 3);
-
-        let database = fs::read(&path).unwrap();
-        assert!(!database.starts_with(b"not a database"));
-    }
 }

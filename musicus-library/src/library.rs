@@ -23,6 +23,7 @@ fn notify_changed(senders: &Mutex<Vec<async_channel::Sender<()>>>) {
     });
 }
 
+pub mod catalog_import;
 pub mod edit;
 pub mod exchange;
 mod import_graph;
