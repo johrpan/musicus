@@ -315,7 +315,7 @@ mod tests {
 
         // Only persons that compose or perform something show up here, so this
         // asserts that the entities were actually wired together.
-        let results = library.search(&LibraryQuery::default(), "").unwrap();
+        let results = library.search(&LibraryQuery::default(), "", 9, 0).unwrap();
         assert!(!results.work_persons.is_empty());
         assert!(!results.works.is_empty());
         assert!(!results.ensembles.is_empty());
@@ -324,11 +324,15 @@ mod tests {
         // reached through a work.
         let has_recordings = results.works.iter().any(|work| {
             let query = LibraryQuery {
-                work: Some(work.clone()),
+                work: Some(work.id.clone()),
                 ..Default::default()
             };
 
-            !library.search(&query, "").unwrap().recordings.is_empty()
+            !library
+                .search(&query, "", 9, 0)
+                .unwrap()
+                .recordings
+                .is_empty()
         });
 
         assert!(has_recordings);

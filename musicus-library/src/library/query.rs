@@ -3,18 +3,18 @@ use std::collections::HashSet;
 use anyhow::Result;
 use diesel::{dsl::sql, prelude::*, sql_types, QueryDsl};
 
-use gettextrs::gettext;
-
 use super::Library;
 use crate::{
     db::{schema::*, tables, views::*, TranslatedString},
-    format_translated,
     library::load::Loader,
     models::*,
 };
 
-/// A single item that a [`LibraryQuery`] can be about, or that search results can be
-/// highlighted with.
+/// A single item that search results (or a search query) can be highlighted
+/// with.
+///
+/// A [`Facet`] carries the full model because it is a display and selection
+/// value, not a filter: filters in [`LibraryQuery`] use IDs.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Facet {
     WorkPerson(Person),
@@ -25,14 +25,27 @@ pub enum Facet {
     Tag(TagValue),
 }
 
+/// A tag filter: the tag to match, plus the value to require if the tag takes
+/// one. A value without this tag's ID is meaningless, so the two always travel
+/// together.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TagFilter {
+    pub tag_id: String,
+    pub value: Option<TranslatedString>,
+}
+
+/// A query over the library's facets.
+///
+/// Relationship filters carry IDs, never loaded models, so that a query is a
+/// pure description of the data it selects.
 #[derive(Clone, Default, Debug)]
 pub struct LibraryQuery {
-    pub work_person: Option<Person>,
-    pub recording_person: Option<Person>,
-    pub ensemble: Option<Ensemble>,
-    pub instrument: Option<Instrument>,
-    pub work: Option<Work>,
-    pub tag: Option<TagValue>,
+    pub work_person: Option<String>,
+    pub recording_person: Option<String>,
+    pub ensemble: Option<String>,
+    pub instrument: Option<String>,
+    pub work: Option<String>,
+    pub tag: Option<TagFilter>,
 }
 
 impl LibraryQuery {
@@ -43,112 +56,6 @@ impl LibraryQuery {
             && self.instrument.is_none()
             && self.work.is_none()
             && self.tag.is_none()
-    }
-
-    /// The item that the query is mainly about, if there is one.
-    pub fn highlight(&self) -> Option<Facet> {
-        if let Some(work) = &self.work {
-            Some(Facet::Work(work.to_owned()))
-        } else if let Some(person) = &self.work_person {
-            Some(Facet::WorkPerson(person.to_owned()))
-        } else if let Some(person) = &self.recording_person {
-            Some(Facet::RecordingPerson(person.to_owned()))
-        } else if let Some(ensemble) = &self.ensemble {
-            Some(Facet::Ensemble(ensemble.to_owned()))
-        } else if let Some(instrument) = &self.instrument {
-            Some(Facet::Instrument(instrument.to_owned()))
-        } else if let Some(tag) = &self.tag {
-            Some(Facet::Tag(tag.to_owned()))
-        } else {
-            None
-        }
-    }
-
-    /// A short name for what the query selects, based on its [`Self::highlight`].
-    pub fn title(&self) -> Option<String> {
-        Some(match self.highlight()? {
-            Facet::Work(work) => work.name.get().to_owned(),
-            Facet::WorkPerson(person) | Facet::RecordingPerson(person) => {
-                person.name.get().to_owned()
-            }
-            Facet::Ensemble(ensemble) => ensemble.name.get().to_owned(),
-            Facet::Instrument(instrument) => {
-                format_translated!(gettext("Music for {}"), instrument.name.get())
-            }
-            Facet::Tag(tag) => tag.to_string(),
-        })
-    }
-
-    /// The parts of the query that are not already covered by its [`Self::title`].
-    pub fn description(&self) -> Option<String> {
-        let mut details = Vec::new();
-
-        match self.highlight()? {
-            Facet::Work(work) => {
-                if let Some(work_persons) = work.work_persons_string() {
-                    details.push(work_persons);
-                }
-            }
-            Facet::WorkPerson(_) => {
-                if let Some(instrument) = &self.instrument {
-                    details.push(format_translated!(gettext("Works with {}"), instrument));
-                }
-
-                if let (Some(person), Some(ensemble)) = (&self.recording_person, &self.ensemble) {
-                    details.push(format_translated!(
-                        gettext("Performed by {} and {}"),
-                        person,
-                        ensemble
-                    ));
-                } else if let Some(person) = &self.recording_person {
-                    details.push(format_translated!(gettext("Performed by {}"), person));
-                } else if let Some(ensemble) = &self.ensemble {
-                    details.push(format_translated!(gettext("Performed by {}"), ensemble));
-                }
-            }
-            Facet::RecordingPerson(_) => {
-                if let Some(instrument) = &self.instrument {
-                    details.push(format_translated!(gettext("Works with {}"), instrument));
-                }
-
-                if let Some(ensemble) = &self.ensemble {
-                    details.push(format_translated!(gettext("Performed with {}"), ensemble));
-                }
-            }
-            Facet::Ensemble(ensemble) => {
-                if let Some(instrument) = &self.instrument {
-                    details.push(format_translated!(gettext("Works with {}"), instrument));
-                }
-
-                if let Some(members) = ensemble.members_string() {
-                    details.push(format_translated!(gettext("Members: {}"), members));
-                }
-            }
-            Facet::Instrument(_) => (),
-            Facet::Tag(_) => {
-                if let Some(instrument) = &self.instrument {
-                    details.push(format_translated!(gettext("Works with {}"), instrument));
-                }
-
-                if let Some(person) = &self.recording_person {
-                    details.push(format_translated!(gettext("Performed by {}"), person));
-                } else if let Some(ensemble) = &self.ensemble {
-                    details.push(format_translated!(gettext("Performed by {}"), ensemble));
-                }
-            }
-        }
-
-        if let Some(tag) = &self.tag {
-            if !matches!(self.highlight(), Some(Facet::Tag(_))) {
-                details.push(tag.to_string());
-            }
-        }
-
-        if details.is_empty() {
-            None
-        } else {
-            Some(details.join(", "))
-        }
     }
 }
 
@@ -203,13 +110,15 @@ fn in_work_subtree(col: &str) -> String {
     )
 }
 
-/// A tag matches if it is on the work itself (or an ancestor/descendant of it, see
-/// [`in_work_subtree`]) or on any of its recordings. Written out because the
-/// subquery needs its own alias for `recordings`, which is already in the outer
-/// query. A valued tag matches only that exact value; a label tag binds NULL, which
-/// matches any assignment.
+/// A tag matches a work if it is on the work itself (or an ancestor/descendant
+/// of it, see [`in_work_subtree`]) or on any of the work's recordings.
+///
+/// A valued tag matches only that exact value; a label tag binds NULL, which
+/// matches any assignment. This is the single definition of the
+/// work-oriented tag predicate used by search; the recording-oriented
+/// variant is [`recording_tag_condition`].
 fn tag_condition<QS>(
-    tag: &TagValue,
+    tag: &TagFilter,
 ) -> impl Expression<SqlType = sql_types::Bool>
        + AppearsOnTable<QS>
        + diesel::expression::ValidGrouping<(), IsAggregate = diesel::expression::is_aggregate::Never>
@@ -218,7 +127,7 @@ fn tag_condition<QS>(
         "(EXISTS (SELECT 1 FROM work_tags WHERE {} AND work_tags.tag_id = ",
         in_work_subtree("work_tags.work_id"),
     ))
-    .bind::<sql_types::Text, _>(tag.tag.id.clone())
+    .bind::<sql_types::Text, _>(tag.tag_id.clone())
     .sql(" AND (")
     .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
     .sql(" IS NULL OR work_tags.value = ")
@@ -231,10 +140,46 @@ fn tag_condition<QS>(
           AND recording_tags.tag_id = ",
         in_work_subtree("tagged_recordings.work_id"),
     ))
-    .bind::<sql_types::Text, _>(tag.tag.id.clone())
+    .bind::<sql_types::Text, _>(tag.tag_id.clone())
     .sql(" AND (")
     .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
     .sql(" IS NULL OR recording_tags.value = ")
+    .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
+    .sql(")))")
+}
+
+/// A tag matches a recording if the assignment is on the recording itself or
+/// on its (exact, not tree) work.
+///
+/// Going through the whole work tree would match every sibling recording,
+/// which is wrong once a tag carries a value. This is the single definition of
+/// the recording-oriented tag predicate, shared by search and program
+/// generation; the work-oriented variant is [`tag_condition`].
+fn recording_tag_condition<QS>(
+    tag: &TagFilter,
+) -> impl Expression<SqlType = sql_types::Bool>
+       + AppearsOnTable<QS>
+       + diesel::expression::ValidGrouping<(), IsAggregate = diesel::expression::is_aggregate::Never>
+       + diesel::query_builder::QueryFragment<diesel::sqlite::Sqlite> {
+    sql::<sql_types::Bool>(
+        "(EXISTS (SELECT 1 FROM recording_tags \
+          WHERE recording_tags.recording_id = recordings.recording_id \
+          AND recording_tags.tag_id = ",
+    )
+    .bind::<sql_types::Text, _>(tag.tag_id.clone())
+    .sql(" AND (")
+    .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
+    .sql(" IS NULL OR recording_tags.value = ")
+    .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
+    .sql(
+        ")) OR EXISTS (SELECT 1 FROM work_tags \
+         WHERE work_tags.work_id = recordings.work_id \
+         AND work_tags.tag_id = ",
+    )
+    .bind::<sql_types::Text, _>(tag.tag_id.clone())
+    .sql(" AND (")
+    .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
+    .sql(" IS NULL OR work_tags.value = ")
     .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
     .sql(")))")
 }
@@ -261,27 +206,58 @@ pub(crate) fn translated_like<QS>(
     .sql(")")
 }
 
-/// True if `person` is credited as a composer on the work referenced by
-/// `works.work_id` in the enclosing query, or an ancestor/descendant of it (see
+/// True if `person_id` is credited on the work referenced by `works.work_id`
+/// in the enclosing query, or an ancestor/descendant of it (see
 /// [`in_work_subtree`]).
 pub(crate) fn work_person_condition<QS>(
-    person: &Person,
+    person_id: &str,
 ) -> impl Expression<SqlType = sql_types::Bool>
        + AppearsOnTable<QS>
        + diesel::expression::ValidGrouping<(), IsAggregate = diesel::expression::is_aggregate::Never>
        + diesel::query_builder::QueryFragment<diesel::sqlite::Sqlite> {
     sql::<sql_types::Bool>("EXISTS (SELECT 1 FROM work_persons WHERE work_persons.person_id = ")
-        .bind::<sql_types::Text, _>(person.id.clone())
+        .bind::<sql_types::Text, _>(person_id.to_owned())
         .sql(&format!(
             " AND {})",
             in_work_subtree("work_persons.work_id")
         ))
 }
 
-/// True if `instrument` is included in the work referenced by `works.work_id` in the
-/// enclosing query, or an ancestor/descendant of it (see [`in_work_subtree`]).
-fn work_instrument_condition<QS>(
-    instrument: &Instrument,
+/// True if `person_id` performs in the recording referenced by
+/// `recordings.recording_id` in the enclosing query, directly or as a member
+/// of one of its performing ensembles.
+pub(crate) fn recording_person_condition<QS>(
+    person_id: &str,
+) -> impl Expression<SqlType = sql_types::Bool>
+       + AppearsOnTable<QS>
+       + diesel::expression::ValidGrouping<(), IsAggregate = diesel::expression::is_aggregate::Never>
+       + diesel::query_builder::QueryFragment<diesel::sqlite::Sqlite> {
+    sql::<sql_types::Bool>("recording_persons.person_id = ")
+        .bind::<sql_types::Text, _>(person_id.to_owned())
+        .sql(" OR ensemble_persons.person_id = ")
+        .bind::<sql_types::Text, _>(person_id.to_owned())
+}
+
+/// True if `instrument_id` is played on the recording referenced by
+/// `recordings.recording_id` in the enclosing query, directly or as a member
+/// of one of its performing ensembles.
+pub(crate) fn recording_person_instrument_condition<QS>(
+    instrument_id: &str,
+) -> impl Expression<SqlType = sql_types::Bool>
+       + AppearsOnTable<QS>
+       + diesel::expression::ValidGrouping<(), IsAggregate = diesel::expression::is_aggregate::Never>
+       + diesel::query_builder::QueryFragment<diesel::sqlite::Sqlite> {
+    sql::<sql_types::Bool>("recording_persons.instrument_id = ")
+        .bind::<sql_types::Text, _>(instrument_id.to_owned())
+        .sql(" OR ensemble_persons.instrument_id = ")
+        .bind::<sql_types::Text, _>(instrument_id.to_owned())
+}
+
+/// True if `instrument_id` is included in the work referenced by
+/// `works.work_id` in the enclosing query, or an ancestor/descendant of it (see
+/// [`in_work_subtree`]).
+pub(crate) fn work_instrument_condition<QS>(
+    instrument_id: &str,
 ) -> impl Expression<SqlType = sql_types::Bool>
        + AppearsOnTable<QS>
        + diesel::expression::ValidGrouping<(), IsAggregate = diesel::expression::is_aggregate::Never>
@@ -289,7 +265,7 @@ fn work_instrument_condition<QS>(
     sql::<sql_types::Bool>(
         "EXISTS (SELECT 1 FROM work_instruments WHERE work_instruments.instrument_id = ",
     )
-    .bind::<sql_types::Text, _>(instrument.id.clone())
+    .bind::<sql_types::Text, _>(instrument_id.to_owned())
     .sql(&format!(
         " AND {})",
         in_work_subtree("work_instruments.work_id")
@@ -303,9 +279,7 @@ fn work_instrument_condition<QS>(
 ///
 /// A recording of an *ancestor* of `work_id` does not count on its own — a recording
 /// of the whole work does not necessarily include every one of its parts, so only a
-/// track explicitly assigned to the part (or something within it) counts. See
-/// [`crate::db::models::Work::contains`] and [`Player::recording_to_playlist_for_work`]
-/// for the same rule applied once a recording has already been chosen.
+/// track explicitly assigned to the part (or something within it) counts.
 pub(crate) fn recording_covers_work_condition<QS>(
     work_id: &str,
 ) -> impl Expression<SqlType = sql_types::Bool>
@@ -336,6 +310,141 @@ pub(crate) fn recording_covers_work_condition<QS>(
         .sql(&format!("{DESCENDANTS_OF_END} ))"))
 }
 
+/// True if the recording referenced by `recordings.recording_id` in the
+/// enclosing query is a recording of a work directly related to `work_id` (in
+/// either direction). Used for program generation, where a program about a
+/// work also matches its arrangements.
+pub(crate) fn recorded_work_related_condition<QS>(
+    work_id: &str,
+) -> impl Expression<SqlType = sql_types::Bool>
+       + AppearsOnTable<QS>
+       + diesel::expression::ValidGrouping<(), IsAggregate = diesel::expression::is_aggregate::Never>
+       + diesel::query_builder::QueryFragment<diesel::sqlite::Sqlite> {
+    sql::<sql_types::Bool>(
+        "EXISTS (SELECT 1 FROM work_relations \
+          WHERE work_relations.work_id = recordings.work_id \
+          AND work_relations.related_work_id = ",
+    )
+    .bind::<sql_types::Text, _>(work_id.to_owned())
+    .sql(
+        ") OR EXISTS (SELECT 1 FROM work_relations \
+         WHERE work_relations.related_work_id = recordings.work_id \
+         AND work_relations.work_id = ",
+    )
+    .bind::<sql_types::Text, _>(work_id.to_owned())
+    .sql("))")
+}
+
+/// Whether `person_id` is credited on the work of the recording referenced by
+/// `recordings.work_id` in the enclosing query. One shared definition of
+/// work-person membership, used by program generation.
+pub(crate) fn work_person_exists<QS>(
+    person_id: &str,
+) -> impl Expression<SqlType = sql_types::Bool>
+       + AppearsOnTable<QS>
+       + diesel::expression::ValidGrouping<(), IsAggregate = diesel::expression::is_aggregate::Never>
+       + diesel::query_builder::QueryFragment<diesel::sqlite::Sqlite> {
+    sql::<sql_types::Bool>(
+        "EXISTS (SELECT 1 FROM work_persons \
+         WHERE work_persons.work_id = recordings.work_id \
+         AND work_persons.person_id = ",
+    )
+    .bind::<sql_types::Text, _>(person_id.to_owned())
+    .sql(")")
+}
+
+/// Whether `person_id` performs on the recording referenced by
+/// `recordings.recording_id` in the enclosing query, directly or as a member
+/// of one of its ensembles. One shared definition of recording-person
+/// membership, used by program generation.
+pub(crate) fn recording_person_membership<QS>(
+    person_id: &str,
+) -> impl Expression<SqlType = sql_types::Bool>
+       + AppearsOnTable<QS>
+       + diesel::expression::ValidGrouping<(), IsAggregate = diesel::expression::is_aggregate::Never>
+       + diesel::query_builder::QueryFragment<diesel::sqlite::Sqlite> {
+    sql::<sql_types::Bool>(
+        "EXISTS (SELECT 1 FROM recording_persons \
+         WHERE recording_persons.recording_id = recordings.recording_id \
+         AND recording_persons.person_id = ",
+    )
+    .bind::<sql_types::Text, _>(person_id.to_owned())
+    .sql(
+        ") OR EXISTS (SELECT 1 FROM recording_ensembles \
+         JOIN ensemble_persons ON ensemble_persons.ensemble_id = recording_ensembles.ensemble_id \
+         WHERE recording_ensembles.recording_id = recordings.recording_id \
+         AND ensemble_persons.person_id = ",
+    )
+    .bind::<sql_types::Text, _>(person_id.to_owned())
+    .sql(")")
+}
+
+/// Whether `instrument_id` is played on the recording referenced by
+/// `recordings.recording_id` in the enclosing query: in its work's
+/// instrumentation, by one of its performing persons, or through a performing
+/// ensemble's members. One shared definition of instrument membership, used by
+/// program generation.
+pub(crate) fn recording_instrument_membership<QS>(
+    instrument_id: &str,
+) -> impl Expression<SqlType = sql_types::Bool>
+       + AppearsOnTable<QS>
+       + diesel::expression::ValidGrouping<(), IsAggregate = diesel::expression::is_aggregate::Never>
+       + diesel::query_builder::QueryFragment<diesel::sqlite::Sqlite> {
+    sql::<sql_types::Bool>(
+        "EXISTS (SELECT 1 FROM work_instruments \
+         WHERE work_instruments.work_id = recordings.work_id \
+         AND work_instruments.instrument_id = ",
+    )
+    .bind::<sql_types::Text, _>(instrument_id.to_owned())
+    .sql(
+        ") OR EXISTS (SELECT 1 FROM recording_persons \
+         WHERE recording_persons.recording_id = recordings.recording_id \
+         AND recording_persons.instrument_id = ",
+    )
+    .bind::<sql_types::Text, _>(instrument_id.to_owned())
+    .sql(
+        ") OR EXISTS (SELECT 1 FROM recording_ensembles \
+         JOIN ensemble_persons ON ensemble_persons.ensemble_id = recording_ensembles.ensemble_id \
+         WHERE recording_ensembles.recording_id = recordings.recording_id \
+         AND ensemble_persons.instrument_id = ",
+    )
+    .bind::<sql_types::Text, _>(instrument_id.to_owned())
+    .sql(")")
+}
+
+/// Whether the recording referenced by `recordings.recording_id` in the
+/// enclosing query is tagged with `tag`, on the recording or on its exact
+/// work. One shared definition of recording tag matching, used by program
+/// generation.
+pub(crate) fn recording_tag_membership<QS>(
+    tag: &TagFilter,
+) -> impl Expression<SqlType = sql_types::Bool>
+       + AppearsOnTable<QS>
+       + diesel::expression::ValidGrouping<(), IsAggregate = diesel::expression::is_aggregate::Never>
+       + diesel::query_builder::QueryFragment<diesel::sqlite::Sqlite> {
+    sql::<sql_types::Bool>(
+        "(EXISTS (SELECT 1 FROM recording_tags \
+          WHERE recording_tags.recording_id = recordings.recording_id \
+          AND recording_tags.tag_id = ",
+    )
+    .bind::<sql_types::Text, _>(tag.tag_id.clone())
+    .sql(" AND (")
+    .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
+    .sql(" IS NULL OR recording_tags.value = ")
+    .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
+    .sql(
+        ")) OR EXISTS (SELECT 1 FROM work_tags \
+         WHERE work_tags.work_id = recordings.work_id \
+         AND work_tags.tag_id = ",
+    )
+    .bind::<sql_types::Text, _>(tag.tag_id.clone())
+    .sql(" AND (")
+    .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
+    .sql(" IS NULL OR work_tags.value = ")
+    .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
+    .sql(")))")
+}
+
 impl Library {
     /// The work identified by `work_id`, with its parts loaded recursively.
     pub fn work(&self, work_id: &str) -> Result<Work> {
@@ -345,10 +454,51 @@ impl Library {
         loader.work(work_id)
     }
 
-    pub fn search(&self, query: &LibraryQuery, search: &str) -> Result<LibraryResults> {
+    /// The person identified by `id`.
+    pub fn person(&self, id: &str) -> Result<Person> {
+        let connection = &mut *self.conn();
+        Loader::load(connection)?.person(id)
+    }
+
+    /// The role identified by `id`.
+    pub fn role(&self, id: &str) -> Result<Role> {
+        let connection = &mut *self.conn();
+        Loader::load(connection)?.role(id)
+    }
+
+    /// The instrument identified by `id`.
+    pub fn instrument(&self, id: &str) -> Result<Instrument> {
+        let connection = &mut *self.conn();
+        Loader::load(connection)?.instrument(id)
+    }
+
+    /// The tag identified by `id`.
+    pub fn tag(&self, id: &str) -> Result<Tag> {
+        let connection = &mut *self.conn();
+        Loader::load(connection)?.tag(id)
+    }
+
+    /// The ensemble identified by `id`, with its members.
+    pub fn ensemble(&self, id: &str) -> Result<Ensemble> {
+        let connection = &mut *self.conn();
+        Loader::load(connection)?.ensemble(id)
+    }
+
+    /// Search the library for the `limit` most recently used items matching
+    /// `query`, skipping the first `offset`.
+    pub fn search(
+        &self,
+        query: &LibraryQuery,
+        search: &str,
+        limit: usize,
+        offset: usize,
+    ) -> Result<LibraryResults> {
         let search = format!("%{}%", search);
         let connection = &mut *self.conn();
         let loader = Loader::load(connection)?;
+
+        let limit = i64::try_from(limit)?;
+        let offset = i64::try_from(offset)?;
 
         Ok(match query {
             LibraryQuery { work: None, .. } => {
@@ -373,23 +523,19 @@ impl Library {
                         .filter(translated_like("persons.name", &search))
                         .into_boxed();
 
-                    if let Some(person) = &query.recording_person {
-                        statement = statement.filter(
-                            recording_persons::person_id
-                                .eq(&person.id)
-                                .or(ensemble_persons::person_id.eq(&person.id)),
-                        );
+                    if let Some(person_id) = &query.recording_person {
+                        statement = statement.filter(recording_person_condition(person_id));
                     }
 
-                    if let Some(ensemble) = &query.ensemble {
+                    if let Some(ensemble_id) = &query.ensemble {
                         statement =
-                            statement.filter(recording_ensembles::ensemble_id.eq(&ensemble.id));
+                            statement.filter(recording_ensembles::ensemble_id.eq(ensemble_id));
                     }
 
-                    if let Some(instrument) = &query.instrument {
+                    if let Some(instrument_id) = &query.instrument {
                         statement = statement.filter(
-                            work_instrument_condition(instrument)
-                                .or(recording_persons::instrument_id.eq(&instrument.id)),
+                            work_instrument_condition(instrument_id)
+                                .or(recording_person_instrument_condition(instrument_id)),
                         );
                     }
 
@@ -405,7 +551,9 @@ impl Library {
                                 .single_value()
                                 .desc(),
                         )
-                        .limit(9)
+                        .then_order_by(persons::person_id)
+                        .limit(limit)
+                        .offset(offset)
                         .select(persons::all_columns)
                         .distinct()
                         .load::<tables::Person>(connection)?
@@ -432,19 +580,19 @@ impl Library {
                         .filter(translated_like("persons.name", &search))
                         .into_boxed();
 
-                    if let Some(person) = &query.work_person {
-                        statement = statement.filter(work_person_condition(person));
+                    if let Some(person_id) = &query.work_person {
+                        statement = statement.filter(work_person_condition(person_id));
                     }
 
-                    if let Some(ensemble) = &query.ensemble {
+                    if let Some(ensemble_id) = &query.ensemble {
                         statement =
-                            statement.filter(recording_ensembles::ensemble_id.eq(&ensemble.id));
+                            statement.filter(recording_ensembles::ensemble_id.eq(ensemble_id));
                     }
 
-                    if let Some(instrument) = &query.instrument {
+                    if let Some(instrument_id) = &query.instrument {
                         statement = statement.filter(
-                            work_instrument_condition(instrument)
-                                .or(recording_persons::instrument_id.eq(&instrument.id)),
+                            work_instrument_condition(instrument_id)
+                                .or(recording_person_instrument_condition(instrument_id)),
                         );
                     }
 
@@ -460,7 +608,9 @@ impl Library {
                                 .single_value()
                                 .desc(),
                         )
-                        .limit(9)
+                        .then_order_by(persons::person_id)
+                        .limit(limit)
+                        .offset(offset)
                         .select(persons::all_columns)
                         .distinct()
                         .load::<tables::Person>(connection)?
@@ -491,22 +641,18 @@ impl Library {
                         )
                         .into_boxed();
 
-                    if let Some(person) = &query.work_person {
-                        statement = statement.filter(work_person_condition(person));
+                    if let Some(person_id) = &query.work_person {
+                        statement = statement.filter(work_person_condition(person_id));
                     }
 
-                    if let Some(person) = &query.recording_person {
-                        statement = statement.filter(
-                            recording_persons::person_id
-                                .eq(&person.id)
-                                .or(ensemble_persons::person_id.eq(&person.id)),
-                        );
+                    if let Some(person_id) = &query.recording_person {
+                        statement = statement.filter(recording_person_condition(person_id));
                     }
 
-                    if let Some(instrument) = &query.instrument {
+                    if let Some(instrument_id) = &query.instrument {
                         statement = statement.filter(
-                            work_instrument_condition(instrument)
-                                .or(ensemble_persons::instrument_id.eq(&instrument.id)),
+                            work_instrument_condition(instrument_id)
+                                .or(recording_person_instrument_condition(instrument_id)),
                         );
                     }
 
@@ -524,7 +670,9 @@ impl Library {
                                 .single_value()
                                 .desc(),
                         )
-                        .limit(9)
+                        .then_order_by(ensembles::ensemble_id)
+                        .limit(limit)
+                        .offset(offset)
                         .select(ensembles::all_columns)
                         .distinct()
                         .load::<tables::Ensemble>(connection)?
@@ -551,21 +699,16 @@ impl Library {
                         .filter(translated_like("instruments.name", &search))
                         .into_boxed();
 
-                    if let Some(person) = &query.work_person {
-                        statement = statement.filter(work_person_condition(person));
+                    if let Some(person_id) = &query.work_person {
+                        statement = statement.filter(work_person_condition(person_id));
                     }
 
-                    if let Some(person) = &query.recording_person {
-                        statement = statement.filter(
-                            recording_persons::person_id
-                                .eq(&person.id)
-                                .or(ensemble_persons::person_id.eq(&person.id)),
-                        );
+                    if let Some(person_id) = &query.recording_person {
+                        statement = statement.filter(recording_person_condition(person_id));
                     }
 
-                    if let Some(ensemble) = &query.ensemble {
-                        statement =
-                            statement.filter(ensemble_persons::ensemble_id.eq(&ensemble.id));
+                    if let Some(ensemble_id) = &query.ensemble {
+                        statement = statement.filter(ensemble_persons::ensemble_id.eq(ensemble_id));
                     }
 
                     if let Some(tag) = &query.tag {
@@ -583,7 +726,9 @@ impl Library {
                                 .single_value()
                                 .desc(),
                         )
-                        .limit(9)
+                        .then_order_by(instruments::instrument_id)
+                        .limit(limit)
+                        .offset(offset)
                         .select(instruments::all_columns)
                         .distinct()
                         .load::<tables::Instrument>(connection)?
@@ -608,29 +753,24 @@ impl Library {
                         .filter(translated_like("works.name", &search))
                         .into_boxed();
 
-                    if let Some(person) = &query.work_person {
-                        statement = statement.filter(work_person_condition(person));
+                    if let Some(person_id) = &query.work_person {
+                        statement = statement.filter(work_person_condition(person_id));
                     }
 
-                    if let Some(person) = &query.recording_person {
+                    if let Some(person_id) = &query.recording_person {
+                        statement = statement.filter(recording_person_condition(person_id));
+                    }
+
+                    if let Some(instrument_id) = &query.instrument {
                         statement = statement.filter(
-                            recording_persons::person_id
-                                .eq(&person.id)
-                                .or(ensemble_persons::person_id.eq(&person.id)),
+                            work_instrument_condition(instrument_id)
+                                .or(recording_person_instrument_condition(instrument_id)),
                         );
                     }
 
-                    if let Some(instrument) = &query.instrument {
-                        statement = statement.filter(
-                            work_instrument_condition(instrument)
-                                .or(recording_persons::instrument_id.eq(&instrument.id))
-                                .or(ensemble_persons::instrument_id.eq(&instrument.id)),
-                        );
-                    }
-
-                    if let Some(ensemble) = &query.ensemble {
+                    if let Some(ensemble_id) = &query.ensemble {
                         statement =
-                            statement.filter(recording_ensembles::ensemble_id.eq(&ensemble.id));
+                            statement.filter(recording_ensembles::ensemble_id.eq(ensemble_id));
                     }
 
                     if let Some(tag) = &query.tag {
@@ -645,7 +785,9 @@ impl Library {
                                 .single_value()
                                 .desc(),
                         )
-                        .limit(9)
+                        .then_order_by(works::work_id)
+                        .limit(limit)
+                        .offset(offset)
                         .select(works::all_columns)
                         .distinct()
                         .load::<tables::Work>(connection)?
@@ -674,58 +816,28 @@ impl Library {
                         .filter(translated_like("works.name", &search))
                         .into_boxed();
 
-                    if let Some(person) = &query.work_person {
-                        statement = statement.filter(work_person_condition(person));
+                    if let Some(person_id) = &query.work_person {
+                        statement = statement.filter(work_person_condition(person_id));
                     }
 
-                    if let Some(person) = &query.recording_person {
+                    if let Some(person_id) = &query.recording_person {
+                        statement = statement.filter(recording_person_condition(person_id));
+                    }
+
+                    if let Some(instrument_id) = &query.instrument {
                         statement = statement.filter(
-                            recording_persons::person_id
-                                .eq(&person.id)
-                                .or(ensemble_persons::person_id.eq(&person.id)),
+                            work_instrument_condition(instrument_id)
+                                .or(recording_person_instrument_condition(instrument_id)),
                         );
                     }
 
-                    if let Some(instrument) = &query.instrument {
-                        statement = statement.filter(
-                            work_instrument_condition(instrument)
-                                .or(recording_persons::instrument_id.eq(&instrument.id))
-                                .or(ensemble_persons::instrument_id.eq(&instrument.id)),
-                        );
-                    }
-
-                    if let Some(ensemble) = &query.ensemble {
+                    if let Some(ensemble_id) = &query.ensemble {
                         statement =
-                            statement.filter(recording_ensembles::ensemble_id.eq(&ensemble.id));
+                            statement.filter(recording_ensembles::ensemble_id.eq(ensemble_id));
                     }
 
                     if let Some(tag) = &query.tag {
-                        // For a recording the assignment on the recording itself is what counts,
-                        // falling back to its work. Going through the work alone would match every
-                        // sibling recording, which is wrong once a tag carries a value.
-                        statement = statement.filter(
-                            sql::<sql_types::Bool>(
-                                "(EXISTS (SELECT 1 FROM recording_tags \
-                                  WHERE recording_tags.recording_id = recordings.recording_id \
-                                  AND recording_tags.tag_id = ",
-                            )
-                            .bind::<sql_types::Text, _>(tag.tag.id.clone())
-                            .sql(" AND (")
-                            .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
-                            .sql(" IS NULL OR recording_tags.value = ")
-                            .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
-                            .sql(
-                                ")) OR EXISTS (SELECT 1 FROM work_tags \
-                                 WHERE work_tags.work_id = recordings.work_id \
-                                 AND work_tags.tag_id = ",
-                            )
-                            .bind::<sql_types::Text, _>(tag.tag.id.clone())
-                            .sql(" AND (")
-                            .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
-                            .sql(" IS NULL OR work_tags.value = ")
-                            .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
-                            .sql(")))"),
-                        );
+                        statement = statement.filter(recording_tag_condition(tag));
                     }
 
                     statement
@@ -739,7 +851,9 @@ impl Library {
                                 .single_value()
                                 .desc(),
                         )
-                        .limit(9)
+                        .then_order_by(recordings::recording_id)
+                        .limit(limit)
+                        .offset(offset)
                         .select(recordings::all_columns)
                         .distinct()
                         .load::<tables::Recording>(connection)?
@@ -768,28 +882,23 @@ impl Library {
                     .filter(translated_like("albums.name", &search))
                     .into_boxed();
 
-                if let Some(person) = &query.work_person {
-                    statement = statement.filter(work_person_condition(person));
+                if let Some(person_id) = &query.work_person {
+                    statement = statement.filter(work_person_condition(person_id));
                 }
 
-                if let Some(person) = &query.recording_person {
+                if let Some(person_id) = &query.recording_person {
+                    statement = statement.filter(recording_person_condition(person_id));
+                }
+
+                if let Some(instrument_id) = &query.instrument {
                     statement = statement.filter(
-                        recording_persons::person_id
-                            .eq(&person.id)
-                            .or(ensemble_persons::person_id.eq(&person.id)),
+                        work_instrument_condition(instrument_id)
+                            .or(recording_person_instrument_condition(instrument_id)),
                     );
                 }
 
-                if let Some(instrument) = &query.instrument {
-                    statement = statement.filter(
-                        work_instrument_condition(instrument)
-                            .or(recording_persons::instrument_id.eq(&instrument.id))
-                            .or(ensemble_persons::instrument_id.eq(&instrument.id)),
-                    );
-                }
-
-                if let Some(ensemble) = &query.ensemble {
-                    statement = statement.filter(recording_ensembles::ensemble_id.eq(&ensemble.id));
+                if let Some(ensemble_id) = &query.ensemble {
+                    statement = statement.filter(recording_ensembles::ensemble_id.eq(ensemble_id));
                 }
 
                 if let Some(tag) = &query.tag {
@@ -804,7 +913,9 @@ impl Library {
                             .single_value()
                             .desc(),
                     )
-                    .limit(9)
+                    .then_order_by(albums::album_id)
+                    .limit(limit)
+                    .offset(offset)
                     .select(albums::all_columns)
                     .distinct()
                     .load::<tables::Album>(connection)?
@@ -813,15 +924,9 @@ impl Library {
                     .collect::<Result<Vec<Album>>>()?;
 
                 // Tags are facets like any other, so they have to come from items
-                // the rest of the query actually selects. Reading them straight
-                // out of `tags` would offer every tag in the library on every
-                // page, and picking one would then produce a query that matches
-                // nothing.
-                //
-                // A label tag is a category and matches on its own name. A valued
-                // tag names a property rather than a category, so it is its values
-                // that are worth offering: searching "1963" finds the year, while
-                // searching "Year" finds nothing useful.
+                // the rest of the query actually selects. A label tag is a category
+                // and matches on its own name; a valued tag names a property, so it
+                // is its values that are worth offering.
                 let tags = if query.tag.is_none() {
                     let mut statement = works::table
                         .left_join(work_persons::table)
@@ -844,34 +949,31 @@ impl Library {
                         )
                         .into_boxed();
 
-                    if let Some(person) = &query.work_person {
-                        statement = statement.filter(work_person_condition(person));
+                    if let Some(person_id) = &query.work_person {
+                        statement = statement.filter(work_person_condition(person_id));
                     }
 
-                    if let Some(person) = &query.recording_person {
+                    if let Some(person_id) = &query.recording_person {
+                        statement = statement.filter(recording_person_condition(person_id));
+                    }
+
+                    if let Some(instrument_id) = &query.instrument {
                         statement = statement.filter(
-                            recording_persons::person_id
-                                .eq(&person.id)
-                                .or(ensemble_persons::person_id.eq(&person.id)),
+                            work_instrument_condition(instrument_id)
+                                .or(recording_person_instrument_condition(instrument_id)),
                         );
                     }
 
-                    if let Some(instrument) = &query.instrument {
-                        statement = statement.filter(
-                            work_instrument_condition(instrument)
-                                .or(recording_persons::instrument_id.eq(&instrument.id))
-                                .or(ensemble_persons::instrument_id.eq(&instrument.id)),
-                        );
-                    }
-
-                    if let Some(ensemble) = &query.ensemble {
+                    if let Some(ensemble_id) = &query.ensemble {
                         statement =
-                            statement.filter(recording_ensembles::ensemble_id.eq(&ensemble.id));
+                            statement.filter(recording_ensembles::ensemble_id.eq(ensemble_id));
                     }
 
                     let mut found = statement
                         .order_by(tags::last_used_at.desc())
-                        .limit(9)
+                        .then_order_by(tags::tag_id)
+                        .limit(limit)
+                        .offset(offset)
                         .select((tables::Tag::as_select(), work_tags::value))
                         .distinct()
                         .load::<(tables::Tag, Option<TranslatedString>)>(connection)?;
@@ -898,35 +1000,32 @@ impl Library {
                         )
                         .into_boxed();
 
-                    if let Some(person) = &query.work_person {
-                        statement = statement.filter(work_person_condition(person));
+                    if let Some(person_id) = &query.work_person {
+                        statement = statement.filter(work_person_condition(person_id));
                     }
 
-                    if let Some(person) = &query.recording_person {
+                    if let Some(person_id) = &query.recording_person {
+                        statement = statement.filter(recording_person_condition(person_id));
+                    }
+
+                    if let Some(instrument_id) = &query.instrument {
                         statement = statement.filter(
-                            recording_persons::person_id
-                                .eq(&person.id)
-                                .or(ensemble_persons::person_id.eq(&person.id)),
+                            work_instrument_condition(instrument_id)
+                                .or(recording_person_instrument_condition(instrument_id)),
                         );
                     }
 
-                    if let Some(instrument) = &query.instrument {
-                        statement = statement.filter(
-                            work_instrument_condition(instrument)
-                                .or(recording_persons::instrument_id.eq(&instrument.id))
-                                .or(ensemble_persons::instrument_id.eq(&instrument.id)),
-                        );
-                    }
-
-                    if let Some(ensemble) = &query.ensemble {
+                    if let Some(ensemble_id) = &query.ensemble {
                         statement =
-                            statement.filter(recording_ensembles::ensemble_id.eq(&ensemble.id));
+                            statement.filter(recording_ensembles::ensemble_id.eq(ensemble_id));
                     }
 
                     found.extend(
                         statement
                             .order_by(tags::last_used_at.desc())
-                            .limit(9)
+                            .then_order_by(tags::tag_id)
+                            .limit(limit)
+                            .offset(offset)
                             .select((tables::Tag::as_select(), recording_tags::value))
                             .distinct()
                             .load::<(tables::Tag, Option<TranslatedString>)>(connection)?,
@@ -945,7 +1044,7 @@ impl Library {
                         }
                     }
 
-                    tags.truncate(9);
+                    tags.truncate(limit as usize);
                     tags
                 } else {
                     Vec::new()
@@ -964,39 +1063,15 @@ impl Library {
                 }
             }
             LibraryQuery {
-                work: Some(work), ..
+                work: Some(work_id),
+                ..
             } => {
                 let mut statement = recordings::table
-                    .filter(recording_covers_work_condition(&work.id))
+                    .filter(recording_covers_work_condition(work_id))
                     .into_boxed();
 
                 if let Some(tag) = &query.tag {
-                    // For a recording the assignment on the recording itself is what counts,
-                    // falling back to its work. Going through the work alone would match every
-                    // sibling recording, which is wrong once a tag carries a value.
-                    statement = statement.filter(
-                        sql::<sql_types::Bool>(
-                            "(EXISTS (SELECT 1 FROM recording_tags \
-                              WHERE recording_tags.recording_id = recordings.recording_id \
-                              AND recording_tags.tag_id = ",
-                        )
-                        .bind::<sql_types::Text, _>(tag.tag.id.clone())
-                        .sql(" AND (")
-                        .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
-                        .sql(" IS NULL OR recording_tags.value = ")
-                        .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
-                        .sql(
-                            ")) OR EXISTS (SELECT 1 FROM work_tags \
-                             WHERE work_tags.work_id = recordings.work_id \
-                             AND work_tags.tag_id = ",
-                        )
-                        .bind::<sql_types::Text, _>(tag.tag.id.clone())
-                        .sql(" AND (")
-                        .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
-                        .sql(" IS NULL OR work_tags.value = ")
-                        .bind::<sql_types::Nullable<sql_types::Text>, _>(tag.value.clone())
-                        .sql(")))"),
-                    );
+                    statement = statement.filter(recording_tag_condition(tag));
                 }
 
                 let recordings = statement
@@ -1009,21 +1084,24 @@ impl Library {
                             .single_value()
                             .desc(),
                     )
+                    .then_order_by(recordings::recording_id)
+                    .limit(limit)
+                    .offset(offset)
                     .load::<tables::Recording>(connection)?
                     .into_iter()
                     .map(|r| loader.recording(&r.recording_id))
                     .collect::<Result<Vec<Recording>>>()?;
 
                 // Related works in both directions: what this work was derived from, and
-                // whatever else was derived from it (e.g. an arrangement alongside the
-                // original, or siblings sharing an original). The relation graph may
-                // cycle, so the references are loaded one level at a time rather than
-                // recursively embedded in the model.
+                // whatever else was derived from it. The relation graph may cycle, so
+                // the references are loaded one level at a time.
                 let mut works = Vec::new();
 
                 let outgoing_ids = work_relations::table
-                    .filter(work_relations::work_id.eq(&work.id))
+                    .filter(work_relations::work_id.eq(work_id))
                     .order(work_relations::related_work_id)
+                    .limit(limit)
+                    .offset(offset)
                     .select(work_relations::related_work_id)
                     .load::<String>(connection)?;
 
@@ -1031,19 +1109,28 @@ impl Library {
                     works.push(loader.work(&related_work_id)?);
                 }
 
+                let remaining = (limit - works.len() as i64).max(0);
                 let incoming_ids = work_relations::table
-                    .filter(work_relations::related_work_id.eq(&work.id))
+                    .filter(work_relations::related_work_id.eq(work_id))
                     .order(work_relations::work_id)
+                    .limit(remaining)
                     .select(work_relations::work_id)
                     .load::<String>(connection)?;
 
+                // Skip works already listed through their outgoing relation.
+                let mut seen = works.iter().map(|w| w.id.clone()).collect::<HashSet<_>>();
                 for related_work_id in incoming_ids {
-                    works.push(loader.work(&related_work_id)?);
+                    if seen.insert(related_work_id.clone()) {
+                        works.push(loader.work(&related_work_id)?);
+                    }
+                    if works.len() >= limit as usize {
+                        break;
+                    }
                 }
 
                 // Walk up to the root ancestor, this should be a single-digit
                 // number, so it is easier than a recursive query.
-                let mut root_id = work.id.clone();
+                let mut root_id = work_id.clone();
                 loop {
                     let parent_id = works::table
                         .filter(works::work_id.eq(&root_id))
@@ -1056,7 +1143,7 @@ impl Library {
                     }
                 }
 
-                let parent_work = if root_id != work.id {
+                let parent_work = if root_id != *work_id {
                     Some(loader.work(&root_id)?)
                 } else {
                     None

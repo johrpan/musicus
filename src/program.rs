@@ -8,7 +8,7 @@ use gettextrs::gettext;
 use gtk::{gio, glib, glib::Properties, prelude::*, subclass::prelude::*};
 use serde::{Deserialize, Serialize};
 
-use crate::{config, library::LibraryQuery};
+use crate::{config, library::Library, library::LibraryQuery};
 
 mod imp {
     use super::*;
@@ -86,37 +86,31 @@ impl Program {
             .build()
     }
 
-    pub fn from_query(query: LibraryQuery) -> Self {
+    pub fn from_query(query: LibraryQuery, library: &Library) -> Self {
         let settings = gio::Settings::new(config::APP_ID);
 
         glib::Object::builder()
             .property(
                 "title",
-                query.title().unwrap_or_else(|| gettext("Whole library")),
+                crate::query_ui::query_title(library, &query)
+                    .unwrap_or_else(|| gettext("Whole library")),
             )
             .property(
                 "description",
-                query
-                    .description()
+                crate::query_ui::query_description(library, &query)
                     .unwrap_or_else(|| gettext("Randomly selected music")),
             )
-            .property(
-                "composer-id",
-                query.work_person.as_ref().map(|p| p.id.clone()),
-            )
-            .property("performer-id", query.recording_person.map(|p| p.id))
-            .property("ensemble-id", query.ensemble.map(|e| e.id))
-            .property(
-                "instrument-id",
-                query.instrument.as_ref().map(|i| i.id.clone()),
-            )
-            .property("work-id", query.work.as_ref().map(|w| w.id.clone()))
-            .property("tag-id", query.tag.as_ref().map(|t| t.tag.id.clone()))
+            .property("composer-id", query.work_person.clone())
+            .property("performer-id", query.recording_person.clone())
+            .property("ensemble-id", query.ensemble.clone())
+            .property("instrument-id", query.instrument.clone())
+            .property("work-id", query.work.clone())
+            .property("tag-id", query.tag.as_ref().map(|tag| tag.tag_id.clone()))
             .property(
                 "tag-value",
                 query
                     .tag
-                    .and_then(|t| t.value)
+                    .and_then(|tag| tag.value)
                     .map(|value| serde_json::to_string(&value).unwrap()),
             )
             .property(

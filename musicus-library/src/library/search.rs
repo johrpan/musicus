@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use anyhow::Result;
-use diesel::prelude::*;
+use diesel::{dsl::sql, prelude::*, SqliteConnection};
 
 use super::{query::translated_like, query::work_person_condition, Library};
 use crate::{
@@ -270,7 +270,9 @@ impl Library {
         let loader = Loader::load(connection)?;
 
         let works: Vec<tables::Work> = works::table
-            .filter(translated_like("works.name", &search).and(work_person_condition(work_person)))
+            .filter(
+                translated_like("works.name", &search).and(work_person_condition(&work_person.id)),
+            )
             .into_boxed()
             .limit(9)
             .select(works::all_columns)
@@ -292,7 +294,8 @@ impl Library {
 
             let metadata_works: Vec<tables::Work> = works::table
                 .filter(
-                    translated_like("works.name", &search).and(work_person_condition(work_person)),
+                    translated_like("works.name", &search)
+                        .and(work_person_condition(&work_person.id)),
                 )
                 .into_boxed()
                 .limit(9)
@@ -331,19 +334,7 @@ impl Library {
 
         let loader = Loader::load(connection)?;
 
-        let recordings: Vec<tables::Recording> = recordings::table
-            .left_join(recording_persons::table.inner_join(persons::table))
-            .left_join(recording_ensembles::table.inner_join(ensembles::table))
-            .filter(
-                recordings::work_id.eq(&work.id).and(
-                    translated_like("persons.name", &search)
-                        .or(translated_like("ensembles.name", &search)),
-                ),
-            )
-            .limit(9)
-            .select(recordings::all_columns)
-            .distinct()
-            .load::<tables::Recording>(connection)?;
+        let recordings = recording_search_statement(connection, &work.id, &search)?;
 
         let mut results: Vec<SearchItem<Recording>> = recordings
             .into_iter()
@@ -358,19 +349,8 @@ impl Library {
         if let Some(metadata_connection) = self.metadata_connection() {
             let metadata_connection = &mut *db::lock_connection(&metadata_connection);
 
-            let metadata_recordings: Vec<tables::Recording> = recordings::table
-                .left_join(recording_persons::table.inner_join(persons::table))
-                .left_join(recording_ensembles::table.inner_join(ensembles::table))
-                .filter(
-                    recordings::work_id.eq(&work.id).and(
-                        translated_like("persons.name", &search)
-                            .or(translated_like("ensembles.name", &search)),
-                    ),
-                )
-                .limit(9)
-                .select(recordings::all_columns)
-                .distinct()
-                .load::<tables::Recording>(metadata_connection)?;
+            let metadata_recordings =
+                recording_search_statement(metadata_connection, &work.id, &search)?;
 
             let existing_ids: HashSet<String> = recordings::table
                 .filter(
@@ -411,6 +391,7 @@ impl Library {
             )
             .limit(20)
             .select(ensembles::all_columns)
+            .distinct()
             .load::<tables::Ensemble>(connection)?;
 
         let mut results: Vec<SearchItem<Ensemble>> = ensembles
@@ -434,6 +415,7 @@ impl Library {
                 )
                 .limit(20)
                 .select(ensembles::all_columns)
+                .distinct()
                 .load::<tables::Ensemble>(metadata_connection)?;
 
             let existing_ids: HashSet<String> = ensembles::table
@@ -459,4 +441,40 @@ impl Library {
 
         Ok(results)
     }
+}
+
+/// A recording search scoped to `work_id`: every recording of the work
+/// matches, with or without credits; a search term additionally requires a
+/// performer's or ensemble's name to match.
+///
+/// The outer joins are preserved, so a recording with no recording persons
+/// and no performing ensembles is never filtered away by a join — not even
+/// for an empty search term.
+fn recording_search_statement(
+    connection: &mut SqliteConnection,
+    work_id: &str,
+    search: &str,
+) -> Result<Vec<tables::Recording>> {
+    let mut statement = recordings::table
+        .left_join(recording_persons::table.inner_join(persons::table))
+        .left_join(recording_ensembles::table.inner_join(ensembles::table))
+        .into_boxed();
+
+    let no_credits = sql::<diesel::sql_types::Bool>(
+        "persons.person_id IS NULL AND ensembles.ensemble_id IS NULL",
+    );
+    let credits_match =
+        translated_like("persons.name", search).or(translated_like("ensembles.name", search));
+
+    statement = statement.filter(
+        recordings::work_id
+            .eq(work_id)
+            .and(no_credits.or(credits_match)),
+    );
+
+    Ok(statement
+        .limit(9)
+        .select(recordings::all_columns)
+        .distinct()
+        .load::<tables::Recording>(connection)?)
 }

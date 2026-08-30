@@ -13,7 +13,7 @@ pub use edit::TrackUpdate;
 pub use list::{RecordingListItem, WorkListItem};
 pub use merge::EntityUsage;
 pub use program::GenerateRecordingParams;
-pub use query::{Facet, LibraryQuery};
+pub use query::{Facet, LibraryQuery, TagFilter};
 pub use search::SearchItem;
 
 pub mod edit;

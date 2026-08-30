@@ -16,20 +16,22 @@
 
 use std::collections::HashMap;
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, bail, Result};
 use chrono::{NaiveDateTime, TimeDelta};
-use diesel::{
-    dsl::exists,
-    prelude::*,
-    sql_types::{self, Bool},
-    QueryDsl,
-};
+use diesel::{dsl::exists, prelude::*};
 use rand::RngExt;
 
 use super::Library;
 use crate::{
     db::{self, schema::*, tables, views::*, TranslatedString},
-    library::load::Loader,
+    library::{
+        load::Loader,
+        query::{
+            recorded_work_related_condition, recording_covers_work_condition,
+            recording_instrument_membership, recording_person_membership, recording_tag_membership,
+            work_person_exists,
+        },
+    },
     models::*,
 };
 
@@ -59,6 +61,46 @@ pub struct GenerateRecordingParams {
     pub avoid_repeated_work_persons: i32,
     /// For how many **minutes** after hearing an instrument to avoid it. 0 disables it.
     pub avoid_repeated_instruments: i32,
+}
+
+impl GenerateRecordingParams {
+    /// Check the constraints every program must satisfy: finite preference
+    /// values within `[0, 1]`, nonnegative avoidance windows, and no tag value
+    /// without a tag ID.
+    pub fn validate(&self) -> Result<()> {
+        for (name, value) in [
+            ("prefer_recently_added", self.prefer_recently_added),
+            (
+                "prefer_least_recently_played",
+                self.prefer_least_recently_played,
+            ),
+        ] {
+            if !value.is_finite() || !(0.0..=1.0).contains(&value) {
+                bail!("{name} must be between 0.0 and 1.0, got {value}");
+            }
+        }
+
+        for (name, value) in [
+            (
+                "avoid_repeated_work_persons",
+                self.avoid_repeated_work_persons,
+            ),
+            (
+                "avoid_repeated_instruments",
+                self.avoid_repeated_instruments,
+            ),
+        ] {
+            if value < 0 {
+                bail!("{name} must not be negative, got {value}");
+            }
+        }
+
+        if self.tag_value.is_some() && self.tag_id.is_none() {
+            bail!("A tag value needs a tag ID");
+        }
+
+        Ok(())
+    }
 }
 
 /// One recording a program allows, with everything needed to weight it.
@@ -219,6 +261,8 @@ fn choose<'a>(candidates: &'a [Candidate], weights: &[f64]) -> Option<&'a Candid
 impl Library {
     /// Choose a recording to play, following `params`.
     pub fn generate_recording(&self, params: &GenerateRecordingParams) -> Result<Recording> {
+        params.validate()?;
+
         let now = db::now();
 
         let candidates = self.candidates(params)?;
@@ -272,37 +316,11 @@ impl Library {
             .into_boxed();
 
         if let Some(work_person_id) = &params.work_person_id {
-            query = query.filter(exists(
-                work_persons::table.filter(
-                    work_persons::work_id
-                        .eq(recordings::work_id)
-                        .and(work_persons::person_id.eq(work_person_id)),
-                ),
-            ));
+            query = query.filter(work_person_exists(work_person_id));
         }
 
         if let Some(recording_person_id) = &params.recording_person_id {
-            query =
-                query.filter(
-                    exists(
-                        recording_persons::table.filter(
-                            recording_persons::recording_id
-                                .eq(recordings::recording_id)
-                                .and(recording_persons::person_id.eq(recording_person_id)),
-                        ),
-                    )
-                    .or(exists(
-                        recording_ensembles::table
-                            .inner_join(ensemble_persons::table.on(
-                                ensemble_persons::ensemble_id.eq(recording_ensembles::ensemble_id),
-                            ))
-                            .filter(
-                                recording_ensembles::recording_id
-                                    .eq(recordings::recording_id)
-                                    .and(ensemble_persons::person_id.eq(recording_person_id)),
-                            ),
-                    )),
-                );
+            query = query.filter(recording_person_membership(recording_person_id));
         }
 
         if let Some(ensemble_id) = &params.ensemble_id {
@@ -316,84 +334,27 @@ impl Library {
         }
 
         if let Some(instrument_id) = &params.instrument_id {
-            query =
-                query.filter(
-                    exists(
-                        work_instruments::table.filter(
-                            work_instruments::work_id
-                                .eq(recordings::work_id)
-                                .and(work_instruments::instrument_id.eq(instrument_id)),
-                        ),
-                    )
-                    .or(exists(
-                        recording_persons::table.filter(
-                            recording_persons::recording_id
-                                .eq(recordings::recording_id)
-                                .and(recording_persons::instrument_id.eq(instrument_id)),
-                        ),
-                    ))
-                    .or(exists(
-                        recording_ensembles::table
-                            .inner_join(ensemble_persons::table.on(
-                                ensemble_persons::ensemble_id.eq(recording_ensembles::ensemble_id),
-                            ))
-                            .filter(
-                                recording_ensembles::recording_id
-                                    .eq(recordings::recording_id)
-                                    .and(ensemble_persons::instrument_id.eq(instrument_id)),
-                            ),
-                    )),
-                );
+            query = query.filter(recording_instrument_membership(instrument_id));
         }
 
         if let Some(work_id) = &params.work_id {
             // Matches this work or one of its parts (see `recording_covers_work_condition`),
             // or an arrangement derived from it in either direction.
             query = query.filter(
-                super::query::recording_covers_work_condition(work_id).or(
-                    diesel::dsl::sql::<Bool>(
-                        "EXISTS (SELECT 1 FROM work_relations \
-                          WHERE work_relations.work_id = recordings.work_id \
-                          AND work_relations.related_work_id = ",
-                    )
-                    .bind::<sql_types::Text, _>(work_id.clone())
-                    .sql(
-                        ") OR EXISTS (SELECT 1 FROM work_relations \
-                         WHERE work_relations.related_work_id = recordings.work_id \
-                         AND work_relations.work_id = ",
-                    )
-                    .bind::<sql_types::Text, _>(work_id.clone())
-                    .sql("))"),
-                ),
+                recording_covers_work_condition(work_id)
+                    .or(recorded_work_related_condition(work_id)),
             );
         }
 
         // As in `search`, a tag counts if it is on the recording or on its work,
         // and a valued tag only counts for the exact value.
         if let Some(tag_id) = &params.tag_id {
-            query = query.filter(
-                diesel::dsl::sql::<Bool>(
-                    "(EXISTS (SELECT 1 FROM recording_tags \
-                      WHERE recording_tags.recording_id = recordings.recording_id \
-                      AND recording_tags.tag_id = ",
-                )
-                .bind::<sql_types::Text, _>(tag_id.clone())
-                .sql(" AND (")
-                .bind::<sql_types::Nullable<sql_types::Text>, _>(params.tag_value.clone())
-                .sql(" IS NULL OR recording_tags.value = ")
-                .bind::<sql_types::Nullable<sql_types::Text>, _>(params.tag_value.clone())
-                .sql(
-                    ")) OR EXISTS (SELECT 1 FROM work_tags \
-                     WHERE work_tags.work_id = recordings.work_id \
-                     AND work_tags.tag_id = ",
-                )
-                .bind::<sql_types::Text, _>(tag_id.clone())
-                .sql(" AND (")
-                .bind::<sql_types::Nullable<sql_types::Text>, _>(params.tag_value.clone())
-                .sql(" IS NULL OR work_tags.value = ")
-                .bind::<sql_types::Nullable<sql_types::Text>, _>(params.tag_value.clone())
-                .sql(")))"),
-            );
+            query = query.filter(recording_tag_membership(
+                &crate::library::query::TagFilter {
+                    tag_id: tag_id.clone(),
+                    value: params.tag_value.clone(),
+                },
+            ));
         }
 
         // Do not include empty recordings.

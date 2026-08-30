@@ -124,7 +124,8 @@ mod imp {
             let obj = self.obj().to_owned();
             let add_to_playlist_action = gio::ActionEntry::builder("add-to-playlist")
                 .activate(move |_, _, _| {
-                    let program = Program::from_query(obj.imp().query.get().unwrap().clone());
+                    let program =
+                        Program::from_query(obj.imp().query.get().unwrap().clone(), &obj.library());
                     obj.player().set_program(program);
                 })
                 .build();
@@ -272,7 +273,7 @@ impl SearchPage {
 
     #[template_callback]
     fn play_button_clicked(&self) {
-        let program = Program::from_query(self.imp().query.get().unwrap().clone());
+        let program = Program::from_query(self.imp().query.get().unwrap().clone(), &self.library());
         self.player().set_program(program);
         self.player().play_from_program();
     }
@@ -293,19 +294,19 @@ impl SearchPage {
             let mut work_selected = None;
 
             let query_changed = if let Some(person) = imp.composers.borrow().first().cloned() {
-                new_query.work_person = Some(person);
+                new_query.work_person = Some(person.id);
                 true
             } else if let Some(person) = imp.performers.borrow().first().cloned() {
-                new_query.recording_person = Some(person);
+                new_query.recording_person = Some(person.id);
                 true
             } else if let Some(ensemble) = imp.ensembles.borrow().first().cloned() {
-                new_query.ensemble = Some(ensemble);
+                new_query.ensemble = Some(ensemble.id);
                 true
             } else if let Some(instrument) = imp.instruments.borrow().first().cloned() {
-                new_query.instrument = Some(instrument);
+                new_query.instrument = Some(instrument.id);
                 true
             } else if let Some(tag_value) = imp.tags.borrow().first().cloned() {
-                new_query.tag = Some(tag_value);
+                new_query.tag = Some(crate::query_ui::tag_filter_of(&tag_value));
                 true
             } else if let Some(work) = imp.works.borrow().first().cloned() {
                 work_selected = Some(work);
@@ -322,7 +323,7 @@ impl SearchPage {
             };
 
             if let Some(work) = work_selected {
-                new_query.work = Some(work);
+                new_query.work = Some(work.id);
                 self.navigation().push(&WorkPage::new(
                     &self.toast_overlay(),
                     &self.navigation(),
@@ -353,12 +354,12 @@ impl SearchPage {
     fn tile_selected(&self, tile: &gtk::FlowBoxChild) {
         let mut new_query = self.imp().query.get().unwrap().clone();
         match tile.downcast_ref::<FacetTile>().unwrap().facet().clone() {
-            Facet::WorkPerson(person) => new_query.work_person = Some(person),
-            Facet::RecordingPerson(person) => new_query.recording_person = Some(person),
-            Facet::Ensemble(ensemble) => new_query.ensemble = Some(ensemble),
-            Facet::Instrument(instrument) => new_query.instrument = Some(instrument),
+            Facet::WorkPerson(person) => new_query.work_person = Some(person.id),
+            Facet::RecordingPerson(person) => new_query.recording_person = Some(person.id),
+            Facet::Ensemble(ensemble) => new_query.ensemble = Some(ensemble.id),
+            Facet::Instrument(instrument) => new_query.instrument = Some(instrument.id),
             Facet::Work(work) => {
-                new_query.work = Some(work);
+                new_query.work = Some(work.id);
                 self.navigation().push(&WorkPage::new(
                     &self.toast_overlay(),
                     &self.navigation(),
@@ -368,7 +369,7 @@ impl SearchPage {
                 ));
                 return;
             }
-            Facet::Tag(tag) => new_query.tag = Some(tag),
+            Facet::Tag(tag) => new_query.tag = Some(crate::query_ui::tag_filter_of(&tag)),
         }
 
         self.navigation().push(&SearchPage::new(
@@ -408,13 +409,17 @@ impl SearchPage {
 
         let imp = self.imp();
 
-        let results = match self.library().search(query, search) {
-            Ok(results) => results,
-            Err(err) => {
-                util::error_toast("Search failed", err, &self.toast_overlay());
-                return;
-            }
-        };
+        let results =
+            match self
+                .library()
+                .search(query, search, crate::query_ui::SEARCH_RESULTS_PER_FACET, 0)
+            {
+                Ok(results) => results,
+                Err(err) => {
+                    util::error_toast("Search failed", err, &self.toast_overlay());
+                    return;
+                }
+            };
 
         for flowbox in [
             &imp.composers_flow_box,
@@ -438,11 +443,13 @@ impl SearchPage {
         imp.header_bar.set_show_title(query.is_empty());
         imp.header_box.set_visible(!query.is_empty());
 
-        if let Some(title) = query.title() {
+        let library = self.library();
+
+        if let Some(title) = crate::query_ui::query_title(&library, query) {
             imp.title_label.set_text(&title);
         }
 
-        match query.description() {
+        match crate::query_ui::query_description(&library, query) {
             Some(description) => {
                 imp.subtitle_label.set_text(&description);
                 imp.subtitle_label.set_visible(true);
@@ -450,7 +457,8 @@ impl SearchPage {
             None => imp.subtitle_label.set_visible(false),
         }
 
-        imp.highlight.replace(query.highlight());
+        imp.highlight
+            .replace(crate::query_ui::query_highlight(&library, query));
 
         if results.is_empty() {
             imp.stack.set_visible_child_name("empty");

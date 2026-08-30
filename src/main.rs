@@ -20,6 +20,7 @@ mod process_row;
 mod program;
 mod program_section;
 mod program_tile;
+mod query_ui;
 mod recording_tile;
 mod search_page;
 mod selector;

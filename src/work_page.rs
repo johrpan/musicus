@@ -82,7 +82,8 @@ mod imp {
             let obj = self.obj().to_owned();
             let add_to_playlist_action = gio::ActionEntry::builder("add-to-playlist")
                 .activate(move |_, _, _| {
-                    let program = Program::from_query(obj.imp().query.get().unwrap().clone());
+                    let program =
+                        Program::from_query(obj.imp().query.get().unwrap().clone(), &obj.library());
                     obj.player().set_program(program);
                 })
                 .build();
@@ -143,7 +144,23 @@ impl WorkPage {
             .property("player", player)
             .build();
 
-        let work = query.work.clone().expect("WorkPage requires query.work");
+        let Some(work_id) = &query.work else {
+            util::error_toast(
+                "Failed to open work",
+                anyhow::anyhow!("A work page needs a work to show"),
+                toast_overlay,
+            );
+            return obj;
+        };
+
+        let Some(work) = library.work(work_id).ok() else {
+            util::error_toast(
+                "Failed to open work",
+                anyhow::anyhow!("The work no longer exists in this library"),
+                toast_overlay,
+            );
+            return obj;
+        };
 
         obj.imp().title_label.set_label(work.name.get());
 
@@ -152,7 +169,8 @@ impl WorkPage {
             obj.imp().subtitle_label.set_visible(true);
         }
 
-        let results = match library.search(&query, "") {
+        let results = match library.search(&query, "", crate::query_ui::SEARCH_RESULTS_PER_FACET, 0)
+        {
             Ok(results) => results,
             Err(err) => {
                 util::error_toast("Search failed", err, toast_overlay);
@@ -209,7 +227,7 @@ impl WorkPage {
 
     fn open_work(&self, work: Work) {
         let mut new_query = self.imp().query.get().unwrap().clone();
-        new_query.work = Some(work);
+        new_query.work = Some(work.id);
 
         self.navigation().push(&WorkPage::new(
             &self.toast_overlay(),
@@ -222,7 +240,7 @@ impl WorkPage {
 
     #[template_callback]
     fn play_button_clicked(&self) {
-        let program = Program::from_query(self.imp().query.get().unwrap().clone());
+        let program = Program::from_query(self.imp().query.get().unwrap().clone(), &self.library());
         self.player().set_program(program);
         self.player().play_from_program();
     }
