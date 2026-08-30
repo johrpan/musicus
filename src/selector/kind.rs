@@ -119,11 +119,13 @@ impl SelectorKind for PersonKind {
     type Item = Person;
 
     fn search(library: &Library, search: &str) -> Result<Vec<SearchItem<Person>>> {
-        library.search_persons(search)
+        library.search_persons(search).map_err(anyhow::Error::from)
     }
 
     fn import(library: &Library, item: &Person) -> Result<Person> {
-        library.import_metadata_person(&item.id)
+        library
+            .import_metadata_person(&item.id)
+            .map_err(anyhow::Error::from)
     }
 
     fn search_placeholder() -> String {
@@ -141,11 +143,15 @@ impl SelectorKind for EnsembleKind {
     type Item = Ensemble;
 
     fn search(library: &Library, search: &str) -> Result<Vec<SearchItem<Ensemble>>> {
-        library.search_ensembles(search)
+        library
+            .search_ensembles(search)
+            .map_err(anyhow::Error::from)
     }
 
     fn import(library: &Library, item: &Ensemble) -> Result<Ensemble> {
-        library.import_metadata_ensemble(&item.id)
+        library
+            .import_metadata_ensemble(&item.id)
+            .map_err(anyhow::Error::from)
     }
 
     fn search_placeholder() -> String {
@@ -163,11 +169,15 @@ impl SelectorKind for InstrumentKind {
     type Item = Instrument;
 
     fn search(library: &Library, search: &str) -> Result<Vec<SearchItem<Instrument>>> {
-        library.search_instruments(search)
+        library
+            .search_instruments(search)
+            .map_err(anyhow::Error::from)
     }
 
     fn import(library: &Library, item: &Instrument) -> Result<Instrument> {
-        library.import_metadata_instrument(&item.id)
+        library
+            .import_metadata_instrument(&item.id)
+            .map_err(anyhow::Error::from)
     }
 
     fn search_placeholder() -> String {
@@ -185,11 +195,13 @@ impl SelectorKind for RoleKind {
     type Item = Role;
 
     fn search(library: &Library, search: &str) -> Result<Vec<SearchItem<Role>>> {
-        library.search_roles(search)
+        library.search_roles(search).map_err(anyhow::Error::from)
     }
 
     fn import(library: &Library, item: &Role) -> Result<Role> {
-        library.import_metadata_role(&item.id)
+        library
+            .import_metadata_role(&item.id)
+            .map_err(anyhow::Error::from)
     }
 
     fn search_placeholder() -> String {
@@ -211,11 +223,13 @@ impl SelectorKind for TagKind {
     type Item = Tag;
 
     fn search(library: &Library, search: &str) -> Result<Vec<SearchItem<Tag>>> {
-        library.search_tags(search)
+        library.search_tags(search).map_err(anyhow::Error::from)
     }
 
     fn import(library: &Library, item: &Tag) -> Result<Tag> {
-        library.import_metadata_tag(&item.id)
+        library
+            .import_metadata_tag(&item.id)
+            .map_err(anyhow::Error::from)
     }
 
     fn search_placeholder() -> String {

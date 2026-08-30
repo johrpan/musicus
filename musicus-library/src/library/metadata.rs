@@ -11,13 +11,13 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use anyhow::{anyhow, Error, Result};
+use anyhow::anyhow;
 use diesel::{prelude::*, SqliteConnection};
 
 use super::{exchange, Library};
 use crate::{
     db::{self, tables::Source},
-    error::EntityKind,
+    error::{EntityKind, LibraryError, Result},
     library::{
         import_graph::{apply_import, DestinationState, ImportGraph},
         load::Loader,
@@ -108,7 +108,7 @@ impl Library {
         &self,
         kind: EntityKind,
         id: &str,
-        load: impl FnOnce(&Loader, &str) -> Result<T>,
+        load: impl FnOnce(&Loader, &str) -> anyhow::Result<T>,
     ) -> Result<T> {
         let metadata_connection = self
             .metadata_connection()
@@ -122,7 +122,7 @@ impl Library {
             let destination = DestinationState::load(connection)?;
             let plan = graph.plan_merge(&destination, Some(&closure))?;
 
-            connection.transaction::<(), Error, _>(|connection| {
+            connection.transaction::<(), LibraryError, _>(|connection| {
                 apply_import(
                     connection,
                     &graph,
@@ -131,11 +131,13 @@ impl Library {
                     Some(&closure),
                     Source::Metadata,
                     false,
-                )
+                )?;
+
+                Ok(())
             })?;
 
             let loader = Loader::load(connection)?;
-            load(&loader, id)
+            Ok(load(&loader, id)?)
         })
     }
 }

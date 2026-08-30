@@ -33,7 +33,7 @@ pub enum ProcessMsg {
     /// anyway, and still see once it has finished.
     Warning(String),
     Progress(f64),
-    Result(Result<()>),
+    Result(musicus_library::Result<()>),
     /// The operation stopped because cancellation was requested.
     Cancelled,
 }
@@ -124,7 +124,7 @@ impl<'a> ExchangeBridge<'a> {
 /// into process messages. The operation is cancelled cooperatively via the
 /// returned handle.
 pub fn spawn_process(
-    operation: impl FnOnce(&mut ExchangeBridge<'_>) -> Result<()> + Send + 'static,
+    operation: impl FnOnce(&mut ExchangeBridge<'_>) -> musicus_library::Result<()> + Send + 'static,
 ) -> ProcessHandle {
     let (sender, receiver) = async_channel::unbounded::<ProcessMsg>();
     let cancellation = Cancellation::new();
@@ -173,8 +173,9 @@ pub fn update_library(url: &str, library: &crate::library::Library) -> Result<Pr
         bridge.message(gettext("Importing downloaded library").to_owned());
 
         let mut observer = |event: ExchangeEvent| bridge.observe(event);
-        exchange::import_library_zip(&context, file.path(), Source::Metadata, &mut observer)
-            .map(|_| ())
+        exchange::import_library_zip(&context, file.path(), Source::Metadata, &mut observer)?;
+
+        Ok(())
     });
 
     Ok(Process::new(&gettext("Updating music library"), handle))
@@ -196,7 +197,9 @@ pub fn import_library(
 
     let handle = spawn_process(move |bridge| {
         let mut observer = |event: ExchangeEvent| bridge.observe(event);
-        exchange::import_library_zip(&context, &path, Source::Import, &mut observer).map(|_| ())
+        exchange::import_library_zip(&context, &path, Source::Import, &mut observer)?;
+
+        Ok(())
     });
 
     Ok(Process::new(&description, handle))

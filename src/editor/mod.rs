@@ -15,11 +15,15 @@ pub mod translation_entry;
 pub mod work;
 
 use adw::prelude::*;
-use anyhow::Result;
 
 use crate::util;
 
-pub fn handle_save<T>(page: &impl IsA<gtk::Widget>, result: Result<T>) -> Option<T> {
+/// Show the error of a failed save and return `None`, or return the saved
+/// value.
+pub fn handle_save<T, E>(page: &impl IsA<gtk::Widget>, result: Result<T, E>) -> Option<T>
+where
+    E: std::error::Error + Send + Sync + 'static,
+{
     match result {
         Ok(value) => Some(value),
         Err(err) => {

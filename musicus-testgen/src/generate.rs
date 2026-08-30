@@ -71,7 +71,7 @@ pub fn generate(
             let name = names.instrument();
             library.create_instrument(translated(&name), false)
         })
-        .collect::<Result<Vec<Instrument>>>()
+        .collect::<musicus_library::Result<Vec<Instrument>>>()
         .context("Failed to create instruments")?;
     summary.instruments = instruments.len();
 
@@ -80,7 +80,7 @@ pub fn generate(
             let name = names.role();
             library.create_role(translated(&name), false)
         })
-        .collect::<Result<Vec<Role>>>()
+        .collect::<musicus_library::Result<Vec<Role>>>()
         .context("Failed to create roles")?;
     summary.roles = roles.len();
 
@@ -89,7 +89,7 @@ pub fn generate(
             let name = names.person();
             library.create_person(translated(&name), false)
         })
-        .collect::<Result<Vec<Person>>>()
+        .collect::<musicus_library::Result<Vec<Person>>>()
         .context("Failed to create persons")?;
     summary.persons = persons.len();
 

@@ -2,12 +2,11 @@
 
 use std::collections::HashSet;
 
-use anyhow::{Error, Result};
 use diesel::{prelude::*, SqliteConnection};
 
 use crate::{
     db::{self, schema::*, tables, tables::Source, TranslatedString},
-    error::{EntityKind, LibraryError},
+    error::{EntityKind, LibraryError, Result},
     input::*,
     library::{load::Loader, Library},
     models::*,
@@ -214,7 +213,7 @@ impl Library {
             let mut validators = Validator::new(connection)?;
             validators.validate_work_input(&input, None)?;
 
-            let work_id = connection.transaction::<String, Error, _>(|connection| {
+            let work_id = connection.transaction::<String, LibraryError, _>(|connection| {
                 let work_id = db::generate_id();
 
                 Self::create_work_priv(connection, work_id.clone(), &input, None, None)?;
@@ -224,7 +223,7 @@ impl Library {
 
             let loader = Loader::load(connection)?;
 
-            loader.work(&work_id)
+            Ok(loader.work(&work_id)?)
         })
     }
 
@@ -292,7 +291,7 @@ impl Library {
             let mut validators = Validator::new(connection)?;
             validators.validate_work_input(&input, Some(id))?;
 
-            connection.transaction::<(), Error, _>(|connection| {
+            connection.transaction::<(), LibraryError, _>(|connection| {
                 Self::update_work_priv(connection, id, &input, None, None)
             })
         })
@@ -382,7 +381,7 @@ impl Library {
             let mut validators = Validator::new(connection)?;
             validators.validate_member_inputs(&input.members)?;
 
-            let ensemble_id = connection.transaction::<String, Error, _>(|connection| {
+            let ensemble_id = connection.transaction::<String, LibraryError, _>(|connection| {
                 let ensemble_id = db::generate_id();
                 let (created_at, edited_at, last_used_at) = fresh_timestamps();
 
@@ -407,7 +406,7 @@ impl Library {
 
             let loader = Loader::load(connection)?;
 
-            loader.ensemble(&ensemble_id)
+            Ok(loader.ensemble(&ensemble_id)?)
         })
     }
 
@@ -416,7 +415,7 @@ impl Library {
             let mut validators = Validator::new(connection)?;
             validators.validate_member_inputs(&input.members)?;
 
-            connection.transaction::<(), Error, _>(|connection| {
+            connection.transaction::<(), LibraryError, _>(|connection| {
                 update_entity(
                     connection,
                     EntityKind::Ensemble,
@@ -434,7 +433,9 @@ impl Library {
                     },
                 )?;
 
-                assoc::replace_ensemble_persons(connection, id, &input.members)
+                assoc::replace_ensemble_persons(connection, id, &input.members)?;
+
+                Ok(())
             })
         })
     }
@@ -459,7 +460,7 @@ impl Library {
             let mut validators = Validator::new(connection)?;
             validators.validate_recording_input(&input)?;
 
-            let recording_id = connection.transaction::<String, Error, _>(|connection| {
+            let recording_id = connection.transaction::<String, LibraryError, _>(|connection| {
                 let recording_id = db::generate_id();
                 let (created_at, edited_at, last_used_at) = fresh_timestamps();
 
@@ -495,7 +496,7 @@ impl Library {
 
             let loader = Loader::load(connection)?;
 
-            loader.recording(&recording_id)
+            Ok(loader.recording(&recording_id)?)
         })
     }
 
@@ -504,7 +505,7 @@ impl Library {
             let mut validators = Validator::new(connection)?;
             validators.validate_recording_input(&input)?;
 
-            connection.transaction::<(), Error, _>(|connection| {
+            connection.transaction::<(), LibraryError, _>(|connection| {
                 update_entity(
                     connection,
                     EntityKind::Recording,
@@ -533,7 +534,9 @@ impl Library {
                     recording_id,
                     &input.recording_ensembles,
                 )?;
-                assoc::replace_recording_tags(connection, recording_id, &input.tags)
+                assoc::replace_recording_tags(connection, recording_id, &input.tags)?;
+
+                Ok(())
             })
         })
     }
@@ -558,7 +561,7 @@ impl Library {
             let mut validators = Validator::new(connection)?;
             validators.validate_recording_ids(&input.recording_ids)?;
 
-            let album_id = connection.transaction::<String, Error, _>(|connection| {
+            let album_id = connection.transaction::<String, LibraryError, _>(|connection| {
                 let album_id = db::generate_id();
                 let (created_at, edited_at, last_used_at) = fresh_timestamps();
 
@@ -583,7 +586,7 @@ impl Library {
 
             let loader = Loader::load(connection)?;
 
-            loader.album(&album_id)
+            Ok(loader.album(&album_id)?)
         })
     }
 
@@ -592,7 +595,7 @@ impl Library {
             let mut validators = Validator::new(connection)?;
             validators.validate_recording_ids(&input.recording_ids)?;
 
-            connection.transaction::<(), Error, _>(|connection| {
+            connection.transaction::<(), LibraryError, _>(|connection| {
                 update_entity(
                     connection,
                     EntityKind::Album,
@@ -610,7 +613,9 @@ impl Library {
                     },
                 )?;
 
-                assoc::replace_album_recordings(connection, album_id, &input.recording_ids)
+                assoc::replace_album_recordings(connection, album_id, &input.recording_ids)?;
+
+                Ok(())
             })
         })
     }

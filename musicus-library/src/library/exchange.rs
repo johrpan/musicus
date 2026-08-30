@@ -22,7 +22,7 @@ use zip::{write::SimpleFileOptions, ZipWriter};
 
 use crate::{
     db::{self, schema::*, tables, tables::Source},
-    error::LibraryError,
+    error::{LibraryError, Result as LibraryResult},
     library::{
         import_graph::{apply_import, DestinationState, ImportGraph, ImportReport},
         notify_changed,
@@ -192,7 +192,7 @@ pub fn import_library_zip(
     path: impl AsRef<Path>,
     source: Source,
     observer: &mut dyn FnMut(ExchangeEvent) -> ControlFlow<()>,
-) -> Result<ExchangeReport> {
+) -> LibraryResult<ExchangeReport> {
     log::info!(
         "Importing library from ZIP at {}",
         path.as_ref().to_string_lossy()
@@ -288,7 +288,7 @@ pub fn import_library_zip(
                     );
                 }
 
-                return Err(err);
+                return Err(err.into());
             }
         }
     }
@@ -437,7 +437,7 @@ pub fn export_library_zip(
     context: &ExchangeContext,
     path: impl AsRef<Path>,
     observer: &mut dyn FnMut(ExchangeEvent) -> ControlFlow<()>,
-) -> Result<()> {
+) -> LibraryResult<()> {
     let path = path.as_ref().to_owned();
     log::info!("Exporting library to ZIP at {}", path.to_string_lossy());
     // Every export ships the sanitized copy rather than the file on disk. Every
@@ -451,13 +451,18 @@ pub fn export_library_zip(
 
     // The track list comes from the same snapshot that is being archived, so
     // the archive's database and its audio files can never disagree.
-    let copy = &mut SqliteConnection::establish(
-        database
-            .path()
-            .join("musicus.musdb")
-            .to_str()
-            .ok_or_else(|| anyhow!("The temporary directory path is not valid Unicode"))?,
-    )?;
+    let copy_path = database
+        .path()
+        .join("musicus.musdb")
+        .to_str()
+        .ok_or_else(|| {
+            LibraryError::InvalidPath(
+                "The temporary directory path is not valid Unicode".to_owned(),
+            )
+        })
+        .map(str::to_owned)?;
+    let copy = &mut SqliteConnection::establish(&copy_path)
+        .map_err(|err| LibraryError::Other(anyhow::anyhow!(err)))?;
     let tracks = tracks::table.load::<tables::Track>(copy)?;
 
     observe(observer, ExchangeEvent::Progress(0.05))?;
@@ -545,7 +550,7 @@ pub fn export_library_zip(
                 );
             }
 
-            return Err(err);
+            return Err(err.into());
         }
     }
 
@@ -608,7 +613,7 @@ pub fn install_metadata(
     context: &ExchangeContext,
     path: impl AsRef<Path>,
     observer: &mut dyn FnMut(ExchangeEvent) -> ControlFlow<()>,
-) -> Result<()> {
+) -> LibraryResult<()> {
     observe(
         observer,
         ExchangeEvent::Message("Validating the downloaded metadata database".to_owned()),
@@ -642,7 +647,8 @@ pub fn install_metadata(
             .ok_or_else(|| anyhow!("The metadata cache has no parent directory"))?,
     )?;
     fs::copy(path.as_ref(), tmp.path())?;
-    tmp.persist(&cache)?;
+    tmp.persist(&cache)
+        .map_err(|err| LibraryError::Io(err.error))?;
 
     observe(observer, ExchangeEvent::Progress(1.0))?;
 

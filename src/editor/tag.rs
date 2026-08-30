@@ -139,9 +139,7 @@ impl TagEditor {
         let enable_updates = imp.enable_updates_row.is_active();
 
         let result = match imp.tag_id.get() {
-            Some(id) => library
-                .update_tag(id, name, takes_value, private, enable_updates)
-                .map_err(anyhow::Error::from),
+            Some(id) => library.update_tag(id, name, takes_value, private, enable_updates),
             None => library
                 .create_tag(name, takes_value, private, enable_updates)
                 .map(|tag| self.emit_by_name::<()>("created", &[&glib::BoxedAnyObject::new(tag)])),

@@ -6,7 +6,6 @@
 use std::cell::OnceCell;
 
 use adw::{prelude::*, subclass::prelude::*};
-use anyhow::Result;
 use gettextrs::gettext;
 use gtk::glib::{self, subclass::Signal};
 use musicus_library::{
@@ -20,6 +19,7 @@ use crate::{
     library::Library,
     util,
 };
+use musicus_library::Result;
 
 /// A type of entity that consists of a translated name and nothing else.
 pub trait SimpleEntityKind: 'static {

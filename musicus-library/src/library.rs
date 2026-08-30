@@ -5,10 +5,12 @@ use std::{
     time::SystemTime,
 };
 
-use anyhow::{Context, Result};
 use diesel::{prelude::*, SqliteConnection};
 
-use crate::db::{self, schema::*, tables};
+use crate::{
+    db::{self, schema::*, tables},
+    error::Result,
+};
 pub use edit::TrackUpdate;
 pub use list::{RecordingListItem, WorkListItem};
 pub use merge::EntityUsage;
@@ -69,8 +71,7 @@ impl Library {
     pub fn new(path: impl AsRef<Path>, cache_dir: impl Into<PathBuf>) -> Result<Self> {
         let folder = path.as_ref().to_owned();
         let db_path = folder.join("musicus.musdb");
-        let connection =
-            db::connect(&db_path).context("Failed to connect to music library database")?;
+        let connection = db::connect(&db_path)?;
 
         Ok(Self {
             folder,

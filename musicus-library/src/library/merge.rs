@@ -6,11 +6,13 @@
 
 use std::collections::HashSet;
 
-use anyhow::{bail, Result};
 use diesel::prelude::*;
 
 use super::Library;
-use crate::db::{schema::*, TranslatedString};
+use crate::{
+    db::{schema::*, TranslatedString},
+    error::{LibraryError, Result},
+};
 
 /// Reference counts within the library for one entity.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -32,12 +34,14 @@ impl Library {
     /// Merge one person into another.
     pub fn merge_persons(&self, from: &str, into: &str) -> Result<()> {
         if from == into {
-            bail!("cannot merge a person into itself");
+            return Err(
+                LibraryError::InvalidInput("cannot merge a person into itself".to_owned()).into(),
+            );
         }
 
         let connection = &mut *self.conn();
 
-        connection.transaction::<_, diesel::result::Error, _>(|connection| {
+        connection.transaction::<_, LibraryError, _>(|connection| {
             diesel::update(work_persons::table.filter(work_persons::person_id.eq(from)))
                 .set(work_persons::person_id.eq(into))
                 .execute(connection)?;
@@ -64,12 +68,14 @@ impl Library {
     /// Merge one role into another.
     pub fn merge_roles(&self, from: &str, into: &str) -> Result<()> {
         if from == into {
-            bail!("cannot merge a role into itself");
+            return Err(
+                LibraryError::InvalidInput("cannot merge a role into itself".to_owned()).into(),
+            );
         }
 
         let connection = &mut *self.conn();
 
-        connection.transaction::<_, diesel::result::Error, _>(|connection| {
+        connection.transaction::<_, LibraryError, _>(|connection| {
             diesel::update(work_persons::table.filter(work_persons::role_id.eq(from)))
                 .set(work_persons::role_id.eq(into))
                 .execute(connection)?;
@@ -101,12 +107,15 @@ impl Library {
     /// Merge one instrument into another.
     pub fn merge_instruments(&self, from: &str, into: &str) -> Result<()> {
         if from == into {
-            bail!("cannot merge an instrument into itself");
+            return Err(LibraryError::InvalidInput(
+                "cannot merge an instrument into itself".to_owned(),
+            )
+            .into());
         }
 
         let connection = &mut *self.conn();
 
-        connection.transaction::<_, diesel::result::Error, _>(|connection| {
+        connection.transaction::<_, LibraryError, _>(|connection| {
             diesel::update(
                 work_instruments::table.filter(work_instruments::instrument_id.eq(from)),
             )
@@ -142,12 +151,14 @@ impl Library {
     /// effectively discarded.
     pub fn merge_tags(&self, from: &str, into: &str) -> Result<()> {
         if from == into {
-            bail!("cannot merge a tag into itself");
+            return Err(
+                LibraryError::InvalidInput("cannot merge a tag into itself".to_owned()).into(),
+            );
         }
 
         let connection = &mut *self.conn();
 
-        connection.transaction::<_, diesel::result::Error, _>(|connection| {
+        connection.transaction::<_, LibraryError, _>(|connection| {
             let takes_value = tags::table
                 .filter(tags::tag_id.eq(into))
                 .select(tags::takes_value)
@@ -184,12 +195,15 @@ impl Library {
     /// Merge one ensemble into another.
     pub fn merge_ensembles(&self, from: &str, into: &str) -> Result<()> {
         if from == into {
-            bail!("cannot merge an ensemble into itself");
+            return Err(LibraryError::InvalidInput(
+                "cannot merge an ensemble into itself".to_owned(),
+            )
+            .into());
         }
 
         let connection = &mut *self.conn();
 
-        connection.transaction::<_, diesel::result::Error, _>(|connection| {
+        connection.transaction::<_, LibraryError, _>(|connection| {
             diesel::update(
                 recording_ensembles::table.filter(recording_ensembles::ensemble_id.eq(from)),
             )
@@ -217,12 +231,14 @@ impl Library {
     /// references.
     pub fn merge_works(&self, from: &str, into: &str) -> Result<()> {
         if from == into {
-            bail!("cannot merge a work into itself");
+            return Err(
+                LibraryError::InvalidInput("cannot merge a work into itself".to_owned()).into(),
+            );
         }
 
         let connection = &mut *self.conn();
 
-        connection.transaction::<_, anyhow::Error, _>(|connection| {
+        connection.transaction::<_, LibraryError, _>(|connection| {
             let mut ancestor = works::table
                 .filter(works::work_id.eq(into))
                 .select(works::parent_work_id)
@@ -231,7 +247,10 @@ impl Library {
 
             while let Some(id) = ancestor {
                 if id == from {
-                    bail!("cannot merge a work into one of its own descendants");
+                    return Err(LibraryError::InvalidInput(
+                        "cannot merge a work into one of its own descendants".to_owned(),
+                    )
+                    .into());
                 }
 
                 if !seen.insert(id.clone()) {

@@ -6,13 +6,12 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use anyhow::{bail, Error, Result};
 use diesel::prelude::*;
 
 use crate::db::tables::{LibraryTrackPath, TRACKS_SUBDIR};
 use crate::{
     db::{self, schema::*, tables},
-    error::{EntityKind, LibraryError},
+    error::{EntityKind, LibraryError, Result},
     library::Library,
 };
 
@@ -28,7 +27,7 @@ impl Library {
         let folder = self.folder();
 
         let tracks = self.commit(|connection| {
-            connection.transaction::<Vec<tables::Track>, Error, _>(|connection| {
+            connection.transaction::<Vec<tables::Track>, LibraryError, _>(|connection| {
                 let tracks = tracks::table
                     .filter(tracks::recording_id.eq(recording_id))
                     .load::<tables::Track>(connection)?;
@@ -82,7 +81,10 @@ impl Library {
         for track in &tracks {
             if let TrackUpdate::Existing { track_id, .. } = track {
                 if !seen.insert(track_id.clone()) {
-                    bail!("Track {track_id} appears twice in the track list");
+                    return Err(LibraryError::InvalidInput(format!(
+                        "Track {track_id} appears twice in the track list"
+                    ))
+                    .into());
                 }
             }
         }
@@ -152,7 +154,7 @@ impl Library {
         let now = db::now();
         let mut renamed = 0;
 
-        let result = connection.transaction::<Vec<tables::Track>, Error, _>(|connection| {
+        let result = connection.transaction::<Vec<tables::Track>, LibraryError, _>(|connection| {
             // A track cannot be saved through a recording that does not exist,
             // and no imported track may point at it.
             let recording_exists = recordings::table
@@ -177,7 +179,10 @@ impl Library {
             for track in &prepared {
                 if let PreparedTrack::Existing { track_id, .. } = track {
                     if !stored.iter().any(|row| row.track_id == *track_id) {
-                        bail!("Track {track_id} does not exist or belongs to another recording");
+                        return Err(LibraryError::InvalidInput(format!(
+                            "Track {track_id} does not exist or belongs to another recording"
+                        ))
+                        .into());
                     }
                 }
             }
@@ -257,10 +262,11 @@ impl Library {
             // overwritten.
             for file in &staged {
                 if file.to_path.exists() {
-                    bail!(
+                    return Err(LibraryError::InvalidInput(format!(
                         "Track file {} appeared while the batch was being prepared",
                         file.to_path.display()
-                    );
+                    ))
+                    .into());
                 }
 
                 fs::rename(&file.tmp_path, &file.to_path)?;

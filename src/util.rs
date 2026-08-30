@@ -71,6 +71,10 @@ fn expected_error_message(err: &LibraryError) -> Option<String> {
              Please update Musicus to open it.",
         ),
         LibraryError::Cancelled => gettext("The operation was cancelled."),
+        LibraryError::InvalidPath(_) => gettext("A file path in the library is unusable."),
+        LibraryError::Archive(_) => gettext("The archive could not be read or written."),
+        LibraryError::Io(_) => gettext("Accessing a file failed."),
+        LibraryError::Database(_) => gettext("The library database failed."),
         LibraryError::InvalidInput(message) => message.clone(),
         LibraryError::NotFound(kind, _) => match kind {
             EntityKind::Person => gettext("This person no longer exists in the library."),

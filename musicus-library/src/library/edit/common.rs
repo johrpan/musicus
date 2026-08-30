@@ -6,13 +6,12 @@
 //! single place that policy is defined, so that individual CRUD operations do
 //! not repeat it.
 
-use anyhow::Result;
 use chrono::NaiveDateTime;
 use diesel::SqliteConnection;
 
 use crate::{
     db,
-    error::{EntityKind, LibraryError},
+    error::{EntityKind, LibraryError, Result},
     library::Library,
 };
 

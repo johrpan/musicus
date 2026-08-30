@@ -4,7 +4,7 @@ pub mod input;
 pub mod library;
 pub mod models;
 
-pub use error::{EntityKind, LibraryError};
+pub use error::{EntityKind, LibraryError, Result};
 pub use library::Library;
 
 /// Interpolate arguments into an already translated format string, falling

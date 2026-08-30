@@ -1,11 +1,11 @@
 use std::collections::HashSet;
 
-use anyhow::Result;
 use diesel::{dsl::sql, prelude::*, sql_types, QueryDsl};
 
 use super::Library;
 use crate::{
     db::{schema::*, tables, views::*, TranslatedString},
+    error::{LibraryError, Result},
     library::load::Loader,
     models::*,
 };
@@ -451,37 +451,37 @@ impl Library {
         let connection = &mut *self.conn();
 
         let loader = Loader::load(connection)?;
-        loader.work(work_id)
+        Ok(loader.work(work_id)?)
     }
 
     /// The person identified by `id`.
     pub fn person(&self, id: &str) -> Result<Person> {
         let connection = &mut *self.conn();
-        Loader::load(connection)?.person(id)
+        Ok(Loader::load(connection)?.person(id)?)
     }
 
     /// The role identified by `id`.
     pub fn role(&self, id: &str) -> Result<Role> {
         let connection = &mut *self.conn();
-        Loader::load(connection)?.role(id)
+        Ok(Loader::load(connection)?.role(id)?)
     }
 
     /// The instrument identified by `id`.
     pub fn instrument(&self, id: &str) -> Result<Instrument> {
         let connection = &mut *self.conn();
-        Loader::load(connection)?.instrument(id)
+        Ok(Loader::load(connection)?.instrument(id)?)
     }
 
     /// The tag identified by `id`.
     pub fn tag(&self, id: &str) -> Result<Tag> {
         let connection = &mut *self.conn();
-        Loader::load(connection)?.tag(id)
+        Ok(Loader::load(connection)?.tag(id)?)
     }
 
     /// The ensemble identified by `id`, with its members.
     pub fn ensemble(&self, id: &str) -> Result<Ensemble> {
         let connection = &mut *self.conn();
-        Loader::load(connection)?.ensemble(id)
+        Ok(Loader::load(connection)?.ensemble(id)?)
     }
 
     /// Search the library for the `limit` most recently used items matching
@@ -497,8 +497,12 @@ impl Library {
         let connection = &mut *self.conn();
         let loader = Loader::load(connection)?;
 
-        let limit = i64::try_from(limit)?;
-        let offset = i64::try_from(offset)?;
+        let limit = i64::try_from(limit).map_err(|_| {
+            LibraryError::InvalidInput(format!("Search limit {limit} is too large"))
+        })?;
+        let offset = i64::try_from(offset).map_err(|_| {
+            LibraryError::InvalidInput(format!("Search offset {offset} is too large"))
+        })?;
 
         Ok(match query {
             LibraryQuery { work: None, .. } => {
@@ -678,7 +682,7 @@ impl Library {
                         .load::<tables::Ensemble>(connection)?
                         .into_iter()
                         .map(|e| loader.ensemble(&e.ensemble_id))
-                        .collect::<Result<Vec<Ensemble>>>()?
+                        .collect::<anyhow::Result<Vec<Ensemble>>>()?
                 } else {
                     Vec::new()
                 };
@@ -793,7 +797,7 @@ impl Library {
                         .load::<tables::Work>(connection)?
                         .into_iter()
                         .map(|w| loader.work(&w.work_id))
-                        .collect::<Result<Vec<Work>>>()?
+                        .collect::<anyhow::Result<Vec<Work>>>()?
                 } else {
                     Vec::new()
                 };
@@ -859,7 +863,7 @@ impl Library {
                         .load::<tables::Recording>(connection)?
                         .into_iter()
                         .map(|r| loader.recording(&r.recording_id))
-                        .collect::<Result<Vec<Recording>>>()?
+                        .collect::<anyhow::Result<Vec<Recording>>>()?
                 } else {
                     Vec::new()
                 };
@@ -921,7 +925,7 @@ impl Library {
                     .load::<tables::Album>(connection)?
                     .into_iter()
                     .map(|r| loader.album(&r.album_id))
-                    .collect::<Result<Vec<Album>>>()?;
+                    .collect::<anyhow::Result<Vec<Album>>>()?;
 
                 // Tags are facets like any other, so they have to come from items
                 // the rest of the query actually selects. A label tag is a category
@@ -1090,7 +1094,7 @@ impl Library {
                     .load::<tables::Recording>(connection)?
                     .into_iter()
                     .map(|r| loader.recording(&r.recording_id))
-                    .collect::<Result<Vec<Recording>>>()?;
+                    .collect::<anyhow::Result<Vec<Recording>>>()?;
 
                 // Related works in both directions: what this work was derived from, and
                 // whatever else was derived from it. The relation graph may cycle, so
@@ -1163,6 +1167,6 @@ impl Library {
         let connection = &mut *self.conn();
 
         let loader = Loader::load(connection)?;
-        loader.tracks_of_recording(recording_id)
+        Ok(loader.tracks_of_recording(recording_id)?)
     }
 }

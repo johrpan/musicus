@@ -1,12 +1,11 @@
 //! Editing tags: creating, updating, deleting and (bulk) assigning tags to
 //! works and recordings.
 
-use anyhow::{Error, Result};
 use diesel::{dsl::exists, prelude::*, QueryDsl, SqliteConnection};
 
 use crate::{
     db::{self, schema::*, tables, tables::Source, TranslatedString},
-    error::{EntityKind, LibraryError},
+    error::{EntityKind, LibraryError, Result},
     library::Library,
     models::*,
 };
@@ -125,7 +124,7 @@ impl Library {
         let value = value.filter(|_| tag.takes_value).cloned();
         let now = db::now();
 
-        let changed = connection.transaction::<usize, Error, _>(|connection| {
+        let changed = connection.transaction::<usize, LibraryError, _>(|connection| {
             let mut changed = 0usize;
 
             for &work_id in work_ids {
@@ -194,7 +193,7 @@ impl Library {
         let value = value.filter(|_| tag.takes_value).cloned();
         let now = db::now();
 
-        let changed = connection.transaction::<usize, Error, _>(|connection| {
+        let changed = connection.transaction::<usize, LibraryError, _>(|connection| {
             let mut changed = 0usize;
 
             for &recording_id in recording_ids {
@@ -259,7 +258,7 @@ impl Library {
         let connection = &mut *self.conn();
         let now = db::now();
 
-        let changed = connection.transaction::<usize, Error, _>(|connection| {
+        let changed = connection.transaction::<usize, LibraryError, _>(|connection| {
             let mut changed = 0usize;
 
             for &work_id in work_ids {
@@ -304,7 +303,7 @@ impl Library {
         let connection = &mut *self.conn();
         let now = db::now();
 
-        let changed = connection.transaction::<usize, Error, _>(|connection| {
+        let changed = connection.transaction::<usize, LibraryError, _>(|connection| {
             let mut changed = 0usize;
 
             for &recording_id in recording_ids {

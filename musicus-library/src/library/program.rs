@@ -16,7 +16,7 @@
 
 use std::collections::HashMap;
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::anyhow;
 use chrono::{NaiveDateTime, TimeDelta};
 use diesel::{dsl::exists, prelude::*};
 use rand::RngExt;
@@ -24,6 +24,7 @@ use rand::RngExt;
 use super::Library;
 use crate::{
     db::{self, schema::*, tables, views::*, TranslatedString},
+    error::Result,
     library::{
         load::Loader,
         query::{
@@ -35,6 +36,7 @@ use crate::{
     models::*,
 };
 
+use crate::LibraryError;
 /// How strong the preference setting affects the selection.
 const PREFERENCE_STRENGTH: f64 = 10.0;
 
@@ -76,7 +78,10 @@ impl GenerateRecordingParams {
             ),
         ] {
             if !value.is_finite() || !(0.0..=1.0).contains(&value) {
-                bail!("{name} must be between 0.0 and 1.0, got {value}");
+                return Err(LibraryError::InvalidInput(format!(
+                    "{name} must be between 0.0 and 1.0, got {value}"
+                ))
+                .into());
             }
         }
 
@@ -91,12 +96,15 @@ impl GenerateRecordingParams {
             ),
         ] {
             if value < 0 {
-                bail!("{name} must not be negative, got {value}");
+                return Err(LibraryError::InvalidInput(format!(
+                    "{name} must not be negative, got {value}"
+                ))
+                .into());
             }
         }
 
         if self.tag_value.is_some() && self.tag_id.is_none() {
-            bail!("A tag value needs a tag ID");
+            return Err(LibraryError::InvalidInput("A tag value needs a tag ID".to_owned()).into());
         }
 
         Ok(())
@@ -304,7 +312,7 @@ impl Library {
             .first::<tables::Recording>(connection)?;
 
         let loader = Loader::load(connection)?;
-        loader.recording(&row.recording_id)
+        Ok(loader.recording(&row.recording_id)?)
     }
 
     /// Every recording the program allows.
