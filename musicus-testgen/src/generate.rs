@@ -8,6 +8,7 @@ use std::{fs, path::Path};
 use anyhow::{Context, Result};
 use musicus_library::{
     db::TranslatedString,
+    library::TrackUpdate,
     models::{Ensemble, Instrument, Person, RecordingPerson, Role, Work},
     Library,
 };
@@ -188,17 +189,31 @@ pub fn generate(
     summary.recordings = recordings.len();
 
     for (index, recording) in recordings.iter().enumerate() {
-        for track_index in 0..counts.tracks_per_recording {
+        // Every track of the recording is described before any of them is
+        // saved: `set_recording_tracks` treats the list as the complete
+        // desired state.
+        let mut tracks = Vec::with_capacity(counts.tracks_per_recording);
+        let mut sources = Vec::with_capacity(counts.tracks_per_recording);
+
+        for _ in 0..counts.tracks_per_recording {
             let source = stub_track(staging.path(), summary.tracks)?;
-
-            library
-                .import_track(&source, &recording.id, track_index as i32, Vec::new())
-                .context("Failed to import a track")?;
-
-            // The library copies the file, so the staged one is not needed
-            // anymore and would otherwise pile up for the whole run.
-            let _ = fs::remove_file(&source);
             summary.tracks += 1;
+
+            sources.push(source.clone());
+            tracks.push(TrackUpdate::New {
+                path: source,
+                works: Vec::new(),
+            });
+        }
+
+        library
+            .set_recording_tracks(&recording.id, tracks)
+            .context("Failed to import tracks")?;
+
+        // The library copied the files, so the staged ones are not needed
+        // anymore and would otherwise pile up for the whole run.
+        for source in sources {
+            let _ = fs::remove_file(&source);
         }
 
         progress(index + 1, recordings.len());

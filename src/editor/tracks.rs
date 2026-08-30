@@ -18,7 +18,7 @@ use track_row::{TrackLocation, TracksEditorTrackData, TracksEditorTrackRow};
 
 use musicus_library::{
     library::TrackUpdate,
-    models::{Recording, Track, Work},
+    models::{Recording, Work},
 };
 
 use crate::{
@@ -42,7 +42,6 @@ mod imp {
         pub recording: RefCell<Option<Recording>>,
         pub recordings_popover: OnceCell<RecordingSelectorPopover>,
         pub track_rows: RefCell<Vec<TracksEditorTrackRow>>,
-        pub removed_tracks: RefCell<Vec<Track>>,
 
         #[template_child]
         pub recording_row: TemplateChild<adw::ActionRow>,
@@ -211,9 +210,7 @@ impl TracksEditor {
             self.imp().track_list.remove(&track_row);
         }
 
-        // Forget previously removed tracks (see above).
-        self.imp().removed_tracks.borrow_mut().clear();
-
+        // Forget previously removed track rows (see above).
         let tracks = match self.library().tracks_for_recording(&recording.id) {
             Ok(tracks) => tracks,
             Err(err) => {
@@ -301,10 +298,6 @@ impl TracksEditor {
             #[weak(rename_to = this)]
             self,
             move |row| {
-                if let TrackLocation::Library(track) = row.track_data().location {
-                    this.imp().removed_tracks.borrow_mut().push(track);
-                }
-
                 this.imp().track_list.remove(row);
                 this.imp().track_rows.borrow_mut().retain(|p| p != row);
             }
@@ -342,18 +335,24 @@ impl TracksEditor {
             for track_row in self.imp().track_rows.borrow().iter() {
                 let track_data = track_row.track_data();
 
+                // The requested list is the complete desired state: a track
+                // row that was removed is simply omitted, and the library
+                // deletes the stored track along with its file.
+                let works = track_data
+                    .parts
+                    .iter()
+                    .map(|work| work.id.clone())
+                    .collect::<Vec<String>>();
+
                 tracks.push(match track_data.location {
                     TrackLocation::Undefined => {
                         return Err(anyhow!("A track has no file assigned to it."));
                     }
                     TrackLocation::Library(track) => TrackUpdate::Existing {
                         track_id: track.id,
-                        works: track_data.parts,
+                        works,
                     },
-                    TrackLocation::System(path) => TrackUpdate::New {
-                        path,
-                        works: track_data.parts,
-                    },
+                    TrackLocation::System(path) => TrackUpdate::New { path, works },
                 });
             }
 
@@ -362,14 +361,7 @@ impl TracksEditor {
 
         // Nothing may be borrowed while the library is saving: it notifies its
         // subscribers, which can call back into this page.
-        let removed_tracks = self.imp().removed_tracks.borrow().clone();
-
-        self.library()
-            .set_recording_tracks(&recording.id, tracks, &removed_tracks)?;
-
-        // Only once everything has been saved may the pending changes be
-        // forgotten, so that a failed save stays retryable.
-        self.imp().removed_tracks.borrow_mut().clear();
+        self.library().set_recording_tracks(&recording.id, tracks)?;
 
         for track_row in self.imp().track_rows.borrow_mut().drain(..) {
             self.imp().track_list.remove(&track_row);
