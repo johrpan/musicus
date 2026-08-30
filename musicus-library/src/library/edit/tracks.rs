@@ -15,49 +15,50 @@ use crate::{
     models::*,
 };
 
+use super::assoc;
+
 impl Library {
     /// Delete a recording along with its tracks' files.
     pub fn delete_recording_and_tracks(&self, recording_id: &str) -> Result<()> {
-        let connection = &mut *self.conn();
+        // Delete from the library first: the track list is read inside the
+        // transaction so that it cannot go stale between reading and deleting.
+        // Only afterwards are the files removed, so a file-system error can
+        // never leave a track row pointing at a deleted file.
+        let folder = self.folder();
 
-        // Delete from library first to avoid orphan tracks in case of file
-        // system related errors. The track list is read inside the transaction
-        // so that it cannot go stale between reading and deleting.
+        let tracks = self.commit(|connection| {
+            connection.transaction::<Vec<tables::Track>, Error, _>(|connection| {
+                let tracks = tracks::table
+                    .filter(tracks::recording_id.eq(recording_id))
+                    .load::<tables::Track>(connection)?;
 
-        let tracks = connection.transaction::<Vec<tables::Track>, Error, _>(|connection| {
-            let tracks = tracks::table
-                .filter(tracks::recording_id.eq(recording_id))
-                .load::<tables::Track>(connection)?;
+                for track in &tracks {
+                    diesel::delete(track_works::table)
+                        .filter(track_works::track_id.eq(&track.track_id))
+                        .execute(connection)?;
 
-            for track in &tracks {
-                diesel::delete(track_works::table)
-                    .filter(track_works::track_id.eq(&track.track_id))
+                    diesel::delete(tracks::table)
+                        .filter(tracks::track_id.eq(&track.track_id))
+                        .execute(connection)?;
+                }
+
+                diesel::delete(recordings::table)
+                    .filter(recordings::recording_id.eq(recording_id))
                     .execute(connection)?;
 
-                diesel::delete(tracks::table)
-                    .filter(tracks::track_id.eq(&track.track_id))
-                    .execute(connection)?;
-            }
-
-            diesel::delete(recordings::table)
-                .filter(recordings::recording_id.eq(recording_id))
-                .execute(connection)?;
-
-            Ok(tracks)
+                Ok(tracks)
+            })
         })?;
 
-        // The database no longer references these files. A failure to remove one
-        // of them leaves an unreferenced file behind, which must not fail the
-        // operation or prevent the remaining files from being removed.
-        let folder = self.folder();
+        // The database no longer references these files. A failure to remove
+        // one of them leaves an unreferenced file behind, which must not fail
+        // the operation or prevent the remaining files from being removed.
         for track in tracks {
             let path = track.path.resolve(folder);
             if let Err(err) = fs::remove_file(&path) {
                 log::warn!("Failed to remove track file {}: {err}", path.display());
             }
         }
-
-        self.changed();
 
         Ok(())
     }
@@ -227,10 +228,6 @@ impl Library {
                             ))
                             .execute(connection)?;
 
-                        diesel::delete(track_works::table)
-                            .filter(track_works::track_id.eq(&track_id))
-                            .execute(connection)?;
-
                         (track_id, works)
                     }
                     PreparedTrack::New {
@@ -258,17 +255,8 @@ impl Library {
                     }
                 };
 
-                for (index, work) in works.into_iter().enumerate() {
-                    let track_work_data = tables::TrackWork {
-                        track_id: track_id.clone(),
-                        work_id: work.id,
-                        sequence_number: db::sequence_number(index)?,
-                    };
-
-                    diesel::insert_into(track_works::table)
-                        .values(&track_work_data)
-                        .execute(connection)?;
-                }
+                let work_ids = works.iter().map(|work| work.id.clone()).collect::<Vec<_>>();
+                assoc::replace_track_works(connection, &track_id, &work_ids)?;
             }
 
             // Moving the files into place is the last fallible step before the

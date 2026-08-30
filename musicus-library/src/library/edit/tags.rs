@@ -7,10 +7,11 @@ use diesel::{dsl::exists, prelude::*, QueryDsl, SqliteConnection};
 use crate::{
     db::{self, schema::*, tables, tables::Source, TranslatedString},
     error::{EntityKind, LibraryError},
-    input::TagInput,
     library::Library,
     models::*,
 };
+
+use super::common::{delete_entity, fresh_timestamps, update_entity};
 
 impl Library {
     pub fn create_tag(
@@ -20,29 +21,27 @@ impl Library {
         private: bool,
         enable_updates: bool,
     ) -> Result<Tag> {
-        let connection = &mut *self.conn();
-
-        let now = db::now();
+        let (created_at, edited_at, last_used_at) = fresh_timestamps();
 
         let tag = tables::Tag {
             tag_id: db::generate_id(),
             name,
             takes_value,
             source: Source::User,
-            created_at: now,
-            edited_at: now,
-            last_used_at: now,
+            created_at,
+            edited_at,
+            last_used_at,
             enable_updates,
             private,
         };
 
-        diesel::insert_into(tags::table)
-            .values(&tag)
-            .execute(connection)?;
+        self.commit(|connection| {
+            diesel::insert_into(tags::table)
+                .values(&tag)
+                .execute(connection)?;
 
-        self.changed();
-
-        Ok(Tag::from(tag))
+            Ok(Tag::from(tag))
+        })
     }
 
     /// Whether any work or recording is tagged with this tag.
@@ -73,108 +72,49 @@ impl Library {
         takes_value: bool,
         private: bool,
         enable_updates: bool,
-    ) -> Result<(), LibraryError> {
-        let connection = &mut *self.conn();
-
-        let previous = tags::table
-            .filter(tags::tag_id.eq(id))
-            .select(tags::takes_value)
-            .first::<bool>(connection)
-            .map_err(anyhow::Error::from)?;
-
-        if previous != takes_value && Self::tag_is_in_use_priv(connection, id)? {
-            return Err(LibraryError::StillReferenced(EntityKind::Tag));
-        }
-
-        let now = db::now();
-
-        diesel::update(tags::table)
-            .filter(tags::tag_id.eq(id))
-            .set((
-                tags::name.eq(name),
-                tags::takes_value.eq(takes_value),
-                tags::private.eq(private),
-                tags::edited_at.eq(now),
-                tags::last_used_at.eq(now),
-                tags::enable_updates.eq(enable_updates),
-            ))
-            .execute(connection)
-            .map_err(anyhow::Error::from)?;
-
-        self.changed();
-
-        Ok(())
-    }
-
-    pub fn delete_tag(&self, tag_id: &str) -> Result<(), LibraryError> {
-        let connection = &mut *self.conn();
-
-        diesel::delete(tags::table)
-            .filter(tags::tag_id.eq(tag_id))
-            .execute(connection)
-            .map_err(|err| LibraryError::from_delete(EntityKind::Tag, err))?;
-
-        self.changed();
-
-        Ok(())
-    }
-
-    /// Replace a work's tag assignments.
-    pub(super) fn set_work_tags(
-        connection: &mut SqliteConnection,
-        work_id: &str,
-        tags: &[TagInput],
     ) -> Result<()> {
-        diesel::delete(work_tags::table)
-            .filter(work_tags::work_id.eq(work_id))
-            .execute(connection)?;
+        self.commit(|connection| {
+            let previous = tags::table
+                .filter(tags::tag_id.eq(id))
+                .select(tags::takes_value)
+                .first::<bool>(connection)
+                .map_err(anyhow::Error::from)?;
 
-        for (index, tag) in tags.iter().enumerate() {
-            let work_tag_data = tables::WorkTag {
-                work_id: work_id.to_string(),
-                tag_id: tag.tag_id.clone(),
-                value: tag.value.clone(),
-                sequence_number: db::sequence_number(index)?,
-            };
+            if previous != takes_value && Self::tag_is_in_use_priv(connection, id)? {
+                return Err(LibraryError::StillReferenced(EntityKind::Tag).into());
+            }
 
-            diesel::insert_into(work_tags::table)
-                .values(&work_tag_data)
-                .execute(connection)?;
-        }
-
-        Ok(())
+            update_entity(connection, EntityKind::Tag, id, |connection, edited_at| {
+                diesel::update(tags::table)
+                    .filter(tags::tag_id.eq(id))
+                    .set((
+                        tags::name.eq(name),
+                        tags::takes_value.eq(takes_value),
+                        tags::private.eq(private),
+                        tags::edited_at.eq(edited_at),
+                        tags::last_used_at.eq(edited_at),
+                        tags::enable_updates.eq(enable_updates),
+                    ))
+                    .execute(connection)
+            })
+        })
     }
 
-    /// Replace a recording's tag assignments.
-    pub(super) fn set_recording_tags(
-        connection: &mut SqliteConnection,
-        recording_id: &str,
-        tags: &[TagInput],
-    ) -> Result<()> {
-        diesel::delete(recording_tags::table)
-            .filter(recording_tags::recording_id.eq(recording_id))
-            .execute(connection)?;
-
-        for (index, tag) in tags.iter().enumerate() {
-            let recording_tag_data = tables::RecordingTag {
-                recording_id: recording_id.to_string(),
-                tag_id: tag.tag_id.clone(),
-                value: tag.value.clone(),
-                sequence_number: db::sequence_number(index)?,
-            };
-
-            diesel::insert_into(recording_tags::table)
-                .values(&recording_tag_data)
-                .execute(connection)?;
-        }
-
-        Ok(())
+    pub fn delete_tag(&self, tag_id: &str) -> Result<()> {
+        self.commit(|connection| {
+            delete_entity(connection, EntityKind::Tag, tag_id, |connection| {
+                diesel::delete(tags::table)
+                    .filter(tags::tag_id.eq(tag_id))
+                    .execute(connection)
+            })
+        })
     }
 
     /// Assign a tag to several works at once.
     ///
     /// Returns how many works have been updated. Existing associations are
-    /// skipped.
+    /// skipped; a call that changes nothing updates no timestamps and does not
+    /// notify observers.
     pub fn add_tag_to_works(
         &self,
         work_ids: &[&str],
@@ -232,7 +172,9 @@ impl Library {
             Ok(changed)
         })?;
 
-        self.changed();
+        if changed > 0 {
+            self.changed();
+        }
 
         Ok(changed)
     }
@@ -240,7 +182,8 @@ impl Library {
     /// Assign a tag to several recordings at once.
     ///
     /// Returns how many recordings have been updated. Existing associations
-    /// are skipped.
+    /// are skipped; a call that changes nothing updates no timestamps and does
+    /// not notify observers.
     pub fn add_tag_to_recordings(
         &self,
         recording_ids: &[&str],
@@ -301,14 +244,17 @@ impl Library {
             Ok(changed)
         })?;
 
-        self.changed();
+        if changed > 0 {
+            self.changed();
+        }
 
         Ok(changed)
     }
 
     /// Remove a tag from several works at once.
     ///
-    /// Returns how many works have been updated.
+    /// Returns how many works have been updated. A call that changes nothing
+    /// updates no timestamps and does not notify observers.
     pub fn remove_tag_from_works(&self, work_ids: &[&str], tag_id: &str) -> Result<usize> {
         let connection = &mut *self.conn();
         let now = db::now();
@@ -339,14 +285,17 @@ impl Library {
             Ok(changed)
         })?;
 
-        self.changed();
+        if changed > 0 {
+            self.changed();
+        }
 
         Ok(changed)
     }
 
     /// Remove a tag from several recordings at once.
     ///
-    /// Returns how many recordings have been updated.
+    /// Returns how many recordings have been updated. A call that changes
+    /// nothing updates no timestamps and does not notify observers.
     pub fn remove_tag_from_recordings(
         &self,
         recording_ids: &[&str],
@@ -384,7 +333,9 @@ impl Library {
             Ok(changed)
         })?;
 
-        self.changed();
+        if changed > 0 {
+            self.changed();
+        }
 
         Ok(changed)
     }
