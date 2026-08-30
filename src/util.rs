@@ -70,6 +70,7 @@ fn expected_error_message(err: &LibraryError) -> Option<String> {
             "This library was created by a newer version of Musicus. \
              Please update Musicus to open it.",
         ),
+        LibraryError::Cancelled => gettext("The operation was cancelled."),
         LibraryError::InvalidInput(message) => message.clone(),
         LibraryError::NotFound(kind, _) => match kind {
             EntityKind::Person => gettext("This person no longer exists in the library."),

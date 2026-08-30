@@ -2,6 +2,7 @@ mod album_page;
 mod album_tile;
 mod application;
 mod config;
+mod download;
 mod editor;
 mod empty_page;
 mod entity_browser;

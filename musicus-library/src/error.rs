@@ -57,6 +57,9 @@ pub enum LibraryError {
     /// An import would have to change a local entity to proceed.
     ImportConflict(String),
 
+    /// The operation was cancelled by the caller.
+    Cancelled,
+
     /// The database or an import graph is inconsistent.
     Corrupt(String),
 
@@ -93,6 +96,7 @@ impl Display for LibraryError {
             LibraryError::ImportConflict(message) => {
                 write!(f, "The import conflicts with existing data: {message}")
             }
+            LibraryError::Cancelled => write!(f, "The operation was cancelled"),
             LibraryError::Corrupt(message) => write!(f, "{message}"),
             LibraryError::SchemaTooNew { found, supported } => write!(
                 f,

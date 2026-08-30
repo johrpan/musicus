@@ -1,38 +1,85 @@
+//! Synchronous exchange operations.
+//!
+//! Archive import, archive export and metadata installation run on the calling
+//! thread; the application schedules them on its own worker threads. They are
+//! atomic at their boundaries: a failed or cancelled export never destroys a
+//! previous valid archive, and an import applies its metadata and its audio
+//! files only when the whole batch succeeds.
+
 use std::{
     collections::HashSet,
     fs::{self, File},
     io::{BufReader, BufWriter, Read, Write},
+    ops::ControlFlow,
     path::{Path, PathBuf},
     sync::{Arc, Mutex},
 };
 
 use anyhow::{anyhow, bail, Error, Result};
 use diesel::{prelude::*, SqliteConnection};
-use futures_util::StreamExt;
-use gettextrs::gettext;
 use tempfile::{NamedTempFile, TempDir};
-use tokio::io::AsyncWriteExt;
 use zip::{write::SimpleFileOptions, ZipWriter};
 
-use super::Library;
 use crate::{
     db::{self, schema::*, tables, tables::Source},
-    format_translated,
+    error::LibraryError,
     library::{
         import_graph::{apply_import, DestinationState, ImportGraph, ImportReport},
-        process::{spawn_process, Cancellation, ProcessHandle, ProcessMsg},
         refresh::refresh_metadata,
+        Library,
     },
 };
 
 /// The name of the manifest entry inside a `.muslib` archive.
-const MANIFEST_NAME: &str = "manifest.json";
+pub const MANIFEST_NAME: &str = "manifest.json";
 
 /// The version of the `.muslib` archive layout this build writes.
 ///
 /// Bump when the archive gains, loses or renames entries. Archives with a
 /// higher version are refused rather than partially understood.
 const ARCHIVE_FORMAT_VERSION: u32 = 1;
+
+/// A progress or status update from a synchronous exchange operation.
+#[derive(Clone, Debug)]
+pub enum ExchangeEvent {
+    Message(String),
+    Warning(String),
+    /// How much of the work is done, from 0.0 to 1.0.
+    Progress(f64),
+}
+
+/// What a library import wrote into the destination.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct ExchangeReport {
+    /// Rows written into the destination.
+    pub inserted: usize,
+    /// Entities that already existed locally and were kept unchanged.
+    pub reused_local: usize,
+    /// Imported rows skipped because their entity already exists locally.
+    pub skipped: usize,
+}
+
+impl From<ImportReport> for ExchangeReport {
+    fn from(report: ImportReport) -> Self {
+        Self {
+            inserted: report.inserted,
+            reused_local: report.reused_local,
+            skipped: report.skipped,
+        }
+    }
+}
+
+/// Forward an event to `observer`, failing with cancellation if the observer
+/// asks the operation to stop.
+fn observe(
+    observer: &mut dyn FnMut(ExchangeEvent) -> ControlFlow<()>,
+    event: ExchangeEvent,
+) -> Result<()> {
+    match observer(event) {
+        ControlFlow::Continue(()) => Ok(()),
+        ControlFlow::Break(()) => Err(LibraryError::Cancelled.into()),
+    }
+}
 
 /// Describes a `.muslib` archive.
 ///
@@ -49,14 +96,12 @@ struct ArchiveManifest {
 }
 
 /// Read and check the manifest of an opened archive.
-fn read_manifest(
-    archive: &mut zip::ZipArchive<BufReader<fs::File>>,
-) -> Result<Option<ArchiveManifest>> {
+fn read_manifest(archive: &mut zip::ZipArchive<BufReader<fs::File>>) -> Result<()> {
     let manifest: ArchiveManifest = match archive.by_name(MANIFEST_NAME) {
         Ok(file) => serde_json::from_reader(BufReader::new(file))?,
         Err(zip::result::ZipError::FileNotFound) => {
             log::info!("Archive has no manifest; assuming the pre-versioning layout");
-            return Ok(None);
+            return Ok(());
         }
         Err(err) => return Err(err.into()),
     };
@@ -78,121 +123,65 @@ fn read_manifest(
         );
     }
 
-    Ok(Some(manifest))
+    Ok(())
+}
+
+/// A thread-safe handle on a library's connection and folders, for scheduling
+/// synchronous exchange operations off-thread.
+///
+/// The application creates one on the main thread and moves a clone into its
+/// worker thread; every function in this module only needs the context.
+#[derive(Clone)]
+pub struct ExchangeContext {
+    /// The library's database connection.
+    pub connection: Arc<Mutex<SqliteConnection>>,
+    /// The folder the library's database and track files live in.
+    pub folder: PathBuf,
+    /// The directory cache files (like the metadata database) live in.
+    pub cache_dir: PathBuf,
 }
 
 impl Library {
-    /// Import from a music library ZIP archive at `path`.
+    /// A cloneable handle on this library's connection and folders.
     ///
-    /// Cancelling leaves the library partially populated: the metadata is
-    /// imported in one transaction before any audio file is copied, so a
-    /// cancelled import can leave tracks whose files are missing. That is
-    /// deliberate, because it keeps cancelling a large import cheap.
-    ///
-    /// Running the same import again copies exactly what is still missing.
-    /// Every audio file is written next to its destination and only moved into
-    /// place once it is whole, so a file that is present at its final path is
-    /// always complete — a crash or a full disk in the middle of a copy cannot
-    /// leave a truncated file that later runs would skip.
-    pub fn import_library_from_zip(
-        &self,
-        path: impl AsRef<Path>,
-        source: Source,
-    ) -> Result<ProcessHandle> {
-        log::info!(
-            "Importing library from ZIP at {}",
-            path.as_ref().to_string_lossy()
-        );
-        let path = path.as_ref().to_owned();
-        let library_folder = self.folder().to_owned();
-        let this_connection = self.connection.clone();
-
-        Ok(spawn_process(move |sender, cancellation| {
-            import_library_from_zip_priv(
-                path,
-                library_folder,
-                source,
-                this_connection,
-                sender,
-                cancellation,
-            )
-        }))
-    }
-
-    /// Export the whole music library to a ZIP archive at `path`. If `path` already exists, it
-    /// will be overwritten. The work will be done in a background thread.
-    ///
-    /// Private tags are personal to this library and are left out, together
-    /// with every assignment referring to one.
-    pub fn export_library_to_zip(&self, path: impl AsRef<Path>) -> Result<ProcessHandle> {
-        log::info!(
-            "Exporting library to ZIP at {}",
-            path.as_ref().to_string_lossy()
-        );
-        let connection = &mut *self.conn();
-
-        let path = path.as_ref().to_owned();
-        let library_folder = self.folder().to_owned();
-        let tracks = tracks::table.load::<tables::Track>(connection)?;
-        let this_connection = self.connection.clone();
-
-        Ok(spawn_process(move |sender, cancellation| {
-            export_library_to_zip_priv(
-                path,
-                library_folder,
-                this_connection,
-                tracks,
-                sender,
-                cancellation,
-            )
-        }))
-    }
-
-    /// Import from a library archive at `url`.
-    ///
-    /// See [`Library::import_library_from_zip`] for what cancelling leaves
-    /// behind.
-    pub fn import_library_from_url(&self, url: &str, source: Source) -> Result<ProcessHandle> {
-        log::info!("Importing library from URL {url}");
-        let url = url.to_owned();
-        let library_folder = self.folder().to_owned();
-        let this_connection = self.connection.clone();
-
-        Ok(spawn_process(move |sender, cancellation| {
-            import_library_from_url_priv(
-                url,
-                library_folder,
-                source,
-                this_connection,
-                sender,
-                cancellation,
-            )
-        }))
-    }
-
-    /// Import from metadata from a database file at `url`.
-    pub fn import_metadata_from_url(&self, url: &str) -> Result<ProcessHandle> {
-        log::info!("Importing metadata from URL {url}");
-
-        let url = url.to_owned();
-        let this_connection = self.connection.clone();
-        let cache_dir = self.cache_dir.clone();
-
-        Ok(spawn_process(move |sender, cancellation| {
-            import_metadata_from_url_priv(url, cache_dir, this_connection, sender, cancellation)
-        }))
+    /// Clone it and move the clone to a worker thread to run the synchronous
+    /// [`exchange`](crate::library::exchange) operations there.
+    pub fn exchange_context(&self) -> ExchangeContext {
+        ExchangeContext {
+            connection: self.connection.clone(),
+            folder: self.folder.clone(),
+            cache_dir: self.cache_dir.clone(),
+        }
     }
 }
 
-fn import_library_from_zip_priv(
-    zip_path: impl AsRef<Path>,
-    library_folder: impl AsRef<Path>,
+/// Import a music library from the `.muslib` archive at `path` into the
+/// library whose connection `connection` opens.
+///
+/// This runs on the calling thread; the application schedules it on a worker
+/// thread. Cancellation is cooperative: the observer returns
+/// [`ControlFlow::Break`] to ask the operation to stop, and the operation
+/// stops between units of work, leaving the library in its prior state or in
+/// a consistent partially-imported state whose metadata and track files
+/// agree. Rerunning the same import copies exactly what is still missing.
+///
+/// Every audio file is written next to its destination and only moved into
+/// place once it is whole, so a file that is present at its final path is
+/// always complete — a crash or a full disk in the middle of a copy cannot
+/// leave a truncated file that later runs would skip.
+pub fn import_library_zip(
+    connection: &Arc<Mutex<SqliteConnection>>,
+    folder: &Path,
+    path: impl AsRef<Path>,
     source: Source,
-    this_connection: Arc<Mutex<SqliteConnection>>,
-    sender: &async_channel::Sender<ProcessMsg>,
-    cancellation: &Cancellation,
-) -> Result<()> {
-    let mut archive = zip::ZipArchive::new(BufReader::new(fs::File::open(zip_path)?))?;
+    observer: &mut dyn FnMut(ExchangeEvent) -> ControlFlow<()>,
+) -> Result<ExchangeReport> {
+    log::info!(
+        "Importing library from ZIP at {}",
+        path.as_ref().to_string_lossy()
+    );
+
+    let mut archive = zip::ZipArchive::new(BufReader::new(fs::File::open(path)?))?;
 
     // Refuse an archive this build cannot read before extracting anything.
     read_manifest(&mut archive)?;
@@ -204,7 +193,7 @@ fn import_library_from_zip_priv(
         &mut BufWriter::new(tmp_db_file.as_file()),
     )?;
 
-    cancellation.check()?;
+    observe(observer, ExchangeEvent::Progress(0.0))?;
 
     // Load and validate the source graph, and check the archive's audio
     // entries against it, before a single row of the destination changes.
@@ -212,10 +201,12 @@ fn import_library_from_zip_priv(
     let graph = ImportGraph::load(&mut source_connection)?;
     validate_archive_entries(&mut archive, &graph)?;
 
-    cancellation.check()?;
+    observe(observer, ExchangeEvent::Progress(0.1))?;
 
     // Import metadata, applying local-wins to whatever already exists.
-    let (report, tracks) = import_metadata_from_file(graph, source, this_connection, false)?;
+    let mut this_connection = db::lock_connection(connection);
+
+    let (report, tracks) = import_metadata_from_file(graph, source, &mut this_connection, false)?;
 
     log::info!(
         "Import wrote {} rows, kept {} existing entities and skipped {} colliding rows",
@@ -230,9 +221,13 @@ fn import_library_from_zip_priv(
     let n_tracks = tracks.len().max(1);
 
     for (index, track) in tracks.into_iter().enumerate() {
-        cancellation.check()?;
+        // Cancellation points are also where progress is reported.
+        observe(
+            observer,
+            ExchangeEvent::Progress(0.1 + 0.9 * (index as f64 / n_tracks as f64)),
+        )?;
 
-        let library_track_file_path = track.path.resolve(library_folder.as_ref());
+        let library_track_file_path = track.path.resolve(folder);
         let mut part_path = library_track_file_path.clone();
         part_path.as_mut_os_string().push(".part");
 
@@ -275,12 +270,9 @@ fn import_library_from_zip_priv(
                 return Err(err);
             }
         }
-
-        // Ignore if the reveiver has been dropped.
-        let _ = sender.send_blocking(ProcessMsg::Progress((index + 1) as f64 / n_tracks as f64));
     }
 
-    Ok(())
+    Ok(report.into())
 }
 
 /// Check that the audio entries of an opened archive match the track paths of
@@ -355,7 +347,7 @@ fn copy_to_file(source: impl Read, path: impl AsRef<Path>) -> Result<()> {
 }
 
 /// Copy the library database into a temporary directory, without the listening
-/// history and the privatetags, along with the assignments referring to those
+/// history and the private tags, along with the assignments referring to those
 /// tags.
 ///
 /// An export is meant to be handed to someone else, so neither must be in the
@@ -409,76 +401,142 @@ fn database_for_export(connection: &mut SqliteConnection) -> Result<TempDir> {
     Ok(dir)
 }
 
-fn export_library_to_zip_priv(
-    zip_path: impl AsRef<Path>,
-    library_folder: impl AsRef<Path>,
-    this_connection: Arc<Mutex<SqliteConnection>>,
-    tracks: Vec<tables::Track>,
-    sender: &async_channel::Sender<ProcessMsg>,
-    cancellation: &Cancellation,
+/// Export the whole music library to a `.muslib` archive at `path`, replacing
+/// an existing file only once the new archive is complete.
+///
+/// This runs on the calling thread. The archive is written to a temporary file
+/// next to `path`, synced, and only then moved onto `path`, so a failed or
+/// cancelled export never destroys a previous valid archive. Track audio is
+/// streamed into the archive without reading a whole track into memory.
+///
+/// Private tags are personal to this library and are left out, together with
+/// every assignment referring to one. The exported track list is read from the
+/// sanitized snapshot being archived, never from a live query taken earlier.
+pub fn export_library_zip(
+    connection: &Arc<Mutex<SqliteConnection>>,
+    folder: &Path,
+    path: impl AsRef<Path>,
+    observer: &mut dyn FnMut(ExchangeEvent) -> ControlFlow<()>,
 ) -> Result<()> {
+    let path = path.as_ref().to_owned();
+    log::info!("Exporting library to ZIP at {}", path.to_string_lossy());
     // Every export ships the sanitized copy rather than the file on disk. Every
     // library has a listening history to strip, so there is no case left where
     // shipping the original would be correct, and skipping the copy on a library
     // that happens to have no private tags would silently reintroduce the leak.
-    // The copy happens here rather than in the caller, so that the work does not
-    // block the thread that started the export.
     let database = {
-        let connection = &mut *db::lock_connection(&this_connection);
+        let connection = &mut *db::lock_connection(connection);
         database_for_export(connection)?
     };
 
-    cancellation.check()?;
+    // The track list comes from the same snapshot that is being archived, so
+    // the archive's database and its audio files can never disagree.
+    let copy = &mut SqliteConnection::establish(
+        database
+            .path()
+            .join("musicus.musdb")
+            .to_str()
+            .ok_or_else(|| anyhow!("The temporary directory path is not valid Unicode"))?,
+    )?;
+    let tracks = tracks::table.load::<tables::Track>(copy)?;
 
-    let mut zip = zip::ZipWriter::new(BufWriter::new(fs::File::create(zip_path)?));
+    observe(observer, ExchangeEvent::Progress(0.05))?;
 
-    // Describe the archive first, so that an importer can decide whether it can
-    // read the rest before extracting anything.
-    let manifest = ArchiveManifest {
-        format_version: ARCHIVE_FORMAT_VERSION,
-        schema_version: db::SCHEMA_VERSION,
-        created_at: db::now().and_utc().to_rfc3339(),
-        n_tracks: tracks.len(),
-    };
+    let destination: &Path = path.as_ref();
+    let parent = destination.parent().ok_or_else(|| {
+        anyhow!(
+            "The destination {} has no parent directory",
+            destination.display()
+        )
+    })?;
+    fs::create_dir_all(parent)?;
 
-    zip.start_file(MANIFEST_NAME, SimpleFileOptions::default())?;
-    zip.write_all(&serde_json::to_vec_pretty(&manifest)?)?;
+    let file_name = destination
+        .file_name()
+        .ok_or_else(|| anyhow!("The destination {} has no file name", destination.display()))?;
+    let tmp_path = parent.join(format!(".{}.new", file_name.to_string_lossy()));
 
-    // Without the database the archive would be worthless, so this file is the
-    // one that is not allowed to be missing.
-    let database_path = database.path().join("musicus.musdb");
+    let mut n_missing_total: usize = 0;
 
-    if !add_file_to_zip(&mut zip, &database_path, "musicus.musdb")? {
-        bail!("The library database is missing");
-    }
+    let result = (|| -> Result<()> {
+        let file = File::create(&tmp_path)?;
+        let mut zip = ZipWriter::new(BufWriter::new(file));
 
-    // avoid div by 0
-    let n_tracks = tracks.len().max(1);
-    let mut n_missing = 0;
+        // Describe the archive first, so that an importer can decide whether it
+        // can read the rest before extracting anything.
+        let manifest = ArchiveManifest {
+            format_version: ARCHIVE_FORMAT_VERSION,
+            schema_version: db::SCHEMA_VERSION,
+            created_at: db::now().and_utc().to_rfc3339(),
+            n_tracks: tracks.len(),
+        };
 
-    // Include all tracks that are part of the library.
-    for (index, track) in tracks.into_iter().enumerate() {
-        cancellation.check()?;
+        zip.start_file(MANIFEST_NAME, SimpleFileOptions::default())?;
+        zip.write_all(&serde_json::to_vec_pretty(&manifest)?)?;
 
-        if !add_file_to_zip(
-            &mut zip,
-            track.path.resolve(library_folder.as_ref()),
-            track.path.to_zip_name(),
-        )? {
-            n_missing += 1;
+        // Without the database the archive would be worthless, so this file is
+        // the one that is not allowed to be missing.
+        let database_path = database.path().join("musicus.musdb");
+
+        if !add_file_to_zip(&mut zip, &database_path, "musicus.musdb")? {
+            bail!("The library database is missing");
         }
 
-        // Ignore if the reveiver has been dropped.
-        let _ = sender.send_blocking(ProcessMsg::Progress((index + 1) as f64 / n_tracks as f64));
+        // avoid div by 0
+        let n_tracks = tracks.len().max(1);
+
+        // Include all tracks that are part of the library, streaming each file.
+        for (index, track) in tracks.into_iter().enumerate() {
+            observe(
+                observer,
+                ExchangeEvent::Progress(0.05 + 0.95 * (index as f64 / n_tracks as f64)),
+            )?;
+
+            if !add_file_to_zip(
+                &mut zip,
+                track.path.resolve(folder),
+                track.path.to_zip_name(),
+            )? {
+                n_missing_total += 1;
+            }
+        }
+
+        // Finish, flush and sync before anything is moved onto the destination.
+        let writer = zip.finish()?;
+        let file = writer.into_inner()?;
+        file.sync_all()?;
+
+        drop(file);
+
+        Ok(())
+    })();
+
+    // Replace the destination only once the new archive is complete and on
+    // disk; a failure leaves the previous archive untouched.
+    match result {
+        Ok(()) => {
+            fs::rename(&tmp_path, destination)?;
+        }
+        Err(err) => {
+            if let Err(remove_err) = fs::remove_file(&tmp_path) {
+                log::warn!(
+                    "Failed to remove incomplete archive {}: {remove_err}",
+                    tmp_path.display()
+                );
+            }
+
+            return Err(err);
+        }
     }
 
-    zip.finish()?;
-
-    if n_missing > 0 {
-        let _ = sender.send_blocking(ProcessMsg::Warning(format_translated!(
-            gettext("{} track files were missing and could not be exported."),
-            n_missing
-        )));
+    if n_missing_total > 0 {
+        observe(
+            observer,
+            ExchangeEvent::Warning(format!(
+                "{} track files were missing and could not be exported.",
+                n_missing_total
+            )),
+        )?;
     }
 
     Ok(())
@@ -510,117 +568,85 @@ fn add_file_to_zip(
         Err(err) => return Err(err.into()),
     };
 
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer)?;
-
+    // Stream the file into the archive with bounded memory: a track is never
+    // read into memory whole.
     zip.start_file(zip_path, SimpleFileOptions::default())?;
-    zip.write_all(&buffer)?;
+    std::io::copy(&mut file, zip)?;
 
     Ok(true)
 }
 
-fn import_metadata_from_url_priv(
-    url: String,
-    cache_dir: PathBuf,
-    this_connection: Arc<Mutex<SqliteConnection>>,
-    sender: &async_channel::Sender<ProcessMsg>,
-    cancellation: &Cancellation,
-) -> Result<()> {
-    let runtime = tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()?;
-
-    let _ = sender.send_blocking(ProcessMsg::Message(format_translated!(
-        gettext("Downloading {}"),
-        &url
-    )));
-
-    let db_path = metadata_file_path(&cache_dir);
-
-    runtime.block_on(download_file(&url, &db_path, sender, cancellation))?;
-    cancellation.check()?;
-
-    let _ = sender.send_blocking(ProcessMsg::Message(gettext("Importing downloaded library")));
-
-    update_metadata_from_file(&db_path, this_connection)
-}
-
-fn import_library_from_url_priv(
-    url: String,
-    library_folder: impl AsRef<Path>,
-    source: Source,
-    this_connection: Arc<Mutex<SqliteConnection>>,
-    sender: &async_channel::Sender<ProcessMsg>,
-    cancellation: &Cancellation,
-) -> Result<()> {
-    let runtime = tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()?;
-
-    let _ = sender.send_blocking(ProcessMsg::Message(format_translated!(
-        gettext("Downloading {}"),
-        &url
-    )));
-
-    let archive_file = runtime.block_on(download_tmp_file(&url, sender, cancellation))?;
-    cancellation.check()?;
-
-    let _ = sender.send_blocking(ProcessMsg::Message(gettext("Importing downloaded library")));
-
-    import_library_from_zip_priv(
-        archive_file.path(),
-        library_folder,
-        source,
-        this_connection,
-        sender,
-        cancellation,
-    )
-}
-
-/// Update metadata from the database file at `path`.
+/// Install the metadata database at `path` into the library with the cache
+/// directory `cache_dir`.
 ///
-/// Catalogue-owned fields and associations of every entity with
-/// `enable_updates` are replaced with the catalogue's current values; newly
-/// referenced dependencies are imported; everything else stays untouched.
-fn update_metadata_from_file(
+/// The file is validated (schema and graph) and its contents are applied to
+/// the library through the catalog-driven refresh rules **before** the
+/// currently usable cached database is replaced, and the replacement is
+/// atomic. A malformed or unreadable download therefore never leaves the app
+/// with a broken cache file.
+pub fn install_metadata(
+    connection: &Arc<Mutex<SqliteConnection>>,
+    cache_dir: &Path,
     path: impl AsRef<Path>,
-    this_connection: Arc<Mutex<SqliteConnection>>,
+    observer: &mut dyn FnMut(ExchangeEvent) -> ControlFlow<()>,
 ) -> Result<()> {
-    let mut other_connection = db::connect(path.as_ref())?;
+    observe(
+        observer,
+        ExchangeEvent::Message("Validating the downloaded metadata database".to_owned()),
+    )?;
 
-    // Load and validate the whole catalogue once, then plan the refresh
-    // against the destination before opening the write transaction.
+    // Validate in place before anything of the current cache is touched.
+    let mut other_connection = db::connect(path.as_ref())?;
     let graph = ImportGraph::load(&mut other_connection)?;
 
-    let mut this_connection = db::lock_connection(&this_connection);
-    refresh_metadata(&graph, &mut this_connection)
+    observe(observer, ExchangeEvent::Progress(0.5))?;
+
+    {
+        let mut this_connection = db::lock_connection(connection);
+        refresh_metadata(&graph, &mut this_connection)?;
+    }
+
+    // Atomically replace the cache file with the validated download.
+    let cache = metadata_file_path(cache_dir);
+    if let Some(parent) = cache.parent() {
+        fs::create_dir_all(parent)?;
+    }
+
+    let tmp = NamedTempFile::new_in(
+        cache
+            .parent()
+            .ok_or_else(|| anyhow!("The metadata cache has no parent directory"))?,
+    )?;
+    fs::copy(path.as_ref(), tmp.path())?;
+    tmp.persist(&cache)?;
+
+    observe(observer, ExchangeEvent::Progress(1.0))?;
+
+    Ok(())
 }
 
-/// Import metadata from the database file at `path` into this library,
-/// applying deterministic local-wins semantics.
+/// The cached metadata database path of `cache_dir`.
+pub(crate) fn metadata_file_path(cache_dir: &Path) -> PathBuf {
+    cache_dir.join("metadata.musdb")
+}
+
+/// Import metadata from the database file at `path` into the library
+/// `connection` opens, applying deterministic local-wins semantics.
 ///
 /// Every entity whose ID already exists locally is kept entirely unchanged,
-/// including its owned associations, and nothing about its position or order
-/// is disturbed. Newly imported entities may reference the kept local entity
-/// through its shared ID. A colliding local work whose imported position does
-/// not match its stored one makes the whole import fail with a conflict
-/// before anything is written; a colliding local track (by ID or by file
-/// path) wins and its imported rows and file are skipped.
-///
-/// If `ignore_tracks` is `true`, tracks will not be imported from the
-/// database. In any case, the tracks that still need their audio files are
-/// returned, together with a report of what was written.
+/// including its owned associations. A colliding local track (by ID or by file
+/// path) wins and its imported rows and file are skipped. If `ignore_tracks`
+/// is `true`, tracks are not imported; the tracks that still need their audio
+/// files are returned.
 fn import_metadata_from_file(
     graph: ImportGraph,
     source: Source,
-    this_connection: Arc<Mutex<SqliteConnection>>,
+    connection: &mut SqliteConnection,
     ignore_tracks: bool,
 ) -> Result<(ImportReport, Vec<tables::Track>)> {
-    let mut this_connection = db::lock_connection(&this_connection);
-
     // Plan local-wins against the destination before any row changes: a
     // structural conflict fails here, with the destination untouched.
-    let destination = DestinationState::load(&mut this_connection)?;
+    let destination = DestinationState::load(connection)?;
     let plan = graph.plan_merge(&destination, None)?;
 
     let tracks_to_import = if ignore_tracks {
@@ -634,7 +660,7 @@ fn import_metadata_from_file(
             .collect::<Vec<tables::Track>>()
     };
 
-    this_connection.transaction::<(), Error, _>(|connection| {
+    connection.transaction::<(), Error, _>(|connection| {
         apply_import(
             connection,
             &graph,
@@ -647,98 +673,4 @@ fn import_metadata_from_file(
     })?;
 
     Ok((plan.report.into_inner(), tracks_to_import))
-}
-
-/// How long a download may stall before it is considered failed.
-///
-/// There is deliberately no overall request timeout: a library archive can
-/// legitimately take a long time to transfer. This bounds the time without any
-/// progress instead, which is what actually distinguishes a stalled server from
-/// a slow one.
-const DOWNLOAD_READ_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(60);
-
-/// Download `url` into `path`, replacing whatever is already there.
-///
-/// The download goes to a temporary file next to `path` and is only moved into
-/// place once it has completed, so that an interrupted download cannot leave a
-/// truncated file behind for the next run to pick up.
-async fn download_file(
-    url: &str,
-    path: impl AsRef<Path>,
-    sender: &async_channel::Sender<ProcessMsg>,
-    cancellation: &Cancellation,
-) -> Result<()> {
-    let path = path.as_ref();
-    let parent = path
-        .parent()
-        .ok_or_else(|| anyhow!("Download target {} has no parent directory", path.display()))?;
-
-    tokio::fs::create_dir_all(parent).await?;
-
-    let file = download_to_tmp_file(url, Some(parent), sender, cancellation).await?;
-    file.persist(path)?;
-
-    Ok(())
-}
-
-/// Download `url` into a temporary file in the system temporary directory.
-async fn download_tmp_file(
-    url: &str,
-    sender: &async_channel::Sender<ProcessMsg>,
-    cancellation: &Cancellation,
-) -> Result<NamedTempFile> {
-    download_to_tmp_file(url, None, sender, cancellation).await
-}
-
-/// Download `url` into a new temporary file, in `dir` if given, reporting
-/// progress on `sender` if the server announced a content length.
-async fn download_to_tmp_file(
-    url: &str,
-    dir: Option<&Path>,
-    sender: &async_channel::Sender<ProcessMsg>,
-    cancellation: &Cancellation,
-) -> Result<NamedTempFile> {
-    let client = reqwest::Client::builder()
-        .connect_timeout(std::time::Duration::from_secs(10))
-        .read_timeout(DOWNLOAD_READ_TIMEOUT)
-        .build()?;
-
-    let response = client.get(url).send().await?;
-    response.error_for_status_ref()?;
-
-    let total_size = response.content_length();
-    let mut body_stream = response.bytes_stream();
-
-    let file = match dir {
-        Some(dir) => NamedTempFile::new_in(dir)?,
-        None => NamedTempFile::new()?,
-    };
-
-    let mut writer =
-        tokio::io::BufWriter::new(tokio::fs::File::from_std(file.as_file().try_clone()?));
-
-    let mut downloaded = 0;
-    while let Some(chunk) = body_stream.next().await {
-        cancellation.check()?;
-
-        let chunk: Vec<u8> = chunk?.into();
-        let chunk_size = chunk.len();
-
-        writer.write_all(&chunk).await?;
-
-        if let Some(total_size) = total_size {
-            downloaded += chunk_size as u64;
-            let _ = sender
-                .send(ProcessMsg::Progress(downloaded as f64 / total_size as f64))
-                .await;
-        }
-    }
-
-    writer.flush().await?;
-
-    Ok(file)
-}
-
-pub fn metadata_file_path(cache_dir: &Path) -> PathBuf {
-    cache_dir.join("metadata.musdb")
 }

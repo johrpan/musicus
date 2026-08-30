@@ -6,9 +6,6 @@ use gtk::{
     gio,
     glib::{self, clone},
 };
-use musicus_library::format_translated;
-
-use musicus_library::db::tables::Source;
 
 use crate::{
     config, entity_browser::EntityBrowser, library::Library, process::Process,
@@ -141,29 +138,17 @@ impl LibraryManager {
             }
             Ok(path) => {
                 if let Some(path) = path.path() {
-                    match self
-                        .imp()
-                        .library
-                        .get()
-                        .unwrap()
-                        .import_library_from_zip(&path, Source::Import)
-                    {
-                        Ok(handle) => {
-                            let process = Process::new(
-                                &format_translated!(
-                                    gettext("Importing music library from {}"),
-                                    path.file_name()
-                                        .map(|f| f.to_string_lossy().into_owned())
-                                        .unwrap_or(gettext("archive"))
-                                ),
-                                handle,
-                            );
-
+                    match crate::process::import_library(path, &self.imp().library.get().unwrap()) {
+                        Ok(process) => {
                             process.connect_finished_notify(clone!(
                                 #[weak(rename_to = obj)]
                                 self,
+                                #[weak(rename_to = process)]
+                                process,
                                 move |_| {
-                                    obj.imp().library.get().unwrap().changed();
+                                    if process.error().is_none() && !process.cancelled() {
+                                        obj.imp().library.get().unwrap().changed();
+                                    }
                                 }
                             ));
 
@@ -204,24 +189,8 @@ impl LibraryManager {
             }
             Ok(path) => {
                 if let Some(path) = path.path() {
-                    match self
-                        .imp()
-                        .library
-                        .get()
-                        .unwrap()
-                        .export_library_to_zip(&path)
-                    {
-                        Ok(handle) => {
-                            let process = Process::new(
-                                &format_translated!(
-                                    gettext("Exporting music library to {}"),
-                                    path.file_name()
-                                        .map(|f| f.to_string_lossy().into_owned())
-                                        .unwrap_or(gettext("archive"))
-                                ),
-                                handle,
-                            );
-
+                    match crate::process::export_library(path, &self.imp().library.get().unwrap()) {
+                        Ok(process) => {
                             self.imp()
                                 .process_manager
                                 .get()
@@ -246,16 +215,8 @@ impl LibraryManager {
             config::METADATA_URL.to_string()
         };
 
-        match self
-            .imp()
-            .library
-            .get()
-            .unwrap()
-            .import_metadata_from_url(&url)
-        {
-            Ok(handle) => {
-                let process = Process::new(&gettext("Updating metadata"), handle);
-
+        match crate::process::update_metadata(&url, &self.imp().library.get().unwrap()) {
+            Ok(process) => {
                 self.imp()
                     .process_manager
                     .get()
@@ -277,16 +238,8 @@ impl LibraryManager {
             config::LIBRARY_URL.to_string()
         };
 
-        match self
-            .imp()
-            .library
-            .get()
-            .unwrap()
-            .import_library_from_url(&url, Source::Metadata)
-        {
-            Ok(handle) => {
-                let process = Process::new(&gettext("Updating music library"), handle);
-
+        match crate::process::update_library(&url, &self.imp().library.get().unwrap()) {
+            Ok(process) => {
                 self.imp()
                     .process_manager
                     .get()

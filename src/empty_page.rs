@@ -9,8 +9,6 @@ use glib::clone;
 use gtk::{gio, glib, glib::subclass::Signal};
 use once_cell::sync::Lazy;
 
-use musicus_library::db::tables::Source;
-
 use crate::{
     config, library::Library, process::Process, process_manager::ProcessManager,
     process_row::ProcessRow,
@@ -117,16 +115,8 @@ impl EmptyPage {
                     config::LIBRARY_URL.to_string()
                 };
 
-                match obj
-                    .imp()
-                    .library
-                    .get()
-                    .unwrap()
-                    .import_library_from_url(&url, Source::Metadata)
-                {
-                    Ok(handle) => {
-                        let process = Process::new(&gettext("Downloading music library"), handle);
-
+                match crate::process::update_library(&url, &obj.imp().library.get().unwrap()) {
+                    Ok(process) => {
                         process.connect_finished_notify(clone!(
                             #[weak]
                             obj,

@@ -23,7 +23,6 @@ pub mod list;
 mod load;
 pub mod merge;
 pub mod metadata;
-pub mod process;
 pub mod program;
 pub mod query;
 pub mod refresh;

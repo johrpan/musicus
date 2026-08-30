@@ -20,7 +20,6 @@ use crate::{
     player_bar::PlayerBar,
     playlist_page::PlaylistPage,
     preferences_dialog::PreferencesDialog,
-    process::Process,
     process_manager::ProcessManager,
     search_page::SearchPage,
     util,
@@ -328,9 +327,8 @@ impl Window {
                     config::METADATA_URL.to_string()
                 };
 
-                match library.import_metadata_from_url(&url) {
-                    Ok(handle) => {
-                        let process = Process::new(&gettext("Updating metadata"), handle);
+                match crate::process::update_metadata(&url, &library) {
+                    Ok(process) => {
                         self.imp().process_manager.add_process(&process);
                     }
                     Err(err) => log::error!("Failed to update metadata: {err:?}"),
