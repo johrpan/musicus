@@ -32,10 +32,10 @@ mod import_graph;
 pub mod list;
 mod load;
 pub mod merge;
-pub mod metadata;
+mod metadata;
 pub mod program;
 pub mod query;
-pub mod refresh;
+mod refresh;
 pub mod search;
 
 /// A music library backed by a SQLite database in a given folder.

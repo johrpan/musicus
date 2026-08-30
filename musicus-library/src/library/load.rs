@@ -358,18 +358,6 @@ impl Loader {
             .collect()
     }
 
-    /// The track identified by `id`.
-    #[allow(dead_code)]
-    pub(crate) fn track(&self, id: &str) -> Result<Track> {
-        let row = self
-            .tracks
-            .get(id)
-            .cloned()
-            .ok_or_else(|| not_found(EntityKind::Track, id))?;
-
-        self.track_from_row(row)
-    }
-
     /// Build a track model from a loaded row.
     fn track_from_row(&self, row: tables::Track) -> Result<Track> {
         let mut works = Vec::new();
