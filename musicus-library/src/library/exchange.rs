@@ -21,6 +21,7 @@ use crate::{
     library::{
         import_graph::{apply_import, DestinationState, ImportGraph, ImportReport},
         process::{spawn_process, Cancellation, ProcessHandle, ProcessMsg},
+        refresh::refresh_metadata,
     },
 };
 
@@ -577,250 +578,22 @@ fn import_library_from_url_priv(
 }
 
 /// Update metadata from the database file at `path`.
+///
+/// Catalogue-owned fields and associations of every entity with
+/// `enable_updates` are replaced with the catalogue's current values; newly
+/// referenced dependencies are imported; everything else stays untouched.
 fn update_metadata_from_file(
     path: impl AsRef<Path>,
     this_connection: Arc<Mutex<SqliteConnection>>,
 ) -> Result<()> {
     let mut other_connection = db::connect(path.as_ref())?;
 
-    // Load the source once and validate it before anything is written. All
-    // per-owner association reads below use the grouped rows of this graph
-    // instead of rescanning whole tables.
+    // Load and validate the whole catalogue once, then plan the refresh
+    // against the destination before opening the write transaction.
     let graph = ImportGraph::load(&mut other_connection)?;
 
     let mut this_connection = db::lock_connection(&this_connection);
-
-    this_connection.transaction::<(), Error, _>(|connection| {
-        let existing_work_ids = works::table
-            .select(works::work_id)
-            .load::<String>(connection)?
-            .into_iter()
-            .collect::<HashSet<_>>();
-
-        for person in graph.persons.values() {
-            let enable_updates = persons::table
-                .filter(persons::person_id.eq(&person.person_id))
-                .select(persons::enable_updates)
-                .first(connection)
-                .optional()?;
-
-            if enable_updates == Some(true) {
-                diesel::update(persons::table.filter(persons::person_id.eq(&person.person_id)))
-                    .set(persons::name.eq(person.name.clone()))
-                    .execute(connection)?;
-            }
-        }
-
-        for role in graph.roles.values() {
-            let enable_updates = roles::table
-                .filter(roles::role_id.eq(&role.role_id))
-                .select(roles::enable_updates)
-                .first(connection)
-                .optional()?;
-
-            if enable_updates == Some(true) {
-                diesel::update(roles::table.filter(roles::role_id.eq(&role.role_id)))
-                    .set(roles::name.eq(role.name.clone()))
-                    .execute(connection)?;
-            }
-        }
-
-        for tag in graph.tags.values() {
-            let enable_updates = tags::table
-                .filter(tags::tag_id.eq(&tag.tag_id))
-                .select(tags::enable_updates)
-                .first(connection)
-                .optional()?;
-
-            if enable_updates == Some(true) {
-                // Only the name is merged. Whether a tag takes a value decides
-                // what the assignments already in this library mean, so an
-                // update from the catalogue must not change it underneath them.
-                diesel::update(tags::table.filter(tags::tag_id.eq(&tag.tag_id)))
-                    .set(tags::name.eq(tag.name.clone()))
-                    .execute(connection)?;
-            }
-        }
-
-        for instrument in graph.instruments.values() {
-            let enable_updates = instruments::table
-                .filter(instruments::instrument_id.eq(&instrument.instrument_id))
-                .select(instruments::enable_updates)
-                .first(connection)
-                .optional()?;
-
-            if enable_updates == Some(true) {
-                diesel::update(
-                    instruments::table
-                        .filter(instruments::instrument_id.eq(&instrument.instrument_id)),
-                )
-                .set(instruments::name.eq(instrument.name.clone()))
-                .execute(connection)?;
-            }
-        }
-
-        for work in graph.works.values() {
-            let enable_updates = works::table
-                .filter(works::work_id.eq(&work.work_id))
-                .select(works::enable_updates)
-                .first(connection)
-                .optional()?;
-
-            if enable_updates == Some(true) {
-                diesel::update(works::table.filter(works::work_id.eq(&work.work_id)))
-                    .set(works::name.eq(work.name.clone()))
-                    .execute(connection)?;
-
-                diesel::delete(work_persons::table.filter(work_persons::work_id.eq(&work.work_id)))
-                    .execute(connection)?;
-
-                for work_person in graph.work_persons_of(&work.work_id) {
-                    diesel::insert_into(work_persons::table)
-                        .values(work_person.clone())
-                        .execute(connection)?;
-                }
-
-                diesel::delete(
-                    work_instruments::table.filter(work_instruments::work_id.eq(&work.work_id)),
-                )
-                .execute(connection)?;
-
-                for work_instrument in graph.work_instruments_of(&work.work_id) {
-                    diesel::insert_into(work_instruments::table)
-                        .values(work_instrument.clone())
-                        .execute(connection)?;
-                }
-
-                // Relations are replaced like any other owned association. Rows
-                // whose target is not part of this library are skipped, because
-                // a relation row must never point at a missing work.
-                diesel::delete(
-                    work_relations::table.filter(work_relations::work_id.eq(&work.work_id)),
-                )
-                .execute(connection)?;
-
-                for relation in graph.work_relations_of(&work.work_id) {
-                    if existing_work_ids.contains(&relation.related_work_id) {
-                        diesel::insert_into(work_relations::table)
-                            .values(relation.clone())
-                            .execute(connection)?;
-                    }
-                }
-
-                diesel::delete(work_tags::table.filter(work_tags::work_id.eq(&work.work_id)))
-                    .execute(connection)?;
-
-                for work_tag in graph.work_tags_of(&work.work_id) {
-                    diesel::insert_into(work_tags::table)
-                        .values(work_tag.clone())
-                        .execute(connection)?;
-                }
-            }
-        }
-
-        for ensemble in graph.ensembles.values() {
-            let enable_updates = ensembles::table
-                .filter(ensembles::ensemble_id.eq(&ensemble.ensemble_id))
-                .select(ensembles::enable_updates)
-                .first(connection)
-                .optional()?;
-
-            if enable_updates == Some(true) {
-                diesel::update(
-                    ensembles::table.filter(ensembles::ensemble_id.eq(&ensemble.ensemble_id)),
-                )
-                .set(ensembles::name.eq(ensemble.name.clone()))
-                .execute(connection)?;
-
-                diesel::delete(
-                    ensemble_persons::table
-                        .filter(ensemble_persons::ensemble_id.eq(&ensemble.ensemble_id)),
-                )
-                .execute(connection)?;
-
-                for ensemble_person in graph.ensemble_persons_of(&ensemble.ensemble_id) {
-                    diesel::insert_into(ensemble_persons::table)
-                        .values(ensemble_person.clone())
-                        .execute(connection)?;
-                }
-            }
-        }
-
-        for recording in graph.recordings.values() {
-            let enable_updates = recordings::table
-                .filter(recordings::recording_id.eq(&recording.recording_id))
-                .select(recordings::enable_updates)
-                .first(connection)
-                .optional()?;
-
-            if enable_updates == Some(true) {
-                diesel::delete(
-                    recording_tags::table
-                        .filter(recording_tags::recording_id.eq(&recording.recording_id)),
-                )
-                .execute(connection)?;
-
-                for recording_tag in graph.recording_tags_of(&recording.recording_id) {
-                    diesel::insert_into(recording_tags::table)
-                        .values(recording_tag.clone())
-                        .execute(connection)?;
-                }
-
-                diesel::delete(
-                    recording_persons::table
-                        .filter(recording_persons::recording_id.eq(&recording.recording_id)),
-                )
-                .execute(connection)?;
-
-                for recording_person in graph.recording_persons_of(&recording.recording_id) {
-                    diesel::insert_into(recording_persons::table)
-                        .values(recording_person.clone())
-                        .execute(connection)?;
-                }
-
-                diesel::delete(
-                    recording_ensembles::table
-                        .filter(recording_ensembles::recording_id.eq(&recording.recording_id)),
-                )
-                .execute(connection)?;
-
-                for recording_ensemble in graph.recording_ensembles_of(&recording.recording_id) {
-                    diesel::insert_into(recording_ensembles::table)
-                        .values(recording_ensemble.clone())
-                        .execute(connection)?;
-                }
-            }
-        }
-
-        for album in graph.albums.values() {
-            let enable_updates = albums::table
-                .filter(albums::album_id.eq(&album.album_id))
-                .select(albums::enable_updates)
-                .first(connection)
-                .optional()?;
-
-            if enable_updates == Some(true) {
-                diesel::update(albums::table.filter(albums::album_id.eq(&album.album_id)))
-                    .set(albums::name.eq(album.name.clone()))
-                    .execute(connection)?;
-
-                diesel::delete(
-                    album_recordings::table.filter(album_recordings::album_id.eq(&album.album_id)),
-                )
-                .execute(connection)?;
-
-                for album_recording in graph.album_recordings_of(&album.album_id) {
-                    diesel::insert_into(album_recordings::table)
-                        .values(album_recording.clone())
-                        .execute(connection)?;
-                }
-            }
-        }
-
-        Ok(())
-    })?;
-
-    Ok(())
+    refresh_metadata(&graph, &mut this_connection)
 }
 
 /// Import metadata from the database file at `path` into this library,

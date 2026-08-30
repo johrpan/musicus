@@ -520,18 +520,38 @@ impl ImportGraph {
 /// know, loaded once before the import transaction starts.
 pub(crate) struct DestinationState {
     pub(crate) persons: HashSet<String>,
+    /// Local persons with `enable_updates = true`, for metadata refresh.
+    pub(crate) enabled_persons: HashSet<String>,
+    pub(crate) person_rows: HashMap<String, tables::Person>,
     pub(crate) roles: HashSet<String>,
+    pub(crate) enabled_roles: HashSet<String>,
+    pub(crate) role_rows: HashMap<String, tables::Role>,
     pub(crate) instruments: HashSet<String>,
+    pub(crate) enabled_instruments: HashSet<String>,
+    pub(crate) instrument_rows: HashMap<String, tables::Instrument>,
     pub(crate) tags: HashSet<String>,
+    pub(crate) enabled_tags: HashSet<String>,
+    /// Local tags that any work or recording is assigned, for refresh
+    /// conflict checks.
+    pub(crate) tags_in_use: HashSet<String>,
+    pub(crate) tag_rows: HashMap<String, tables::Tag>,
     pub(crate) works: HashSet<String>,
+    pub(crate) enabled_works: HashSet<String>,
+    pub(crate) work_rows: HashMap<String, tables::Work>,
     /// The position of every local work, for structural conflict checks:
     /// parent and sequence as stored.
     pub(crate) work_positions: HashMap<String, (Option<String>, Option<i32>)>,
     /// Positions already taken by local children: (parent, sequence).
     pub(crate) child_positions: HashSet<(String, i32)>,
     pub(crate) ensembles: HashSet<String>,
+    pub(crate) enabled_ensembles: HashSet<String>,
+    pub(crate) ensemble_rows: HashMap<String, tables::Ensemble>,
     pub(crate) recordings: HashSet<String>,
+    pub(crate) enabled_recordings: HashSet<String>,
+    pub(crate) recording_rows: HashMap<String, tables::Recording>,
     pub(crate) albums: HashSet<String>,
+    pub(crate) enabled_albums: HashSet<String>,
+    pub(crate) album_rows: HashMap<String, tables::Album>,
     pub(crate) tracks: HashSet<String>,
     /// Local track paths, for path collision checks.
     pub(crate) track_paths: HashSet<String>,
@@ -539,64 +559,113 @@ pub(crate) struct DestinationState {
 
 impl DestinationState {
     pub(crate) fn load(connection: &mut SqliteConnection) -> Result<Self> {
-        let work_positions = works::table
-            .select((
-                works::work_id,
-                works::parent_work_id,
-                works::sequence_number,
-            ))
-            .load::<(String, Option<String>, Option<i32>)>(connection)?
+        let persons = persons::table.load::<tables::Person>(connection)?;
+        let roles = roles::table.load::<tables::Role>(connection)?;
+        let instruments = instruments::table.load::<tables::Instrument>(connection)?;
+        let tags = tags::table.load::<tables::Tag>(connection)?;
+        let works = works::table.load::<tables::Work>(connection)?;
+        let ensembles = ensembles::table.load::<tables::Ensemble>(connection)?;
+        let recordings = recordings::table.load::<tables::Recording>(connection)?;
+        let albums = albums::table.load::<tables::Album>(connection)?;
+
+        let tags_in_use = work_tags::table
+            .select(work_tags::tag_id)
+            .load::<String>(connection)?
             .into_iter()
-            .map(|(id, parent, sequence)| (id, (parent, sequence)))
+            .chain(
+                recording_tags::table
+                    .select(recording_tags::tag_id)
+                    .load::<String>(connection)?,
+            )
+            .collect::<HashSet<_>>();
+
+        let work_positions = works
+            .iter()
+            .map(|work| {
+                (
+                    work.work_id.clone(),
+                    (work.parent_work_id.clone(), work.sequence_number),
+                )
+            })
             .collect::<HashMap<_, _>>();
 
-        let child_positions = work_positions
+        let child_positions = works
             .iter()
-            .filter_map(|(_, position)| match position {
-                (Some(parent), Some(sequence)) => Some((parent.clone(), *sequence)),
+            .filter_map(|work| match (&work.parent_work_id, work.sequence_number) {
+                (Some(parent), Some(sequence)) => Some((parent.clone(), sequence)),
                 _ => None,
             })
             .collect::<HashSet<_>>();
 
+        let person_rows = keyed_by(persons, |row| row.person_id.clone());
+        let role_rows = keyed_by(roles, |row| row.role_id.clone());
+        let instrument_rows = keyed_by(instruments, |row| row.instrument_id.clone());
+        let tag_rows = keyed_by(tags, |row| row.tag_id.clone());
+        let work_rows = keyed_by(works, |row| row.work_id.clone());
+        let ensemble_rows = keyed_by(ensembles, |row| row.ensemble_id.clone());
+        let recording_rows = keyed_by(recordings, |row| row.recording_id.clone());
+        let album_rows = keyed_by(albums, |row| row.album_id.clone());
+
         Ok(Self {
-            persons: persons::table
-                .select(persons::person_id)
-                .load::<String>(connection)?
-                .into_iter()
-                .collect::<HashSet<_>>(),
-            roles: roles::table
-                .select(roles::role_id)
-                .load::<String>(connection)?
-                .into_iter()
-                .collect::<HashSet<_>>(),
-            instruments: instruments::table
-                .select(instruments::instrument_id)
-                .load::<String>(connection)?
-                .into_iter()
-                .collect::<HashSet<_>>(),
-            tags: tags::table
-                .select(tags::tag_id)
-                .load::<String>(connection)?
-                .into_iter()
-                .collect::<HashSet<_>>(),
-            works: work_positions.keys().cloned().collect(),
+            enabled_persons: person_rows
+                .values()
+                .filter(|row| row.enable_updates)
+                .map(|row| row.person_id.clone())
+                .collect(),
+            enabled_roles: role_rows
+                .values()
+                .filter(|row| row.enable_updates)
+                .map(|row| row.role_id.clone())
+                .collect(),
+            enabled_instruments: instrument_rows
+                .values()
+                .filter(|row| row.enable_updates)
+                .map(|row| row.instrument_id.clone())
+                .collect(),
+            enabled_tags: tag_rows
+                .values()
+                .filter(|row| row.enable_updates)
+                .map(|row| row.tag_id.clone())
+                .collect(),
+            enabled_works: work_rows
+                .values()
+                .filter(|row| row.enable_updates)
+                .map(|row| row.work_id.clone())
+                .collect(),
+            enabled_ensembles: ensemble_rows
+                .values()
+                .filter(|row| row.enable_updates)
+                .map(|row| row.ensemble_id.clone())
+                .collect(),
+            enabled_recordings: recording_rows
+                .values()
+                .filter(|row| row.enable_updates)
+                .map(|row| row.recording_id.clone())
+                .collect(),
+            enabled_albums: album_rows
+                .values()
+                .filter(|row| row.enable_updates)
+                .map(|row| row.album_id.clone())
+                .collect(),
+            persons: person_rows.keys().cloned().collect(),
+            person_rows,
+            roles: role_rows.keys().cloned().collect(),
+            role_rows,
+            instruments: instrument_rows.keys().cloned().collect(),
+            instrument_rows,
+            tags: tag_rows.keys().cloned().collect(),
+            tag_rows,
+            tags_in_use,
+            works: work_rows.keys().cloned().collect(),
+            work_rows,
             work_positions,
             child_positions,
-            ensembles: ensembles::table
-                .select(ensembles::ensemble_id)
-                .load::<String>(connection)?
-                .into_iter()
-                .collect::<HashSet<_>>(),
-            recordings: recordings::table
-                .select(recordings::recording_id)
-                .load::<String>(connection)?
-                .into_iter()
-                .collect::<HashSet<_>>(),
-            albums: albums::table
-                .select(albums::album_id)
-                .load::<String>(connection)?
-                .into_iter()
-                .collect::<HashSet<_>>(),
+            ensembles: ensemble_rows.keys().cloned().collect(),
+            ensemble_rows,
+            recordings: recording_rows.keys().cloned().collect(),
+            recording_rows,
+            albums: album_rows.keys().cloned().collect(),
+            album_rows,
             tracks: tracks::table
                 .select(tracks::track_id)
                 .load::<String>(connection)?
@@ -760,6 +829,8 @@ pub(crate) struct ImportClosure {
     pub(crate) works: HashSet<String>,
     pub(crate) ensembles: HashSet<String>,
     pub(crate) recordings: HashSet<String>,
+    /// Albums are never part of a metadata selection; reserved for symmetry.
+    pub(crate) albums: HashSet<String>,
 }
 
 impl ImportGraph {
@@ -802,7 +873,7 @@ impl ImportGraph {
 
     /// Include an ensemble and everything its record needs: its members with
     /// their people, roles and instruments.
-    fn closure_ensemble(&self, closure: &mut ImportClosure, id: &str) -> Result<()> {
+    pub(crate) fn closure_ensemble(&self, closure: &mut ImportClosure, id: &str) -> Result<()> {
         self.require_present_for_closure(EntityKind::Ensemble, id)?;
         closure.ensembles.insert(id.to_owned());
 
@@ -822,7 +893,7 @@ impl ImportGraph {
     /// Include a recording and everything its record needs: its work tree,
     /// performing persons and ensembles (with the ensembles' members) and its
     /// tags.
-    fn closure_recording(&self, closure: &mut ImportClosure, id: &str) -> Result<()> {
+    pub(crate) fn closure_recording(&self, closure: &mut ImportClosure, id: &str) -> Result<()> {
         self.require_present_for_closure(EntityKind::Recording, id)?;
         closure.recordings.insert(id.to_owned());
 
@@ -864,7 +935,7 @@ impl ImportGraph {
     /// Traversal is cycle-safe: relation graphs may contain cycles, and the
     /// `visited` set terminates them. The parent hierarchy itself is acyclic
     /// (validated when the graph was loaded), so ancestors terminate.
-    fn closure_work(&self, closure: &mut ImportClosure, id: &str) -> Result<()> {
+    pub(crate) fn closure_work(&self, closure: &mut ImportClosure, id: &str) -> Result<()> {
         self.require_present_for_closure(EntityKind::Work, id)?;
 
         let mut queue = std::collections::VecDeque::new();

@@ -26,6 +26,7 @@ pub mod metadata;
 pub mod process;
 pub mod program;
 pub mod query;
+pub mod refresh;
 pub mod search;
 
 /// A music library backed by a SQLite database in a given folder.
