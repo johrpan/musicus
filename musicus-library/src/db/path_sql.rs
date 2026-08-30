@@ -7,13 +7,22 @@
 use anyhow::anyhow;
 use diesel::{
     backend::Backend,
-    deserialize::FromSql,
+    deserialize::{FromSql, FromSqlRow},
+    expression::AsExpression,
     serialize::{IsNull, Output, ToSql},
     sql_types::Text,
     sqlite::Sqlite,
 };
 
 use crate::path::LibraryTrackPath;
+
+// Generate Diesel's expression/row implementations here so the supported
+// domain module does not depend on or expose persistence concepts.
+#[allow(dead_code)]
+#[derive(AsExpression, FromSqlRow)]
+#[diesel(foreign_derive)]
+#[diesel(sql_type = Text)]
+struct LibraryTrackPathProxy(LibraryTrackPath);
 
 impl ToSql<Text, Sqlite> for LibraryTrackPath
 where
@@ -32,16 +41,6 @@ where
 {
     fn from_sql(bytes: DB::RawValue<'_>) -> diesel::deserialize::Result<Self> {
         let text = String::from_sql(bytes)?;
-
-        // Legacy rows store a serialized JSON array of host path components
-        // (e.g. `["recording_00.mp3"]`) instead of the portable form. Convert
-        // them in memory; the schema migration rewrites the stored values.
-        if text.trim_start().starts_with('[') {
-            let components = serde_json::from_str::<Vec<String>>(&text)?;
-            let joined = components.join("/");
-
-            return LibraryTrackPath::try_from_str(&joined).map_err(|err| anyhow!(err).into());
-        }
 
         LibraryTrackPath::try_from_str(&text).map_err(|err| anyhow!(err).into())
     }

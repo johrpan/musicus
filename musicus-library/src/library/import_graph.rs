@@ -9,12 +9,11 @@
 
 use std::collections::{HashMap, HashSet};
 
-use anyhow::Result;
 use diesel::prelude::*;
 
 use crate::{
     db::{self, schema::*, tables, tables::Source},
-    error::{EntityKind, LibraryError},
+    error::{EntityKind, LibraryError, Result},
 };
 
 /// Every row of a source database, loaded once and indexed.
@@ -1380,12 +1379,12 @@ fn check_sequence(owner_kind: EntityKind, owner_id: &str, sequence: i32) -> Resu
     }
 }
 
-fn conflict(message: impl Into<String>) -> anyhow::Error {
-    LibraryError::ImportConflict(message.into()).into()
+fn conflict(message: impl Into<String>) -> LibraryError {
+    LibraryError::ImportConflict(message.into())
 }
 
-fn corrupt(message: impl Into<String>) -> anyhow::Error {
-    LibraryError::Corrupt(message.into()).into()
+fn corrupt(message: impl Into<String>) -> LibraryError {
+    LibraryError::Corrupt(message.into())
 }
 
 fn keyed_by<T, K: std::hash::Hash + Eq>(rows: Vec<T>, key: impl Fn(&T) -> K) -> HashMap<K, T> {

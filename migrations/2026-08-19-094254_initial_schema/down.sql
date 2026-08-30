@@ -21,6 +21,7 @@ DROP TABLE tags;
 DROP TABLE tracks;
 DROP TABLE albums;
 DROP TABLE recordings;
+DROP TABLE work_relations;
 DROP TABLE works;
 DROP TABLE ensembles;
 DROP TABLE instruments;

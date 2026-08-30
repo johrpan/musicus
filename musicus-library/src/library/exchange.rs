@@ -675,7 +675,7 @@ fn import_metadata_from_file(
     source: Source,
     connection: &mut SqliteConnection,
     ignore_tracks: bool,
-) -> Result<(ImportReport, Vec<tables::Track>)> {
+) -> LibraryResult<(ImportReport, Vec<tables::Track>)> {
     // Plan local-wins against the destination before any row changes: a
     // structural conflict fails here, with the destination untouched.
     let destination = DestinationState::load(connection)?;
@@ -692,7 +692,7 @@ fn import_metadata_from_file(
             .collect::<Vec<tables::Track>>()
     };
 
-    connection.transaction::<(), Error, _>(|connection| {
+    connection.transaction::<(), LibraryError, _>(|connection| {
         apply_import(
             connection,
             &graph,

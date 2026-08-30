@@ -189,18 +189,18 @@ diesel::table! {
 }
 
 diesel::table! {
+    work_relations (work_id, related_work_id) {
+        work_id -> Text,
+        related_work_id -> Text,
+    }
+}
+
+diesel::table! {
     work_tags (work_id, sequence_number) {
         work_id -> Text,
         tag_id -> Text,
         value -> Nullable<Text>,
         sequence_number -> Integer,
-    }
-}
-
-diesel::table! {
-    work_relations (work_id, related_work_id) {
-        work_id -> Text,
-        related_work_id -> Text,
     }
 }
 
@@ -244,7 +244,6 @@ diesel::joinable!(work_instruments -> works (work_id));
 diesel::joinable!(work_persons -> persons (person_id));
 diesel::joinable!(work_persons -> roles (role_id));
 diesel::joinable!(work_persons -> works (work_id));
-diesel::joinable!(work_relations -> works (work_id));
 diesel::joinable!(work_tags -> tags (tag_id));
 diesel::joinable!(work_tags -> works (work_id));
 

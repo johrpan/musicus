@@ -301,45 +301,53 @@ impl Library {
     pub fn load_person(&self, person_id: &str) -> Result<Person> {
         let connection = &mut *self.conn();
 
-        Ok(Person::from(
-            persons::table
-                .filter(persons::person_id.eq(person_id))
-                .select(tables::Person::as_select())
-                .first::<tables::Person>(connection)?,
-        ))
+        persons::table
+            .filter(persons::person_id.eq(person_id))
+            .select(tables::Person::as_select())
+            .first::<tables::Person>(connection)
+            .optional()?
+            .map(Person::from)
+            .ok_or_else(|| {
+                crate::LibraryError::NotFound(crate::EntityKind::Person, person_id.into())
+            })
     }
 
     pub fn load_role(&self, role_id: &str) -> Result<Role> {
         let connection = &mut *self.conn();
 
-        Ok(Role::from(
-            roles::table
-                .filter(roles::role_id.eq(role_id))
-                .select(tables::Role::as_select())
-                .first::<tables::Role>(connection)?,
-        ))
+        roles::table
+            .filter(roles::role_id.eq(role_id))
+            .select(tables::Role::as_select())
+            .first::<tables::Role>(connection)
+            .optional()?
+            .map(Role::from)
+            .ok_or_else(|| crate::LibraryError::NotFound(crate::EntityKind::Role, role_id.into()))
     }
 
     pub fn load_instrument(&self, instrument_id: &str) -> Result<Instrument> {
         let connection = &mut *self.conn();
 
-        Ok(Instrument::from(
-            instruments::table
-                .filter(instruments::instrument_id.eq(instrument_id))
-                .select(tables::Instrument::as_select())
-                .first::<tables::Instrument>(connection)?,
-        ))
+        instruments::table
+            .filter(instruments::instrument_id.eq(instrument_id))
+            .select(tables::Instrument::as_select())
+            .first::<tables::Instrument>(connection)
+            .optional()?
+            .map(Instrument::from)
+            .ok_or_else(|| {
+                crate::LibraryError::NotFound(crate::EntityKind::Instrument, instrument_id.into())
+            })
     }
 
     pub fn load_tag(&self, tag_id: &str) -> Result<Tag> {
         let connection = &mut *self.conn();
 
-        Ok(Tag::from(
-            tags::table
-                .filter(tags::tag_id.eq(tag_id))
-                .select(tables::Tag::as_select())
-                .first::<tables::Tag>(connection)?,
-        ))
+        tags::table
+            .filter(tags::tag_id.eq(tag_id))
+            .select(tables::Tag::as_select())
+            .first::<tables::Tag>(connection)
+            .optional()?
+            .map(Tag::from)
+            .ok_or_else(|| crate::LibraryError::NotFound(crate::EntityKind::Tag, tag_id.into()))
     }
 
     pub fn load_work(&self, work_id: &str) -> Result<Work> {

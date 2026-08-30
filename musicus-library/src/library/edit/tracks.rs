@@ -8,7 +8,7 @@ use std::{
 
 use diesel::prelude::*;
 
-use crate::path::{LibraryTrackPath, TRACKS_SUBDIR};
+use crate::path::LibraryTrackPath;
 use crate::{
     db::{self, schema::*, tables},
     error::{EntityKind, LibraryError, Result},
@@ -90,15 +90,6 @@ impl Library {
         }
 
         let folder = self.folder();
-
-        // New tracks are copied into the managed subtree first. The subtree
-        // must exist before anything is staged.
-        if tracks
-            .iter()
-            .any(|track| matches!(track, TrackUpdate::New { .. }))
-        {
-            fs::create_dir_all(folder.join(TRACKS_SUBDIR))?;
-        }
 
         // Copy the file of every new track next to its destination before
         // touching the database. Nothing is moved into place until the
@@ -371,9 +362,8 @@ fn clean_up_staged(staged: &[StagedFile], renamed: usize) {
     }
 }
 
-/// Build a library relative file name inside the managed [`TRACKS_SUBDIR`]
-/// subtree that no file in `folder` and no file staged by the same batch is
-/// using yet.
+/// Build a library relative file name that no file in `folder` and no file
+/// staged by the same batch is using yet.
 ///
 /// The name only serves human orientation. Tracks keep the file they were
 /// imported with even when they are renamed or renumbered later, so the obvious
@@ -400,7 +390,7 @@ fn unused_track_path(
             filename.push_str(extension);
         }
 
-        let library_path = LibraryTrackPath::managed(&[TRACKS_SUBDIR, &filename])?;
+        let library_path = LibraryTrackPath::try_from_str(&filename)?;
         let to_path = library_path.resolve(folder);
         let mut tmp_path = to_path.clone();
         tmp_path.as_mut_os_string().push(".part");

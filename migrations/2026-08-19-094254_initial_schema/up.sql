@@ -60,11 +60,21 @@ CREATE TABLE works (
     created_at TIMESTAMP NOT NULL DEFAULT (DATETIME('now')),
     edited_at TIMESTAMP NOT NULL DEFAULT (DATETIME('now')),
     last_used_at TIMESTAMP NOT NULL DEFAULT (DATETIME('now')),
-    relates_to TEXT REFERENCES works(work_id) ON DELETE SET NULL
+    CHECK (work_id <> parent_work_id),
+    CHECK ((parent_work_id IS NULL) = (sequence_number IS NULL)),
+    CONSTRAINT works_child_order UNIQUE (parent_work_id, sequence_number)
 );
 
 CREATE INDEX works_parent_work_id ON works (parent_work_id);
-CREATE INDEX works_relates_to ON works (relates_to);
+
+CREATE TABLE work_relations (
+    work_id TEXT NOT NULL REFERENCES works(work_id) ON DELETE CASCADE,
+    related_work_id TEXT NOT NULL REFERENCES works(work_id) ON DELETE CASCADE,
+    PRIMARY KEY (work_id, related_work_id),
+    CHECK (work_id <> related_work_id)
+);
+
+CREATE INDEX work_relations_related_work_id ON work_relations (related_work_id);
 
 CREATE TABLE recordings (
     recording_id TEXT NOT NULL PRIMARY KEY,
@@ -92,11 +102,12 @@ CREATE TABLE albums (
 CREATE TABLE tracks (
     track_id TEXT NOT NULL PRIMARY KEY,
     recording_id TEXT NOT NULL REFERENCES recordings(recording_id) ON DELETE RESTRICT,
-    recording_index INTEGER NOT NULL,
-    path TEXT NOT NULL,
+    recording_index INTEGER NOT NULL CHECK (recording_index >= 0),
+    path TEXT NOT NULL UNIQUE,
     created_at TIMESTAMP NOT NULL DEFAULT (DATETIME('now')),
     edited_at TIMESTAMP NOT NULL DEFAULT (DATETIME('now')),
-    last_used_at TIMESTAMP NOT NULL DEFAULT (DATETIME('now'))
+    last_used_at TIMESTAMP NOT NULL DEFAULT (DATETIME('now')),
+    CONSTRAINT tracks_recording_order UNIQUE (recording_id, recording_index)
 );
 
 CREATE INDEX tracks_recording_id ON tracks (recording_id);
@@ -117,7 +128,7 @@ CREATE TABLE work_persons (
     work_id TEXT NOT NULL REFERENCES works(work_id) ON DELETE CASCADE,
     person_id TEXT NOT NULL REFERENCES persons(person_id) ON DELETE RESTRICT,
     role_id TEXT REFERENCES roles(role_id) ON DELETE RESTRICT,
-    sequence_number INTEGER NOT NULL,
+    sequence_number INTEGER NOT NULL CHECK (sequence_number >= 0),
     PRIMARY KEY (work_id, sequence_number)
 );
 
@@ -127,7 +138,7 @@ CREATE INDEX work_persons_role_id ON work_persons (role_id);
 CREATE TABLE work_instruments (
     work_id TEXT NOT NULL REFERENCES works(work_id) ON DELETE CASCADE,
     instrument_id TEXT NOT NULL REFERENCES instruments(instrument_id) ON DELETE RESTRICT,
-    sequence_number INTEGER NOT NULL,
+    sequence_number INTEGER NOT NULL CHECK (sequence_number >= 0),
     PRIMARY KEY (work_id, sequence_number)
 );
 
@@ -137,7 +148,7 @@ CREATE TABLE work_tags (
     work_id TEXT NOT NULL REFERENCES works(work_id) ON DELETE CASCADE,
     tag_id TEXT NOT NULL REFERENCES tags(tag_id) ON DELETE RESTRICT,
     value TEXT,
-    sequence_number INTEGER NOT NULL,
+    sequence_number INTEGER NOT NULL CHECK (sequence_number >= 0),
     PRIMARY KEY (work_id, sequence_number)
 );
 
@@ -147,7 +158,7 @@ CREATE TABLE ensemble_persons (
     ensemble_id TEXT NOT NULL REFERENCES ensembles(ensemble_id) ON DELETE CASCADE,
     person_id TEXT NOT NULL REFERENCES persons(person_id) ON DELETE RESTRICT,
     instrument_id TEXT REFERENCES instruments(instrument_id) ON DELETE RESTRICT,
-    sequence_number INTEGER NOT NULL,
+    sequence_number INTEGER NOT NULL CHECK (sequence_number >= 0),
     role_id TEXT REFERENCES roles(role_id) ON DELETE RESTRICT,
     PRIMARY KEY (ensemble_id, sequence_number)
 );
@@ -161,7 +172,7 @@ CREATE TABLE recording_persons (
     person_id TEXT NOT NULL REFERENCES persons(person_id) ON DELETE RESTRICT,
     role_id TEXT REFERENCES roles(role_id) ON DELETE RESTRICT,
     instrument_id TEXT REFERENCES instruments(instrument_id) ON DELETE RESTRICT,
-    sequence_number INTEGER NOT NULL,
+    sequence_number INTEGER NOT NULL CHECK (sequence_number >= 0),
     PRIMARY KEY (recording_id, sequence_number)
 );
 
@@ -173,7 +184,7 @@ CREATE TABLE recording_ensembles (
     recording_id TEXT NOT NULL REFERENCES recordings(recording_id) ON DELETE CASCADE,
     ensemble_id TEXT NOT NULL REFERENCES ensembles(ensemble_id) ON DELETE RESTRICT,
     role_id TEXT REFERENCES roles(role_id) ON DELETE RESTRICT,
-    sequence_number INTEGER NOT NULL,
+    sequence_number INTEGER NOT NULL CHECK (sequence_number >= 0),
     PRIMARY KEY (recording_id, sequence_number)
 );
 
@@ -184,7 +195,7 @@ CREATE TABLE recording_tags (
     recording_id TEXT NOT NULL REFERENCES recordings(recording_id) ON DELETE CASCADE,
     tag_id TEXT NOT NULL REFERENCES tags(tag_id) ON DELETE RESTRICT,
     value TEXT,
-    sequence_number INTEGER NOT NULL,
+    sequence_number INTEGER NOT NULL CHECK (sequence_number >= 0),
     PRIMARY KEY (recording_id, sequence_number)
 );
 
@@ -193,7 +204,7 @@ CREATE INDEX recording_tags_tag_id ON recording_tags (tag_id);
 CREATE TABLE track_works (
     track_id TEXT NOT NULL REFERENCES tracks(track_id) ON DELETE CASCADE,
     work_id TEXT NOT NULL REFERENCES works(work_id) ON DELETE RESTRICT,
-    sequence_number INTEGER NOT NULL,
+    sequence_number INTEGER NOT NULL CHECK (sequence_number >= 0),
     PRIMARY KEY (track_id, sequence_number)
 );
 
@@ -202,7 +213,7 @@ CREATE INDEX track_works_work_id ON track_works (work_id);
 CREATE TABLE album_recordings (
     album_id TEXT NOT NULL REFERENCES albums(album_id) ON DELETE CASCADE,
     recording_id TEXT NOT NULL REFERENCES recordings(recording_id) ON DELETE RESTRICT,
-    sequence_number INTEGER NOT NULL,
+    sequence_number INTEGER NOT NULL CHECK (sequence_number >= 0),
     PRIMARY KEY (album_id, sequence_number)
 );
 

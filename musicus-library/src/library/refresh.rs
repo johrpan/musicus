@@ -8,12 +8,11 @@
 
 use std::collections::HashSet;
 
-use anyhow::Result;
 use diesel::{prelude::*, SqliteConnection};
 
 use crate::{
     db::{self, schema::*, tables, tables::Source},
-    error::{EntityKind, LibraryError},
+    error::{EntityKind, LibraryError, Result},
     library::import_graph::{DestinationState, ImportClosure, ImportGraph},
 };
 
@@ -147,7 +146,7 @@ pub(crate) fn refresh_metadata(
 ) -> Result<()> {
     let destination = DestinationState::load(destination_connection)?;
     let plan = RefreshPlan::build(graph, &destination)?;
-    destination_connection.transaction::<(), anyhow::Error, _>(|connection| {
+    destination_connection.transaction::<(), LibraryError, _>(|connection| {
         insert_dependencies(connection, graph, &plan, &destination)?;
         replace_enabled(connection, graph, &plan, &destination)
     })

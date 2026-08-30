@@ -6,37 +6,25 @@
 
 use std::path::{Path, PathBuf};
 
-use diesel::{deserialize::FromSqlRow, expression::AsExpression, sql_types::Text};
-
 use crate::error::LibraryError;
-
-/// The relative subtree under the library root that managed track files live in.
-pub(crate) const TRACKS_SUBDIR: &str = "tracks";
 
 /// A validated, library-relative path to a track's audio file.
 ///
 /// Stored as a portable, slash-separated relative path. Values are validated
 /// on construction and never escape the library root: absolute paths, root
 /// components, drive prefixes, `.`/`..` and empty components are rejected.
-/// Newly imported files live under the managed `tracks` subtree. The `Text`
-/// encoding only describes how the value is stored; the serialization itself
-/// lives in the private database layer.
-#[derive(AsExpression, FromSqlRow, Clone, Debug, PartialEq, Eq, Hash)]
-#[diesel(sql_type = Text)]
+/// Database serialization is implemented entirely in the private persistence
+/// layer.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct LibraryTrackPath(String);
 
 impl LibraryTrackPath {
     /// Parse and validate a stored relative path, using '/' as the separator.
     pub fn try_from_str(path: &str) -> crate::Result<Self> {
-        Self::try_from_components(path.split('/').collect(), false)
+        Self::try_from_components(path.split('/').collect())
     }
 
-    /// Build a validated path inside the managed `tracks` subtree.
-    pub(crate) fn managed(components: &[&str]) -> crate::Result<Self> {
-        Self::try_from_components(components.to_vec(), true)
-    }
-
-    fn try_from_components(components: Vec<&str>, require_managed: bool) -> crate::Result<Self> {
+    fn try_from_components(components: Vec<&str>) -> crate::Result<Self> {
         if components.is_empty() {
             return Err(LibraryError::InvalidInput(
                 "Track paths must not be empty".to_owned(),
@@ -61,13 +49,6 @@ impl LibraryTrackPath {
                     "Track path {components:?} contains a backslash"
                 )));
             }
-        }
-
-        if require_managed && components[0] != TRACKS_SUBDIR {
-            return Err(LibraryError::InvalidInput(format!(
-                "Track path must be inside the {} directory",
-                TRACKS_SUBDIR
-            )));
         }
 
         Ok(Self(components.join("/")))
