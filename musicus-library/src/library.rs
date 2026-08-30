@@ -82,7 +82,7 @@ impl Library {
     }
 
     /// Resolve a validated library-relative track path to an absolute path.
-    pub fn track_file_path(&self, path: &tables::LibraryTrackPath) -> PathBuf {
+    pub fn track_file_path(&self, path: &crate::path::LibraryTrackPath) -> PathBuf {
         path.resolve(&self.folder)
     }
 

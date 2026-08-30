@@ -6,9 +6,10 @@
 
 use std::fmt::Display;
 
-use crate::db::{
-    tables::{self, LibraryTrackPath, Source},
-    TranslatedString,
+use crate::{
+    db::{tables, TranslatedString},
+    path::LibraryTrackPath,
+    Source,
 };
 
 /// A person credited as a work person (composer) or recording person

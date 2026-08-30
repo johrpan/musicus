@@ -8,7 +8,7 @@ use std::{
 
 use diesel::prelude::*;
 
-use crate::db::tables::{LibraryTrackPath, TRACKS_SUBDIR};
+use crate::path::{LibraryTrackPath, TRACKS_SUBDIR};
 use crate::{
     db::{self, schema::*, tables},
     error::{EntityKind, LibraryError, Result},

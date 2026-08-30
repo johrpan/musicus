@@ -3,6 +3,7 @@ pub mod error;
 pub mod input;
 mod library;
 pub mod models;
+pub mod path;
 
 pub use db::tables::Source;
 pub use db::TranslatedString;
@@ -16,6 +17,7 @@ pub use library::program;
 pub use library::query;
 pub use library::search;
 pub use library::Library;
+pub use path::LibraryTrackPath;
 
 /// Explicitly unstable persistence facilities.
 ///

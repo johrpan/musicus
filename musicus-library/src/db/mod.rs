@@ -2,6 +2,8 @@ pub mod schema;
 pub mod tables;
 pub mod views;
 
+mod path_sql;
+
 use std::{
     collections::BTreeMap,
     fmt::Display,
@@ -24,7 +26,7 @@ use diesel::{
 use diesel_migrations::{EmbeddedMigrations, MigrationHarness};
 
 use self::schema::tracks;
-use crate::db::tables::{LibraryTrackPath, TRACKS_SUBDIR};
+use crate::path::{LibraryTrackPath, TRACKS_SUBDIR};
 use std::collections::HashSet;
 
 // This makes the SQL migration scripts accessible from the code.

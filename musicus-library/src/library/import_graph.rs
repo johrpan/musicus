@@ -673,7 +673,7 @@ impl DestinationState {
                 .collect::<HashSet<_>>(),
             track_paths: tracks::table
                 .select(tracks::path)
-                .load::<tables::LibraryTrackPath>(connection)?
+                .load::<crate::path::LibraryTrackPath>(connection)?
                 .into_iter()
                 .map(|path| path.as_str().to_owned())
                 .collect(),

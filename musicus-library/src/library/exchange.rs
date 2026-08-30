@@ -321,7 +321,7 @@ fn validate_archive_entries(
             continue;
         }
 
-        tables::LibraryTrackPath::try_from_str(&name)
+        crate::path::LibraryTrackPath::try_from_str(&name)
             .map_err(|err| anyhow!("Archive entry {name:?} is not a usable track path: {err}"))?;
 
         if entries.contains(&name) {
