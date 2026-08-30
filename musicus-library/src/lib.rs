@@ -10,6 +10,7 @@ pub use db::tables::Source;
 pub use db::TranslatedString;
 pub use db::{generate_id, set_language};
 pub use error::{EntityKind, LibraryError, Result};
+pub use library::catalog_export;
 pub use library::catalog_import;
 pub use library::edit;
 pub use library::exchange;

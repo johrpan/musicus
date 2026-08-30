@@ -12,7 +12,7 @@
 
 use std::{
     fs::{self, File},
-    io::BufReader,
+    io::{BufReader, BufWriter},
     ops::ControlFlow,
     path::PathBuf,
 };
@@ -21,9 +21,9 @@ use anyhow::{Context, Result};
 use clap::{Args, Parser, Subcommand};
 use musicus_library::{
     catalog::{self, Definitions},
-    catalog_import,
+    catalog_export, catalog_import,
     exchange::{self, ExchangeEvent},
-    Library,
+    Library, LibraryTrackPath,
 };
 use tempfile::TempDir;
 
@@ -48,6 +48,8 @@ enum Command {
     /// importing every catalogue entity a recording needs and ignoring
     /// everything else.
     BuildLibrary(BuildLibraryArgs),
+    /// Export a library as a JSON catalogue.
+    ExportLibrary(ExportLibraryArgs),
 }
 
 /// One or more source files, each parsed as a [`Definitions`] and folded
@@ -95,6 +97,17 @@ struct BuildLibraryArgs {
     output: PathBuf,
 }
 
+#[derive(Args, Debug)]
+struct ExportLibraryArgs {
+    /// Path to the library folder to export from.
+    library: PathBuf,
+
+    /// Directory to write into: a metadata.json plus every track a recording
+    /// references. An existing metadata.json inside it is replaced.
+    #[arg(short, long, default_value = "musicus_library")]
+    output: PathBuf,
+}
+
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
@@ -102,6 +115,7 @@ fn main() -> Result<()> {
         Command::BuildMetadata(args) => build_metadata(args),
         Command::CheckMetadata(sources) => check_metadata(sources),
         Command::BuildLibrary(args) => build_library(args),
+        Command::ExportLibrary(args) => export_library(args),
     }
 }
 
@@ -184,6 +198,60 @@ fn build_library(args: BuildLibraryArgs) -> Result<()> {
     println!("Wrote a library to {}", args.output.to_string_lossy());
     println!("  recordings: {}", summary.recordings);
     println!("  tracks:     {}", summary.tracks);
+
+    Ok(())
+}
+
+fn export_library(args: ExportLibraryArgs) -> Result<()> {
+    let cache_dir = TempDir::new().context("Failed to create a metadata cache directory")?;
+    let library = Library::new(&args.library, cache_dir.path())
+        .with_context(|| format!("Failed to open the library at {}", args.library.display()))?;
+
+    let definitions = catalog_export::export(&library).context("Failed to read the library")?;
+
+    fs::create_dir_all(&args.output)
+        .with_context(|| format!("Failed to create {}", args.output.display()))?;
+
+    let metadata_path = args.output.join("metadata.json");
+    let file = File::create(&metadata_path)
+        .with_context(|| format!("Failed to create {}", metadata_path.display()))?;
+    serde_json::to_writer_pretty(BufWriter::new(file), &definitions)
+        .with_context(|| format!("Failed to write {}", metadata_path.display()))?;
+
+    let mut n_tracks = 0;
+    for recording in &definitions.recordings {
+        for track in &recording.tracks {
+            let relative = track.file.to_str().with_context(|| {
+                format!("Track path {} is not valid UTF-8", track.file.display())
+            })?;
+            let source = library.track_file_path(&LibraryTrackPath::try_from_str(relative)?);
+            let destination = args.output.join(&track.file);
+
+            if let Some(parent) = destination.parent() {
+                fs::create_dir_all(parent)
+                    .with_context(|| format!("Failed to create {}", parent.display()))?;
+            }
+
+            fs::copy(&source, &destination).with_context(|| {
+                format!(
+                    "Failed to copy {} to {}",
+                    source.display(),
+                    destination.display()
+                )
+            })?;
+            n_tracks += 1;
+        }
+    }
+
+    println!("Wrote {}", metadata_path.display());
+    println!("  persons:     {}", definitions.persons.len());
+    println!("  roles:       {}", definitions.roles.len());
+    println!("  instruments: {}", definitions.instruments.len());
+    println!("  ensembles:   {}", definitions.ensembles.len());
+    println!("  tags:        {}", definitions.tags.len());
+    println!("  works:       {}", definitions.works.len());
+    println!("  recordings:  {}", definitions.recordings.len());
+    println!("  tracks:      {n_tracks}");
 
     Ok(())
 }

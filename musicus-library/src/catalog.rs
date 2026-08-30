@@ -18,7 +18,7 @@ use std::{
 use anyhow::{anyhow, bail, Context};
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     db::{self, schema::*, tables, tables::Source, TranslatedString},
@@ -26,7 +26,7 @@ use crate::{
 };
 
 /// One named basic entity (`roles`, `instruments`, `ensembles`, `persons`).
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct NamedEntity {
     pub key: String,
     pub name: TranslatedString,
@@ -34,7 +34,7 @@ pub struct NamedEntity {
 
 /// A tag definition. Tags additionally carry whether associations with them
 /// take a user-defined value.
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TagEntity {
     pub key: String,
     pub name: TranslatedString,
@@ -45,7 +45,7 @@ pub struct TagEntity {
 /// A composer credit on a work: a plain person key, or a person key with a
 /// role for contributions that are not plain composition (such as the
 /// `compiler` of the *Hexameron*).
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum ComposerRef {
     Person(String),
@@ -54,7 +54,7 @@ pub enum ComposerRef {
 
 /// A tag association on a work: a plain tag key, or a tag key with a value
 /// for tags that take one (such as `Language`).
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum TagRef {
     Key(String),
@@ -65,7 +65,7 @@ pub enum TagRef {
 }
 
 /// A work entry; `parts` nests recursively.
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct WorkEntity {
     pub key: String,
     pub name: TranslatedString,
@@ -84,7 +84,7 @@ pub struct WorkEntity {
 
 /// A person or ensemble performing on a recording, referenced by catalogue
 /// key.
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum PerformerRef {
     Person {
@@ -100,7 +100,7 @@ pub enum PerformerRef {
 
 /// One track: an audio file on disk, plus the works (by catalogue key) it
 /// belongs to, in order.
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TrackEntry {
     pub file: PathBuf,
     #[serde(default)]
@@ -108,7 +108,7 @@ pub struct TrackEntry {
 }
 
 /// One recording: a catalogue work, its performers and tags, and its tracks.
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RecordingEntry {
     pub work: String,
     #[serde(default)]
@@ -126,7 +126,7 @@ pub struct RecordingEntry {
 /// Every field is independently optional, so a single file may define
 /// anything from just a handful of tags to a whole catalogue plus its
 /// recordings; how the content is split across files is not meaningful.
-#[derive(Clone, Debug, Default, Deserialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Definitions {
     #[serde(default)]
     pub persons: Vec<NamedEntity>,
