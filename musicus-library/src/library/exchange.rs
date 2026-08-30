@@ -131,15 +131,17 @@ fn read_manifest(archive: &mut zip::ZipArchive<BufReader<fs::File>>) -> Result<(
 /// synchronous exchange operations off-thread.
 ///
 /// The application creates one on the main thread and moves a clone into its
-/// worker thread; every function in this module only needs the context.
+/// worker thread; every function in this module only needs the context. The
+/// fields are private: callers obtain the context from
+/// [`Library::exchange_context`] and hand it to the exchange functions.
 #[derive(Clone)]
 pub struct ExchangeContext {
     /// The library's database connection.
-    pub connection: Arc<Mutex<SqliteConnection>>,
+    connection: Arc<Mutex<SqliteConnection>>,
     /// The folder the library's database and track files live in.
-    pub folder: PathBuf,
+    folder: PathBuf,
     /// The directory cache files (like the metadata database) live in.
-    pub cache_dir: PathBuf,
+    cache_dir: PathBuf,
     /// Emit the library's change notification, for use after a committed
     /// mutation on a worker thread.
     notify: Arc<dyn Fn() + Send + Sync>,
