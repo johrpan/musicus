@@ -1169,6 +1169,12 @@ pub(crate) fn apply_import(
                 .execute(connection)?;
             report.inserted += 1;
         }
+    }
+
+    for work_id in &plan.works_in_order {
+        if destination.works.contains(work_id) {
+            continue;
+        }
 
         for relation in graph.work_relations_of(work_id) {
             diesel::insert_into(work_relations::table)
