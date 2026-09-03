@@ -138,7 +138,7 @@ impl LibraryManager {
             }
             Ok(path) => {
                 if let Some(path) = path.path() {
-                    match crate::process::import_library(path, &self.imp().library.get().unwrap()) {
+                    match crate::process::import_library(path, self.imp().library.get().unwrap()) {
                         Ok(process) => {
                             self.imp()
                                 .process_manager
@@ -177,7 +177,7 @@ impl LibraryManager {
             }
             Ok(path) => {
                 if let Some(path) = path.path() {
-                    match crate::process::export_library(path, &self.imp().library.get().unwrap()) {
+                    match crate::process::export_library(path, self.imp().library.get().unwrap()) {
                         Ok(process) => {
                             self.imp()
                                 .process_manager
@@ -203,7 +203,7 @@ impl LibraryManager {
             config::METADATA_URL.to_string()
         };
 
-        match crate::process::update_metadata(&url, &self.imp().library.get().unwrap()) {
+        match crate::process::update_metadata(&url, self.imp().library.get().unwrap()) {
             Ok(process) => {
                 self.imp()
                     .process_manager
@@ -226,7 +226,7 @@ impl LibraryManager {
             config::LIBRARY_URL.to_string()
         };
 
-        match crate::process::update_library(&url, &self.imp().library.get().unwrap()) {
+        match crate::process::update_library(&url, self.imp().library.get().unwrap()) {
             Ok(process) => {
                 self.imp()
                     .process_manager

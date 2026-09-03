@@ -212,7 +212,9 @@ impl Default for Program {
 
 #[derive(glib::Enum, Serialize, Deserialize, Eq, PartialEq, Clone, Copy, Debug)]
 #[enum_type(name = "MusicusProgramDesign")]
+#[derive(Default)]
 pub enum ProgramDesign {
+    #[default]
     Default,
     Blue,
     Teal,
@@ -231,11 +233,6 @@ impl ProgramDesign {
     }
 }
 
-impl Default for ProgramDesign {
-    fn default() -> Self {
-        Self::Default
-    }
-}
 
 impl ToString for ProgramDesign {
     fn to_string(&self) -> String {

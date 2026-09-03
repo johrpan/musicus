@@ -115,7 +115,7 @@ impl EmptyPage {
                     config::LIBRARY_URL.to_string()
                 };
 
-                match crate::process::update_library(&url, &obj.imp().library.get().unwrap()) {
+                match crate::process::update_library(&url, obj.imp().library.get().unwrap()) {
                     Ok(process) => {
                         process.connect_finished_notify(clone!(
                             #[weak]

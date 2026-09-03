@@ -916,7 +916,7 @@ impl EntityBrowser {
                 .build();
 
             for tag in &tags {
-                let row = ActivatableRow::new(&item_row_child(&tag.name.get(), true, 0));
+                let row = ActivatableRow::new(&item_row_child(tag.name.get(), true, 0));
 
                 let obj = self.clone();
                 let tag = tag.clone();

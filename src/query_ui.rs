@@ -34,7 +34,7 @@ pub fn query_highlight(library: &Library, query: &LibraryQuery) -> Option<Facet>
             .ok()
             .map(Facet::Instrument)
     } else if let Some(tag) = &query.tag {
-        query_tag_value(library, tag).map(|tag_value| Facet::Tag(tag_value))
+        query_tag_value(library, tag).map(Facet::Tag)
     } else {
         None
     }

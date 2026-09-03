@@ -276,7 +276,7 @@ impl Player {
         let tracks = self.matching_tracks(recording, None);
 
         if tracks.is_empty() {
-            log::warn!("Recording without tracks: {}.", &recording.id);
+            log::warn!("Recording without tracks: {}.", recording.id);
             return Vec::new();
         }
 
@@ -304,8 +304,8 @@ impl Player {
         if tracks.is_empty() {
             log::warn!(
                 "No tracks of recording {} carry work {}.",
-                &recording.id,
-                &work.id
+                recording.id,
+                work.id
             );
             return Vec::new();
         }
@@ -343,7 +343,7 @@ impl Player {
         let tracks = self.matching_tracks(recording, work);
 
         if tracks.is_empty() {
-            log::warn!("Recording without tracks: {}.", &recording.id);
+            log::warn!("Recording without tracks: {}.", recording.id);
             return Vec::new();
         }
 
